@@ -1,0 +1,49 @@
+{
+  "name": "@agentkit-js/core",
+  "version": "0.1.0",
+  "description": "Core runtime for agentkit-js — agents, executor, memory, models, tools",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./executor": {
+      "import": "./dist/executor/index.js",
+      "types": "./dist/executor/index.d.ts"
+    },
+    "./tools": {
+      "import": "./dist/tools/index.js",
+      "types": "./dist/tools/index.d.ts"
+    },
+    "./models": {
+      "import": "./dist/models/index.js",
+      "types": "./dist/models/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.37.0",
+    "openai": ">=4.80.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/sdk": { "optional": true },
+    "openai": { "optional": true }
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.37.0",
+    "openai": "^4.80.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

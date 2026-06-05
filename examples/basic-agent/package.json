@@ -1,0 +1,14 @@
+{
+  "name": "basic-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "5-line agentkit-js example (D5 doctest)",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*",
+    "@anthropic-ai/sdk": "^0.37.0"
+  }
+}

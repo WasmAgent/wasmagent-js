@@ -1,0 +1,22 @@
+{
+  "name": "@agentkit-js/cli",
+  "version": "0.1.0",
+  "description": "CLI for agentkit-js — mirrors smolagents' `smolagent` CLI (D6)",
+  "type": "module",
+  "bin": {
+    "agentkit": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.37.0",
+    "typescript": "^5.7.0"
+  }
+}

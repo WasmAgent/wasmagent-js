@@ -1,0 +1,23 @@
+{
+  "name": "@agentkit-js/cloudflare-worker",
+  "version": "0.1.0",
+  "description": "Cloudflare Workers entry point for agentkit-js",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist .wrangler .turbo"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.37.0",
+    "@cloudflare/workers-types": "^4.20241224.0",
+    "typescript": "^5.7.0",
+    "wrangler": "^3.93.0"
+  }
+}

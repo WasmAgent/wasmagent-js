@@ -1,0 +1,21 @@
+name = "agentkit-js-worker"
+main = "src/index.ts"
+compatibility_date = "2024-12-18"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+AGENTKIT_LOG_LEVEL = "info"
+
+# KV namespace for session state / result caching (C4).
+# Uncomment and create with: wrangler kv namespace create AGENTKIT_SESSIONS
+# [[kv_namespaces]]
+# binding = "AGENTKIT_SESSIONS"
+# id = "YOUR_KV_ID_HERE"
+
+# AI binding for Workers AI inference (optional — can use Anthropic API instead).
+# [ai]
+# binding = "AI"
+
+[dev]
+port = 8787
+local_protocol = "http"
