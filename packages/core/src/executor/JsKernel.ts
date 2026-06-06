@@ -1,6 +1,5 @@
 import { Worker } from "node:worker_threads";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import type {
   CapabilityManifest,
   KernelOptions,
@@ -8,16 +7,16 @@ import type {
   WasmKernel,
 } from "./types.js";
 
-// WORKER_PATH is computed lazily (inside the class) rather than at module level
-// so that merely importing JsKernel (e.g. for re-export) does not crash in
-// environments that lack import.meta.url (Cloudflare Workers). The Workers
-// bundle includes @agentkit-js/core but CodeAgent uses QuickJSKernel there —
-// JsKernel is imported but never instantiated, so the lazy computation is safe.
+// Q10: use new URL() for robust sibling resolution — cross-platform, no string hacks.
+// In production (after tsc builds), import.meta.url points to dist/executor/JsKernel.js
+// so "./JsKernelWorker.js" resolves to dist/executor/JsKernelWorker.js correctly.
+// In tests (vitest vite transform), import.meta.url points to src/executor/JsKernel.ts
+// and worker_threads can't execute TypeScript — swap src→dist for that case only.
 function resolveWorkerPath(): string {
-  const __dir = dirname(fileURLToPath(import.meta.url));
-  return __dir.includes("/src/")
-    ? __dir.replace("/src/", "/dist/") + "/JsKernelWorker.js"
-    : join(__dir, "JsKernelWorker.js");
+  const workerUrl = new URL("./JsKernelWorker.js", import.meta.url);
+  const path = fileURLToPath(workerUrl);
+  // Vitest transforms TS in-place; path will contain /src/executor/ in that case.
+  return path.replace(/[/\\]src[/\\]executor[/\\]/, "/dist/executor/");
 }
 
 /**
@@ -47,7 +46,13 @@ export class JsKernel implements WasmKernel {
 
   constructor(opts?: KernelOptions) {
     this.#timeoutMs = opts?.timeoutMs ?? 5_000;
-    this.#worker = this.#spawnWorker();
+    // Q9: do NOT spawn worker here — defer to first run() call.
+    // Constructing JsKernel (or CodeAgent) should not fork an OS thread;
+    // the cost is paid only when the kernel is actually used.
+  }
+
+  #getOrSpawnWorker(): Worker {
+    return (this.#worker ??= this.#spawnWorker());
   }
 
   #spawnWorker(): Worker {
@@ -61,9 +66,8 @@ export class JsKernel implements WasmKernel {
     code: string,
     capabilities?: Partial<CapabilityManifest>
   ): Promise<KernelResult> {
-    if (!this.#worker) {
-      this.#worker = this.#spawnWorker();
-    }
+    // Lazy init: spawn worker on first run(), not at construction time.
+    const worker = this.#getOrSpawnWorker();
 
     const serial = ++this.#serial;
 
@@ -82,7 +86,7 @@ export class JsKernel implements WasmKernel {
         message?: string;
       }) => {
         if (msg.serial !== serial) return;
-        this.#worker!.off("message", handler);
+        worker.off("message", handler);
         clearTimeout(timer);
         if (msg.type === "error") {
           reject(new Error(`KernelError: ${msg.message ?? "unknown"}`));
@@ -95,19 +99,15 @@ export class JsKernel implements WasmKernel {
         }
       };
 
-      // Q4: single setTimeout instead of the old setImmediate polling loop.
-      // The polling loop created O(timeoutMs) Immediate objects (one per event-loop
-      // iteration) and provided no better precision than a one-shot timer.
-      // setTimeout fires once, has equivalent precision, and zero GC churn.
       const timer = setTimeout(() => {
-        this.#worker!.off("message", handler);
-        this.#worker!.terminate().catch(() => {});
+        worker.off("message", handler);
+        worker.terminate().catch(() => {});
         this.#worker = null;
         reject(new Error(`KernelError: Script execution timed out after ${this.#timeoutMs}ms`));
       }, this.#timeoutMs);
 
-      this.#worker!.on("message", handler);
-      this.#worker!.postMessage({ type: "run", code, capabilities: capPayload, serial });
+      worker.on("message", handler);
+      worker.postMessage({ type: "run", code, capabilities: capPayload, serial });
     });
   }
 
@@ -115,7 +115,8 @@ export class JsKernel implements WasmKernel {
     if (this.#worker) {
       this.#worker.terminate().catch(() => {});
     }
-    this.#worker = this.#spawnWorker();
+    // Q9: don't eagerly spawn — next run() will create a fresh worker lazily.
+    this.#worker = null;
   }
 
   async snapshot(): Promise<Uint8Array> {

@@ -147,7 +147,7 @@ export class ToolCallingAgent {
           parentTraceId,
           channel: "tool",
           event: "tool_call",
-          data: { toolName: call.name, args: call.input, callId: call.id, batchId, batchSize },
+          data: { toolName: call.name, args: call.input, callId: call.id, batchId, batchSize, stepIndex: step },
           timestampMs: Date.now(),
         };
       }
@@ -200,7 +200,7 @@ export class ToolCallingAgent {
           parentTraceId,
           channel: "tool",
           event: "tool_result",
-          data: { ...resultData, batchId, batchSize },
+          data: { ...resultData, batchId, batchSize, stepIndex: step },
           timestampMs: Date.now(),
         };
 

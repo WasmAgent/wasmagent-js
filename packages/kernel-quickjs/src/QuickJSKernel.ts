@@ -50,25 +50,45 @@ interface ScopeStatic {
  *   - No Node.js APIs in the sandbox by default (deny-all baseline).
  *   - allowedHosts capability: a JS-side fetch wrapper enforces the host allow-list.
  *
- * Handle lifecycle (Q5): all QuickJS handles are managed with Scope.withScopeAsync
- * so they are disposed automatically — no manual .dispose() calls scattered around.
- * Handles cached across calls (#stringify, #jsonObj) are disposed in reset/asyncDispose.
+ * Q3 — Cloudflare Workers compatibility:
+ *   Workers prohibits runtime WASM compilation (same restriction as eval). The default
+ *   `getQuickJS()` from quickjs-emscripten fetches and compiles a .wasm at runtime,
+ *   which crashes in workerd with CompileError: WebAssembly code generation disallowed.
  *
- * Serialisation (Q1, Q2, Q3): output and __finalAnswer__ are extracted via
- * callFunction(JSON.stringify, ...) instead of ctx.dump(), which silently corrupts
- * circular refs and drops functions. Circular refs now throw KernelSerializationError.
+ *   The fix: pass a pre-compiled variant via the `variant` option. In the Cloudflare
+ *   Worker, import the variant at build time and inject it:
+ *
+ *     import cfVariant from "@jitl/quickjs-wasmfile-release-sync";
+ *     import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
+ *     new QuickJSKernel({ variant: cfVariant, variantLoader: newQuickJSWASMModuleFromVariant })
+ *
+ *   The variant is bundled by wrangler at build time, so no runtime WASM compilation
+ *   is needed. Node environments can omit variant/variantLoader and use the default.
  */
+export interface QuickJSKernelOptions extends KernelOptions {
+  /**
+   * Pre-compiled QuickJS variant for environments that prohibit runtime WASM
+   * compilation (Cloudflare Workers). Must be paired with variantLoader.
+   * Omit to use the default getQuickJS() which compiles at runtime (Node only).
+   */
+  variant?: unknown;
+  /**
+   * Loader function for the pre-compiled variant, e.g.
+   * `newQuickJSWASMModuleFromVariant` from "quickjs-emscripten-core".
+   */
+  variantLoader?: (variant: unknown) => Promise<QuickJSModule>;
+}
+
 export class QuickJSKernel implements WasmKernel {
   #runtime: QuickJSRuntime | null = null;
   #ctx: QuickJSContext | null = null;
   #module: QuickJSModule | null = null;
   readonly #timeoutMs: number;
+  readonly #variant: unknown;
+  readonly #variantLoader: ((v: unknown) => Promise<QuickJSModule>) | undefined;
   #logs: string[] = [];
 
   // Q4: cache the in-flight init promise so concurrent callers share one runtime.
-  // Without this, two concurrent calls to #ensureContext() would both pass the
-  // `if (this.#ctx)` guard, each build a runtime, and the second would overwrite
-  // the first — leaking the first runtime forever.
   #initPromise: Promise<QuickJSContext> | null = null;
 
   // Q1: flag set by interrupt handler so interrupt detection does not rely on
@@ -79,8 +99,10 @@ export class QuickJSKernel implements WasmKernel {
   #jsonObj: (QHandle & { dispose(): void }) | null = null;
   #stringify: (QHandle & { dispose(): void }) | null = null;
 
-  constructor(opts?: KernelOptions) {
+  constructor(opts?: QuickJSKernelOptions) {
     this.#timeoutMs = opts?.timeoutMs ?? 5_000;
+    this.#variant = opts?.variant;
+    this.#variantLoader = opts?.variantLoader;
   }
 
   async #ensureContext(): Promise<QuickJSContext> {
@@ -89,8 +111,15 @@ export class QuickJSKernel implements WasmKernel {
     if (this.#initPromise) return this.#initPromise;
 
     this.#initPromise = (async () => {
-      const { getQuickJS } = await import("quickjs-emscripten");
-      this.#module = (await getQuickJS()) as unknown as QuickJSModule;
+      if (this.#variant && this.#variantLoader) {
+        // Q3: Workers-safe path — use pre-compiled variant (no runtime WASM compilation).
+        this.#module = await this.#variantLoader(this.#variant);
+      } else {
+        // Default Node.js path — getQuickJS() fetches and compiles .wasm at runtime.
+        // This will fail in Cloudflare Workers (WASM compilation is disallowed).
+        const { getQuickJS } = await import("quickjs-emscripten");
+        this.#module = (await getQuickJS()) as unknown as QuickJSModule;
+      }
       this.#runtime = this.#module.newRuntime();
       this.#ctx = this.#runtime.newContext();
 
@@ -174,7 +203,7 @@ export class QuickJSKernel implements WasmKernel {
     const ScopeStatic = Scope as unknown as ScopeStatic;
     this.#logs = [];
 
-    ctx.evalCode("__logs__ = []; var __finalAnswer__ = undefined;");
+    ctx.evalCode("__logs__ = []; var __finalAnswer__ = undefined; var __final_answer__ = undefined;");
 
     if (capabilities?.allowedHosts?.length) {
       this.#injectFetchWrapper(ctx, capabilities.allowedHosts);
@@ -215,11 +244,15 @@ export class QuickJSKernel implements WasmKernel {
       const logsHandle = scope.manage(ctx.unwrapResult(ctx.evalCode("JSON.stringify(__logs__)")));
       this.#logs = JSON.parse(ctx.getString(logsHandle)) as string[];
 
-      // Q2: use ctx.typeof() to detect whether __finalAnswer__ was set (typeof "undefined"
-      // means unset). Then serialise the value through the same JSON path as output —
-      // consistent behaviour: functions are dropped → KernelSerializationError.
-      const faHandle = scope.manage(ctx.unwrapResult(ctx.evalCode("__finalAnswer__")));
-      isFinalAnswer = ctx.typeof(faHandle as QHandle) !== "undefined";
+      // Q2/Q5: check both sentinels — camelCase (__finalAnswer__) and snake_case (__final_answer__).
+      // Both spellings are initialised to undefined above; whichever the agent sets is used.
+      // This lets agent code work regardless of which kernel backend (JS vs Python convention).
+      const faCamelHandle = scope.manage(ctx.unwrapResult(ctx.evalCode("__finalAnswer__")));
+      const faSnakeHandle = scope.manage(ctx.unwrapResult(ctx.evalCode("__final_answer__")));
+      const faCamelSet = ctx.typeof(faCamelHandle as QHandle) !== "undefined";
+      const faSnakeSet = ctx.typeof(faSnakeHandle as QHandle) !== "undefined";
+      isFinalAnswer = faCamelSet || faSnakeSet;
+      const faHandle = faCamelSet ? faCamelHandle : faSnakeHandle;
 
       let finalOutput = output;
       if (isFinalAnswer) {

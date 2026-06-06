@@ -15,6 +15,7 @@ export interface AgentEvent {
   event:
     | "run_start"
     | "step_start"
+    | "thinking_delta"   // Q6: split from step_start — carries {delta} thinking token stream
     | "tool_call"
     | "tool_result"
     | "planning"

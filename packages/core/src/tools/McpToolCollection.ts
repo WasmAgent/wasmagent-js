@@ -86,8 +86,22 @@ export class McpToolCollection {
         await import("@modelcontextprotocol/sdk/client/streamableHttp.js");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await client.connect(new (StreamableHTTPClientTransport as any)(baseUrl));
-    } catch {
-      // Streamable HTTP not supported — fall back to legacy SSE transport.
+    } catch (err) {
+      // Q4: distinguish module-not-found (SDK too old, dep missing) from connection errors.
+      // A missing module means Streamable HTTP is unavailable in this SDK version —
+      // re-throw instead of silently falling back to SSE (which would mask the real problem).
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("ERR_MODULE_NOT_FOUND") || msg.includes("Cannot find module")) {
+        throw new Error(
+          `McpToolCollection.fromHttp: StreamableHTTPClientTransport not available in the ` +
+            `installed @modelcontextprotocol/sdk version. ` +
+            `Use fromSse() or upgrade the SDK (StreamableHTTP added in SDK ≥ 1.7.0). ` +
+            `Original error: ${msg}`
+        );
+      }
+      // Connection error (4xx, network timeout, server doesn't support Streamable HTTP) →
+      // fall back to SSE with a warning so the caller can see the degradation.
+      console.warn(`[mcp] Streamable HTTP failed (${msg}), falling back to SSE`);
       const { SSEClientTransport } = await import("@modelcontextprotocol/sdk/client/sse.js");
       const fallbackClient = new Client({ name: "agentkit-js", version: "0.1.0" });
       await fallbackClient.connect(new SSEClientTransport(baseUrl));

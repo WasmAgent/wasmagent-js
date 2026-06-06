@@ -168,4 +168,4 @@ agentkit run "Write a haiku" --model claude-opus-4-8 --max-steps 5
 
 ## License
 
-MIT
+Apache 2.0

@@ -18,16 +18,23 @@
  * completed agent results are stored in KV (TTL: 1 hour). Subsequent requests
  * with the same sessionId replay the cached event stream instantly.
  *
- * ── Edge Runtime Compatibility (A3 — now resolved) ──────────────────────────
- * Cloudflare Workers does NOT provide node:vm. The old JsKernel (node:vm-based)
- * would fail at runtime. This Worker now uses QuickJSKernel (@agentkit-js/kernel-quickjs)
- * for CodeAgent — QuickJS runs entirely in WASM with no Node.js API requirements,
- * making agentType:"code" safe in workerd/Cloudflare Workers environments.
- * agentType:"tool-calling" (ToolCallingAgent) also works and requires no kernel at all.
+ * ── Edge Runtime Compatibility (A3 — resolved) ──────────────────────────────
+ * Cloudflare Workers does NOT provide node:vm. JsKernel (node:vm-based) crashes.
+ * This Worker uses QuickJSKernel with a pre-compiled WASM variant imported at
+ * build time — Workers prohibits runtime WASM compilation (same restriction as
+ * eval), so getQuickJS() (which fetches+compiles .wasm at runtime) would fail
+ * with CompileError: WebAssembly code generation disallowed.
+ *
+ * Fix: import the @jitl/quickjs-wasmfile-release-sync variant as a static ES
+ * module (wrangler bundles it), then inject it into QuickJSKernel via the
+ * variant/variantLoader options. No runtime WASM compilation is needed.
  */
 
 import { CodeAgent, ToolCallingAgent, AnthropicModel } from "@agentkit-js/core";
 import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import type { QuickJSKernelOptions } from "@agentkit-js/kernel-quickjs";
+import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
+import cfVariant from "@jitl/quickjs-wasmfile-release-sync";
 import type { AgentEvent } from "@agentkit-js/core";
 
 export interface Env {
@@ -136,6 +143,13 @@ async function handleRun(request: Request, env: Env): Promise<Response> {
 
   const model = new AnthropicModel(MODEL_ID, env.ANTHROPIC_API_KEY);
 
+  // Q3: construct QuickJSKernel with pre-compiled variant (no runtime WASM compilation).
+  const quickJSKernel = new QuickJSKernel({
+    timeoutMs: 10_000,
+    variant: cfVariant as unknown,
+    variantLoader: newQuickJSWASMModuleFromVariant as unknown as NonNullable<QuickJSKernelOptions["variantLoader"]>,
+  } satisfies QuickJSKernelOptions);
+
   const agentRun: AsyncGenerator<AgentEvent> =
     agentType === "tool-calling"
       ? new ToolCallingAgent({ tools: [], model, maxSteps }).run(task)
@@ -143,8 +157,7 @@ async function handleRun(request: Request, env: Env): Promise<Response> {
           tools: [],
           model,
           maxSteps,
-          // Use QuickJSKernel — runs in WASM, no node:vm, safe in Cloudflare Workers.
-          kernel: new QuickJSKernel({ timeoutMs: 10_000 }),
+          kernel: quickJSKernel,
         }).run(task);
 
   const { readable, writable } = new TransformStream();

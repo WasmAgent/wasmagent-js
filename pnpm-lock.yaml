@@ -66,6 +66,12 @@ importers:
       '@agentkit-js/kernel-quickjs':
         specifier: workspace:*
         version: link:../kernel-quickjs
+      '@jitl/quickjs-wasmfile-release-sync':
+        specifier: 0.32.0
+        version: 0.32.0
+      quickjs-emscripten-core:
+        specifier: 0.32.0
+        version: 0.32.0
     devDependencies:
       '@anthropic-ai/sdk':
         specifier: ^0.37.0
@@ -130,7 +136,13 @@ importers:
         specifier: workspace:*
         version: link:../core
     devDependencies:
+      '@jitl/quickjs-wasmfile-release-sync':
+        specifier: 0.32.0
+        version: 0.32.0
       quickjs-emscripten:
+        specifier: 0.32.0
+        version: 0.32.0
+      quickjs-emscripten-core:
         specifier: 0.32.0
         version: 0.32.0
       typescript:

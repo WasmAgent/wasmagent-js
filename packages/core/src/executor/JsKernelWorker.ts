@@ -42,7 +42,11 @@ const sandbox = createContext({
     error: (..._args: unknown[]) => {},
   },
   Math, JSON, Array, Object, String, Number, Boolean, Promise, Map, Set, Error, TypeError,
+  // Q5: both camelCase (JS convention) and snake_case (Python convention) sentinels
+  // are recognised so agent code can use either spelling regardless of which kernel
+  // backend is active. Setting either one signals a final answer.
   __finalAnswer__: undefined as unknown,
+  __final_answer__: undefined as unknown,
 });
 
 // ── message loop ──────────────────────────────────────────────────────────────
@@ -59,6 +63,7 @@ parentPort!.on("message", async (msg: {
   sandbox["console"] = { log: logCapture, warn: logCapture, error: logCapture };
 
   sandbox["__finalAnswer__"] = undefined;
+  sandbox["__final_answer__"] = undefined;
 
   // Apply capability globals using buildCapabilityGlobals (same as V8WasmKernel).
   if (msg.capabilities) {
@@ -85,8 +90,12 @@ parentPort!.on("message", async (msg: {
       output = await (output as Promise<unknown>);
     }
 
-    const finalAnswer = sandbox["__finalAnswer__"] as unknown;
-    const isFinalAnswer = finalAnswer !== undefined;
+    // Q5: check both spellings — camelCase (JS convention) and snake_case (Python convention).
+    // Setting either one signals a final answer, so agent code works regardless of kernel backend.
+    const finalAnswerCamel = sandbox["__finalAnswer__"] as unknown;
+    const finalAnswerSnake = sandbox["__final_answer__"] as unknown;
+    const isFinalAnswer = finalAnswerCamel !== undefined || finalAnswerSnake !== undefined;
+    const finalAnswer = finalAnswerCamel !== undefined ? finalAnswerCamel : finalAnswerSnake;
 
     // Q3 — __finalAnswer__ async contract:
     // Agent code that sets __finalAnswer__ inside an async callback that is NOT

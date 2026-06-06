@@ -117,14 +117,16 @@ export const CACHE_MIN_TOKENS: Record<string, number> = {
  *
  * Uses character-category weighting to handle CJK / non-ASCII content:
  *   ASCII: ~4 chars/token (English prose, code)
- *   Non-ASCII (CJK, emoji, etc.): ~1.5 chars/token
+ *   Non-ASCII: 1 token/char (conservative lower bound)
  *
- * This is intentionally conservative (biased to over-estimate) because the
- * cost of a missed cache breakpoint (no caching) outweighs the cost of an
- * extra cache_control annotation (minor cache write overhead).
+ * Non-ASCII covers: CJK (~1 token/char), Arabic/Thai/Devanagari (often
+ * >1 token/char), and emoji (multi-codepoint, often 2-4 tokens each).
+ * Using /1 as the non-ASCII floor means we reliably over-estimate for
+ * these scripts rather than under-estimate.
  *
- * A flat length/4 would severely under-estimate Chinese/Japanese/Korean text
- * where each character is ~1 token, causing long CJK prompts to miss caching.
+ * This is intentionally conservative (biases to over-estimate) because
+ * missing a cache breakpoint costs real money; an extra cache_control
+ * annotation costs almost nothing.
  */
 export function estimateTokens(text: string): number {
   let ascii = 0, wide = 0;
@@ -132,5 +134,6 @@ export function estimateTokens(text: string): number {
     if ((ch.codePointAt(0) ?? 0) < 128) ascii++;
     else wide++;
   }
-  return Math.ceil(ascii / 4 + wide / 1.5);
+  // wide: 1 token/char lower bound (not /1.5 — see function comment)
+  return Math.ceil(ascii / 4 + wide);
 }

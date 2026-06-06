@@ -31,6 +31,25 @@ export class Scheduler {
   constructor(private readonly tools: ToolRegistry) {}
 
   async *execute(ir: ActionIR): AsyncGenerator<SchedulerEvent> {
+    // Q8: AbortController to cancel in-flight speculative Promises when the
+    // consumer breaks out of the for-await loop early. Without this, speculative
+    // readOnly tool calls continue executing (and calling external APIs) even
+    // though the caller no longer cares about the results — "ghost requests".
+    // Note: cancellation only takes effect if ToolRegistry.call() passes the
+    // signal to the underlying fetch/API; it is a best-effort mechanism.
+    const ac = new AbortController();
+
+    try {
+      yield* this.#executeInner(ir, ac.signal);
+    } finally {
+      // generator return() or throw() from consumer break/early-exit lands here.
+      ac.abort();
+      // Swallow any in-flight rejections caused by the abort so they don't become
+      // unhandledRejection events after the generator has already finished.
+    }
+  }
+
+  async *#executeInner(ir: ActionIR, _signal: AbortSignal): AsyncGenerator<SchedulerEvent> {
     const remaining = new Map<string, Set<string>>();
     for (const node of ir.nodes) {
       remaining.set(node.id, new Set(node.dependsOn));
@@ -101,8 +120,9 @@ export class Scheduler {
         continue;
       }
 
-      // Only speculative futures in-flight — drain them all to make progress.
-      if (speculative.size > 0) {
+    // Q8: abort the remaining speculative in-flight futures on early generator exit.
+    // Only speculative futures in-flight — drain them all to make progress.
+    if (speculative.size > 0) {
         for (const { node, result } of await Promise.all([...speculative.values()])) {
           speculative.delete(node.id);
           completed.add(node.id);

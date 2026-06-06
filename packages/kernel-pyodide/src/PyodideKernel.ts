@@ -48,8 +48,8 @@ export class PyodideKernel implements WasmKernel {
       const indexURL = dirname(pkgJsonPath) + "/";
 
       const py = await loadPyodide({ indexURL }) as unknown as PyodideInterface;
-      // Initialise the __final_answer__ sentinel.
-      py.runPython("__final_answer__ = None");
+      // Initialise both sentinel spellings (Q5: dual alias for cross-kernel compatibility).
+      py.runPython("__final_answer__ = None; __finalAnswer__ = None");
       // Q9: install capability infrastructure (urllib patch, check helpers) once.
       // Per-call capability data is updated cheaply by #applyCapabilities.
       this.#installCapabilityInfrastructure(py);
@@ -74,6 +74,7 @@ export class PyodideKernel implements WasmKernel {
 
     // Reset the sentinel before each run.
     py.globals.set("__final_answer__", null);
+    py.globals.set("__finalAnswer__", null);
 
     // A2: inject/revoke capability globals per call.
     this.#applyCapabilities(py, capabilities);
@@ -87,7 +88,11 @@ export class PyodideKernel implements WasmKernel {
       );
     }
 
-    const finalAnswer = py.globals.get("__final_answer__");
+    // Q5: check both sentinel spellings for cross-kernel compatibility.
+    const finalAnswerSnake = py.globals.get("__final_answer__");
+    const finalAnswerCamel = py.globals.get("__finalAnswer__");
+    const finalAnswer = (finalAnswerSnake !== null && finalAnswerSnake !== undefined)
+      ? finalAnswerSnake : finalAnswerCamel;
     const isFinalAnswer = finalAnswer !== null && finalAnswer !== undefined;
 
     return {

@@ -134,8 +134,8 @@ export class CodeAgent {
             traceId,
             parentTraceId,
             channel: "thinking",
-            event: "step_start",
-            data: { delta: event.delta },
+            event: "thinking_delta",   // Q6: dedicated event for streaming token deltas
+            data: { delta: event.delta, step },
             timestampMs: Date.now(),
           };
         }
