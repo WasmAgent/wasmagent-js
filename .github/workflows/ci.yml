@@ -106,8 +106,8 @@ jobs:
         continue-on-error: true  # Non-blocking until baseline is calibrated in CI
 
       - name: Deploy to Cloudflare Workers
-        # Skip gracefully when secrets are not configured (forks, local PRs).
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        # Skip gracefully when secrets are not configured (forks, draft PRs).
+        if: secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != ''
         run: pnpm --filter @agentkit-js/cloudflare-worker exec wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
