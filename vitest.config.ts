@@ -4,7 +4,14 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["packages/*/src/**/*.test.ts", "packages/*/tests/**/*.test.ts"],
+    // Root config covers packages that don't have their own vitest.config.ts.
+    // Packages with dedicated configs (model-anthropic, model-openai, kernel-pyodide)
+    // are excluded here to prevent duplicate runs when turbo executes per-package tests.
+    include: [
+      "packages/core/src/**/*.test.ts",
+      "packages/cli/src/**/*.test.ts",
+      "packages/cloudflare-worker/src/**/*.test.ts",
+    ],
     // Exclude Pyodide from module transformation — it uses dynamic WASM loading
     // that breaks under Vite/vitest's module rewriting.
     server: {

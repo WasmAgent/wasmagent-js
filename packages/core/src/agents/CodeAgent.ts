@@ -24,8 +24,14 @@ export interface CodeAgentOptions {
   model: Model;
   maxSteps?: number;
   planningInterval?: number;
-  /** Action language for code execution. "js" (default) or "pyodide" (CPython-in-WASM). */
-  actionLanguage?: "js" | "pyodide";
+  /** Action language for code execution. "js" (default). For Python, pass kernel directly. */
+  actionLanguage?: "js";
+  /**
+   * Custom kernel instance. Use this to inject a PyodideKernel:
+   *   import { PyodideKernel } from "@agentkit-js/kernel-pyodide";
+   *   new CodeAgent({ kernel: new PyodideKernel(), ... })
+   */
+  kernel?: import("../executor/types.js").WasmKernel;
   systemPrompt?: string;
 }
 
@@ -58,11 +64,12 @@ export class CodeAgent {
     this.#model = opts.model;
     this.#maxSteps = opts.maxSteps ?? 20;
     this.#planningInterval = opts.planningInterval;
-    // D1: route to the right kernel engine based on actionLanguage.
-    this.#kernelPromise = createKernel({
-      engine: "js",
-      actionLanguage: opts.actionLanguage ?? "js",
-    });
+    // D1: use provided kernel or create one via factory.
+    // For PyodideKernel: import { PyodideKernel } from "@agentkit-js/kernel-pyodide"
+    // and pass new PyodideKernel() as opts.kernel.
+    this.#kernelPromise = opts.kernel
+      ? Promise.resolve(opts.kernel)
+      : createKernel({ engine: "js", actionLanguage: opts.actionLanguage ?? "js" });
     this.#assembler = new MessageAssembler({
       systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
       toolsSchema: this.#tools.toJsonSchema(),

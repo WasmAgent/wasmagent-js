@@ -17,19 +17,16 @@ export async function createKernel(
   switch (engine) {
     case "js":
       if (actionLanguage === "pyodide") {
-        // PyodideKernel is now in the separate @agentkit-js/kernel-pyodide package.
-        // Attempt a dynamic import so users who have it installed get it automatically;
-        // give a clear, actionable error if they don't.
-        try {
-          // @ts-expect-error — @agentkit-js/kernel-pyodide is an optional peer package
-          const { PyodideKernel } = await import("@agentkit-js/kernel-pyodide");
-          return new (PyodideKernel as new (opts: KernelOptions) => WasmKernel)(opts);
-        } catch {
-          throw new Error(
-            'actionLanguage "pyodide" requires the @agentkit-js/kernel-pyodide package.\n' +
-            'Install it with: pnpm add @agentkit-js/kernel-pyodide pyodide'
-          );
-        }
+        // PyodideKernel lives in @agentkit-js/kernel-pyodide to keep core lean.
+        // Import it directly from that package instead of using createKernel:
+        //   import { PyodideKernel } from "@agentkit-js/kernel-pyodide";
+        //   const kernel = new PyodideKernel();
+        throw new Error(
+          'actionLanguage "pyodide" is not routed through createKernel.\n' +
+          'Import PyodideKernel directly:\n' +
+          '  import { PyodideKernel } from "@agentkit-js/kernel-pyodide";\n' +
+          '  const kernel = new PyodideKernel();'
+        );
       }
       return new JsKernel();
 

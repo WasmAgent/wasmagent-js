@@ -98,9 +98,6 @@ importers:
       openai:
         specifier: ^4.80.0
         version: 4.104.0(ws@8.21.0)(zod@3.25.76)
-      pyodide:
-        specifier: ^0.29.4
-        version: 0.29.4
       typescript:
         specifier: ^5.7.0
         version: 5.9.3

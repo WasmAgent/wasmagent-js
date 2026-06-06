@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PyodideKernel } from "../executor/PyodideKernel.js";
+import { PyodideKernel } from "./PyodideKernel.js";
 
 describe("PyodideKernel (A4)", () => {
   it("executes simple Python and returns output", async () => {
