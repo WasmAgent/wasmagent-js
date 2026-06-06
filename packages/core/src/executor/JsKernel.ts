@@ -8,20 +8,17 @@ import type {
   WasmKernel,
 } from "./types.js";
 
-// The worker must be a compiled .js file — worker_threads cannot execute TypeScript.
-// import.meta.url points to src/ when running under vitest (vite transform), but the
-// worker file must be the compiled output in dist/. We swap the path accordingly.
-//
-// dist/ availability in CI: turbo's build task runs before test with no cross-step
-// cache (GitHub Actions does not persist .turbo/), so tsc always produces dist/ fresh.
-// If turbo remote cache is ever added: turbo restores declared outputs to disk on a
-// cache hit, so dist/ will still be present. The one edge case to watch: if dist/ is
-// deleted between turbo build and test (e.g. by a cleanup step), turbo will not re-run
-// build — guard against this by not cleaning dist/ inside the CI test job.
-const __dir = dirname(fileURLToPath(import.meta.url));
-const WORKER_PATH = __dir.includes("/src/")
-  ? __dir.replace("/src/", "/dist/") + "/JsKernelWorker.js"
-  : join(__dir, "JsKernelWorker.js");
+// WORKER_PATH is computed lazily (inside the class) rather than at module level
+// so that merely importing JsKernel (e.g. for re-export) does not crash in
+// environments that lack import.meta.url (Cloudflare Workers). The Workers
+// bundle includes @agentkit-js/core but CodeAgent uses QuickJSKernel there —
+// JsKernel is imported but never instantiated, so the lazy computation is safe.
+function resolveWorkerPath(): string {
+  const __dir = dirname(fileURLToPath(import.meta.url));
+  return __dir.includes("/src/")
+    ? __dir.replace("/src/", "/dist/") + "/JsKernelWorker.js"
+    : join(__dir, "JsKernelWorker.js");
+}
 
 /**
  * Default JS kernel — executes agent code in an isolated worker_threads Worker.
@@ -54,7 +51,7 @@ export class JsKernel implements WasmKernel {
   }
 
   #spawnWorker(): Worker {
-    const w = new Worker(WORKER_PATH);
+    const w = new Worker(resolveWorkerPath());
     // Suppress "Worker exited" errors that fire when we intentionally terminate on timeout.
     w.on("error", () => {});
     return w;
