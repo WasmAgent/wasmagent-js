@@ -3,7 +3,7 @@ export { CodeAgent, ToolCallingAgent } from "./agents/index.js";
 export type { CodeAgentOptions, ToolCallingAgentOptions } from "./agents/index.js";
 
 // Executor
-export { JsKernel, V8WasmKernel, PyodideKernel, createKernel, buildCapabilityGlobals, buildSandboxFetch, assertPathAllowed, matchGlob } from "./executor/index.js";
+export { JsKernel, V8WasmKernel, createKernel, buildCapabilityGlobals, buildSandboxFetch, assertPathAllowed, matchGlob } from "./executor/index.js";
 export type {
   WasmKernel,
   KernelResult,

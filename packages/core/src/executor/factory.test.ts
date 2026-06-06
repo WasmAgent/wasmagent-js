@@ -25,15 +25,6 @@ describe("createKernel factory", () => {
     ).rejects.toThrow(/Unknown kernel engine/);
   });
 
-  it("emits a console.warn for actionLanguage='micropython' (not yet implemented)", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    await createKernel({ engine: "js", actionLanguage: "micropython" });
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("micropython")
-    );
-    warn.mockRestore();
-  });
-
   it("actionLanguage='pyodide' returns PyodideKernel (no warning)", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const kernel = await createKernel({ engine: "js", actionLanguage: "pyodide" });
@@ -58,15 +49,18 @@ describe("createKernel factory", () => {
   });
 
   it("wasmtime engine: falls back to V8WasmKernel and warns when WasmtimeKernel throws", async () => {
-    // WasmtimeKernel always throws (it's a stub). Verify the factory falls back.
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const kernel = await createKernel({ engine: "wasmtime" });
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining("wasmtime native addon unavailable")
     );
-    // The returned kernel should still work (it's a V8WasmKernel).
     const result = await kernel.run("3 + 3");
     expect(result.output).toBe(6);
     warn.mockRestore();
+  });
+
+  it("timeoutMs kills a synchronous infinite loop", async () => {
+    const kernel = await createKernel({ engine: "js", timeoutMs: 50 });
+    await expect(kernel.run("while(true){}")).rejects.toThrow();
   });
 });

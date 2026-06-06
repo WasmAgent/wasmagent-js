@@ -24,8 +24,8 @@ export interface CodeAgentOptions {
   model: Model;
   maxSteps?: number;
   planningInterval?: number;
-  /** Default: 'js'. See D1 spike for 'micropython' and 'pyodide'. */
-  actionLanguage?: "js" | "micropython" | "pyodide";
+  /** Action language for code execution. "js" (default) or "pyodide" (CPython-in-WASM). */
+  actionLanguage?: "js" | "pyodide";
   systemPrompt?: string;
 }
 

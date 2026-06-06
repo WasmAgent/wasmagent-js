@@ -14,20 +14,22 @@ export async function createKernel(
 ): Promise<WasmKernel> {
   const { engine = "js", actionLanguage } = opts;
 
-  // Warn when MicroPython is requested — not yet implemented, falls back to js.
-  if (actionLanguage === "micropython") {
-    console.warn(
-      `[agentkit] actionLanguage "micropython" is not yet implemented — falling back to "js". ` +
-        `MicroPython backend is planned for a future release.`
-    );
-  }
-
   switch (engine) {
     case "js":
-      // When actionLanguage is 'pyodide', use PyodideKernel regardless of engine.
       if (actionLanguage === "pyodide") {
-        const { PyodideKernel } = await import("./PyodideKernel.js");
-        return new PyodideKernel(opts);
+        // PyodideKernel is now in the separate @agentkit-js/kernel-pyodide package.
+        // Attempt a dynamic import so users who have it installed get it automatically;
+        // give a clear, actionable error if they don't.
+        try {
+          // @ts-expect-error — @agentkit-js/kernel-pyodide is an optional peer package
+          const { PyodideKernel } = await import("@agentkit-js/kernel-pyodide");
+          return new (PyodideKernel as new (opts: KernelOptions) => WasmKernel)(opts);
+        } catch {
+          throw new Error(
+            'actionLanguage "pyodide" requires the @agentkit-js/kernel-pyodide package.\n' +
+            'Install it with: pnpm add @agentkit-js/kernel-pyodide pyodide'
+          );
+        }
       }
       return new JsKernel();
 

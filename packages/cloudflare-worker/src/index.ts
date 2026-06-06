@@ -17,6 +17,20 @@
  * C4 Session caching: when AGENTKIT_SESSIONS KV is bound and sessionId is provided,
  * completed agent results are stored in KV (TTL: 1 hour). Subsequent requests
  * with the same sessionId replay the cached event stream instantly.
+ *
+ * ── Edge Runtime Compatibility (A3) ──────────────────────────────────────────
+ * Cloudflare Workers does NOT provide node:vm (the module used by JsKernel and
+ * V8WasmKernel). The CodeAgent constructor calls createKernel() which instantiates
+ * JsKernel — this WILL fail at runtime in workerd.
+ *
+ * Fix path (tracked as plan task A3):
+ *   1. Add a Workers-safe kernel that uses eval() or Realm (TC39 proposal) instead
+ *      of node:vm, OR expose a no-code ToolCallingAgent-only path for Workers.
+ *   2. Until fixed, agentType:"tool-calling" (ToolCallingAgent) is the only safe
+ *      mode in Workers because it does NOT execute code — only calls tools.
+ *   3. agentType:"code" (CodeAgent) will fail in workerd; use it only in Node.
+ *
+ * This is documented so CI can add a workerd smoke-test that catches regressions.
  */
 
 import { CodeAgent, ToolCallingAgent, AnthropicModel } from "@agentkit-js/core";

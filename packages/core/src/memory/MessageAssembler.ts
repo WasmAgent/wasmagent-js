@@ -161,7 +161,8 @@ export class MessageAssembler {
               {
                 type: "tool_result" as const,
                 toolUseId: step.toolCallId,
-                content: step.toolOutput,
+                content: step.toolOutput || "Tool execution failed with no output.",
+                ...(step.isError ? { isError: true as const } : {}),
               },
             ],
           },
@@ -190,7 +191,8 @@ export class MessageAssembler {
             content: step.calls.map((c) => ({
               type: "tool_result" as const,
               toolUseId: c.toolCallId,
-              content: c.toolOutput,
+              content: c.toolOutput || "Tool execution failed with no output.",
+              ...(c.isError ? { isError: true as const } : {}),
             })),
           },
         ];

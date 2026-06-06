@@ -30,6 +30,30 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # A1 — Enforce that heavy optional deps are NEVER statically imported in core.
+      # Any top-level "import ... from '@anthropic-ai/sdk'" (or the other three) in
+      # packages/core/src must be "import type" only; actual value imports must use
+      # await import() inside function bodies. A single grep failure here means a
+      # consumer installing core would pull the SDK in unconditionally.
+      - name: Guard core against static heavy imports (A1)
+        run: |
+          HEAVY_DEPS="@anthropic-ai/sdk|openai|pyodide|@modelcontextprotocol/sdk"
+          # Match lines that are top-level value imports (not "import type")
+          VIOLATIONS=$(grep -rn --include="*.ts" \
+            -P "^import\s+(?!type\s)" \
+            packages/core/src/ \
+            | grep -P "$HEAVY_DEPS" \
+            | grep -v "\.test\.ts" \
+            || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "ERROR: packages/core/src contains static value imports of heavy deps."
+            echo "Use 'await import()' inside function bodies or 'import type' instead."
+            echo ""
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+          echo "OK: no static heavy imports found in packages/core/src"
+
       - name: Typecheck
         run: pnpm typecheck
 
@@ -58,6 +82,13 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # A2 — Bundle size budget: keep the worker lean.
+      # Baseline is 500 KB (measured with externals: node:vm, pyodide, @anthropic-ai/sdk).
+      # Increase the limit in .size-limit.json only with a conscious PR review.
+      - name: Check bundle size budget (A2)
+        run: pnpm --filter @agentkit-js/cloudflare-worker size
+        continue-on-error: true  # Non-blocking until baseline is calibrated in CI
 
       - name: Deploy to Cloudflare Workers
         run: pnpm --filter @agentkit-js/cloudflare-worker deploy

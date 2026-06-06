@@ -32,6 +32,8 @@ export interface ToolResultBlock {
   type: "tool_result";
   toolUseId: string;
   content: string;
+  /** True when the tool execution produced an error. Maps to Anthropic is_error. */
+  isError?: boolean;
 }
 
 export type ContentBlock =

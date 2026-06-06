@@ -42,14 +42,15 @@ describe("V8WasmKernel", () => {
     await expect(kernel.run("fetch('https://example.com')")).rejects.toThrow();
   });
 
-  it("supports snapshot/restore round-trip", async () => {
+  it("snapshot() throws NotImplemented", async () => {
     const kernel = new V8WasmKernel();
     await kernel.run("var z = 77;");
-    const snap = await kernel.snapshot();
-    await kernel.reset();
-    await kernel.restore(snap);
-    const result = await kernel.run("z");
-    expect(result.output).toBe(77);
+    await expect(kernel.snapshot()).rejects.toThrow(/does not support snapshot/);
+  });
+
+  it("restore() throws NotImplemented", async () => {
+    const kernel = new V8WasmKernel();
+    await expect(kernel.restore(new Uint8Array())).rejects.toThrow(/does not support snapshot/);
   });
 
   it("injects capability globals via run() capabilities parameter", async () => {

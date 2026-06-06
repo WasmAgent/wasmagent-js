@@ -146,19 +146,23 @@ export class ToolCallingAgent {
       }
 
       // B3: dispatch ALL calls in parallel immediately using LazyObservationHandle.
-      // Each handle wraps a tool execution Promise that is in-flight from this point.
-      const handles = pendingCalls.map((call) => ({
-        call,
-        handle: LazyObservationHandle.fromToolResult(
+      // Carry isError as a separate boolean so it is never inferred from string
+      // content — startsWith("Error: ") would silently misclassify tools whose
+      // successful output happens to start with that prefix.
+      const handles = pendingCalls.map((call) => {
+        let callIsError = false;
+        const handle = LazyObservationHandle.fromToolResult(
           this.#tools
             .call({ toolName: call.name, args: call.input, callId: call.id })
-            .then((r) =>
-              r.error !== undefined
-                ? `Error: ${r.error.message}`
-                : JSON.stringify(r.output)
-            )
-        ),
-      }));
+            .then((r) => {
+              callIsError = r.error !== undefined;
+              return callIsError
+                ? (r.error!.message || "Tool execution failed with no output.")
+                : JSON.stringify(r.output);
+            })
+        );
+        return { call, handle, getIsError: () => callIsError };
+      });
 
       // Await all results in parallel — wall-clock = slowest single call.
       const outputs = await Promise.all(handles.map((h) => h.handle.resolve()));
@@ -166,16 +170,16 @@ export class ToolCallingAgent {
       // Emit tool_result events and build resolved call records.
       const resolvedCalls: ParallelToolUseCall[] = [];
       for (let i = 0; i < handles.length; i++) {
-        const { call } = handles[i]!;
+        const { call, getIsError } = handles[i]!;
         const toolOutput = outputs[i]!;
-        const isError = toolOutput.startsWith("Error: ");
+        const isError = getIsError();
 
         const resultData = isError
           ? {
               callId: call.id,
               toolName: call.name,
               output: null,
-              error: { code: "execution_error" as const, message: toolOutput.slice(7) },
+              error: { code: "execution_error" as const, message: toolOutput },
             }
           : {
               callId: call.id,

@@ -4,8 +4,8 @@ import type {
   ModelMessage,
   StreamEvent,
   TokenUsage,
-} from "./types.js";
-import { CACHE_MIN_TOKENS } from "./types.js";
+} from "@agentkit-js/core/models";
+import { CACHE_MIN_TOKENS } from "@agentkit-js/core/models";
 
 export { CACHE_MIN_TOKENS };
 

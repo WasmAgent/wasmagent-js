@@ -12,8 +12,10 @@ import { buildCapabilityGlobals } from "./capabilities.js";
 export class V8WasmKernel implements WasmKernel {
   #context: ReturnType<typeof createContext>;
   #logs: string[] = [];
+  readonly #timeoutMs: number | undefined;
 
-  constructor(_opts?: KernelOptions) {
+  constructor(opts?: KernelOptions) {
+    this.#timeoutMs = opts?.timeoutMs;
     this.#context = this.#createSandbox();
   }
 
@@ -64,7 +66,8 @@ export class V8WasmKernel implements WasmKernel {
     const script = new Script(code, { filename: "agent-step.js" });
     let output: unknown;
     try {
-      output = script.runInContext(this.#context);
+      const runOpts = this.#timeoutMs ? { timeout: this.#timeoutMs } : {};
+      output = script.runInContext(this.#context, runOpts);
     } catch (err) {
       throw new Error(
         `KernelError: ${err instanceof Error ? err.message : String(err)}`
@@ -87,16 +90,16 @@ export class V8WasmKernel implements WasmKernel {
   }
 
   async snapshot(): Promise<Uint8Array> {
-    const state = JSON.stringify(this.#context);
-    return new TextEncoder().encode(state);
+    throw new Error(
+      "V8WasmKernel does not support snapshot/restore — state cannot be faithfully serialised. " +
+        "Use WasmtimeKernel for true linear-memory snapshots."
+    );
   }
 
-  async restore(snapshot: Uint8Array): Promise<void> {
-    const state = JSON.parse(new TextDecoder().decode(snapshot)) as Record<
-      string,
-      unknown
-    >;
-    this.#context = createContext(state);
+  async restore(_snapshot: Uint8Array): Promise<void> {
+    throw new Error(
+      "V8WasmKernel does not support snapshot/restore — use WasmtimeKernel."
+    );
   }
 
   async [Symbol.asyncDispose](): Promise<void> {

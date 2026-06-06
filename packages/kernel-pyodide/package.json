@@ -1,0 +1,31 @@
+{
+  "name": "@agentkit-js/kernel-pyodide",
+  "version": "0.1.0",
+  "description": "PyodideKernel — CPython-in-WASM kernel for agentkit-js",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "pyodide": ">=0.26.0"
+  },
+  "devDependencies": {
+    "pyodide": "^0.29.4",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

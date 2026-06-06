@@ -33,16 +33,10 @@
     "zod": "^3.23.0"
   },
   "peerDependencies": {
-    "@anthropic-ai/sdk": ">=0.37.0",
-    "@modelcontextprotocol/sdk": ">=1.0.0",
-    "openai": ">=4.80.0",
-    "pyodide": ">=0.26.0"
+    "@modelcontextprotocol/sdk": ">=1.0.0"
   },
   "peerDependenciesMeta": {
-    "@anthropic-ai/sdk": { "optional": true },
-    "@modelcontextprotocol/sdk": { "optional": true },
-    "openai": { "optional": true },
-    "pyodide": { "optional": true }
+    "@modelcontextprotocol/sdk": { "optional": true }
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

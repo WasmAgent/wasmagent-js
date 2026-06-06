@@ -51,11 +51,21 @@ export interface WasmKernel {
 /** Which underlying engine to use. */
 export type KernelEngine = "js" | "wasmtime" | "v8-wasm";
 
-/** Action language (D1 three-way spike decision). */
-export type ActionLanguage = "js" | "micropython" | "pyodide";
+/**
+ * Action language — which kernel backend to use for code execution.
+ *
+ * - "js"      — JsKernel (Node.js vm, default)
+ * - "pyodide" — PyodideKernel (CPython-in-WASM via pyodide npm package)
+ *
+ * MicroPython has been removed: no npm package reliably exposes a Python
+ * exec() API in Node.js ESM. Use "pyodide" for all Python scenarios.
+ */
+export type ActionLanguage = "js" | "pyodide";
 
 export interface KernelOptions {
   engine?: KernelEngine;
   actionLanguage?: ActionLanguage;
   capabilities?: Partial<CapabilityManifest>;
+  /** Max milliseconds for a single synchronous code run. Blocks infinite loops. */
+  timeoutMs?: number;
 }

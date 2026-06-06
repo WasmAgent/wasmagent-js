@@ -1,6 +1,7 @@
 import { createContext, Script } from "node:vm";
 import type {
   CapabilityManifest,
+  KernelOptions,
   KernelResult,
   WasmKernel,
 } from "./types.js";
@@ -20,8 +21,10 @@ import { buildCapabilityGlobals } from "./capabilities.js";
 export class JsKernel implements WasmKernel {
   #context: ReturnType<typeof createContext>;
   #logs: string[] = [];
+  readonly #timeoutMs: number | undefined;
 
-  constructor() {
+  constructor(opts?: KernelOptions) {
+    this.#timeoutMs = opts?.timeoutMs;
     this.#context = this.#createSandbox();
   }
 
@@ -77,7 +80,10 @@ export class JsKernel implements WasmKernel {
     const script = new Script(code, { filename: "agent-step.js" });
     let output: unknown;
     try {
-      output = script.runInContext(this.#context);
+      // timeout blocks synchronous infinite loops (while/for with no awaits).
+      // It does NOT stop async busy-loops — use Worker-thread isolation for those.
+      const runOpts = this.#timeoutMs ? { timeout: this.#timeoutMs } : {};
+      output = script.runInContext(this.#context, runOpts);
     } catch (err) {
       throw new Error(
         `KernelError: ${err instanceof Error ? err.message : String(err)}`
@@ -100,18 +106,19 @@ export class JsKernel implements WasmKernel {
   }
 
   async snapshot(): Promise<Uint8Array> {
-    // JsKernel uses JSON serialisation as a simple snapshot mechanism.
-    // WasmtimeKernel will use true linear-memory snapshots (A1).
-    const state = JSON.stringify(this.#context);
-    return new TextEncoder().encode(state);
+    // JSON serialisation silently drops functions, Maps, Sets, and closures.
+    // A caller that snapshots → resets → restores would get a silently broken state.
+    // Real byte-exact snapshot/restore requires WasmtimeKernel (A1 M1+).
+    throw new Error(
+      "JsKernel does not support snapshot/restore — state cannot be faithfully serialised. " +
+        "Use WasmtimeKernel for true linear-memory snapshots."
+    );
   }
 
-  async restore(snapshot: Uint8Array): Promise<void> {
-    const state = JSON.parse(new TextDecoder().decode(snapshot)) as Record<
-      string,
-      unknown
-    >;
-    this.#context = createContext(state);
+  async restore(_snapshot: Uint8Array): Promise<void> {
+    throw new Error(
+      "JsKernel does not support snapshot/restore — use WasmtimeKernel."
+    );
   }
 
   async [Symbol.asyncDispose](): Promise<void> {

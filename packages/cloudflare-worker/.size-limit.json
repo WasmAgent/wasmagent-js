@@ -1,0 +1,18 @@
+[
+  {
+    "name": "@agentkit-js/cloudflare-worker",
+    "path": "src/index.ts",
+    "limit": "500 KB",
+    "ignore": [
+      "node:vm",
+      "node:crypto",
+      "node:fs/promises",
+      "node:path",
+      "node:module",
+      "node:url",
+      "pyodide",
+      "@anthropic-ai/sdk"
+    ],
+    "gzip": false
+  }
+]
