@@ -1,19 +1,19 @@
 import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from "@agentkit-js/core/executor";
 
+// We import Scope for RAII handle management (Q5).
+// QuickJS handle types are opaque objects — we use 'object' throughout.
+type QHandle = object;
+
 interface QuickJSContext {
-  evalCode(code: string, filename?: string, options?: { type?: string }): { value: unknown; tag?: number };
-  unwrapResult(result: unknown): unknown;
-  getProp(obj: unknown, key: string): unknown;
+  evalCode(code: string, filename?: string): { value: unknown; tag?: number };
+  unwrapResult(result: unknown): { consume<T>(fn: (h: QHandle) => T): T; dispose(): void } & QHandle;
+  callFunction(fn: unknown, thisVal: unknown, ...args: unknown[]): { value: unknown; tag?: number };
+  getProp(obj: unknown, key: string): { consume<T>(fn: (h: QHandle) => T): T; dispose(): void } & QHandle;
+  setProp(obj: unknown, key: string, value: unknown): void;
   dump(handle: unknown): unknown;
   typeof(handle: unknown): string;
-  getNumber(handle: unknown): number;
   getString(handle: unknown): string;
-  newString(s: string): unknown;
-  newNumber(n: number): unknown;
-  newObject(): unknown;
-  setProp(obj: unknown, key: string, value: unknown): void;
-  defineProp(obj: unknown, key: string, desc: object): void;
-  global: unknown;
+  global: QHandle;
   dispose(): void;
 }
 
@@ -27,26 +27,36 @@ interface QuickJSModule {
   newRuntime(): QuickJSRuntime;
 }
 
+interface ScopeType {
+  manage<T extends { dispose(): void }>(handle: T): T;
+}
+
+interface ScopeStatic {
+  withScopeAsync<T>(fn: (scope: ScopeType) => Promise<T>): Promise<T>;
+}
+
 /**
  * QuickJSKernel — runs agent JS code in a QuickJS (C, compiled to WASM) sandbox.
  *
  * Why this exists:
- *   JsKernel uses Node.js `worker_threads` + `node:vm`. Cloudflare Workers does not
- *   provide `node:vm` (even with `nodejs_compat`). QuickJS-emscripten is a pure WASM
- *   build — it works anywhere WebAssembly runs, including Cloudflare Workers.
+ *   JsKernel uses Node.js worker_threads + node:vm. Cloudflare Workers does not
+ *   provide node:vm. QuickJS-emscripten is a pure WASM build — it works anywhere
+ *   WebAssembly runs, including Cloudflare Workers and serverless edge runtimes.
  *
  * Key properties:
- *   - Persistent context: variables survive across multiple run() calls (same as JsKernel).
- *   - Timeout: the QuickJS runtime interrupt handler fires every ~10k instructions so
- *     `while(true){}` is interrupted after timeoutMs without blocking the event loop.
- *   - No Node.js APIs in the sandbox by default (deny-all for require/process/fs).
- *   - allowedHosts capability: a JS-side fetch wrapper is injected into the QuickJS
- *     context that enforces the host allow-list before delegating to the host's fetch.
+ *   - Persistent context: variables survive across run() calls (stateful kernel).
+ *   - Timeout: QuickJS interrupt handler fires every ~10k instructions so
+ *     while(true){} is interrupted after timeoutMs without blocking the event loop.
+ *   - No Node.js APIs in the sandbox by default (deny-all baseline).
+ *   - allowedHosts capability: a JS-side fetch wrapper enforces the host allow-list.
  *
- * Limitations vs. JsKernel:
- *   - QuickJS is ES2023-compatible but ~5–10× slower than V8 for CPU-bound work.
- *   - Async/await in the sandbox requires the QuickJS event loop to be pumped explicitly.
- *   - snapshot/restore not yet implemented (QuickJS state is not serialisable in this binding).
+ * Handle lifecycle (Q5): all QuickJS handles are managed with Scope.withScopeAsync
+ * so they are disposed automatically — no manual .dispose() calls scattered around.
+ * Handles cached across calls (#stringify, #jsonObj) are disposed in reset/asyncDispose.
+ *
+ * Serialisation (Q1, Q2, Q3): output and __finalAnswer__ are extracted via
+ * callFunction(JSON.stringify, ...) instead of ctx.dump(), which silently corrupts
+ * circular refs and drops functions. Circular refs now throw KernelSerializationError.
  */
 export class QuickJSKernel implements WasmKernel {
   #runtime: QuickJSRuntime | null = null;
@@ -54,6 +64,10 @@ export class QuickJSKernel implements WasmKernel {
   #module: QuickJSModule | null = null;
   readonly #timeoutMs: number;
   #logs: string[] = [];
+
+  // Cached handles to JSON.stringify — initialised once per context, disposed on reset.
+  #jsonObj: (QHandle & { dispose(): void }) | null = null;
+  #stringify: (QHandle & { dispose(): void }) | null = null;
 
   constructor(opts?: KernelOptions) {
     this.#timeoutMs = opts?.timeoutMs ?? 5_000;
@@ -67,27 +81,66 @@ export class QuickJSKernel implements WasmKernel {
     this.#runtime = this.#module.newRuntime();
     this.#ctx = this.#runtime.newContext();
 
-    // Inject console.log capture.
-    this.#injectConsole(this.#ctx);
+    // Cache JSON.stringify handle — reused on every run() to avoid re-fetching.
+    // Q1: callFunction(stringify, ctx.global, handle) never writes to global namespace,
+    // unlike the old setProp("__runOutput__") approach.
+    this.#jsonObj = this.#ctx.getProp(this.#ctx.global, "JSON") as QHandle & { dispose(): void };
+    this.#stringify = this.#ctx.getProp(this.#jsonObj, "stringify") as QHandle & { dispose(): void };
 
+    this.#injectConsole(this.#ctx);
     return this.#ctx;
   }
 
   #injectConsole(ctx: QuickJSContext): void {
-    // QuickJS contexts have no console by default. We inject one that captures logs.
-    // This is done via raw QuickJS handle operations since we can't pass JS closures.
-    // Instead inject a small script that defines console using a global sentinel.
     ctx.evalCode(`
       var __logs__ = [];
       var console = {
-        log: function() {
-          var args = Array.prototype.slice.call(arguments);
-          __logs__.push(args.join(" "));
-        },
+        log: function() { __logs__.push(Array.prototype.join.call(arguments, " ")); },
         warn: function() { console.log.apply(console, arguments); },
         error: function() { console.log.apply(console, arguments); },
       };
     `);
+  }
+
+  /**
+   * Serialise a QuickJS handle to a JS value using JSON.stringify inside QuickJS.
+   *
+   * Q1: uses callFunction — does not write to global namespace.
+   * Q3: circular references throw KernelSerializationError (JSON.stringify raises in QuickJS).
+   * Q2: output and __finalAnswer__ both go through this path — behaviour is consistent.
+   * Q5: caller passes a Scope; the intermediate JSON string handle is scope.managed.
+   */
+  #serialize(ctx: QuickJSContext, scope: ScopeType, handle: QHandle, label: string): unknown {
+    let jsonResult: ReturnType<QuickJSContext["unwrapResult"]>;
+    try {
+      jsonResult = scope.manage(
+        ctx.unwrapResult(ctx.callFunction(this.#stringify!, ctx.global, handle))
+      );
+    } catch (err) {
+      // JSON.stringify throws inside QuickJS for circular references.
+      // Wrap as KernelSerializationError to match JsKernel's DataCloneError behaviour.
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `KernelSerializationError: ${label} contains a value that cannot be serialised ` +
+          `(${msg}). Return only JSON-serialisable values from agent code.`
+      );
+    }
+
+    // JSON.stringify(undefined) returns QuickJS undefined — typeof check before getString.
+    if (ctx.typeof(jsonResult as QHandle) === "undefined") {
+      return undefined;
+    }
+
+    const jsonStr = ctx.getString(jsonResult);
+
+    try {
+      return JSON.parse(jsonStr);
+    } catch {
+      throw new Error(
+        `KernelSerializationError: ${label} contains a value that cannot be serialised ` +
+          "(non-JSON type). Return only JSON-serialisable values from agent code."
+      );
+    }
   }
 
   async run(
@@ -95,12 +148,12 @@ export class QuickJSKernel implements WasmKernel {
     capabilities?: Partial<CapabilityManifest>
   ): Promise<KernelResult> {
     const ctx = await this.#ensureContext();
+    const { Scope } = await import("quickjs-emscripten");
+    const ScopeStatic = Scope as unknown as ScopeStatic;
     this.#logs = [];
 
-    // Reset log buffer and __finalAnswer__ sentinel.
     ctx.evalCode("__logs__ = []; var __finalAnswer__ = undefined;");
 
-    // Apply capabilities (host allow-list injection).
     if (capabilities?.allowedHosts?.length) {
       this.#injectFetchWrapper(ctx, capabilities.allowedHosts);
     }
@@ -109,59 +162,43 @@ export class QuickJSKernel implements WasmKernel {
     const deadline = Date.now() + this.#timeoutMs;
     this.#runtime!.setInterruptHandler(() => Date.now() > deadline);
 
-    let output: unknown;
-    try {
-      const result = ctx.evalCode(code, "agent-step.js");
-      const handle = ctx.unwrapResult(result);
+    // Q5: Scope.withScopeAsync automatically disposes all scope.manage()'d handles
+    // when the block exits, whether by return or throw. No manual .dispose() needed.
+    return ScopeStatic.withScopeAsync(async (scope) => {
+      let output: unknown;
+      let isFinalAnswer = false;
 
-      // Store the result in a QuickJS global so we can JSON.stringify it without dump().
-      // Storing avoids re-running the code (which could have side effects).
-      ctx.setProp(ctx.global, "__runOutput__", handle as object);
-      const jsonResult = ctx.evalCode(
-        "(function(){try{return JSON.stringify(__runOutput__);}catch(e){return '__SER_ERR__:'+e.message;}})()"
-      );
-      const jsonHandle = ctx.unwrapResult(jsonResult);
-      const jsonStr = ctx.dump(jsonHandle as object) as string;
+      try {
+        const resultHandle = scope.manage(ctx.unwrapResult(ctx.evalCode(code, "agent-step.js")));
 
-      if (typeof jsonStr === "string" && jsonStr.startsWith("__SER_ERR__:")) {
-        throw new Error(
-          "KernelSerializationError: the script's output contains a value that cannot be " +
-            "serialised (circular reference or non-JSON type). " +
-            "Return only JSON-serialisable values from agent code."
-        );
+        // Q1/Q3: serialise output via callFunction(JSON.stringify) — no global writes,
+        // and circular refs / functions throw KernelSerializationError here.
+        output = this.#serialize(ctx, scope, resultHandle as QHandle, "output");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("interrupted")) {
+          await this.reset();
+          throw new Error(`KernelError: Script execution timed out after ${this.#timeoutMs}ms`);
+        }
+        if (msg.startsWith("KernelSerializationError")) throw err;
+        throw new Error(`KernelError: ${msg}`);
+      }
+      const logsHandle = scope.manage(ctx.unwrapResult(ctx.evalCode("JSON.stringify(__logs__)")));
+      this.#logs = JSON.parse(ctx.getString(logsHandle)) as string[];
+
+      // Q2: use ctx.typeof() to detect whether __finalAnswer__ was set (typeof "undefined"
+      // means unset). Then serialise the value through the same JSON path as output —
+      // consistent behaviour: functions are dropped → KernelSerializationError.
+      const faHandle = scope.manage(ctx.unwrapResult(ctx.evalCode("__finalAnswer__")));
+      isFinalAnswer = ctx.typeof(faHandle as QHandle) !== "undefined";
+
+      let finalOutput = output;
+      if (isFinalAnswer) {
+        finalOutput = this.#serialize(ctx, scope, faHandle as QHandle, "__finalAnswer__");
       }
 
-      output = jsonStr === undefined ? undefined : JSON.parse(jsonStr as string);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes("interrupted")) {
-        await this.reset();
-        throw new Error(`KernelError: Script execution timed out after ${this.#timeoutMs}ms`);
-      }
-      throw new Error(`KernelError: ${msg}`);
-    }
-
-    // Collect logs from the QuickJS context.
-    const logsResult = ctx.evalCode("JSON.stringify(__logs__)");
-    const logsHandle = ctx.unwrapResult(logsResult);
-    const logsJson = ctx.dump(logsHandle as object) as string;
-    this.#logs = JSON.parse(logsJson) as string[];
-
-    // Check __finalAnswer__ sentinel.
-    // Convention (matches JsKernel): any value other than `undefined` signals a final answer.
-    // `null` is a valid final answer. ctx.dump() returns JS `undefined` for QuickJS undefined.
-    const faResult = ctx.evalCode("__finalAnswer__");
-    const faHandle = ctx.unwrapResult(faResult);
-    const faDump = ctx.dump(faHandle as object);
-    const isFinalAnswer = faDump !== undefined;
-
-    const finalOutput = isFinalAnswer ? faDump : output;
-
-    return {
-      output: finalOutput,
-      logs: this.#logs,
-      isFinalAnswer,
-    };
+      return { output: finalOutput, logs: this.#logs, isFinalAnswer };
+    });
   }
 
   #injectFetchWrapper(ctx: QuickJSContext, allowedHosts: string[]): void {
@@ -179,25 +216,22 @@ export class QuickJSKernel implements WasmKernel {
   }
 
   async reset(): Promise<void> {
-    if (this.#ctx) {
-      // Evaluate a cleanup to ensure all GC-tracked objects are freed before disposal.
-      try { this.#ctx.evalCode("gc(); gc();"); } catch { /* QuickJS may not have gc() */ }
-      try { this.#ctx.dispose(); } catch { /* ignore */ }
-      this.#ctx = null;
-    }
-    if (this.#runtime) {
-      try { this.#runtime.dispose(); } catch { /* ignore */ }
-      this.#runtime = null;
-    }
-    // Re-initialise context.
+    this.#disposeContextHandles();
+    if (this.#ctx) { try { this.#ctx.dispose(); } catch { /* ignore */ } this.#ctx = null; }
+    if (this.#runtime) { try { this.#runtime.dispose(); } catch { /* ignore */ } this.#runtime = null; }
     await this.#ensureContext();
     this.#logs = [];
   }
 
+  #disposeContextHandles(): void {
+    // Dispose the cached handles that outlive individual run() calls.
+    if (this.#stringify) { try { this.#stringify.dispose(); } catch { /* ignore */ } this.#stringify = null; }
+    if (this.#jsonObj) { try { this.#jsonObj.dispose(); } catch { /* ignore */ } this.#jsonObj = null; }
+  }
+
   async snapshot(): Promise<Uint8Array> {
     throw new Error(
-      "QuickJSKernel does not support snapshot/restore in this binding. " +
-        "Use WasmtimeKernel for true linear-memory snapshots."
+      "QuickJSKernel does not support snapshot/restore. Use WasmtimeKernel for byte-exact snapshots."
     );
   }
 
@@ -206,6 +240,7 @@ export class QuickJSKernel implements WasmKernel {
   }
 
   async [Symbol.asyncDispose](): Promise<void> {
+    this.#disposeContextHandles();
     if (this.#ctx) { try { this.#ctx.dispose(); } catch { /* ignore */ } this.#ctx = null; }
     if (this.#runtime) { try { this.#runtime.dispose(); } catch { /* ignore */ } this.#runtime = null; }
   }

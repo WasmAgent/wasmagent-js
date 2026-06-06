@@ -76,8 +76,6 @@ export class JsKernel implements WasmKernel {
 
     // Single promise that resolves/rejects when the worker responds OR times out.
     return new Promise<KernelResult>((resolve, reject) => {
-      const deadline = Date.now() + this.#timeoutMs;
-
       const handler = (msg: {
         type: "result" | "error";
         serial: number;
@@ -88,7 +86,7 @@ export class JsKernel implements WasmKernel {
       }) => {
         if (msg.serial !== serial) return;
         this.#worker!.off("message", handler);
-        clearImmediate(timeoutHandle);
+        clearTimeout(timer);
         if (msg.type === "error") {
           reject(new Error(`KernelError: ${msg.message ?? "unknown"}`));
         } else {
@@ -100,23 +98,19 @@ export class JsKernel implements WasmKernel {
         }
       };
 
-      this.#worker!.on("message", handler);
-      this.#worker!.postMessage({ type: "run", code, capabilities: capPayload, serial });
-
-      // Deadline polling — yields to the event loop between checks so incoming
-      // messages can be processed. Does not block the caller's thread.
-      let timeoutHandle: NodeJS.Immediate;
-      const poll = () => {
-        if (Date.now() < deadline) {
-          timeoutHandle = setImmediate(poll);
-          return;
-        }
+      // Q4: single setTimeout instead of the old setImmediate polling loop.
+      // The polling loop created O(timeoutMs) Immediate objects (one per event-loop
+      // iteration) and provided no better precision than a one-shot timer.
+      // setTimeout fires once, has equivalent precision, and zero GC churn.
+      const timer = setTimeout(() => {
         this.#worker!.off("message", handler);
         this.#worker!.terminate().catch(() => {});
         this.#worker = null;
         reject(new Error(`KernelError: Script execution timed out after ${this.#timeoutMs}ms`));
-      };
-      timeoutHandle = setImmediate(poll);
+      }, this.#timeoutMs);
+
+      this.#worker!.on("message", handler);
+      this.#worker!.postMessage({ type: "run", code, capabilities: capPayload, serial });
     });
   }
 
