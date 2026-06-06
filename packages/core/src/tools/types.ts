@@ -19,6 +19,13 @@ export interface ToolDefinition<TInput = unknown, TOutput = unknown> {
   readOnly: boolean;
   /** True = calling multiple times with same args is safe (C3 + C4 caching). */
   idempotent: boolean;
+  /**
+   * Named capability required to call this tool (A2 extraCapabilities).
+   * If set, the agent must grant this capability in its CapabilityManifest.extraCapabilities
+   * for the call to proceed; otherwise ToolRegistry returns a capability_denied error.
+   * Example: "tool:web_search", "tool:file_write"
+   */
+  requiredCapability?: string;
   forward(input: TInput): Promise<TOutput>;
 }
 

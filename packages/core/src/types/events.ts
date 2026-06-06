@@ -25,7 +25,7 @@ export interface AgentEvent {
 }
 
 /** Structured step types mirroring smolagents' ActionStep / PlanningStep / FinalAnswerStep. */
-export type StepType = "action" | "planning" | "final_answer";
+export type StepType = "action" | "planning" | "final_answer" | "tool_use" | "user_message";
 
 export interface ActionStep {
   type: "action";
@@ -46,4 +46,35 @@ export interface FinalAnswerStep {
   answer: unknown;
 }
 
-export type Step = ActionStep | PlanningStep | FinalAnswerStep;
+/**
+ * ToolUseStep — represents a single tool invocation in ToolCallingAgent history.
+ *
+ * Encodes the assistant's tool_use block and the user's tool_result block as a
+ * structured pair so MessageAssembler can produce the correct multi-turn conversation
+ * format required by the Anthropic and OpenAI tool_use APIs.
+ */
+export interface ToolUseStep {
+  type: "tool_use";
+  stepIndex: number;
+  /** Model thoughts / text before the tool call (may be empty). */
+  thoughts: string;
+  toolCallId: string;
+  toolName: string;
+  toolInput: Record<string, unknown>;
+  toolOutput: string;
+  /** True when the tool returned an error instead of a result. */
+  isError: boolean;
+}
+
+/**
+ * UserMessageStep — injects a plain user text message into conversation history.
+ *
+ * Used by ToolCallingAgent to seed the conversation with the task text directly
+ * as a user turn, without the ActionStep assistant+user wrapper overhead.
+ */
+export interface UserMessageStep {
+  type: "user_message";
+  content: string;
+}
+
+export type Step = ActionStep | PlanningStep | FinalAnswerStep | ToolUseStep | UserMessageStep;

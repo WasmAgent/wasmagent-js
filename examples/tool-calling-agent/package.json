@@ -1,0 +1,16 @@
+{
+  "name": "tool-calling-agent-example",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ToolCallingAgent example with McpToolCollection and LazyObservationHandle",
+  "type": "module",
+  "scripts": {
+    "start:mcp": "node mcp-agent.js",
+    "start:lazy": "node lazy-observations.js"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*",
+    "@anthropic-ai/sdk": "^0.37.0",
+    "zod": "^3.23.0"
+  }
+}

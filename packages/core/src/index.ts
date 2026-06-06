@@ -1,9 +1,9 @@
 // Agents
-export { CodeAgent } from "./agents/index.js";
-export type { CodeAgentOptions } from "./agents/index.js";
+export { CodeAgent, ToolCallingAgent } from "./agents/index.js";
+export type { CodeAgentOptions, ToolCallingAgentOptions } from "./agents/index.js";
 
 // Executor
-export { JsKernel, createKernel } from "./executor/index.js";
+export { JsKernel, V8WasmKernel, PyodideKernel, createKernel, buildCapabilityGlobals, buildSandboxFetch, assertPathAllowed, matchGlob } from "./executor/index.js";
 export type {
   WasmKernel,
   KernelResult,
@@ -13,7 +13,7 @@ export type {
 } from "./executor/index.js";
 
 // Memory
-export { MessageAssembler } from "./memory/index.js";
+export { MessageAssembler, LazyObservationHandle } from "./memory/index.js";
 export type { AssemblerConfig } from "./memory/index.js";
 
 // Models
@@ -28,7 +28,7 @@ export type {
 } from "./models/index.js";
 
 // Tools
-export { ToolRegistry } from "./tools/index.js";
+export { ToolRegistry, zodToJsonSchema, McpToolCollection } from "./tools/index.js";
 export type { ToolDefinition, ToolCall, ToolResult } from "./tools/index.js";
 
 // Scheduler
@@ -36,4 +36,4 @@ export { Scheduler, SimpleIR } from "./scheduler/index.js";
 export type { ActionIR, IRNode, SchedulerEvent } from "./scheduler/index.js";
 
 // Types
-export type { AgentEvent, Step, ActionStep, PlanningStep, FinalAnswerStep } from "./types/index.js";
+export type { AgentEvent, Step, ActionStep, PlanningStep, FinalAnswerStep, ToolUseStep, UserMessageStep } from "./types/index.js";

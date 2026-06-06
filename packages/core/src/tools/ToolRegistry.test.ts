@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
-import { ToolRegistry } from "../tools/ToolRegistry.js";
+import { ToolRegistry, zodToJsonSchema } from "../tools/ToolRegistry.js";
 import type { ToolDefinition } from "../tools/types.js";
 
 const echoTool: ToolDefinition<{ message: string }, string> = {
@@ -59,5 +59,238 @@ describe("ToolRegistry", () => {
     const schema = registry.toJsonSchema();
     expect(schema).toHaveLength(1);
     expect(schema[0]).toMatchObject({ name: "echo" });
+  });
+
+  // D2: runtime enforcement of readOnly/idempotent
+  it("rejects tool missing readOnly (D2 enforcement)", () => {
+    const registry = new ToolRegistry();
+    const bad = { ...echoTool, name: "bad" };
+    delete (bad as Record<string, unknown>)["readOnly"];
+    expect(() => registry.register(bad as ToolDefinition)).toThrow(/readOnly/);
+  });
+
+  it("rejects tool missing idempotent (D2 enforcement)", () => {
+    const registry = new ToolRegistry();
+    const bad = { ...echoTool, name: "bad2" };
+    delete (bad as Record<string, unknown>)["idempotent"];
+    expect(() => registry.register(bad as ToolDefinition)).toThrow(/idempotent/);
+  });
+
+  it("accepts tool with readOnly=false idempotent=false", () => {
+    const registry = new ToolRegistry();
+    const sideEffect: ToolDefinition<{ x: number }, number> = {
+      name: "sideEffect",
+      description: "Has side effects",
+      inputSchema: z.object({ x: z.number() }),
+      outputSchema: z.number(),
+      readOnly: false,
+      idempotent: false,
+      forward: async ({ x }) => x,
+    };
+    expect(() => registry.register(sideEffect)).not.toThrow();
+  });
+});
+
+describe("zodToJsonSchema", () => {
+  it("ZodString → { type: 'string' }", () => {
+    expect(zodToJsonSchema(z.string())).toEqual({ type: "string" });
+  });
+
+  it("ZodNumber → { type: 'number' }", () => {
+    expect(zodToJsonSchema(z.number())).toEqual({ type: "number" });
+  });
+
+  it("ZodBoolean → { type: 'boolean' }", () => {
+    expect(zodToJsonSchema(z.boolean())).toEqual({ type: "boolean" });
+  });
+
+  it("ZodObject with required and optional fields", () => {
+    const schema = z.object({
+      name: z.string(),
+      age: z.number().optional(),
+    });
+    const result = zodToJsonSchema(schema) as Record<string, unknown>;
+    expect(result["type"]).toBe("object");
+    const props = result["properties"] as Record<string, unknown>;
+    expect(props["name"]).toEqual({ type: "string" });
+    expect(props["age"]).toEqual({ type: "number" });
+    expect(result["required"]).toEqual(["name"]);
+  });
+
+  it("ZodOptional unwraps inner type", () => {
+    expect(zodToJsonSchema(z.string().optional())).toEqual({ type: "string" });
+  });
+
+  it("ZodNullable adds nullable: true", () => {
+    const result = zodToJsonSchema(z.string().nullable()) as Record<string, unknown>;
+    expect(result["type"]).toBe("string");
+    expect(result["nullable"]).toBe(true);
+  });
+
+  it("ZodArray with typed items", () => {
+    const result = zodToJsonSchema(z.array(z.string())) as Record<string, unknown>;
+    expect(result["type"]).toBe("array");
+    expect(result["items"]).toEqual({ type: "string" });
+  });
+
+  it("ZodArray of objects", () => {
+    const result = zodToJsonSchema(z.array(z.object({ id: z.number() }))) as Record<string, unknown>;
+    expect(result["type"]).toBe("array");
+    expect((result["items"] as Record<string, unknown>)["type"]).toBe("object");
+  });
+
+  it("ZodEnum produces string enum", () => {
+    const result = zodToJsonSchema(z.enum(["a", "b", "c"])) as Record<string, unknown>;
+    expect(result["type"]).toBe("string");
+    expect(result["enum"]).toEqual(["a", "b", "c"]);
+  });
+
+  it("ZodLiteral string", () => {
+    const result = zodToJsonSchema(z.literal("hello")) as Record<string, unknown>;
+    expect(result["type"]).toBe("string");
+    expect(result["const"]).toBe("hello");
+  });
+
+  it("ZodLiteral number", () => {
+    const result = zodToJsonSchema(z.literal(42)) as Record<string, unknown>;
+    expect(result["type"]).toBe("number");
+    expect(result["const"]).toBe(42);
+  });
+
+  it("ZodUnion produces anyOf", () => {
+    const result = zodToJsonSchema(z.union([z.string(), z.number()])) as Record<string, unknown>;
+    expect(result["anyOf"]).toHaveLength(2);
+  });
+
+  it("ZodRecord produces additionalProperties", () => {
+    const result = zodToJsonSchema(z.record(z.string())) as Record<string, unknown>;
+    expect(result["type"]).toBe("object");
+    expect(result["additionalProperties"]).toEqual({ type: "string" });
+  });
+
+  it(".describe() passthrough", () => {
+    const result = zodToJsonSchema(z.string().describe("A user name")) as Record<string, unknown>;
+    expect(result["type"]).toBe("string");
+    expect(result["description"]).toBe("A user name");
+  });
+
+  it("ZodDefault unwraps inner type", () => {
+    const result = zodToJsonSchema(z.string().default("hello")) as Record<string, unknown>;
+    expect(result["type"]).toBe("string");
+  });
+
+  it("nested ZodObject", () => {
+    const schema = z.object({
+      user: z.object({ id: z.number(), name: z.string() }),
+    });
+    const result = zodToJsonSchema(schema) as Record<string, unknown>;
+    const props = result["properties"] as Record<string, unknown>;
+    const userSchema = props["user"] as Record<string, unknown>;
+    expect(userSchema["type"]).toBe("object");
+    const userProps = userSchema["properties"] as Record<string, unknown>;
+    expect(userProps["id"]).toEqual({ type: "number" });
+  });
+});
+
+describe("ToolRegistry extraCapabilities (A2)", () => {
+  const gateTool: ToolDefinition<{ x: number }, number> = {
+    name: "gated",
+    description: "Requires a special capability",
+    inputSchema: z.object({ x: z.number() }),
+    outputSchema: z.number(),
+    readOnly: true,
+    idempotent: true,
+    requiredCapability: "tool:gated",
+    forward: async ({ x }) => x * 10,
+  };
+
+  it("returns capability_denied when requiredCapability is absent from grantedCapabilities", async () => {
+    const registry = new ToolRegistry();
+    registry.register(gateTool);
+    const result = await registry.call({ toolName: "gated", args: { x: 1 }, callId: "c1" });
+    expect(result.error?.code).toBe("capability_denied");
+    expect(result.error?.message).toContain("tool:gated");
+  });
+
+  it("returns capability_denied when grantedCapabilities list does not include the required one", async () => {
+    const registry = new ToolRegistry();
+    registry.register(gateTool);
+    const result = await registry.call(
+      { toolName: "gated", args: { x: 1 }, callId: "c2" },
+      ["tool:other"]
+    );
+    expect(result.error?.code).toBe("capability_denied");
+  });
+
+  it("succeeds when the required capability is in grantedCapabilities", async () => {
+    const registry = new ToolRegistry();
+    registry.register(gateTool);
+    const result = await registry.call(
+      { toolName: "gated", args: { x: 5 }, callId: "c3" },
+      ["tool:gated"]
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.output).toBe(50);
+  });
+
+  it("tool without requiredCapability is unaffected by grantedCapabilities", async () => {
+    const registry = new ToolRegistry();
+    registry.register(echoTool);
+    const result = await registry.call(
+      { toolName: "echo", args: { message: "hi" }, callId: "c4" },
+      ["tool:unrelated"]
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.output).toBe("hi");
+  });
+
+  it("retryHint contains the missing capability name", async () => {
+    const registry = new ToolRegistry();
+    registry.register(gateTool);
+    const result = await registry.call({ toolName: "gated", args: { x: 1 }, callId: "c5" });
+    expect(result.error?.retryHint).toContain("tool:gated");
+  });
+});
+
+describe("zodToJsonSchema additional branches", () => {
+  it("ZodNull → { type: 'null' }", () => {
+    expect(zodToJsonSchema(z.null())).toEqual({ type: "null" });
+  });
+
+  it("ZodAny → {} (empty schema)", () => {
+    expect(zodToJsonSchema(z.any())).toEqual({});
+  });
+
+  it("ZodUnknown → {} (empty schema)", () => {
+    expect(zodToJsonSchema(z.unknown())).toEqual({});
+  });
+
+  it("ZodBigInt → { type: 'number' }", () => {
+    expect(zodToJsonSchema(z.bigint())).toEqual({ type: "number" });
+  });
+
+  it("ZodDiscriminatedUnion → anyOf", () => {
+    const schema = z.discriminatedUnion("kind", [
+      z.object({ kind: z.literal("a"), value: z.string() }),
+      z.object({ kind: z.literal("b"), count: z.number() }),
+    ]);
+    const result = zodToJsonSchema(schema) as Record<string, unknown>;
+    expect(Array.isArray(result["anyOf"])).toBe(true);
+    expect((result["anyOf"] as unknown[]).length).toBe(2);
+  });
+
+  it("ZodNativeEnum → enum values array", () => {
+    enum Direction { Up = "UP", Down = "DOWN" }
+    const result = zodToJsonSchema(z.nativeEnum(Direction)) as Record<string, unknown>;
+    expect(Array.isArray(result["enum"])).toBe(true);
+    expect(result["enum"]).toContain("UP");
+    expect(result["enum"]).toContain("DOWN");
+  });
+
+  it("unknown type → fallback empty schema {}", () => {
+    // Simulate an unrecognised typeName by passing a raw Zod schema whose _def
+    // has no matching typeName branch.
+    const fakeSchema = { _def: { typeName: "ZodNeverEverKnown" } } as unknown as ReturnType<typeof z.string>;
+    expect(zodToJsonSchema(fakeSchema)).toEqual({});
   });
 });

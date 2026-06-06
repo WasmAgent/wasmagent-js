@@ -1,27 +1,19 @@
 import { createContext, Script } from "node:vm";
-import type {
-  CapabilityManifest,
-  KernelResult,
-  WasmKernel,
-} from "./types.js";
+import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from "./types.js";
 import { buildCapabilityGlobals } from "./capabilities.js";
 
 /**
- * Default JS kernel — runs JS code in an isolated Node.js vm context.
+ * V8WasmKernel — pure-JS fallback using Node's vm module.
  *
- * State persists across run() calls (variables survive between steps).
- * Capability enforcement is host-side: forbidden built-ins are removed
- * from the sandbox context (A2 deny-all baseline). Permitted capabilities
- * (allowedHosts, allowedReadPaths, allowedWritePaths) are injected per-call.
- *
- * This is NOT a production security boundary — use WasmtimeKernel (M1+)
- * for real WASM sandboxing when the native addon is available.
+ * Designed to be serverless-safe (no native deps) and compatible with
+ * Cloudflare Workers and AWS Lambda. Capability enforcement mirrors JsKernel
+ * (A2 deny-all baseline with per-call allow-list injection).
  */
-export class JsKernel implements WasmKernel {
+export class V8WasmKernel implements WasmKernel {
   #context: ReturnType<typeof createContext>;
   #logs: string[] = [];
 
-  constructor() {
+  constructor(_opts?: KernelOptions) {
     this.#context = this.#createSandbox();
   }
 
@@ -38,8 +30,6 @@ export class JsKernel implements WasmKernel {
         warn: logCapture,
         error: logCapture,
       },
-      // Deny dangerous globals by omission (A2 deny-all baseline).
-      // fetch, fs, require, process are NOT included unless explicitly granted.
       Math,
       JSON,
       Array,
@@ -52,9 +42,7 @@ export class JsKernel implements WasmKernel {
       Set,
       Error,
       TypeError,
-      // Capability-gated globals (A2): only present when the manifest allows them.
       ...capGlobals,
-      // Sentinel set by agent code to signal a final answer.
       __finalAnswer__: undefined as unknown,
     });
   }
@@ -66,7 +54,6 @@ export class JsKernel implements WasmKernel {
     this.#logs = [];
     this.#context["__finalAnswer__"] = undefined;
 
-    // Re-inject capability globals for this call (A2 per-call enforcement).
     if (capabilities) {
       const capGlobals = buildCapabilityGlobals(capabilities);
       for (const [key, value] of Object.entries(capGlobals)) {
@@ -100,8 +87,6 @@ export class JsKernel implements WasmKernel {
   }
 
   async snapshot(): Promise<Uint8Array> {
-    // JsKernel uses JSON serialisation as a simple snapshot mechanism.
-    // WasmtimeKernel will use true linear-memory snapshots (A1).
     const state = JSON.stringify(this.#context);
     return new TextEncoder().encode(state);
   }

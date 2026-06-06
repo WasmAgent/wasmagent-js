@@ -11,10 +11,12 @@ This project draws significant inspiration from Hugging Face's [smolagents](http
 | | smolagents (Python) | agentkit-js |
 |---|---|---|
 | Execution | Sync serial `while` loop, 0 `async def` | `async/await` + `AsyncGenerator` |
-| Sandbox | Blacklist AST interpreter (`local_python_executor.py`) | WASM capability model (deny-all, A1/A2) |
+| Sandbox | Blacklist AST interpreter (`local_python_executor.py`) | WASM capability model (deny-all, A2) |
 | Context | Full history rebuilt every step (O(n²) tokens) | Cache-friendly prefix assembly (B1/B2) |
-| Caching | Zero `cache_control` | Anthropic prompt-caching breakpoints |
-| Language | Python | TypeScript (JS/MicroPython/Pyodide kernels) |
+| Caching | Zero `cache_control` | Anthropic prompt-caching breakpoints (B1) |
+| Language | Python | TypeScript (JS + Pyodide/CPython kernels; MicroPython planned) |
+| Agents | `CodeAgent`, `ToolCallingAgent` | `CodeAgent`, `ToolCallingAgent` |
+| Scheduling | Serial | DAG + speculative execution (C2/C3) |
 
 ## Quick Start
 
@@ -36,33 +38,90 @@ for await (const event of agent.run("What is 42 * 1337?")) {
 }
 ```
 
+### ToolCallingAgent
+
+```ts
+import { ToolCallingAgent, AnthropicModel } from "@agentkit-js/core";
+import { z } from "zod";
+
+const searchTool = {
+  name: "search",
+  description: "Search the web",
+  inputSchema: z.object({ query: z.string() }),
+  outputSchema: z.string(),
+  readOnly: true,
+  idempotent: true,
+  forward: async ({ query }) => `Results for: ${query}`,
+};
+
+const agent = new ToolCallingAgent({
+  tools: [searchTool],
+  model: new AnthropicModel("claude-sonnet-4-6"),
+  maxSteps: 5,
+});
+
+for await (const event of agent.run("Search for recent AI news")) {
+  if (event.event === "final_answer") console.log(event.data.answer);
+}
+```
+
 ## Architecture
 
 ```
 agentkit-js/
 ├── packages/
 │   ├── core/                 # Agent runtime, executor, memory, models, tools
-│   ├── cli/                  # agentkit CLI (D6)
+│   ├── cli/                  # agentkit CLI
 │   └── cloudflare-worker/    # Cloudflare Workers HTTP API entry point
 └── examples/
     └── basic-agent/          # Minimal working example
 ```
 
-### Four design pillars (from the spec)
+### Four design pillars
 
-- **A — Persistent WASM execution kernel** — replaces the 1768-line blacklist AST interpreter and cold-start remote sandboxes. `JsKernel` (M0 default) → `WasmtimeKernel` (M1, native WASM) → `V8WasmKernel` (pure-JS fallback, Cloudflare Workers / Lambda).
-- **B — Context engineering** — `MessageAssembler` builds cache-stable message prefixes so Anthropic prompt caching kicks in from step 2 onwards (target: ≥80% cache-read token ratio, ≥60% cost reduction).
-- **C — DAG scheduling + async core** — `AsyncGenerator`-based streaming with structured `AgentEvent` objects carrying `traceId` / `parentTraceId` for multi-agent fan-out tracing.
-- **D — Developer ergonomics** — `CodeAgent` and `ToolCallingAgent` constructors are intentionally close to smolagents', so existing users can migrate incrementally.
+- **A — Persistent WASM execution kernel** — `JsKernel` (default) runs JS in a Node.js vm sandbox with capability enforcement (deny-all, per-call `allowedHosts`/`allowedReadPaths`/`allowedWritePaths`). `V8WasmKernel` is the serverless-safe fallback. `WasmtimeKernel` (M1+) requires the optional native addon.
+- **B — Context engineering** — `MessageAssembler` builds cache-stable message prefixes (B1) with configurable history segment caching (B2 `chunkSizeSteps`), so Anthropic prompt caching kicks in from step 2 onwards.
+- **C — DAG scheduling + async core** — `AsyncGenerator`-based streaming with structured `AgentEvent` objects carrying `traceId`/`parentTraceId`. `Scheduler` executes tool DAGs in parallel (C2) with speculative pre-execution of read-only nodes ahead of barriers (C3).
+- **D — Developer ergonomics** — `CodeAgent` and `ToolCallingAgent` constructors mirror smolagents', enabling incremental migration. Tools declare `readOnly`/`idempotent`/`requiredCapability` for scheduling and access control.
+
+### Implementation status
+
+| Pillar | Feature | Status |
+|--------|---------|--------|
+| A1 | `JsKernel` — stateful JS sandbox, snapshot/restore | ✅ Done |
+| A1 | `V8WasmKernel` — serverless-safe fallback | ✅ Done |
+| A1 | `WasmtimeKernel` — native WASM binding | ⏳ M1 (requires native addon) |
+| A2 | Capability manifest enforcement (hosts, paths) | ✅ Done |
+| A2 | `extraCapabilities` per-tool access control | ✅ Done |
+| A4 | `PyodideKernel` — CPython-in-WASM via `pyodide` npm package | ✅ Done |
+| B1 | `MessageAssembler` cache-stable prefix | ✅ Done |
+| B1 | `AnthropicModel` `cache_control` breakpoints with token threshold | ✅ Done |
+| B2 | Segment caching (`chunkSizeSteps`) | ✅ Done |
+| B3 | `LazyObservationHandle` — async tool result handles | ✅ Done |
+| C1 | `AsyncGenerator` streaming with `traceId`/`parentTraceId` | ✅ Done |
+| C2 | DAG scheduling — parallel independent nodes | ✅ Done |
+| C3 | Speculative execution — read-only nodes ahead of barriers | ✅ Done |
+| C4 | Session/KV caching (Cloudflare Worker + KV namespace) | ✅ Done |
+| D1 | `actionLanguage` routing (js/pyodide; micropython planned) | ✅ Done (js+pyodide) |
+| D2 | Typed tools with Zod schemas, `readOnly`/`idempotent` enforcement | ✅ Done |
+| D2 | `zodToJsonSchema` — full Zod→JSON Schema converter | ✅ Done |
+| D4 | `McpToolCollection` — MCP server tools as agentkit ToolDefinitions | ✅ Done |
+| D5 | `CodeAgent` — code-execution agent | ✅ Done |
+| D5 | `ToolCallingAgent` — native tool_use agent | ✅ Done |
+| D6 | `agentkit run` CLI with `--stream`/`--events` | ✅ Done |
+| D6 | `agentkit init-tool` scaffold | ✅ Done |
+| E1 | `AnthropicModel` — streaming + tool_use + cache | ✅ Done |
+| E1 | `OpenAIModel` — streaming + tool_call | ✅ Done |
 
 ### Roadmap
 
 | Milestone | Scope |
 |-----------|-------|
-| **M0** (current) | `JsKernel`, `CodeAgent`, `MessageAssembler`, Cloudflare Worker skeleton |
-| **M1** | `WasmtimeKernel` + dual-engine fallback (A1/A2/A3), async streaming (C1), typed tools (D2) |
-| **M2** | DAG scheduling (C2), speculative execution + barriers (C3), segment caching (B2), model adapters (E1) |
-| **M3** | Pyodide backend (A4), lazy observation handles (B3), MCP/Hub integration (D4), CLI scaffold (D6) |
+| **M0** ✅ | `JsKernel`, `CodeAgent`, `MessageAssembler`, Cloudflare Worker |
+| **M1** ✅ | `V8WasmKernel`, A2 capability enforcement, C1 streaming, D2 typed tools |
+| **M2** ✅ | C2 DAG scheduling, C3 speculative execution, B2 segment caching, E1 model adapters |
+| **M3** ✅ | `PyodideKernel` (A4), `LazyObservationHandle` (B3), `McpToolCollection` (D4), `init-tool` (D6), C4 session KV |
+| **Remaining** | `WasmtimeKernel` native addon (A1 M1+), MicroPython backend (D1) |
 
 ## Development
 
@@ -76,8 +135,27 @@ pnpm build
 # Run tests
 pnpm test
 
+# Typecheck
+pnpm typecheck
+
 # Cloudflare Worker local dev
 cd packages/cloudflare-worker && wrangler dev
+```
+
+### CLI
+
+```bash
+# Run a task
+agentkit run "What is the square root of 144?"
+
+# Stream all events as NDJSON
+agentkit run "Summarise recent AI news" --stream | jq .
+
+# Filter to specific event types
+agentkit run "Calculate something" --events final_answer,error
+
+# Use a different model
+agentkit run "Write a haiku" --model claude-opus-4-8 --max-steps 5
 ```
 
 ### Environment Variables

@@ -1,13 +1,14 @@
 name = "agentkit-js-worker"
 main = "src/index.ts"
-compatibility_date = "2024-12-18"
+compatibility_date = "2025-06-01"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
 AGENTKIT_LOG_LEVEL = "info"
 
 # KV namespace for session state / result caching (C4).
-# Uncomment and create with: wrangler kv namespace create AGENTKIT_SESSIONS
+# Create with: wrangler kv namespace create AGENTKIT_SESSIONS
+# Then replace YOUR_KV_ID_HERE with the returned id.
 # [[kv_namespaces]]
 # binding = "AGENTKIT_SESSIONS"
 # id = "YOUR_KV_ID_HERE"

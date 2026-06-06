@@ -4,7 +4,7 @@
  * Tries to load the wasmtime Node binding first (best perf + real WASM sandbox).
  * Falls back to V8WasmKernel (pure-JS, serverless-safe) if the native addon
  * is unavailable (Lambda, Alpine, Cloudflare Workers).
- * JsKernel is always available as the M0 dev default.
+ * JsKernel is the default engine for local development.
  */
 import type { KernelOptions, WasmKernel } from "./types.js";
 import { JsKernel } from "./JsKernel.js";
@@ -12,10 +12,23 @@ import { JsKernel } from "./JsKernel.js";
 export async function createKernel(
   opts: KernelOptions = {}
 ): Promise<WasmKernel> {
-  const { engine = "js" } = opts;
+  const { engine = "js", actionLanguage } = opts;
+
+  // Warn when MicroPython is requested — not yet implemented, falls back to js.
+  if (actionLanguage === "micropython") {
+    console.warn(
+      `[agentkit] actionLanguage "micropython" is not yet implemented — falling back to "js". ` +
+        `MicroPython backend is planned for a future release.`
+    );
+  }
 
   switch (engine) {
     case "js":
+      // When actionLanguage is 'pyodide', use PyodideKernel regardless of engine.
+      if (actionLanguage === "pyodide") {
+        const { PyodideKernel } = await import("./PyodideKernel.js");
+        return new PyodideKernel(opts);
+      }
       return new JsKernel();
 
     case "wasmtime": {

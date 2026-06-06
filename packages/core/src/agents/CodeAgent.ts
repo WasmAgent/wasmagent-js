@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { WasmKernel } from "../executor/types.js";
-import { JsKernel } from "../executor/JsKernel.js";
+import { createKernel } from "../executor/factory.js";
 import { MessageAssembler } from "../memory/MessageAssembler.js";
 import { ToolRegistry } from "../tools/ToolRegistry.js";
 import type { ToolDefinition } from "../tools/types.js";
 import type { Model } from "../models/types.js";
-import type { AgentEvent, ActionStep, FinalAnswerStep } from "../types/events.js";
+import type { AgentEvent, ActionStep, PlanningStep, FinalAnswerStep } from "../types/events.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant who can solve any task using code.
 To solve the task, you must plan forward to proceed in a series of steps.
@@ -14,6 +14,10 @@ Think about the current step to be executed, then generate the JS code to perfor
 To signal a final answer, set: __finalAnswer__ = <your answer>;
 
 Code output is available as the return value of your code block.`;
+
+const PLANNING_PROMPT = `Based on the task and observations so far, provide:
+1. A structured plan for remaining steps (inside <plan>...</plan> tags)
+2. Key facts established so far (inside <facts>...</facts> tags)`;
 
 export interface CodeAgentOptions {
   tools: ToolDefinition[];
@@ -36,12 +40,14 @@ export interface CodeAgentOptions {
  *  - Cache-friendly message assembly (B1)
  *  - Structured streaming events with traceId (C1)
  *  - Typed tools with side-effect metadata (D2)
+ *  - Planning steps at configurable interval
  */
 export class CodeAgent {
   readonly #tools: ToolRegistry;
   readonly #model: Model;
   readonly #maxSteps: number;
-  readonly #kernel: WasmKernel;
+  readonly #planningInterval: number | undefined;
+  readonly #kernelPromise: Promise<WasmKernel>;
   readonly #assembler: MessageAssembler;
 
   constructor(opts: CodeAgentOptions) {
@@ -51,7 +57,12 @@ export class CodeAgent {
     }
     this.#model = opts.model;
     this.#maxSteps = opts.maxSteps ?? 20;
-    this.#kernel = new JsKernel();
+    this.#planningInterval = opts.planningInterval;
+    // D1: route to the right kernel engine based on actionLanguage.
+    this.#kernelPromise = createKernel({
+      engine: "js",
+      actionLanguage: opts.actionLanguage ?? "js",
+    });
     this.#assembler = new MessageAssembler({
       systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
       toolsSchema: this.#tools.toJsonSchema(),
@@ -69,7 +80,7 @@ export class CodeAgent {
     parentTraceId: string | null = null
   ): AsyncGenerator<AgentEvent> {
     const traceId = `agent-${randomUUID()}`;
-    const timestampMs = Date.now();
+    const kernel = await this.#kernelPromise;
 
     yield {
       traceId,
@@ -77,7 +88,7 @@ export class CodeAgent {
       channel: "text",
       event: "run_start",
       data: { task },
-      timestampMs,
+      timestampMs: Date.now(),
     };
 
     this.#assembler.reset();
@@ -90,6 +101,11 @@ export class CodeAgent {
     });
 
     for (let step = 1; step <= this.#maxSteps; step++) {
+      // Emit a planning step at configured interval.
+      if (this.#planningInterval && step > 1 && (step - 1) % this.#planningInterval === 0) {
+        yield* this.#runPlanningStep(traceId, parentTraceId, step);
+      }
+
       yield {
         traceId,
         parentTraceId,
@@ -130,7 +146,7 @@ export class CodeAgent {
       // Execute code in the kernel (A1 stateful execution).
       let kernelResult;
       try {
-        kernelResult = await this.#kernel.run(code);
+        kernelResult = await kernel.run(code);
       } catch (err) {
         yield {
           traceId,
@@ -171,11 +187,44 @@ export class CodeAgent {
     };
   }
 
+  async *#runPlanningStep(
+    traceId: string,
+    parentTraceId: string | null,
+    step: number
+  ): AsyncGenerator<AgentEvent> {
+    const planningMessages = this.#assembler.build();
+    planningMessages.push({ role: "user", content: PLANNING_PROMPT });
+
+    let planResponse = "";
+    for await (const event of this.#model.generate(planningMessages, { stream: true })) {
+      if (event.type === "text_delta" && event.delta) {
+        planResponse += event.delta;
+      }
+    }
+
+    const plan = extractTagContent(planResponse, "plan") ?? planResponse;
+    const facts = extractTagContent(planResponse, "facts") ?? "";
+
+    const planningStep: PlanningStep = { type: "planning", plan, facts };
+    this.#assembler.addStep(planningStep);
+
+    yield {
+      traceId,
+      parentTraceId,
+      channel: "thinking",
+      event: "planning",
+      data: { step, plan, facts },
+      timestampMs: Date.now(),
+    };
+  }
+
   async *#emitFinalAnswer(
     traceId: string,
     parentTraceId: string | null,
     answer: unknown
   ): AsyncGenerator<AgentEvent> {
+    const finalStep: FinalAnswerStep = { type: "final_answer", answer };
+    this.#assembler.addStep(finalStep);
     yield {
       traceId,
       parentTraceId,
@@ -194,8 +243,12 @@ function extractCode(response: string): string | null {
 }
 
 function extractThoughts(response: string): string {
-  const match = /<thoughts>([\s\S]*?)<\/thoughts>/.exec(response);
-  return match?.[1]?.trim() ?? "";
+  return extractTagContent(response, "thoughts") ?? "";
+}
+
+function extractTagContent(text: string, tag: string): string | null {
+  const match = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`).exec(text);
+  return match?.[1]?.trim() ?? null;
 }
 
 function extractFinalAnswer(response: string): string | null {

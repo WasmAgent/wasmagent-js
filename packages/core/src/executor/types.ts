@@ -28,9 +28,9 @@ export interface CapabilityManifest {
  * Unified WASM kernel abstraction (A1).
  *
  * Implementations:
- *  - JsKernel   — Node.js vm module (zero native deps, M0 default)
- *  - WasmtimeKernel — wasmtime Node binding (best perf, optional M1+)
- *  - V8WasmKernel — V8 built-in WebAssembly API fallback (pure-JS, serverless-safe)
+ *  - JsKernel        — Node.js vm module (zero native deps, default)
+ *  - WasmtimeKernel  — wasmtime Node binding (best perf, optional M1+)
+ *  - V8WasmKernel    — pure-JS fallback (serverless-safe: Workers, Lambda)
  *
  * The kernel is stateful: variables/imports persist across run() calls (cross-step state).
  * TS 5.2 explicit resource management: use `await using kernel = new JsKernel(...)`.

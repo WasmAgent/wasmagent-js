@@ -5,7 +5,7 @@
  * tool nodes + data-dependency edges, then executes independent nodes
  * in parallel (replacing smolagents' strict serial while loop).
  *
- * Status: Skeleton — full DAG scheduling lands in M2.
+ * The Scheduler implements wave-based parallel DAG execution (C2).
  */
 
 export interface IRNode {
@@ -18,6 +18,11 @@ export interface IRNode {
   /** True = safe for speculative pre-execution (C3). */
   readOnly: boolean;
   idempotent: boolean;
+  /**
+   * Named capabilities granted for this node's tool call (A2 extraCapabilities).
+   * Forwarded to ToolRegistry.call() so capability-gated tools can be invoked.
+   */
+  extraCapabilities?: string[];
 }
 
 export interface ActionIR {

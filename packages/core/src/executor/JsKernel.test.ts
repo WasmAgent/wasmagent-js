@@ -54,4 +54,25 @@ describe("JsKernel", () => {
     const result = await kernel.run("z");
     expect(result.output).toBe(42);
   });
+
+  it("snapshot/restore does not preserve capability globals (expected limitation)", async () => {
+    // JsKernel snapshot uses JSON serialisation; non-serialisable values like
+    // functions (the sandboxed fetch) are stripped. Callers must re-pass
+    // capabilities to run() after a restore.
+    await kernel.run("var x = 1;", { allowedHosts: ["api.example.com"] });
+    const snap = await kernel.snapshot();
+    await kernel.reset();
+    await kernel.restore(snap);
+    // Variable is restored...
+    const varResult = await kernel.run("x");
+    expect(varResult.output).toBe(1);
+    // ...but fetch is no longer injected (stripped during JSON round-trip).
+    const fetchResult = await kernel.run("typeof fetch");
+    expect(fetchResult.output).toBe("undefined");
+  });
+
+  it("[Symbol.asyncDispose] resolves without error", async () => {
+    await kernel.run("var d = 99;");
+    await expect(kernel[Symbol.asyncDispose]()).resolves.toBeUndefined();
+  });
 });
