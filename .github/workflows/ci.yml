@@ -107,8 +107,13 @@ jobs:
 
       - name: Deploy to Cloudflare Workers
         # Skip gracefully when secrets are not configured (forks, draft PRs).
-        if: secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != ''
-        run: pnpm --filter @agentkit-js/cloudflare-worker exec wrangler deploy
+        # secrets.* cannot be used directly in 'if:'; expose as env and check.
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "Skipping deploy: Cloudflare secrets not configured."
+            exit 0
+          fi
+          pnpm --filter @agentkit-js/cloudflare-worker exec wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
