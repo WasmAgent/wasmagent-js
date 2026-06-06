@@ -50,6 +50,9 @@ export class PyodideKernel implements WasmKernel {
       const py = await loadPyodide({ indexURL }) as unknown as PyodideInterface;
       // Initialise the __final_answer__ sentinel.
       py.runPython("__final_answer__ = None");
+      // Q9: install capability infrastructure (urllib patch, check helpers) once.
+      // Per-call capability data is updated cheaply by #applyCapabilities.
+      this.#installCapabilityInfrastructure(py);
       this.#py = py;
       return py;
     })();
@@ -98,19 +101,14 @@ export class PyodideKernel implements WasmKernel {
    * Enforce capability constraints (A2) for the current run call.
    *
    * Network enforcement (allowedHosts):
-   *   Pyodide's HTTP exit in Node goes through the JS `fetch` global that Pyodide
-   *   bridges into Python's `urllib`. We replace `urllib.request.urlopen` with a
-   *   wrapper that validates the hostname against allowedHosts before delegating,
-   *   making the check mandatory rather than cooperative.
-   *   When allowedHosts is empty, all outbound requests are blocked.
+   *   The urllib monkey-patch is installed ONCE at context init time (in #ensurePyodide).
+   *   Per-call, we only update the _allowed_hosts data variable that the patch reads.
+   *   This prevents the nesting bug where re-patching every step caused _original_urlopen
+   *   to capture the previous _checked_urlopen, forming a deeper call chain each step.
    *
-   * File-system enforcement (allowedReadPaths / allowedWritePaths):
-   *   Pyodide runs on Emscripten MEMFS — an in-memory virtual FS isolated from
-   *   the real disk. Unless NODEFS is explicitly mounted (which we never do),
-   *   Python file I/O is already sandboxed. The __check_path__ helpers remain as
-   *   advisory APIs for code that explicitly wants path validation.
-   *
-   * extraCapabilities: exposed as __extra_capabilities__ list for tool-level checks.
+   * File-system (allowedReadPaths / allowedWritePaths): Pyodide runs on Emscripten MEMFS
+   *   (in-memory, isolated from real disk unless NODEFS is mounted — which we never do).
+   *   Advisory __check_path__ helpers are installed once at init; data updated per-call.
    */
   #applyCapabilities(py: PyodideInterface, capabilities?: Partial<CapabilityManifest>): void {
     const allowedHosts = capabilities?.allowedHosts ?? [];
@@ -118,29 +116,49 @@ export class PyodideKernel implements WasmKernel {
     const writePaths = capabilities?.allowedWritePaths ?? [];
     const extraCaps = capabilities?.extraCapabilities ?? [];
 
-    // Serialize lists for safe injection into the Python snippet.
+    // Only update the data variables — functions were defined once at init time.
     const hostsJson = JSON.stringify(JSON.stringify(allowedHosts));
     const readJson = JSON.stringify(JSON.stringify(readPaths));
     const writeJson = JSON.stringify(JSON.stringify(writePaths));
     const extraJson = JSON.stringify(JSON.stringify(extraCaps));
 
     py.runPython(`
-import json as _json, urllib.request as _urllib_req, urllib.parse as _urllib_parse
+import json as _j
+_allowed_hosts = _j.loads(${hostsJson})
+__allowed_read_paths__ = _j.loads(${readJson})
+__allowed_write_paths__ = _j.loads(${writeJson})
+__extra_capabilities__ = _j.loads(${extraJson})
+del _j
+`);
+  }
 
-_allowed_hosts = _json.loads(${hostsJson})
-__allowed_read_paths__ = _json.loads(${readJson})
-__allowed_write_paths__ = _json.loads(${writeJson})
-__extra_capabilities__ = _json.loads(${extraJson})
+  /**
+   * Install capability enforcement infrastructure once at context initialisation.
+   *
+   * Q9: The urllib monkey-patch is applied here (once) rather than in #applyCapabilities
+   * (which runs every step). Re-patching every step caused _original_urlopen to
+   * capture the previous _checked_urlopen on the second call, forming a call chain
+   * that grew one layer deeper per step. Using a sentinel (_agentkit_original_urlopen)
+   * ensures the true original is only captured once, no matter how many times the
+   * data variables (_allowed_hosts) are updated.
+   */
+  #installCapabilityInfrastructure(py: PyodideInterface): void {
+    py.runPython(`
+import urllib.request as _urllib_req, urllib.parse as _urllib_parse
 
-# ── Network enforcement: mandatory urllib monkey-patch ────────────────────────
-# Replace urlopen so every HTTP/HTTPS call from Python is host-checked before
-# it reaches the network. This covers urllib, http.client, and any library
-# that delegates to them (requests is not available in Pyodide by default).
+# Q9: capture the true original once using a sentinel — prevents nesting if called again.
+if not hasattr(_urllib_req, "_agentkit_original_urlopen"):
+    _urllib_req._agentkit_original_urlopen = _urllib_req.urlopen
 
-_original_urlopen = _urllib_req.urlopen
+_original_urlopen = _urllib_req._agentkit_original_urlopen
+
+# Seed data variables with deny-all defaults; updated per-call by #applyCapabilities.
+_allowed_hosts = []
+__allowed_read_paths__ = []
+__allowed_write_paths__ = []
+__extra_capabilities__ = []
 
 def _checked_urlopen(url, *args, **kwargs):
-    # Extract hostname from URL string or Request object.
     raw = url.full_url if isinstance(url, _urllib_req.Request) else str(url)
     hostname = _urllib_parse.urlparse(raw).hostname or ""
     if not _allowed_hosts:
@@ -160,7 +178,7 @@ def _checked_urlopen(url, *args, **kwargs):
 
 _urllib_req.urlopen = _checked_urlopen
 
-# ── Advisory path-check helpers (FS is already sandboxed by Emscripten MEMFS) ─
+# Advisory path-check helpers (FS already sandboxed by Emscripten MEMFS).
 def __check_host__(host):
     if not _allowed_hosts:
         raise PermissionError(f"CapabilityDenied: network to '{host}' denied")
@@ -179,9 +197,9 @@ def __check_write_path__(path):
     if not any(path.startswith(p) for p in __allowed_write_paths__):
         raise PermissionError(f"CapabilityDenied: write '{path}' not in allowedWritePaths")
 
-del _json, _urllib_parse
-`);}
-
+del _urllib_parse
+`);
+  }
 
   async reset(): Promise<void> {
     if (!this.#py) return;

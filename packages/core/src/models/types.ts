@@ -106,6 +106,31 @@ export const CACHE_MIN_TOKENS: Record<string, number> = {
   "claude-opus-4-5": 4096,
   "claude-opus-4-6": 4096,
   "claude-sonnet-4": 1024,
+  "claude-sonnet-4-5": 1024,
+  "claude-sonnet-4-6": 1024,
   "claude-haiku-3": 2048,
   "claude-haiku-4-5": 4096,
 };
+
+/**
+ * Estimate token count from a string for cache threshold comparisons (B1).
+ *
+ * Uses character-category weighting to handle CJK / non-ASCII content:
+ *   ASCII: ~4 chars/token (English prose, code)
+ *   Non-ASCII (CJK, emoji, etc.): ~1.5 chars/token
+ *
+ * This is intentionally conservative (biased to over-estimate) because the
+ * cost of a missed cache breakpoint (no caching) outweighs the cost of an
+ * extra cache_control annotation (minor cache write overhead).
+ *
+ * A flat length/4 would severely under-estimate Chinese/Japanese/Korean text
+ * where each character is ~1 token, causing long CJK prompts to miss caching.
+ */
+export function estimateTokens(text: string): number {
+  let ascii = 0, wide = 0;
+  for (const ch of text) {
+    if ((ch.codePointAt(0) ?? 0) < 128) ascii++;
+    else wide++;
+  }
+  return Math.ceil(ascii / 4 + wide / 1.5);
+}

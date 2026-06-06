@@ -88,6 +88,19 @@ parentPort!.on("message", async (msg: {
     const finalAnswer = sandbox["__finalAnswer__"] as unknown;
     const isFinalAnswer = finalAnswer !== undefined;
 
+    // Q3 — __finalAnswer__ async contract:
+    // Agent code that sets __finalAnswer__ inside an async callback that is NOT
+    // awaited or returned will NOT be detected here. Only two patterns are safe:
+    //   (a) Synchronous: `__finalAnswer__ = value;`
+    //   (b) Async via returned Promise: `return somePromise.then(r => { __finalAnswer__ = r; })`
+    //       or `async function main() { __finalAnswer__ = await x; } main()` — the
+    //       returned Promise resolves *after* the assignment, so the worker's await above
+    //       guarantees the value is visible.
+    // Fire-and-forget patterns (setTimeout, bare .then not returned, unhandled Promises)
+    // will NOT set __finalAnswer__ in time. This is documented as a design constraint,
+    // not a bug to fix — detecting detached async tasks would require draining the entire
+    // event loop, which is incompatible with bounded step execution and timeout semantics.
+
     parentPort!.postMessage({
       type: "result",
       serial: msg.serial,

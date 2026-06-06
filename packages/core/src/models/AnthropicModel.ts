@@ -5,7 +5,7 @@ import type {
   StreamEvent,
   TokenUsage,
 } from "./types.js";
-import { CACHE_MIN_TOKENS } from "./types.js";
+import { CACHE_MIN_TOKENS, estimateTokens } from "./types.js";
 
 export { CACHE_MIN_TOKENS };
 
@@ -48,7 +48,9 @@ export class AnthropicModel implements Model {
 
     const systemMessage = extractSystemMessage(messages);
     // B1: validate token threshold before injecting cache breakpoints.
-    const estimatedSystemTokens = Math.ceil(systemMessage.length / 4);
+    // estimateTokens uses character-category weighting (ASCII /4, non-ASCII /1.5)
+    // so CJK/Unicode-heavy prompts are not under-counted like a flat length/4 would.
+    const estimatedSystemTokens = estimateTokens(systemMessage);
     const shouldCache = estimatedSystemTokens >= this.cacheMinTokens;
 
     const anthropicMessages = convertMessages(messages, shouldCache) as Parameters<

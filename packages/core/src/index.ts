@@ -17,7 +17,7 @@ export { MessageAssembler, LazyObservationHandle } from "./memory/index.js";
 export type { AssemblerConfig } from "./memory/index.js";
 
 // Models
-export { AnthropicModel, OpenAIModel, CACHE_MIN_TOKENS } from "./models/index.js";
+export { AnthropicModel, OpenAIModel, CACHE_MIN_TOKENS, estimateTokens } from "./models/index.js";
 export type {
   Model,
   ModelMessage,

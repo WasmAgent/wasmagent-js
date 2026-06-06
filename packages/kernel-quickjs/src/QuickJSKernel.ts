@@ -65,6 +65,16 @@ export class QuickJSKernel implements WasmKernel {
   readonly #timeoutMs: number;
   #logs: string[] = [];
 
+  // Q4: cache the in-flight init promise so concurrent callers share one runtime.
+  // Without this, two concurrent calls to #ensureContext() would both pass the
+  // `if (this.#ctx)` guard, each build a runtime, and the second would overwrite
+  // the first — leaking the first runtime forever.
+  #initPromise: Promise<QuickJSContext> | null = null;
+
+  // Q1: flag set by interrupt handler so interrupt detection does not rely on
+  // parsing the error message string (which is an emscripten implementation detail).
+  #timedOut = false;
+
   // Cached handles to JSON.stringify — initialised once per context, disposed on reset.
   #jsonObj: (QHandle & { dispose(): void }) | null = null;
   #stringify: (QHandle & { dispose(): void }) | null = null;
@@ -75,20 +85,23 @@ export class QuickJSKernel implements WasmKernel {
 
   async #ensureContext(): Promise<QuickJSContext> {
     if (this.#ctx) return this.#ctx;
+    // Q4: return the in-flight promise if init is already in progress.
+    if (this.#initPromise) return this.#initPromise;
 
-    const { getQuickJS } = await import("quickjs-emscripten");
-    this.#module = (await getQuickJS()) as unknown as QuickJSModule;
-    this.#runtime = this.#module.newRuntime();
-    this.#ctx = this.#runtime.newContext();
+    this.#initPromise = (async () => {
+      const { getQuickJS } = await import("quickjs-emscripten");
+      this.#module = (await getQuickJS()) as unknown as QuickJSModule;
+      this.#runtime = this.#module.newRuntime();
+      this.#ctx = this.#runtime.newContext();
 
-    // Cache JSON.stringify handle — reused on every run() to avoid re-fetching.
-    // Q1: callFunction(stringify, ctx.global, handle) never writes to global namespace,
-    // unlike the old setProp("__runOutput__") approach.
-    this.#jsonObj = this.#ctx.getProp(this.#ctx.global, "JSON") as QHandle & { dispose(): void };
-    this.#stringify = this.#ctx.getProp(this.#jsonObj, "stringify") as QHandle & { dispose(): void };
+      this.#jsonObj = this.#ctx.getProp(this.#ctx.global, "JSON") as QHandle & { dispose(): void };
+      this.#stringify = this.#ctx.getProp(this.#jsonObj, "stringify") as QHandle & { dispose(): void };
 
-    this.#injectConsole(this.#ctx);
-    return this.#ctx;
+      this.#injectConsole(this.#ctx);
+      return this.#ctx;
+    })();
+
+    return this.#initPromise;
   }
 
   #injectConsole(ctx: QuickJSContext): void {
@@ -105,12 +118,22 @@ export class QuickJSKernel implements WasmKernel {
   /**
    * Serialise a QuickJS handle to a JS value using JSON.stringify inside QuickJS.
    *
-   * Q1: uses callFunction — does not write to global namespace.
-   * Q3: circular references throw KernelSerializationError (JSON.stringify raises in QuickJS).
-   * Q2: output and __finalAnswer__ both go through this path — behaviour is consistent.
-   * Q5: caller passes a Scope; the intermediate JSON string handle is scope.managed.
+   * Uses callFunction(JSON.stringify) — does not write to the global namespace (Q1).
+   * Circular references throw KernelSerializationError (Q3).
+   * Functions and Symbols also throw — JSON.stringify silently returns undefined for
+   * these types, which would produce isFinalAnswer=true with output=undefined if not
+   * caught here (Q2). We detect them with typeof before calling stringify.
    */
   #serialize(ctx: QuickJSContext, scope: ScopeType, handle: QHandle, label: string): unknown {
+    // Q2: catch functions and symbols before stringify silently drops them.
+    const t = ctx.typeof(handle);
+    if (t === "function" || t === "symbol") {
+      throw new Error(
+        `KernelSerializationError: ${label} is a ${t} and cannot be serialised. ` +
+          "Return only JSON-serialisable values from agent code."
+      );
+    }
+
     let jsonResult: ReturnType<QuickJSContext["unwrapResult"]>;
     try {
       jsonResult = scope.manage(
@@ -118,7 +141,6 @@ export class QuickJSKernel implements WasmKernel {
       );
     } catch (err) {
       // JSON.stringify throws inside QuickJS for circular references.
-      // Wrap as KernelSerializationError to match JsKernel's DataCloneError behaviour.
       const msg = err instanceof Error ? err.message : String(err);
       throw new Error(
         `KernelSerializationError: ${label} contains a value that cannot be serialised ` +
@@ -158,9 +180,14 @@ export class QuickJSKernel implements WasmKernel {
       this.#injectFetchWrapper(ctx, capabilities.allowedHosts);
     }
 
-    // Set up timeout via interrupt handler.
+    // Q1: use a flag instead of message-string matching to detect interrupts.
+    // The interrupt handler sets #timedOut = true before the QuickJS error propagates.
+    this.#timedOut = false;
     const deadline = Date.now() + this.#timeoutMs;
-    this.#runtime!.setInterruptHandler(() => Date.now() > deadline);
+    this.#runtime!.setInterruptHandler(() => {
+      if (Date.now() > deadline) { this.#timedOut = true; return true; }
+      return false;
+    });
 
     // Q5: Scope.withScopeAsync automatically disposes all scope.manage()'d handles
     // when the block exits, whether by return or throw. No manual .dispose() needed.
@@ -176,7 +203,9 @@ export class QuickJSKernel implements WasmKernel {
         output = this.#serialize(ctx, scope, resultHandle as QHandle, "output");
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        if (msg.includes("interrupted")) {
+        // Q1: check #timedOut flag set by interrupt handler — more reliable than
+        // matching the emscripten error message string "interrupted".
+        if (this.#timedOut) {
           await this.reset();
           throw new Error(`KernelError: Script execution timed out after ${this.#timeoutMs}ms`);
         }
@@ -219,12 +248,14 @@ export class QuickJSKernel implements WasmKernel {
     this.#disposeContextHandles();
     if (this.#ctx) { try { this.#ctx.dispose(); } catch { /* ignore */ } this.#ctx = null; }
     if (this.#runtime) { try { this.#runtime.dispose(); } catch { /* ignore */ } this.#runtime = null; }
+    // Q4: clear initPromise so #ensureContext rebuilds cleanly after dispose.
+    this.#initPromise = null;
+    this.#timedOut = false;
     await this.#ensureContext();
     this.#logs = [];
   }
 
   #disposeContextHandles(): void {
-    // Dispose the cached handles that outlive individual run() calls.
     if (this.#stringify) { try { this.#stringify.dispose(); } catch { /* ignore */ } this.#stringify = null; }
     if (this.#jsonObj) { try { this.#jsonObj.dispose(); } catch { /* ignore */ } this.#jsonObj = null; }
   }
@@ -243,5 +274,6 @@ export class QuickJSKernel implements WasmKernel {
     this.#disposeContextHandles();
     if (this.#ctx) { try { this.#ctx.dispose(); } catch { /* ignore */ } this.#ctx = null; }
     if (this.#runtime) { try { this.#runtime.dispose(); } catch { /* ignore */ } this.#runtime = null; }
+    this.#initPromise = null;
   }
 }

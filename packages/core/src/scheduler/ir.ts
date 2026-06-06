@@ -15,7 +15,14 @@ export interface IRNode {
   args: Record<string, unknown>;
   /** IDs of nodes this node depends on (must complete before this can run). */
   dependsOn: string[];
-  /** True = safe for speculative pre-execution (C3). */
+  /**
+   * True = safe for speculative pre-execution (C3).
+   *
+   * ⚠️  Resource conflict warning: the Scheduler does NOT detect conflicts between
+   * !readOnly nodes. Two !idempotent nodes without a dependsOn relationship will
+   * be executed in parallel. If they may touch the same external resource, add a
+   * dependsOn edge to serialise them — the Scheduler cannot infer this for you.
+   */
   readOnly: boolean;
   idempotent: boolean;
   /**

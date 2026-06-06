@@ -15,6 +15,17 @@ import type { ActionIR, IRNode } from "./ir.js";
  *
  * Deadlock detection: if no progress is made in a wave iteration (no node can
  * start and there are still pending nodes), a cycle exists.
+ *
+ * ── Resource conflict responsibility (Q7) ────────────────────────────────────
+ * C3 does NOT provide any resource-conflict detection between !readOnly nodes.
+ * When two !readOnly nodes have no dependsOn relationship, they are executed in
+ * parallel (Promise.all). If both write to the same external resource (e.g. the
+ * same API endpoint, the same file), the caller is responsible for serialising
+ * them via dependsOn. The Scheduler has no knowledge of which resources each
+ * tool accesses — that information lives in the application layer.
+ *
+ * Rule: any two !idempotent nodes that may operate on the same resource MUST
+ * be connected with a dependsOn edge to guarantee serial execution.
  */
 export class Scheduler {
   constructor(private readonly tools: ToolRegistry) {}

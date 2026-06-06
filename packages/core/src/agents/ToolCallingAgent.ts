@@ -133,14 +133,21 @@ export class ToolCallingAgent {
         return;
       }
 
-      // Emit one tool_call event per call (consumers can correlate via callId).
+      // Q8: batchId groups tool_call / tool_result events that belong to the same
+      // parallel dispatch (single model response with N tool_use blocks).
+      // Consumers can use batchId to distinguish "show N loaders simultaneously"
+      // (same batch) from "sequential steps" (different batchIds).
+      // Single-call steps also get a batchId (batchSize=1) for uniform consumer logic.
+      const batchId = randomUUID();
+      const batchSize = pendingCalls.length;
+
       for (const call of pendingCalls) {
         yield {
           traceId,
           parentTraceId,
           channel: "tool",
           event: "tool_call",
-          data: { toolName: call.name, args: call.input, callId: call.id },
+          data: { toolName: call.name, args: call.input, callId: call.id, batchId, batchSize },
           timestampMs: Date.now(),
         };
       }
@@ -193,7 +200,7 @@ export class ToolCallingAgent {
           parentTraceId,
           channel: "tool",
           event: "tool_result",
-          data: resultData,
+          data: { ...resultData, batchId, batchSize },
           timestampMs: Date.now(),
         };
 

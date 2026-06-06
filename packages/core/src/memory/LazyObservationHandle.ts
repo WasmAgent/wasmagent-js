@@ -2,20 +2,30 @@
  * Lazy observation handle (B3).
  *
  * Wraps a Promise<string> so the agent can reference a not-yet-complete tool
- * observation in the next step without blocking on it. The handle resolves
- * transparently when awaited — callers never deal with raw Promises.
+ * observation without blocking immediately on it.
  *
- * Design:
- *   - `await handle.resolve()` — waits for the result and returns it.
- *   - `handle.isResolved` — true once the underlying promise has settled.
- *   - `handle.peek()` — returns the result synchronously (throws if not yet resolved).
- *   - Agents can pass handles directly into MessageAssembler; the assembler
- *     calls `await handle.resolve()` when building the next message list.
+ * ── What is implemented ──────────────────────────────────────────────────────
+ * Single-step parallel dispatch: ToolCallingAgent uses LazyObservationHandle
+ * to launch all tool calls in a batch simultaneously (fromToolResult() for each),
+ * then awaits them all via Promise.all(handles.map(h => h.resolve())).
+ * This gives wall-clock = slowest single call rather than sum-of-all-calls.
  *
- * Replaces the pattern of blocking on every tool result before yielding the
- * next step event — parallel tool calls can be launched speculatively and
- * their handles inserted into history immediately. Once the handle resolves,
- * its content becomes part of the stable message prefix.
+ * ── What is NOT implemented (@experimental) ──────────────────────────────────
+ * The original B3 design also described "cross-step lazy references" — passing a
+ * not-yet-resolved handle directly into MessageAssembler so it becomes part of
+ * a future message prefix only when it finally resolves. MessageAssembler does
+ * NOT currently await handles; it stores already-resolved string values.
+ * peek() and isResolved are provided for this future use case but have no
+ * callers in the current production path. Treat them as @experimental until
+ * MessageAssembler.build() gains async support.
+ *
+ * ── Usage ─────────────────────────────────────────────────────────────────────
+ * Parallel dispatch within one step:
+ *   const handles = calls.map(c => LazyObservationHandle.fromToolResult(tools.call(c)));
+ *   const results = await Promise.all(handles.map(h => h.resolve()));
+ *
+ * Pre-resolved (e.g. from cache):
+ *   const handle = LazyObservationHandle.of("cached result");
  */
 export class LazyObservationHandle {
   readonly #promise: Promise<string>;

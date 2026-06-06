@@ -48,6 +48,10 @@ export class McpToolCollection {
   /**
    * Connect to an MCP server via SSE transport and return a ready collection.
    *
+   * @deprecated SSEClientTransport is deprecated in MCP SDK ≥ 2025-03-26.
+   *   Use {@link McpToolCollection.fromHttp} instead — it tries Streamable HTTP
+   *   first (the current spec) and falls back to SSE for legacy servers.
+   *
    * @param url - The SSE endpoint URL.
    */
   static async fromSse(url: string): Promise<McpToolCollection> {
@@ -57,6 +61,38 @@ export class McpToolCollection {
     const transport = new SSEClientTransport(new URL(url));
     const client = new Client({ name: "agentkit-js", version: "0.1.0" });
     await client.connect(transport);
+
+    return McpToolCollection.#fromClient(client as unknown as McpClientInterface);
+  }
+
+  /**
+   * Connect to an MCP server over HTTP, with automatic transport negotiation.
+   *
+   * Tries Streamable HTTP first (MCP spec ≥ 2025-03-26 / SDK ≥ 1.7.0).
+   * If the server returns a 4xx or rejects the connection, falls back to the
+   * deprecated SSE transport for backward compatibility with older servers.
+   *
+   * This is the recommended method for HTTP-based MCP servers.
+   *
+   * @param url - The MCP server endpoint URL.
+   */
+  static async fromHttp(url: string): Promise<McpToolCollection> {
+    const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+    const baseUrl = new URL(url);
+    const client = new Client({ name: "agentkit-js", version: "0.1.0" });
+
+    try {
+      const { StreamableHTTPClientTransport } =
+        await import("@modelcontextprotocol/sdk/client/streamableHttp.js");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await client.connect(new (StreamableHTTPClientTransport as any)(baseUrl));
+    } catch {
+      // Streamable HTTP not supported — fall back to legacy SSE transport.
+      const { SSEClientTransport } = await import("@modelcontextprotocol/sdk/client/sse.js");
+      const fallbackClient = new Client({ name: "agentkit-js", version: "0.1.0" });
+      await fallbackClient.connect(new SSEClientTransport(baseUrl));
+      return McpToolCollection.#fromClient(fallbackClient as unknown as McpClientInterface);
+    }
 
     return McpToolCollection.#fromClient(client as unknown as McpClientInterface);
   }
