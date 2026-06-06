@@ -12,6 +12,10 @@
       "inputs": ["src/**/*.ts", "tests/**/*.ts", "vitest.config.ts"],
       "outputs": []
     },
+    "@agentkit-js/kernel-pyodide#test": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
     "lint": {
       "inputs": ["src/**/*.ts"],
       "outputs": []

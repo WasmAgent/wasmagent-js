@@ -18,22 +18,16 @@
  * completed agent results are stored in KV (TTL: 1 hour). Subsequent requests
  * with the same sessionId replay the cached event stream instantly.
  *
- * ── Edge Runtime Compatibility (A3) ──────────────────────────────────────────
- * Cloudflare Workers does NOT provide node:vm (the module used by JsKernel and
- * V8WasmKernel). The CodeAgent constructor calls createKernel() which instantiates
- * JsKernel — this WILL fail at runtime in workerd.
- *
- * Fix path (tracked as plan task A3):
- *   1. Add a Workers-safe kernel that uses eval() or Realm (TC39 proposal) instead
- *      of node:vm, OR expose a no-code ToolCallingAgent-only path for Workers.
- *   2. Until fixed, agentType:"tool-calling" (ToolCallingAgent) is the only safe
- *      mode in Workers because it does NOT execute code — only calls tools.
- *   3. agentType:"code" (CodeAgent) will fail in workerd; use it only in Node.
- *
- * This is documented so CI can add a workerd smoke-test that catches regressions.
+ * ── Edge Runtime Compatibility (A3 — now resolved) ──────────────────────────
+ * Cloudflare Workers does NOT provide node:vm. The old JsKernel (node:vm-based)
+ * would fail at runtime. This Worker now uses QuickJSKernel (@agentkit-js/kernel-quickjs)
+ * for CodeAgent — QuickJS runs entirely in WASM with no Node.js API requirements,
+ * making agentType:"code" safe in workerd/Cloudflare Workers environments.
+ * agentType:"tool-calling" (ToolCallingAgent) also works and requires no kernel at all.
  */
 
 import { CodeAgent, ToolCallingAgent, AnthropicModel } from "@agentkit-js/core";
+import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
 import type { AgentEvent } from "@agentkit-js/core";
 
 export interface Env {
@@ -145,7 +139,13 @@ async function handleRun(request: Request, env: Env): Promise<Response> {
   const agentRun: AsyncGenerator<AgentEvent> =
     agentType === "tool-calling"
       ? new ToolCallingAgent({ tools: [], model, maxSteps }).run(task)
-      : new CodeAgent({ tools: [], model, maxSteps }).run(task);
+      : new CodeAgent({
+          tools: [],
+          model,
+          maxSteps,
+          // Use QuickJSKernel — runs in WASM, no node:vm, safe in Cloudflare Workers.
+          kernel: new QuickJSKernel({ timeoutMs: 10_000 }),
+        }).run(task);
 
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();

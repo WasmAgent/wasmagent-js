@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/kernel-pyodide",
+  "name": "@agentkit-js/kernel-quickjs",
   "version": "0.1.0",
-  "description": "PyodideKernel — CPython-in-WASM kernel for agentkit-js",
+  "description": "QuickJS-in-WASM kernel for agentkit-js — safe for Cloudflare Workers and serverless environments that lack node:vm",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -21,10 +21,10 @@
     "@agentkit-js/core": "workspace:*"
   },
   "peerDependencies": {
-    "pyodide": ">=0.26.0"
+    "quickjs-emscripten": ">=0.29.0"
   },
   "devDependencies": {
-    "pyodide": "0.29.4",
+    "quickjs-emscripten": "0.32.0",
     "typescript": "^5.7.0",
     "vitest": "^2.1.0"
   }

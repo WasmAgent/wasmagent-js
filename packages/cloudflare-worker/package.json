@@ -13,7 +13,8 @@
     "clean": "rm -rf dist .wrangler .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*"
+    "@agentkit-js/core": "workspace:*",
+    "@agentkit-js/kernel-quickjs": "workspace:*"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

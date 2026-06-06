@@ -95,14 +95,14 @@ describe("JsKernel capability enforcement (A2)", () => {
 
   it("fetch is still blocked for non-whitelisted host even with capability", async () => {
     const kernel = new JsKernel();
-    // The sandboxed fetch returns a rejected Promise (async rejection).
-    // The kernel run() itself resolves, but output is the rejected promise.
-    const result = await kernel.run(
-      "fetch('https://evil.com/data')",
-      { allowedHosts: ["api.example.com"] }
-    );
-    // output is a rejected Promise — awaiting it should throw CapabilityDenied.
-    await expect(Promise.resolve(result.output)).rejects.toThrow(/CapabilityDenied/);
+    // The worker awaits the rejected fetch Promise, so kernel.run() itself rejects
+    // with a KernelError wrapping the CapabilityDenied message.
+    await expect(
+      kernel.run(
+        "fetch('https://evil.com/data')",
+        { allowedHosts: ["api.example.com"] }
+      )
+    ).rejects.toThrow(/CapabilityDenied/);
   });
 
   it("__fs__ is not available without path capabilities", async () => {

@@ -60,8 +60,16 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Test
-        run: pnpm test
+      # Run tests for all packages except kernel-pyodide (handled separately below
+      # to avoid turbo caching WASM results across pyodide version bumps).
+      - name: Test (excluding kernel-pyodide)
+        run: pnpm turbo run test --filter=!@agentkit-js/kernel-pyodide
+
+      # kernel-pyodide runs outside turbo so its results are never cached.
+      # pyodide WASM content changes are invisible to turbo's TS-hash-based cache key;
+      # running directly ensures a pyodide upgrade always re-executes the tests.
+      - name: Test kernel-pyodide (no cache)
+        run: pnpm --filter @agentkit-js/kernel-pyodide test
 
   deploy-worker:
     name: Deploy Cloudflare Worker (main only)
