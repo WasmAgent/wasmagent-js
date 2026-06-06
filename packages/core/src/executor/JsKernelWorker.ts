@@ -2,20 +2,20 @@
  * JsKernel worker thread — runs inside a worker_threads Worker.
  *
  * Receives { type: "run", code, capabilities?, serial } messages, executes code
- * in a vm sandbox, and notifies the host via SharedArrayBuffer.
+ * in a vm sandbox, and sends results back via parentPort.postMessage.
  *
- * The host passes capability allow-lists as plain JSON-serialisable arrays.
- * The worker calls buildCapabilityGlobals() to construct the actual capability
- * globals (including sandboxed fetch and __fs__) from those lists.
+ * Synchronisation with the host is entirely through the structured-clone message
+ * channel — no SharedArrayBuffer or Atomics are used. The host's setImmediate
+ * polling loop detects completion by receiving the postMessage reply.
+ *
+ * The worker runs in full Node.js context so it can build real capability globals
+ * (sandboxed fetch, __fs__ with path enforcement) via buildCapabilityGlobals().
  */
 
-import { parentPort, workerData } from "node:worker_threads";
+import { parentPort } from "node:worker_threads";
 import { createContext, Script } from "node:vm";
 import { buildCapabilityGlobals } from "./capabilities.js";
 import type { CapabilityManifest } from "./types.js";
-
-const { sab } = workerData as { sab: SharedArrayBuffer };
-const notifyBuf = new Int32Array(sab);
 
 // ── sandbox ───────────────────────────────────────────────────────────────────
 
@@ -39,15 +39,14 @@ parentPort!.on("message", async (msg: {
   logs.length = 0;
   sandbox["__finalAnswer__"] = undefined;
 
-  // Apply capability globals using the same buildCapabilityGlobals used by V8WasmKernel.
-  // The worker runs in full Node.js context so it can build fetch closures and __fs__ objects.
+  // Apply capability globals using buildCapabilityGlobals (same as V8WasmKernel).
   if (msg.capabilities) {
     const capGlobals = buildCapabilityGlobals(msg.capabilities);
     for (const [k, v] of Object.entries(capGlobals)) {
       sandbox[k] = v;
     }
   } else {
-    // Remove any capability globals from a previous run.
+    // Remove any capability globals left from a previous run.
     delete sandbox["fetch"];
     delete sandbox["__fs__"];
   }
@@ -57,8 +56,12 @@ parentPort!.on("message", async (msg: {
     let output = script.runInContext(sandbox);
 
     // If the code returned a Promise (e.g. __fs__.readFile(...)), await it so the
-    // resolved value (string/void) can be structured-cloned back to the host.
-    if (output instanceof Promise || (output !== null && typeof output === "object" && typeof (output as {then?: unknown}).then === "function")) {
+    // resolved value can be structured-cloned back to the host.
+    if (
+      output instanceof Promise ||
+      (output !== null && typeof output === "object" &&
+        typeof (output as { then?: unknown }).then === "function")
+    ) {
       output = await (output as Promise<unknown>);
     }
 
@@ -79,7 +82,4 @@ parentPort!.on("message", async (msg: {
       message: err instanceof Error ? err.message : String(err),
     });
   }
-
-  Atomics.store(notifyBuf, 0, msg.serial);
-  Atomics.notify(notifyBuf, 0);
 });

@@ -9,9 +9,15 @@ import type {
 } from "./types.js";
 
 // The worker must be a compiled .js file — worker_threads cannot execute TypeScript.
-// import.meta.url points to src/ during tests (via vitest's vite transform) but the
-// worker needs the actual compiled output. We resolve relative to __dir and swap
-// the src path for dist if we're running from source.
+// import.meta.url points to src/ when running under vitest (vite transform), but the
+// worker file must be the compiled output in dist/. We swap the path accordingly.
+//
+// dist/ availability in CI: turbo's build task runs before test with no cross-step
+// cache (GitHub Actions does not persist .turbo/), so tsc always produces dist/ fresh.
+// If turbo remote cache is ever added: turbo restores declared outputs to disk on a
+// cache hit, so dist/ will still be present. The one edge case to watch: if dist/ is
+// deleted between turbo build and test (e.g. by a cleanup step), turbo will not re-run
+// build — guard against this by not cleaning dist/ inside the CI test job.
 const __dir = dirname(fileURLToPath(import.meta.url));
 const WORKER_PATH = __dir.includes("/src/")
   ? __dir.replace("/src/", "/dist/") + "/JsKernelWorker.js"
@@ -21,35 +27,34 @@ const WORKER_PATH = __dir.includes("/src/")
  * Default JS kernel — executes agent code in an isolated worker_threads Worker.
  *
  * The vm sandbox runs in a dedicated OS thread, not in the caller's event loop.
- * Synchronous infinite loops (`while(true){}`) are terminated by Atomics.wait
- * timeout + worker.terminate() — the thread is fully killed, leaving no zombie
- * processes behind (fixes the 2026-06-06 fan-spin incident).
+ * Synchronous infinite loops (`while(true){}`) are terminated by a deadline poll
+ * + worker.terminate() — the OS thread is fully killed, leaving no zombie processes.
  *
- * State persists across run() calls: the worker is long-lived and the vm context
- * it holds keeps variables alive between steps. After a timeout the worker is
- * replaced so the next step starts with a clean context.
+ * Timeout mechanism: a setImmediate polling loop checks Date.now() against a
+ * deadline. When the deadline fires, worker.terminate() kills the thread and the
+ * promise rejects. This does NOT use SharedArrayBuffer or Atomics — synchronisation
+ * is handled entirely through the worker_threads message channel (postMessage /
+ * structured clone), which provides its own happens-before guarantees.
  *
- * This is NOT a production security boundary for adversarial code — the worker
- * still has access to Node.js APIs unless stripped. Use WasmtimeKernel or
- * isolated-vm for hard security boundaries.
+ * State persists across run() calls: the worker is long-lived and its vm context
+ * keeps variables alive between agent steps. After a timeout the worker is replaced
+ * so the next step starts with a clean context.
+ *
+ * This is NOT a production security boundary — the worker still has access to
+ * Node.js APIs. Use isolated-vm or WasmtimeKernel for hard security isolation.
  */
 export class JsKernel implements WasmKernel {
   #worker: Worker | null = null;
-  #sab: SharedArrayBuffer;
-  #notifyBuf: Int32Array;
   readonly #timeoutMs: number;
   #serial = 0;
 
   constructor(opts?: KernelOptions) {
     this.#timeoutMs = opts?.timeoutMs ?? 5_000;
-    this.#sab = new SharedArrayBuffer(4);
-    this.#notifyBuf = new Int32Array(this.#sab);
     this.#worker = this.#spawnWorker();
   }
 
   #spawnWorker(): Worker {
-    Atomics.store(this.#notifyBuf, 0, 0);
-    const w = new Worker(WORKER_PATH, { workerData: { sab: this.#sab } });
+    const w = new Worker(WORKER_PATH);
     // Suppress "Worker exited" errors that fire when we intentionally terminate on timeout.
     w.on("error", () => {});
     return w;
@@ -65,12 +70,9 @@ export class JsKernel implements WasmKernel {
 
     const serial = ++this.#serial;
 
-    // Pass capability manifest directly — the worker's full Node.js context can
-    // reconstruct fetch closures and __fs__ objects from the allow-lists.
+    // Pass capability manifest directly — the worker runs in full Node.js context
+    // and can reconstruct fetch closures and __fs__ objects from the allow-lists.
     const capPayload = capabilities ?? null;
-
-    // Reset the SAB to 0 so Atomics.wait below blocks until the worker writes serial.
-    Atomics.store(this.#notifyBuf, 0, 0);
 
     // Single promise that resolves/rejects when the worker responds OR times out.
     return new Promise<KernelResult>((resolve, reject) => {
@@ -99,16 +101,16 @@ export class JsKernel implements WasmKernel {
       };
 
       this.#worker!.on("message", handler);
-        this.#worker!.postMessage({ type: "run", code, capabilities: capPayload, serial });
+      this.#worker!.postMessage({ type: "run", code, capabilities: capPayload, serial });
 
-      // Polling loop to enforce timeout without blocking the event loop.
+      // Deadline polling — yields to the event loop between checks so incoming
+      // messages can be processed. Does not block the caller's thread.
       let timeoutHandle: NodeJS.Immediate;
       const poll = () => {
         if (Date.now() < deadline) {
           timeoutHandle = setImmediate(poll);
           return;
         }
-        // Timed out — remove listener, kill worker, reject.
         this.#worker!.off("message", handler);
         this.#worker!.terminate().catch(() => {});
         this.#worker = null;
@@ -122,8 +124,6 @@ export class JsKernel implements WasmKernel {
     if (this.#worker) {
       this.#worker.terminate().catch(() => {});
     }
-    this.#sab = new SharedArrayBuffer(4);
-    this.#notifyBuf = new Int32Array(this.#sab);
     this.#worker = this.#spawnWorker();
   }
 

@@ -60,14 +60,22 @@ jobs:
       - name: Build
         run: pnpm build
 
-      # Run tests for all packages except kernel-pyodide (handled separately below
-      # to avoid turbo caching WASM results across pyodide version bumps).
+      # Run tests for all packages except kernel-pyodide (handled separately below).
+      # Two-layer pyodide cache prevention (both layers needed):
+      #   Layer 1 — this --filter exclusion: stops kernel-pyodide reaching turbo entirely
+      #     in CI, where cold-cache turbo would otherwise record a cache entry keyed on
+      #     TS source hashes (which don't capture WASM content changes).
+      #   Layer 2 — turbo.json "@agentkit-js/kernel-pyodide#test": { "cache": false }:
+      #     guards the local `pnpm test` (turbo run test, no --filter) path so developers
+      #     running the full suite locally never get stale cached WASM test results either.
+      #   Both layers are intentional and non-redundant.
       - name: Test (excluding kernel-pyodide)
         run: pnpm turbo run test --filter=!@agentkit-js/kernel-pyodide
 
-      # kernel-pyodide runs outside turbo so its results are never cached.
-      # pyodide WASM content changes are invisible to turbo's TS-hash-based cache key;
-      # running directly ensures a pyodide upgrade always re-executes the tests.
+      # kernel-pyodide runs via pnpm --filter (direct vitest, bypasses turbo entirely).
+      # pyodide WASM content is opaque to turbo's input-hash — a new pyodide version
+      # with a different WASM bundle would produce identical TS hashes and hit a stale
+      # cache. Running directly guarantees the real WASM is loaded on every CI run.
       - name: Test kernel-pyodide (no cache)
         run: pnpm --filter @agentkit-js/kernel-pyodide test
 

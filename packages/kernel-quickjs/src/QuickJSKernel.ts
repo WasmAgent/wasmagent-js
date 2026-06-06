@@ -113,11 +113,28 @@ export class QuickJSKernel implements WasmKernel {
     try {
       const result = ctx.evalCode(code, "agent-step.js");
       const handle = ctx.unwrapResult(result);
-      output = ctx.dump(handle as object);
+
+      // Store the result in a QuickJS global so we can JSON.stringify it without dump().
+      // Storing avoids re-running the code (which could have side effects).
+      ctx.setProp(ctx.global, "__runOutput__", handle as object);
+      const jsonResult = ctx.evalCode(
+        "(function(){try{return JSON.stringify(__runOutput__);}catch(e){return '__SER_ERR__:'+e.message;}})()"
+      );
+      const jsonHandle = ctx.unwrapResult(jsonResult);
+      const jsonStr = ctx.dump(jsonHandle as object) as string;
+
+      if (typeof jsonStr === "string" && jsonStr.startsWith("__SER_ERR__:")) {
+        throw new Error(
+          "KernelSerializationError: the script's output contains a value that cannot be " +
+            "serialised (circular reference or non-JSON type). " +
+            "Return only JSON-serialisable values from agent code."
+        );
+      }
+
+      output = jsonStr === undefined ? undefined : JSON.parse(jsonStr as string);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("interrupted")) {
-        // Timeout — context is poisoned, reset for next call.
         await this.reset();
         throw new Error(`KernelError: Script execution timed out after ${this.#timeoutMs}ms`);
       }
@@ -131,13 +148,17 @@ export class QuickJSKernel implements WasmKernel {
     this.#logs = JSON.parse(logsJson) as string[];
 
     // Check __finalAnswer__ sentinel.
+    // Convention (matches JsKernel): any value other than `undefined` signals a final answer.
+    // `null` is a valid final answer. ctx.dump() returns JS `undefined` for QuickJS undefined.
     const faResult = ctx.evalCode("__finalAnswer__");
     const faHandle = ctx.unwrapResult(faResult);
     const faDump = ctx.dump(faHandle as object);
-    const isFinalAnswer = faDump !== undefined && faDump !== null;
+    const isFinalAnswer = faDump !== undefined;
+
+    const finalOutput = isFinalAnswer ? faDump : output;
 
     return {
-      output: isFinalAnswer ? faDump : output,
+      output: finalOutput,
       logs: this.#logs,
       isFinalAnswer,
     };

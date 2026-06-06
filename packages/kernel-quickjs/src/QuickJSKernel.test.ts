@@ -34,6 +34,12 @@ describe("QuickJSKernel (edge-safe, no node:vm)", () => {
     expect(result.output).toBe("done");
   });
 
+  it("null is a valid final answer — matches JsKernel semantics", async () => {
+    const result = await kernel.run("__finalAnswer__ = null;");
+    expect(result.isFinalAnswer).toBe(true);
+    expect(result.output).toBeNull();
+  });
+
   it("resets state on reset()", async () => {
     await kernel.run("var y = 99;");
     await kernel.reset();
@@ -55,5 +61,18 @@ describe("QuickJSKernel (edge-safe, no node:vm)", () => {
 
   it("snapshot() throws NotImplemented", async () => {
     await expect(kernel.snapshot()).rejects.toThrow(/does not support snapshot/);
+  });
+
+  it("throws KernelSerializationError for circular reference output (matches JsKernel DataCloneError behaviour)", async () => {
+    // QuickJS ctx.dump() would silently turn a circular ref into "[object Object]".
+    // The serialisation guard detects this and throws explicitly.
+    await expect(
+      kernel.run("var o = {}; o.self = o; o")
+    ).rejects.toThrow(/KernelSerializationError/);
+  });
+
+  it("returns JSON-serialisable objects cleanly", async () => {
+    const result = await kernel.run('({ a: 1, b: [2, 3], c: "hello" })');
+    expect(result.output).toEqual({ a: 1, b: [2, 3], c: "hello" });
   });
 });

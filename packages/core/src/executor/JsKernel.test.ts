@@ -36,6 +36,12 @@ describe("JsKernel (worker_threads isolation)", () => {
     expect(result.output).toBe("done");
   });
 
+  it("null is a valid final answer (isFinalAnswer = true when __finalAnswer__ = null)", async () => {
+    const result = await kernel.run("__finalAnswer__ = null;");
+    expect(result.isFinalAnswer).toBe(true);
+    expect(result.output).toBeNull();
+  });
+
   it("resets state on reset() — spawns fresh worker", async () => {
     await kernel.run("var y = 99;");
     await kernel.reset();
