@@ -25,7 +25,7 @@ export interface AgentEvent {
 }
 
 /** Structured step types mirroring smolagents' ActionStep / PlanningStep / FinalAnswerStep. */
-export type StepType = "action" | "planning" | "final_answer" | "tool_use" | "user_message";
+export type StepType = "action" | "planning" | "final_answer" | "tool_use" | "parallel_tool_use" | "user_message";
 
 export interface ActionStep {
   type: "action";
@@ -67,6 +67,29 @@ export interface ToolUseStep {
 }
 
 /**
+ * ParallelToolUseStep — represents a batch of tool invocations dispatched in parallel.
+ *
+ * Encodes one assistant message (with N tool_use blocks) and one user message
+ * (with N tool_result blocks in matching order), as required by the Anthropic and
+ * OpenAI multi-turn tool APIs when multiple tools are called in a single step.
+ */
+export interface ParallelToolUseCall {
+  toolCallId: string;
+  toolName: string;
+  toolInput: Record<string, unknown>;
+  toolOutput: string;
+  isError: boolean;
+}
+
+export interface ParallelToolUseStep {
+  type: "parallel_tool_use";
+  stepIndex: number;
+  /** Model thoughts / text before the tool calls (may be empty). */
+  thoughts: string;
+  calls: ParallelToolUseCall[];
+}
+
+/**
  * UserMessageStep — injects a plain user text message into conversation history.
  *
  * Used by ToolCallingAgent to seed the conversation with the task text directly
@@ -77,4 +100,4 @@ export interface UserMessageStep {
   content: string;
 }
 
-export type Step = ActionStep | PlanningStep | FinalAnswerStep | ToolUseStep | UserMessageStep;
+export type Step = ActionStep | PlanningStep | FinalAnswerStep | ToolUseStep | ParallelToolUseStep | UserMessageStep;

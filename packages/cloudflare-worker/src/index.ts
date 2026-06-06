@@ -111,15 +111,22 @@ async function handleRun(request: Request, env: Env): Promise<Response> {
     return jsonError('agentType must be "code" or "tool-calling"', 400);
   }
 
-  // C4: check KV cache when sessionId is provided.
-  if (sessionId && env.AGENTKIT_SESSIONS) {
-    const cached = await env.AGENTKIT_SESSIONS.get(sessionId, "text");
+  // C4: content-addressed cache key = SHA-256(task + agentType + maxSteps + model).
+  // sessionId is an optional grouping/audit label; the content hash is the actual key.
+  // This prevents a different task with the same sessionId from returning stale results.
+  const MODEL_ID = "claude-sonnet-4-6";
+  const kvKey = env.AGENTKIT_SESSIONS
+    ? await contentHash({ task, agentType, maxSteps, model: MODEL_ID })
+    : null;
+
+  if (kvKey && env.AGENTKIT_SESSIONS) {
+    const cached = await env.AGENTKIT_SESSIONS.get(kvKey, "text");
     if (cached) {
       return replayCachedSession(cached);
     }
   }
 
-  const model = new AnthropicModel("claude-sonnet-4-6", env.ANTHROPIC_API_KEY);
+  const model = new AnthropicModel(MODEL_ID, env.ANTHROPIC_API_KEY);
 
   const agentRun: AsyncGenerator<AgentEvent> =
     agentType === "tool-calling"
@@ -132,19 +139,21 @@ async function handleRun(request: Request, env: Env): Promise<Response> {
 
   (async () => {
     const allEvents: AgentEvent[] = [];
+    let ranSuccessfully = false;
     try {
       for await (const event of agentRun) {
         const line = `data: ${JSON.stringify(event)}\n\n`;
         await writer.write(encoder.encode(line));
-        // Collect events for KV caching (C4).
-        if (sessionId && env.AGENTKIT_SESSIONS) allEvents.push(event);
+        if (kvKey && env.AGENTKIT_SESSIONS) allEvents.push(event);
+        if (event.event === "final_answer") ranSuccessfully = true;
       }
       await writer.write(encoder.encode("data: [DONE]\n\n"));
 
-      // C4: persist completed session to KV.
-      if (sessionId && env.AGENTKIT_SESSIONS && allEvents.length > 0) {
+      // C4: only cache runs that completed with a final_answer.
+      // Errors and partial runs are not cached to avoid poisoning the cache.
+      if (kvKey && env.AGENTKIT_SESSIONS && ranSuccessfully && allEvents.length > 0) {
         await env.AGENTKIT_SESSIONS.put(
-          sessionId,
+          kvKey,
           JSON.stringify(allEvents),
           { expirationTtl: SESSION_TTL_SECONDS }
         );
@@ -202,4 +211,27 @@ function replayCachedSession(cachedJson: string): Response {
       ...CORS_HEADERS,
     },
   });
+}
+
+/**
+ * Content-addressed cache key: SHA-256 hex of the run's deterministic inputs (C4).
+ *
+ * Using content hash instead of bare sessionId prevents a different task with the
+ * same sessionId from hitting a stale cache entry.
+ * `crypto.subtle` is available in the Workers global scope.
+ */
+async function contentHash(inputs: {
+  task: string;
+  agentType: string;
+  maxSteps: number;
+  model: string;
+}): Promise<string> {
+  const material = JSON.stringify(inputs);
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(material)
+  );
+  return "run:" + [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }

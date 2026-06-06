@@ -95,50 +95,93 @@ export class PyodideKernel implements WasmKernel {
   }
 
   /**
-   * Inject Python-side capability globals based on the manifest (A2).
+   * Enforce capability constraints (A2) for the current run call.
    *
-   * - allowedHosts  → `__allowed_hosts__` list; Python code can use `urllib.request`
-   *   after checking `if host in __allowed_hosts__`. A deny helper `__check_host__`
-   *   is also injected so Python code can call it before making requests.
-   * - allowedReadPaths / allowedWritePaths → `__allowed_read_paths__` /
-   *   `__allowed_write_paths__` lists; a `__check_path__` helper validates access.
-   * - No capabilities → lists are empty; helper raises CapabilityDenied for any call.
+   * Network enforcement (allowedHosts):
+   *   Pyodide's HTTP exit in Node goes through the JS `fetch` global that Pyodide
+   *   bridges into Python's `urllib`. We replace `urllib.request.urlopen` with a
+   *   wrapper that validates the hostname against allowedHosts before delegating,
+   *   making the check mandatory rather than cooperative.
+   *   When allowedHosts is empty, all outbound requests are blocked.
+   *
+   * File-system enforcement (allowedReadPaths / allowedWritePaths):
+   *   Pyodide runs on Emscripten MEMFS — an in-memory virtual FS isolated from
+   *   the real disk. Unless NODEFS is explicitly mounted (which we never do),
+   *   Python file I/O is already sandboxed. The __check_path__ helpers remain as
+   *   advisory APIs for code that explicitly wants path validation.
+   *
+   * extraCapabilities: exposed as __extra_capabilities__ list for tool-level checks.
    */
   #applyCapabilities(py: PyodideInterface, capabilities?: Partial<CapabilityManifest>): void {
-    const hosts = JSON.stringify(capabilities?.allowedHosts ?? []);
-    const readPaths = JSON.stringify(capabilities?.allowedReadPaths ?? []);
-    const writePaths = JSON.stringify(capabilities?.allowedWritePaths ?? []);
-    const extraCaps = JSON.stringify(capabilities?.extraCapabilities ?? []);
+    const allowedHosts = capabilities?.allowedHosts ?? [];
+    const readPaths = capabilities?.allowedReadPaths ?? [];
+    const writePaths = capabilities?.allowedWritePaths ?? [];
+    const extraCaps = capabilities?.extraCapabilities ?? [];
+
+    // Serialize lists for safe injection into the Python snippet.
+    const hostsJson = JSON.stringify(JSON.stringify(allowedHosts));
+    const readJson = JSON.stringify(JSON.stringify(readPaths));
+    const writeJson = JSON.stringify(JSON.stringify(writePaths));
+    const extraJson = JSON.stringify(JSON.stringify(extraCaps));
 
     py.runPython(`
-import json as _json
+import json as _json, urllib.request as _urllib_req, urllib.parse as _urllib_parse
 
-__allowed_hosts__ = _json.loads(${JSON.stringify(hosts)})
-__allowed_read_paths__ = _json.loads(${JSON.stringify(readPaths)})
-__allowed_write_paths__ = _json.loads(${JSON.stringify(writePaths)})
-__extra_capabilities__ = _json.loads(${JSON.stringify(extraCaps)})
+_allowed_hosts = _json.loads(${hostsJson})
+__allowed_read_paths__ = _json.loads(${readJson})
+__allowed_write_paths__ = _json.loads(${writeJson})
+__extra_capabilities__ = _json.loads(${extraJson})
 
+# ── Network enforcement: mandatory urllib monkey-patch ────────────────────────
+# Replace urlopen so every HTTP/HTTPS call from Python is host-checked before
+# it reaches the network. This covers urllib, http.client, and any library
+# that delegates to them (requests is not available in Pyodide by default).
+
+_original_urlopen = _urllib_req.urlopen
+
+def _checked_urlopen(url, *args, **kwargs):
+    # Extract hostname from URL string or Request object.
+    raw = url.full_url if isinstance(url, _urllib_req.Request) else str(url)
+    hostname = _urllib_parse.urlparse(raw).hostname or ""
+    if not _allowed_hosts:
+        raise PermissionError(
+            f"CapabilityDenied: network access to '{hostname}' is denied "
+            f"(allowedHosts is empty)"
+        )
+    def _matches(host, pattern):
+        if pattern.startswith("*."):
+            return host.endswith(pattern[1:]) or host == pattern[2:]
+        return host == pattern
+    if not any(_matches(hostname, h) for h in _allowed_hosts):
+        raise PermissionError(
+            f"CapabilityDenied: '{hostname}' is not in allowedHosts {_allowed_hosts}"
+        )
+    return _original_urlopen(url, *args, **kwargs)
+
+_urllib_req.urlopen = _checked_urlopen
+
+# ── Advisory path-check helpers (FS is already sandboxed by Emscripten MEMFS) ─
 def __check_host__(host):
-    if not __allowed_hosts__:
-        raise PermissionError(f"CapabilityDenied: network access to '{host}' is denied (no hosts allowed)")
-    if not any(host == h or host.endswith('.' + h.lstrip('*').lstrip('.')) for h in __allowed_hosts__):
-        raise PermissionError(f"CapabilityDenied: '{host}' is not in __allowed_hosts__ {__allowed_hosts__}")
+    if not _allowed_hosts:
+        raise PermissionError(f"CapabilityDenied: network to '{host}' denied")
+    if not any((lambda p: host == p or host.endswith('.' + p.lstrip('*').lstrip('.')))(h) for h in _allowed_hosts):
+        raise PermissionError(f"CapabilityDenied: '{host}' not in allowedHosts")
 
 def __check_read_path__(path):
     if not __allowed_read_paths__:
-        raise PermissionError(f"CapabilityDenied: read access to '{path}' is denied (no paths allowed)")
+        raise PermissionError(f"CapabilityDenied: read '{path}' denied (no paths allowed)")
     if not any(path.startswith(p) for p in __allowed_read_paths__):
-        raise PermissionError(f"CapabilityDenied: read '{path}' not in __allowed_read_paths__ {__allowed_read_paths__}")
+        raise PermissionError(f"CapabilityDenied: read '{path}' not in allowedReadPaths")
 
 def __check_write_path__(path):
     if not __allowed_write_paths__:
-        raise PermissionError(f"CapabilityDenied: write access to '{path}' is denied (no paths allowed)")
+        raise PermissionError(f"CapabilityDenied: write '{path}' denied (no paths allowed)")
     if not any(path.startswith(p) for p in __allowed_write_paths__):
-        raise PermissionError(f"CapabilityDenied: write '{path}' not in __allowed_write_paths__ {__allowed_write_paths__}")
+        raise PermissionError(f"CapabilityDenied: write '{path}' not in allowedWritePaths")
 
-del _json
-`);
-  }
+del _json, _urllib_parse
+`);}
+
 
   async reset(): Promise<void> {
     if (!this.#py) return;

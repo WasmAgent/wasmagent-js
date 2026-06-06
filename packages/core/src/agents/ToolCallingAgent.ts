@@ -4,7 +4,15 @@ import { LazyObservationHandle } from "../memory/LazyObservationHandle.js";
 import { ToolRegistry } from "../tools/ToolRegistry.js";
 import type { ToolDefinition } from "../tools/types.js";
 import type { Model } from "../models/types.js";
-import type { AgentEvent, FinalAnswerStep, PlanningStep, ToolUseStep, UserMessageStep } from "../types/events.js";
+import type {
+  AgentEvent,
+  FinalAnswerStep,
+  ParallelToolUseCall,
+  ParallelToolUseStep,
+  PlanningStep,
+  ToolUseStep,
+  UserMessageStep,
+} from "../types/events.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant. Use the provided tools to answer questions.
 When you have a final answer, respond with plain text (no tool call).`;
@@ -25,13 +33,12 @@ export interface ToolCallingAgentOptions {
 /**
  * ToolCallingAgent — uses structured model tool_use blocks instead of code.
  *
- * Mirrors smolagents' ToolCallingAgent: each step the model decides which
- * tool to invoke (via native tool_use), the agent executes it, and the
- * observation is fed back as a tool_result content block in the next turn.
+ * Each step the model may return one or more tool_use calls. Multiple calls in
+ * a single step are dispatched in parallel using LazyObservationHandle (B3) and
+ * stored as a ParallelToolUseStep so MessageAssembler produces the correct
+ * one-assistant + one-user multi-turn format required by the Anthropic API.
  *
- * The conversation history is stored as ToolUseStep pairs so MessageAssembler
- * produces the correct assistant[tool_use] + user[tool_result] multi-turn
- * format required by the Anthropic and OpenAI tool APIs.
+ * Single-call steps are stored as ToolUseStep (backward-compatible).
  */
 export class ToolCallingAgent {
   readonly #tools: ToolRegistry;
@@ -74,7 +81,6 @@ export class ToolCallingAgent {
     this.#assembler.addStep(seedStep);
 
     for (let step = 1; step <= this.#maxSteps; step++) {
-      // Emit a planning step at configured interval.
       if (this.#planningInterval && step > 1 && (step - 1) % this.#planningInterval === 0) {
         yield* this.#runPlanningStep(traceId, parentTraceId, step);
       }
@@ -90,9 +96,11 @@ export class ToolCallingAgent {
 
       const messages = this.#assembler.build();
       let fullText = "";
-      let toolCallId: string | undefined;
-      let toolCallName: string | undefined;
-      let toolCallInput: Record<string, unknown> | undefined;
+
+      // Collect ALL tool calls from one generate() pass.
+      // Models may return multiple tool_use blocks in a single response
+      // (parallel function calling). Three scalars would overwrite; use an array.
+      const pendingCalls: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
 
       for await (const event of this.#model.generate(messages, {
         stream: true,
@@ -101,14 +109,16 @@ export class ToolCallingAgent {
         if (event.type === "text_delta" && event.delta) {
           fullText += event.delta;
         } else if (event.type === "tool_call" && event.toolCall) {
-          toolCallId = event.toolCall.id;
-          toolCallName = event.toolCall.name;
-          toolCallInput = event.toolCall.input;
+          pendingCalls.push({
+            id: event.toolCall.id,
+            name: event.toolCall.name,
+            input: event.toolCall.input,
+          });
         }
       }
 
-      // No tool call → model responded with text — treat as final answer.
-      if (!toolCallName || !toolCallId) {
+      // No tool calls → model responded with text — treat as final answer.
+      if (pendingCalls.length === 0) {
         const answer = fullText.trim() || "No answer provided";
         const finalStep: FinalAnswerStep = { type: "final_answer", answer };
         this.#assembler.addStep(finalStep);
@@ -123,63 +133,99 @@ export class ToolCallingAgent {
         return;
       }
 
-      yield {
-        traceId,
-        parentTraceId,
-        channel: "tool",
-        event: "tool_call",
-        data: { toolName: toolCallName, args: toolCallInput, callId: toolCallId },
-        timestampMs: Date.now(),
-      };
-
-      // B3: use a LazyObservationHandle for readOnly tools — the call is
-      // dispatched immediately and the handle is awaited only when needed.
-      // For non-readOnly tools we await inline (side-effects must complete
-      // before the agent proceeds).
-      const toolDef = this.#tools.get(toolCallName);
-      const isReadOnly = toolDef?.readOnly === true;
-
-      const observationHandle = LazyObservationHandle.fromToolResult(
-        this.#tools
-          .call({ toolName: toolCallName, args: toolCallInput ?? {}, callId: toolCallId })
-          .then((r) => {
-            const err = r.error !== undefined;
-            return err ? `Error: ${r.error!.message}` : JSON.stringify(r.output);
-          })
-      );
-
-      // For non-readOnly tools, block until complete before the next model call.
-      if (!isReadOnly) {
-        await observationHandle.resolve();
+      // Emit one tool_call event per call (consumers can correlate via callId).
+      for (const call of pendingCalls) {
+        yield {
+          traceId,
+          parentTraceId,
+          channel: "tool",
+          event: "tool_call",
+          data: { toolName: call.name, args: call.input, callId: call.id },
+          timestampMs: Date.now(),
+        };
       }
 
-      const toolOutput = await observationHandle.resolve();
-      const isError = toolOutput.startsWith("Error: ");
+      // B3: dispatch ALL calls in parallel immediately using LazyObservationHandle.
+      // Each handle wraps a tool execution Promise that is in-flight from this point.
+      const handles = pendingCalls.map((call) => ({
+        call,
+        handle: LazyObservationHandle.fromToolResult(
+          this.#tools
+            .call({ toolName: call.name, args: call.input, callId: call.id })
+            .then((r) =>
+              r.error !== undefined
+                ? `Error: ${r.error.message}`
+                : JSON.stringify(r.output)
+            )
+        ),
+      }));
 
-      const toolResultData = isError
-        ? { callId: toolCallId, toolName: toolCallName, output: null, error: { code: "execution_error", message: toolOutput.slice(7) } }
-        : { callId: toolCallId, toolName: toolCallName, output: JSON.parse(toolOutput), error: undefined };
+      // Await all results in parallel — wall-clock = slowest single call.
+      const outputs = await Promise.all(handles.map((h) => h.handle.resolve()));
 
-      yield {
-        traceId,
-        parentTraceId,
-        channel: "tool",
-        event: "tool_result",
-        data: toolResultData,
-        timestampMs: Date.now(),
-      };
+      // Emit tool_result events and build resolved call records.
+      const resolvedCalls: ParallelToolUseCall[] = [];
+      for (let i = 0; i < handles.length; i++) {
+        const { call } = handles[i]!;
+        const toolOutput = outputs[i]!;
+        const isError = toolOutput.startsWith("Error: ");
 
-      const toolUseStep: ToolUseStep = {
-        type: "tool_use",
-        stepIndex: step,
-        thoughts: fullText.trim(),
-        toolCallId,
-        toolName: toolCallName,
-        toolInput: toolCallInput ?? {},
-        toolOutput,
-        isError,
-      };
-      this.#assembler.addStep(toolUseStep);
+        const resultData = isError
+          ? {
+              callId: call.id,
+              toolName: call.name,
+              output: null,
+              error: { code: "execution_error" as const, message: toolOutput.slice(7) },
+            }
+          : {
+              callId: call.id,
+              toolName: call.name,
+              output: (() => { try { return JSON.parse(toolOutput); } catch { return toolOutput; } })(),
+              error: undefined,
+            };
+
+        yield {
+          traceId,
+          parentTraceId,
+          channel: "tool",
+          event: "tool_result",
+          data: resultData,
+          timestampMs: Date.now(),
+        };
+
+        resolvedCalls.push({
+          toolCallId: call.id,
+          toolName: call.name,
+          toolInput: call.input,
+          toolOutput,
+          isError,
+        });
+      }
+
+      // Store in history: single call → ToolUseStep (backward compat);
+      // multiple calls → ParallelToolUseStep (correct Anthropic multi-turn format).
+      if (resolvedCalls.length === 1) {
+        const c = resolvedCalls[0]!;
+        const singleStep: ToolUseStep = {
+          type: "tool_use",
+          stepIndex: step,
+          thoughts: fullText.trim(),
+          toolCallId: c.toolCallId,
+          toolName: c.toolName,
+          toolInput: c.toolInput,
+          toolOutput: c.toolOutput,
+          isError: c.isError,
+        };
+        this.#assembler.addStep(singleStep);
+      } else {
+        const parallelStep: ParallelToolUseStep = {
+          type: "parallel_tool_use",
+          stepIndex: step,
+          thoughts: fullText.trim(),
+          calls: resolvedCalls,
+        };
+        this.#assembler.addStep(parallelStep);
+      }
     }
 
     yield {

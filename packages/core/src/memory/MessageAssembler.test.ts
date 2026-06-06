@@ -285,4 +285,52 @@ describe("MessageAssembler", () => {
       expect(messages[2]?.content).toBe("second");
     });
   });
+
+  describe("ParallelToolUseStep (multi-tool batch)", () => {
+    it("produces one assistant message with N tool_use blocks + one user message with N tool_result blocks", () => {
+      assembler.addStep({
+        type: "parallel_tool_use",
+        stepIndex: 1,
+        thoughts: "calling two tools",
+        calls: [
+          { toolCallId: "t1", toolName: "search", toolInput: { q: "AI" }, toolOutput: "result1", isError: false },
+          { toolCallId: "t2", toolName: "calc", toolInput: { expr: "2+2" }, toolOutput: "4", isError: false },
+        ],
+      });
+      const messages = assembler.build();
+      // system + assistant + user = 3
+      expect(messages).toHaveLength(3);
+
+      const assistant = messages[1];
+      expect(assistant?.role).toBe("assistant");
+      const aBlocks = assistant?.content as unknown as Array<Record<string, unknown>>;
+      expect(aBlocks.some((b) => b["type"] === "text" && b["text"] === "calling two tools")).toBe(true);
+      const toolUseBlocks = aBlocks.filter((b) => b["type"] === "tool_use");
+      expect(toolUseBlocks).toHaveLength(2);
+      expect(toolUseBlocks[0]?.["id"]).toBe("t1");
+      expect(toolUseBlocks[1]?.["id"]).toBe("t2");
+
+      const user = messages[2];
+      expect(user?.role).toBe("user");
+      const uBlocks = user?.content as unknown as Array<Record<string, unknown>>;
+      const resultBlocks = uBlocks.filter((b) => b["type"] === "tool_result");
+      expect(resultBlocks).toHaveLength(2);
+      expect(resultBlocks[0]?.["toolUseId"]).toBe("t1");
+      expect(resultBlocks[1]?.["toolUseId"]).toBe("t2");
+    });
+
+    it("omits text block when thoughts is empty", () => {
+      assembler.addStep({
+        type: "parallel_tool_use",
+        stepIndex: 1,
+        thoughts: "",
+        calls: [
+          { toolCallId: "t1", toolName: "fn", toolInput: {}, toolOutput: "ok", isError: false },
+        ],
+      });
+      const messages = assembler.build();
+      const aBlocks = messages[1]?.content as unknown as Array<Record<string, unknown>>;
+      expect(aBlocks.every((b) => b["type"] !== "text")).toBe(true);
+    });
+  });
 });

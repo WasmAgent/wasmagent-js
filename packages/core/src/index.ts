@@ -36,4 +36,4 @@ export { Scheduler, SimpleIR } from "./scheduler/index.js";
 export type { ActionIR, IRNode, SchedulerEvent } from "./scheduler/index.js";
 
 // Types
-export type { AgentEvent, Step, ActionStep, PlanningStep, FinalAnswerStep, ToolUseStep, UserMessageStep } from "./types/index.js";
+export type { AgentEvent, Step, ActionStep, PlanningStep, FinalAnswerStep, ToolUseStep, ParallelToolUseStep, ParallelToolUseCall, UserMessageStep } from "./types/index.js";

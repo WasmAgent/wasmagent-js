@@ -189,4 +189,45 @@ describe("ToolCallingAgent", () => {
     const planningEvents = events.filter((e) => e.event === "planning");
     expect(planningEvents.length).toBeGreaterThan(0);
   });
+
+  it("collects ALL tool_calls from one generate() pass — parallel multi-call fix", async () => {
+    // Regression test: three scalar variables overwrote each other,
+    // so only the last tool_call was executed. Now we use an array.
+    let callCount = 0;
+    const model: Model = {
+      providerId: "mock/test",
+      async *generate(): AsyncGenerator<StreamEvent> {
+        callCount++;
+        if (callCount === 1) {
+          // Step 1: two tool_calls in one pass.
+          yield { type: "tool_call", toolCall: { type: "tool_use", id: "c1", name: "add", input: { a: 1, b: 2 } } };
+          yield { type: "tool_call", toolCall: { type: "tool_use", id: "c2", name: "add", input: { a: 10, b: 20 } } };
+          yield { type: "stop", stopReason: "tool_use" };
+        } else {
+          // Step 2: text final answer.
+          yield { type: "text_delta", delta: "Sum1=3, Sum2=30" };
+          yield { type: "stop", stopReason: "end_turn" };
+        }
+      },
+    };
+
+    const agent = new ToolCallingAgent({ tools: [addTool], model, maxSteps: 5 });
+    const events = [];
+    for await (const e of agent.run("add twice")) events.push(e);
+
+    // Both tool_call events must be emitted.
+    const toolCallEvents = events.filter((e) => e.event === "tool_call");
+    expect(toolCallEvents).toHaveLength(2);
+    expect((toolCallEvents[0]?.data as { callId: string }).callId).toBe("c1");
+    expect((toolCallEvents[1]?.data as { callId: string }).callId).toBe("c2");
+
+    // Both tool_result events must be present with correct outputs.
+    const toolResultEvents = events.filter((e) => e.event === "tool_result");
+    expect(toolResultEvents).toHaveLength(2);
+    expect((toolResultEvents[0]?.data as { output: unknown }).output).toBe(3);
+    expect((toolResultEvents[1]?.data as { output: unknown }).output).toBe(30);
+
+    // Final answer must arrive.
+    expect(events.some((e) => e.event === "final_answer")).toBe(true);
+  });
 });

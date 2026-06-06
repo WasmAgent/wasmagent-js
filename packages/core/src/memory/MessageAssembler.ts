@@ -114,7 +114,7 @@ export class MessageAssembler {
   get sealedChunkCount(): number {
     const chunkSize = this.#config.chunkSizeSteps ?? 0;
     if (chunkSize === 0) return 0;
-    const actionCount = this.#history.filter((s) => s.type === "action" || s.type === "tool_use").length;
+    const actionCount = this.#history.filter((s) => s.type === "action" || s.type === "tool_use" || s.type === "parallel_tool_use").length;
     return Math.floor(actionCount / chunkSize);
   }
 
@@ -164,6 +164,34 @@ export class MessageAssembler {
                 content: step.toolOutput,
               },
             ],
+          },
+        ];
+      case "parallel_tool_use":
+        // One assistant message with N tool_use blocks + one user message with N
+        // tool_result blocks in matching order — required by the Anthropic API
+        // when the model calls multiple tools in a single turn.
+        return [
+          {
+            role: "assistant",
+            content: [
+              ...(step.thoughts
+                ? [{ type: "text" as const, text: step.thoughts }]
+                : []),
+              ...step.calls.map((c) => ({
+                type: "tool_use" as const,
+                id: c.toolCallId,
+                name: c.toolName,
+                input: c.toolInput,
+              })),
+            ],
+          },
+          {
+            role: "user",
+            content: step.calls.map((c) => ({
+              type: "tool_result" as const,
+              toolUseId: c.toolCallId,
+              content: c.toolOutput,
+            })),
           },
         ];
       case "planning":
