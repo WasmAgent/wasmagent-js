@@ -29,10 +29,11 @@ describe("Scheduler", () => {
 
     const events = [];
     for await (const e of scheduler.execute(ir)) events.push(e);
-    expect(events).toHaveLength(2);
-    expect(events[0]?.type).toBe("node_start");
-    expect(events[1]?.type).toBe("node_done");
-    const doneEvent = events[1];
+    // readOnly nodes emit node_start + node_speculative + node_done (B1).
+    const types = events.map((e) => e.type);
+    expect(types).toContain("node_start");
+    expect(types).toContain("node_done");
+    const doneEvent = events.find((e) => e.type === "node_done");
     const result = (doneEvent?.type === "node_done" ? doneEvent.result : undefined) as { output: unknown };
     expect(result.output).toBe(10);
   });
@@ -48,7 +49,10 @@ describe("Scheduler", () => {
     for await (const e of scheduler.execute(ir)) events.push(e);
 
     // Both starts are emitted before any done (wave-parallel semantics).
-    const types = events.map((e) => e.type);
+    // Filter to node_start/node_done to ignore the new node_speculative events (B1).
+    const types = events
+      .filter((e) => e.type === "node_start" || e.type === "node_done")
+      .map((e) => e.type);
     expect(types).toEqual(["node_start", "node_start", "node_done", "node_done"]);
 
     // Both node IDs appear in starts and dones.
@@ -69,8 +73,10 @@ describe("Scheduler", () => {
     const events = [];
     for await (const e of scheduler.execute(ir)) events.push(e);
 
-    expect(events).toHaveLength(4);
-    const seq = events.map((e) => `${e.type}:${e.nodeId}`);
+    // Filter to core events only; ignore node_speculative (B1 observability).
+    const seq = events
+      .filter((e) => e.type === "node_start" || e.type === "node_done")
+      .map((e) => `${e.type}:${e.nodeId}`);
     // a starts → a done → b starts → b done
     expect(seq).toEqual(["node_start:a", "node_done:a", "node_start:b", "node_done:b"]);
   });
@@ -144,7 +150,8 @@ describe("Scheduler", () => {
 
     const events: string[] = [];
     for await (const e of scheduler.execute(ir)) {
-      events.push(`${e.type}:${e.nodeId}`);
+      const nodeId = "nodeId" in e ? e.nodeId : "_barrier_";
+      events.push(`${e.type}:${nodeId}`);
     }
 
     // r must start before w starts (speculative launch).

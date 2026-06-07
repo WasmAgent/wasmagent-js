@@ -22,9 +22,9 @@ There are several mature TypeScript agent frameworks. Here is an honest assessme
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
 | **npm downloads/month** | ~57M | ~10M | ~3.8M | ~4M | ~3.2M | early-stage |
 | **ToolCallingAgent** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **CodeAgent (sandboxed code exec)** | ❌ | ❌ | ❌ OS/Docker only | ❌ OS only | ⚠️ Worker isolation | ✅ WASM kernels |
+| **CodeAgent (sandboxed code exec)** | ❌ | ❌ | ❌ OS/Docker only | ❌ OS only | ⚠️ Worker isolation | ✅ 3-tier: in-process / true WASM / microVM |
 | **Python execution (edge-safe)** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ Pyodide-in-WASM |
-| **Anthropic prompt-cache management** | ⚠️ pass-through | ⚠️ pass-through | ⚠️ via adapter | ⚠️ pass-through | ❌ | ✅ auto breakpoints |
+| **Anthropic prompt-cache management** | ⚠️ pass-through | ⚠️ pass-through | ⚠️ via adapter | ⚠️ pass-through | ❌ | ✅ auto breakpoints + 1h TTL |
 | **Self-consistency / reflect-refine runners** | ❌ | ❌ manual | ❌ | ❌ | ❌ | ✅ built-in |
 | **Budget forcing** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | **DAG tool scheduler + speculative exec** | ❌ | ⚠️ graph-level | ❌ | ⚠️ workflow graph | ❌ | ✅ |
@@ -34,7 +34,7 @@ There are several mature TypeScript agent frameworks. Here is an honest assessme
 | **UI hooks (React/Next.js)** | ✅ best-in-class | ❌ | ❌ | ⚠️ via AI SDK | ⚠️ | ✅ useAgentRun |
 | **Provider integrations** | 40+ | 300+ | OpenAI-primary | 40+ | CF Workers AI | Anthropic + OpenAI-compat |
 | **Evals framework** | ❌ | ⚠️ LangSmith | ❌ | ✅ 12+ scorers | ❌ | ✅ 4 built-in scorers |
-| **Observability (OTel)** | ⚠️ LangSmith | ⚠️ LangSmith | ❌ | ✅ | ❌ | ✅ OtelBridge |
+| **Observability (OTel)** | ⚠️ LangSmith | ⚠️ LangSmith | ❌ | ✅ | ❌ | ✅ OtelBridge + GenAI semconv |
 | **Retry / resilience** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ RetryPolicy |
 | **Durable workflows / checkpointing** | ❌ | ✅ LangGraph | ❌ | ⚠️ partial | ✅ Durable Objects | ✅ Checkpointer |
 
@@ -48,28 +48,29 @@ There are several mature TypeScript agent frameworks. Here is an honest assessme
 
 ### Where agentkit-js is differentiated
 
-- **WASM code kernels** — No other framework ships JsKernel, V8WasmKernel, PyodideKernel, or WasmtimeKernel. This enables in-process sandboxed code execution that works on edge/serverless without Docker or OS subprocess access.
-- **Quality runners** — Self-consistency (majority vote), reflect-refine, budget forcing ("Wait" prefill), and parallel fork-join are not shipped as first-class APIs by any competitor.
-- **Anthropic prompt-cache optimization** — Framework actively manages `cache_control` breakpoint placement across multi-turn history. Competitors pass through or validate limits but do not optimise placement.
-- **Speculative tool execution** — Read-only, idempotent tools are pre-executed ahead of write barriers within a DAG step. No competitor implements this.
+- **Code execution kernels — three isolation tiers**: `VmKernel` (in-process node:vm, dev/low-trust), true WASM kernels (`@agentkit-js/kernel-quickjs`, `kernel-pyodide`, `kernel-wasmtime` — language-level isolation, edge-safe), and external microVM via `RemoteSandboxKernel` (E2B / Cloudflare Sandbox, full process isolation). No other framework ships all three tiers as a composable interface.
+- **Quality runners** — Self-consistency with answer extraction (boxed / last-line / custom), reflect-refine, budget forcing ("Wait" prefill), and parallel fork-join are not shipped as first-class APIs by any competitor.
+- **Anthropic prompt-cache optimization** — Framework actively manages `cache_control` breakpoint placement across multi-turn history, supports the 1-hour extended TTL (`ttl:"1h"`), and reports per-TTL cache usage. Competitors pass through or validate limits but do not optimise placement.
+- **Speculative tool execution** — Read-only, idempotent tools are pre-executed ahead of write barriers within a DAG step. The scheduler is awakened by `$<callId>` dependency references in the system prompt, enabling true parallel + ordered hybrid scheduling. No competitor implements this.
+- **GenAI semantic conventions** — `OtelBridge` emits standard `gen_ai.*` attributes (Datadog / Honeycomb / Grafana GenAI view compatible) alongside legacy names, switchable via `semconvMode`.
 
 ### Honest caveats
 
-agentkit-js is early-stage. The differentiating features (WASM kernels, quality runners, speculative scheduling) are technically novel but also niche — most teams pick a framework based on ecosystem breadth and documentation volume, where the mature options above win. Choose agentkit-js when sandboxed code execution, prompt-cache cost control, or output quality runners are first-order concerns.
+agentkit-js is early-stage. The differentiating features (code execution kernels, quality runners, speculative scheduling) are technically novel but also niche — most teams pick a framework based on ecosystem breadth and documentation volume, where the mature options above win. Choose agentkit-js when sandboxed code execution, prompt-cache cost control, or output quality runners are first-order concerns.
 
 ---
 
 ## Features
 
 - **Two agent modes** — `CodeAgent` (writes + executes code) and `ToolCallingAgent` (native tool_use)
-- **WASM sandboxing** — `JsKernel` enforces capability manifests; `PyodideKernel` runs CPython in WASM; `WasmtimeKernel` requires `@agentkit-js/kernel-wasmtime` + `javy`
-- **Prompt-cache optimization** — `MessageAssembler` builds cache-stable prefixes; Anthropic `cache_control` breakpoints respect the 4-breakpoint limit and per-chunk token thresholds automatically
-- **Quality runners** — majority-vote self-consistency, critique-refine cycles, "Wait" prefill budget forcing, parallel fork-join with synthesis
-- **DAG scheduling** — independent tool calls execute concurrently via `Scheduler`; read-only tools speculatively pre-execute ahead of write barriers; wired into `ToolCallingAgent` by default
+- **Code execution — three isolation tiers** — `VmKernel` (node:vm, in-process dev/test), `QuickJSKernel` / `PyodideKernel` / `WasmtimeKernel` (true WASM, language-level isolation, edge-safe), `RemoteSandboxKernel` (E2B / Cloudflare Sandbox microVM, full process isolation). Mix tiers via `factory.createKernel()`.
+- **Prompt-cache optimization** — `MessageAssembler` builds cache-stable prefixes; Anthropic `cache_control` breakpoints respect the 4-breakpoint limit, per-chunk token thresholds, and the 1-hour extended TTL (`ttl:"1h"`); per-TTL usage metering (5m vs 1h); OpenAI automatic prefix cache hit tracking
+- **Quality runners** — majority-vote self-consistency with answer extraction (boxed / last-line / custom hook), critique-refine cycles, "Wait" prefill budget forcing, parallel fork-join with synthesis
+- **DAG scheduling** — independent tool calls execute concurrently via `Scheduler`; read-only tools speculatively pre-execute ahead of write barriers; `$<callId>` dependency syntax in system prompt enables true data-dependency ordering; wired into `ToolCallingAgent` by default
 - **Long-history compaction** — `agent.assembler.compact(model, keepRecentSteps)` summarises old steps; inject a custom `MessageAssembler` via `assembler` option
 - **Production resilience** — automatic exponential backoff + jitter retry for 429 / 5xx / network errors on all model adapters; configurable via `RetryPolicy`
 - **Evals framework** — `runEval()` with built-in `exactMatch`, `toolCallAccuracy`, `trajectoryValidity`, `finalAnswerLength` scorers
-- **Observability** — `OtelBridge` maps `AgentEvent` streams to OTel-compatible spans with token/cache usage attributes; injectable exporter
+- **Observability** — `OtelBridge` maps `AgentEvent` streams to OTel-compatible spans; emits `gen_ai.*` semantic convention attributes (Datadog/Honeycomb/Grafana GenAI view compatible) with `semconvMode: "both" | "stable" | "legacy"`
 - **Checkpointing** — `InMemoryCheckpointer` (and interface for KV/Redis backends); `CheckpointableRun` saves state after each step; `await_human_input` pause events
 - **React hooks** — `@agentkit-js/react` provides `useAgentRun()` for streaming SSE agent events in Next.js / React apps
 - **Multi-model** — Anthropic (Claude) and OpenAI-compatible endpoints (Ollama, vLLM, llama.cpp)

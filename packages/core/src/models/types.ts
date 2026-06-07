@@ -44,11 +44,20 @@ export type ContentBlock =
 
 /**
  * Cache breakpoint — marks end of an immutable prefix segment (B1).
- * Anthropic: cache_control: { type: 'ephemeral' }
+ * Anthropic: cache_control: { type: 'ephemeral', ttl?: '5m' | '1h' }
+ *   - '5m' (default): standard 5-minute TTL
+ *   - '1h': extended 1-hour TTL (requires extended-cache-ttl-2025-04-11 beta header)
  * OpenAI: implicit prefix caching (no explicit marker needed)
  */
 export interface CacheBreakpoint {
   type: "ephemeral";
+  /**
+   * Cache TTL for Anthropic breakpoints.
+   * - '5m' (default): standard ephemeral cache, expires in 5 minutes
+   * - '1h': extended cache, expires in 1 hour; use for long agent workflows
+   *         where the same context is reused across many steps
+   */
+  ttl?: "5m" | "1h";
 }
 
 export interface ModelMessage {
@@ -87,10 +96,14 @@ export type ResponseFormat =
 export interface TokenUsage {
   inputTokens: number;
   outputTokens: number;
-  /** Tokens read from cache (Anthropic cache_read_input_tokens). */
+  /** Tokens read from the standard 5-minute cache (Anthropic cache_read_input_tokens / ephemeral_5m). */
   cacheReadTokens?: number;
   /** Tokens written to cache (Anthropic cache_creation_input_tokens). */
   cacheWriteTokens?: number;
+  /** Tokens read from the 1-hour extended cache (Anthropic ephemeral_1h_input_tokens). */
+  cacheReadTokens1h?: number;
+  /** Tokens written to the 1-hour extended cache (Anthropic cache_creation ephemeral_1h). */
+  cacheWriteTokens1h?: number;
 }
 
 export interface StreamEvent {

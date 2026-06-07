@@ -355,3 +355,73 @@ describe("OpenAIModel D1 reasoning-model params", () => {
     expect(params["temperature"]).toBeUndefined();
   });
 });
+
+// ── D2: OpenAI cached_tokens metering ────────────────────────────────────────
+
+describe("OpenAIModel D2 — prompt_tokens_details.cached_tokens", () => {
+  beforeEach(() => { vi.resetModules(); });
+
+  it("reads cached_tokens from prompt_tokens_details and maps to cacheReadTokens", async () => {
+    const chunk: OAIChunk = {
+      choices: [{ delta: {}, finish_reason: "stop" }],
+      usage: {
+        prompt_tokens: 200,
+        completion_tokens: 50,
+        // @ts-expect-error — OpenAI SDK type may not include this yet
+        prompt_tokens_details: { cached_tokens: 150 },
+      },
+    };
+    const { MockOpenAI } = makeOpenAIMock([chunk]);
+    vi.doMock("openai", () => ({ default: MockOpenAI }));
+    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "d2a");
+    const model = new OpenAIModel("gpt-4o", "key");
+    const events: StreamEvent[] = [];
+    for await (const ev of model.generate([{ role: "user", content: "hi" }])) {
+      events.push(ev);
+    }
+    vi.doUnmock("openai");
+    const usageEv = events.find((e) => e.type === "usage");
+    expect(usageEv?.usage?.cacheReadTokens).toBe(150);
+  });
+
+  it("does not set cacheReadTokens when cached_tokens is 0", async () => {
+    const chunk: OAIChunk = {
+      choices: [{ delta: {}, finish_reason: "stop" }],
+      usage: {
+        prompt_tokens: 200,
+        completion_tokens: 50,
+        // @ts-expect-error
+        prompt_tokens_details: { cached_tokens: 0 },
+      },
+    };
+    const { MockOpenAI } = makeOpenAIMock([chunk]);
+    vi.doMock("openai", () => ({ default: MockOpenAI }));
+    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "d2b");
+    const model = new OpenAIModel("gpt-4o", "key");
+    const events: StreamEvent[] = [];
+    for await (const ev of model.generate([{ role: "user", content: "hi" }])) {
+      events.push(ev);
+    }
+    vi.doUnmock("openai");
+    const usageEv = events.find((e) => e.type === "usage");
+    expect(usageEv?.usage?.cacheReadTokens).toBeUndefined();
+  });
+
+  it("does not set cacheReadTokens when prompt_tokens_details is absent", async () => {
+    const chunk: OAIChunk = {
+      choices: [{ delta: {}, finish_reason: "stop" }],
+      usage: { prompt_tokens: 100, completion_tokens: 30 },
+    };
+    const { MockOpenAI } = makeOpenAIMock([chunk]);
+    vi.doMock("openai", () => ({ default: MockOpenAI }));
+    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "d2c");
+    const model = new OpenAIModel("gpt-4o", "key");
+    const events: StreamEvent[] = [];
+    for await (const ev of model.generate([{ role: "user", content: "hi" }])) {
+      events.push(ev);
+    }
+    vi.doUnmock("openai");
+    const usageEv = events.find((e) => e.type === "usage");
+    expect(usageEv?.usage?.cacheReadTokens).toBeUndefined();
+  });
+});
