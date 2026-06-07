@@ -3,18 +3,19 @@ export { CodeAgent, ToolCallingAgent, stepCountIs, noProgress, costBudget, callF
 export type { CodeAgentOptions, ToolCallingAgentOptions, StopCondition, StopConditionContext, AsToolOptions, SubagentRunnable } from "./agents/index.js";
 
 // Executor
-export { JsKernel, VmKernel, createKernel, buildCapabilityGlobals, buildSandboxFetch, assertPathAllowed, matchGlob } from "./executor/index.js";
+export { JsKernel, VmKernel, createKernel, buildCapabilityGlobals, buildSandboxFetch, assertPathAllowed, matchGlob, ProgrammaticOrchestrator } from "./executor/index.js";
 export type {
   WasmKernel,
   KernelResult,
   CapabilityManifest,
   KernelOptions,
   ActionLanguage,
+  ProgrammaticResult,
 } from "./executor/index.js";
 
 // Memory
-export { MessageAssembler, LazyObservationHandle, InMemoryVectorStore, makeRetrievalTool } from "./memory/index.js";
-export type { AssemblerConfig, Retriever, EmbedResult, SearchResult } from "./memory/index.js";
+export { MessageAssembler, LazyObservationHandle, InMemoryVectorStore, makeRetrievalTool, createMemoryTool, MapKvBackend } from "./memory/index.js";
+export type { AssemblerConfig, EditToolResultsOptions, Retriever, EmbedResult, SearchResult, MemoryToolOptions } from "./memory/index.js";
 
 // Models
 export { AnthropicModel, AnthropicModels, OpenAIModel, OpenAIModels, CACHE_MIN_TOKENS, estimateTokens, estimateMessagesTokens, TokenBudget } from "./models/index.js";
@@ -36,7 +37,7 @@ export type {
   RetryPolicy,
 } from "./models/index.js";
 
-// Enhancement runners (P2/P3/S4/L4)
+// Enhancement runners
 export { SelfConsistencyRunner, ReflectRefineRunner, BudgetForcingRunner, ParallelForkJoinRunner } from "./enhancement/index.js";
 export type {
   SelfConsistencyOptions,
@@ -57,18 +58,17 @@ export type { ToolDefinition, ToolCall, ToolResult } from "./tools/index.js";
 export { Scheduler, SimpleIR, deriveDependencies } from "./scheduler/index.js";
 export type { ActionIR, IRNode, SchedulerEvent, CallDescriptor } from "./scheduler/index.js";
 
-// Evals (B1)
+// Evals
 export { exactMatch, toolCallAccuracy, trajectoryValidity, finalAnswerLength, collectTrace, runEval } from "./evals/index.js";
 export type { Scorer, ScorerResult, AgentTrace, EvalSample, EvalRunResult, AgentRunner } from "./evals/index.js";
 
-// Observability (C2)
+// Observability
 export { OtelBridge, InMemorySpanExporter, withOtel } from "./observability/index.js";
 export type { SpanExporter, ReadableSpan, SpanAttributes, OtelBridgeOptions } from "./observability/index.js";
 
-// Checkpoint / durable workflows (B4)
+// Checkpoint / durable workflows
 export { InMemoryCheckpointer, KvCheckpointer, CheckpointableRun, restoreFromSnapshot } from "./checkpoint/index.js";
 export type { Checkpointer, AgentSnapshot, CheckpointableAgentOptions, KvBackend } from "./checkpoint/index.js";
 
 // Types
 export type { AgentEvent, Step, ActionStep, PlanningStep, FinalAnswerStep, ToolUseStep, ParallelToolUseStep, ParallelToolUseCall, UserMessageStep } from "./types/index.js";
-

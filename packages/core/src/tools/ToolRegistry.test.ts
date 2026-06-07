@@ -300,3 +300,96 @@ describe("zodToJsonSchema additional branches", () => {
     expect(zodToJsonSchema(fakeSchema)).toEqual({});
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// L1-1: Deferred tools excluded from toJsonSchema()
+// L1-2: inputExamples surfaced in toJsonSchema()
+// L1-3: allowedCallers surfaced in toJsonSchema()
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("ToolRegistry — L1 advanced tool use", () => {
+  function makeTool(name: string, extra: Partial<ToolDefinition> = {}): ToolDefinition {
+    return {
+      name,
+      description: `${name} tool`,
+      inputSchema: z.object({ q: z.string() }),
+      outputSchema: z.string(),
+      readOnly: true,
+      idempotent: true,
+      forward: async () => "ok",
+      ...extra,
+    };
+  }
+
+  it("L1-1: deferred tool is excluded from toJsonSchema()", () => {
+    const registry = new ToolRegistry();
+    registry.register(makeTool("eager_tool"));
+    registry.register(makeTool("deferred_tool", { deferLoading: true }));
+
+    const schemas = registry.toJsonSchema() as Array<Record<string, unknown>>;
+    const names = schemas.map((s) => s["name"]);
+    expect(names).toContain("eager_tool");
+    expect(names).not.toContain("deferred_tool");
+  });
+
+  it("L1-1: toDeferredJsonSchema() returns only deferred tools", () => {
+    const registry = new ToolRegistry();
+    registry.register(makeTool("eager_tool"));
+    registry.register(makeTool("deferred_tool", { deferLoading: true }));
+
+    const deferred = registry.toDeferredJsonSchema() as Array<Record<string, unknown>>;
+    expect(deferred.map((s) => s["name"])).toEqual(["deferred_tool"]);
+  });
+
+  it("L1-1: hasDeferred is false when no deferred tools", () => {
+    const registry = new ToolRegistry();
+    registry.register(makeTool("tool_a"));
+    expect(registry.hasDeferred).toBe(false);
+  });
+
+  it("L1-1: hasDeferred is true when at least one deferred tool", () => {
+    const registry = new ToolRegistry();
+    registry.register(makeTool("tool_a", { deferLoading: true }));
+    expect(registry.hasDeferred).toBe(true);
+  });
+
+  it("L1-2: inputExamples appear in toJsonSchema() output", () => {
+    const registry = new ToolRegistry();
+    registry.register(makeTool("search_tool", {
+      inputExamples: [{ q: "example query" }],
+    }));
+    const schemas = registry.toJsonSchema() as Array<Record<string, unknown>>;
+    const schema = schemas.find((s) => s["name"] === "search_tool");
+    expect(schema?.["input_examples"]).toEqual([{ q: "example query" }]);
+  });
+
+  it("L1-2: no input_examples field when inputExamples is absent", () => {
+    const registry = new ToolRegistry();
+    registry.register(makeTool("plain_tool"));
+    const schemas = registry.toJsonSchema() as Array<Record<string, unknown>>;
+    const schema = schemas.find((s) => s["name"] === "plain_tool");
+    expect(schema?.["input_examples"]).toBeUndefined();
+  });
+
+  it("L1-3: allowedCallers appear in toJsonSchema() output", () => {
+    const registry = new ToolRegistry();
+    registry.register(makeTool("ptc_tool", {
+      allowedCallers: ["model"],
+    }));
+    const schemas = registry.toJsonSchema() as Array<Record<string, unknown>>;
+    const schema = schemas.find((s) => s["name"] === "ptc_tool");
+    expect(schema?.["allowed_callers"]).toEqual(["model"]);
+  });
+
+  it("L1-3: hasProgrammaticCallers is true when a tool has allowedCallers", () => {
+    const registry = new ToolRegistry();
+    registry.register(makeTool("ptc_tool", { allowedCallers: ["model"] }));
+    expect(registry.hasProgrammaticCallers).toBe(true);
+  });
+
+  it("L1-3: hasProgrammaticCallers is false when no tool has allowedCallers", () => {
+    const registry = new ToolRegistry();
+    registry.register(makeTool("plain_tool"));
+    expect(registry.hasProgrammaticCallers).toBe(false);
+  });
+});

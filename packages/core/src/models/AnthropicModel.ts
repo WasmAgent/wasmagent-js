@@ -178,18 +178,39 @@ export class AnthropicModel implements Model {
       ...(systemParam ? { system: systemParam } : {}),
       messages: trimmedMessages,
     };
-    // D1: inject extended-cache-ttl beta header when any breakpoint uses ttl:"1h".
-    if (has1hTtl) {
-      (streamParams as unknown as Record<string, unknown>)["betas"] = ["extended-cache-ttl-2025-04-11"];
-    }
+    // Collect beta headers: 1h TTL + advanced tool use + PTC as needed.
+    const betas: string[] = [];
+    if (has1hTtl) betas.push("extended-cache-ttl-2025-04-11");
+
     if (opts.tools && opts.tools.length > 0) {
-      // Mark the last tool with cache_control so tools array is cached as a prefix (B1).
-      const tools = opts.tools.map((t, i) =>
-        i === opts.tools!.length - 1
-          ? { ...t as object, cache_control: { type: "ephemeral" as const } }
-          : t
-      );
-      (streamParams as unknown as Record<string, unknown>)["tools"] = tools;
+      const allTools = opts.tools as Array<Record<string, unknown>>;
+
+      // L1-1: detect deferred tools — add advanced-tool-use beta.
+      const hasDeferredTools = allTools.some((t) => t["deferLoading"] === true);
+      if (hasDeferredTools) betas.push("advanced-tool-use-2025-11-20");
+
+      // L1-3: detect PTC tools — add code-execution beta.
+      const hasPtcTools = allTools.some((t) => Array.isArray(t["allowed_callers"]));
+      if (hasPtcTools) betas.push("code_execution_20260120");
+
+      // Filter out framework-internal fields before sending to the API.
+      const wireTools = allTools
+        .filter((t) => !t["deferLoading"])
+        .map((t, i, arr) => {
+          const { deferLoading: _dl, ...rest } = t;
+          const wire: Record<string, unknown> = { ...rest };
+          // Mark last non-deferred tool with cache_control (B1).
+          if (i === arr.length - 1) wire["cache_control"] = { type: "ephemeral" };
+          return wire;
+        });
+
+      if (wireTools.length > 0) {
+        (streamParams as unknown as Record<string, unknown>)["tools"] = wireTools;
+      }
+    }
+
+    if (betas.length > 0) {
+      (streamParams as unknown as Record<string, unknown>)["betas"] = betas;
     }
     const stream = client.messages.stream(streamParams);
 
