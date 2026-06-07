@@ -393,3 +393,44 @@ describe("ToolRegistry — L1 advanced tool use", () => {
     expect(registry.hasProgrammaticCallers).toBe(false);
   });
 });
+
+// ── A2: deferLoading + inputExamples mutual exclusion ────────────────────────
+
+describe("ToolRegistry — A2 deferLoading + inputExamples mutual exclusion", () => {
+  function makeTool(name: string, extra: Partial<ToolDefinition> = {}): ToolDefinition {
+    return {
+      name,
+      description: `${name} tool`,
+      inputSchema: z.object({ q: z.string() }),
+      outputSchema: z.string(),
+      readOnly: true,
+      idempotent: true,
+      forward: async () => "ok",
+      ...extra,
+    };
+  }
+
+  it("throws when a tool has both deferLoading:true and inputExamples", () => {
+    const registry = new ToolRegistry();
+    expect(() =>
+      registry.register(makeTool("conflict_tool", {
+        deferLoading: true,
+        inputExamples: [{ q: "example" }],
+      }))
+    ).toThrow(/mutually exclusive/);
+  });
+
+  it("allows deferLoading:true without inputExamples", () => {
+    const registry = new ToolRegistry();
+    expect(() =>
+      registry.register(makeTool("ok_deferred", { deferLoading: true }))
+    ).not.toThrow();
+  });
+
+  it("allows inputExamples without deferLoading", () => {
+    const registry = new ToolRegistry();
+    expect(() =>
+      registry.register(makeTool("ok_examples", { inputExamples: [{ q: "ex" }] }))
+    ).not.toThrow();
+  });
+});

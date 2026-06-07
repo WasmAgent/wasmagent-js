@@ -27,7 +27,14 @@ export type AgentEvent =
   | AgentEventBase & { channel: "text";     event: "error";               data: { error: string; step?: number } }
   | AgentEventBase & { channel: "status";   event: "status";              data: { phase: "tool_executing"; toolName?: string; callId?: string; step: number } }
   /** B4: human-in-the-loop pause point. Agent is suspended until humanResponse is provided. */
-  | AgentEventBase & { channel: "status";   event: "await_human_input";   data: { promptId: string; prompt: string; step: number } };
+  | AgentEventBase & { channel: "status";   event: "await_human_input";   data: { promptId: string; prompt: string; step: number } }
+  /**
+   * E1: model inference span markers for GenAI semconv.
+   * model_start — emitted before each model.generate() call; opens the 'chat' inference span.
+   * model_done  — emitted after the stream ends; closes it with finish reason and token usage.
+   */
+  | AgentEventBase & { channel: "model";    event: "model_start";         data: { modelId: string; step: number } }
+  | AgentEventBase & { channel: "model";    event: "model_done";          data: { modelId: string; step: number; finishReason: string; inputTokens?: number; outputTokens?: number; thinkingTokens?: number; cacheReadTokens?: number } };
 
 /** Structured step types mirroring smolagents' ActionStep / PlanningStep / FinalAnswerStep. */
 export type StepType = "action" | "planning" | "final_answer" | "tool_use" | "parallel_tool_use" | "user_message";

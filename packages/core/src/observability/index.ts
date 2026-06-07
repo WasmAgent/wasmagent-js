@@ -98,6 +98,8 @@ export class OtelBridge {
   readonly #runs = new Map<string, LiveSpan>();
   readonly #steps = new Map<string, LiveSpan>();
   readonly #tools = new Map<string, LiveSpan>();
+  /** E1: one inference span per model generation call, keyed by traceId:step. */
+  readonly #inferences = new Map<string, LiveSpan>();
   readonly #finished: ReadableSpan[] = [];
 
   constructor(opts: OtelBridgeOptions = {}) {
@@ -149,6 +151,48 @@ export class OtelBridge {
           live.span.status = d.error ? "error" : "ok";
           this.#close(live, timestampMs);
           this.#tools.delete(d.callId);
+        }
+        break;
+      }
+
+      case "model_start": {
+        // E1: open a GenAI inference span (gen_ai.operation.name = "chat").
+        const d = (ev as { data: { modelId: string; step: number } }).data;
+        const inferKey = `${traceId}:${d.step}`;
+        const stepSpan = this.#steps.get(`${traceId}:${d.step}`);
+        const parentId = stepSpan?.span.spanId ?? this.#runs.get(traceId)?.span.spanId;
+        const spanName = this.#semconvMode === "legacy" ? `model.chat` : "chat";
+        const child = this.#open(traceId, parentId, spanName, timestampMs);
+        this.#setAttr(child.attributes, "model.id", "gen_ai.request.model", d.modelId);
+        this.#setAttr(child.attributes, null, "gen_ai.operation.name", "chat");
+        this.#setAttr(child.attributes, null, "gen_ai.system", "anthropic");
+        this.#inferences.set(inferKey, { span: child, ended: false });
+        break;
+      }
+
+      case "model_done": {
+        // E1: close the inference span with finish reason + token usage.
+        const d = (ev as { data: { modelId: string; step: number; finishReason: string; inputTokens?: number; outputTokens?: number; thinkingTokens?: number; cacheReadTokens?: number } }).data;
+        const inferKey = `${traceId}:${d.step}`;
+        const live = this.#inferences.get(inferKey);
+        if (live && !live.ended) {
+          live.span.status = "ok";
+          this.#setAttr(live.span.attributes, "model.id", "gen_ai.response.model", d.modelId);
+          this.#setAttr(live.span.attributes, "model.finishReason", "gen_ai.response.finish_reasons", d.finishReason);
+          if (d.inputTokens !== undefined) {
+            this.#setAttr(live.span.attributes, "usage.inputTokens", "gen_ai.usage.input_tokens", d.inputTokens);
+          }
+          if (d.outputTokens !== undefined) {
+            this.#setAttr(live.span.attributes, "usage.outputTokens", "gen_ai.usage.output_tokens", d.outputTokens);
+          }
+          if (d.thinkingTokens !== undefined) {
+            this.#setAttr(live.span.attributes, "usage.thinkingTokens", "gen_ai.usage.thinking_tokens", d.thinkingTokens);
+          }
+          if (d.cacheReadTokens !== undefined) {
+            this.#setAttr(live.span.attributes, "usage.cacheReadTokens", "gen_ai.usage.cache_read_input_tokens", d.cacheReadTokens);
+          }
+          this.#close(live, timestampMs);
+          this.#inferences.delete(inferKey);
         }
         break;
       }
@@ -228,9 +272,11 @@ export class OtelBridge {
     for (const [, live] of this.#runs) if (!live.ended) this.#close(live, nowMs);
     for (const [, live] of this.#steps) if (!live.ended) this.#close(live, nowMs);
     for (const [, live] of this.#tools) if (!live.ended) this.#close(live, nowMs);
+    for (const [, live] of this.#inferences) if (!live.ended) this.#close(live, nowMs);
     this.#runs.clear();
     this.#steps.clear();
     this.#tools.clear();
+    this.#inferences.clear();
     this.flush();
   }
 

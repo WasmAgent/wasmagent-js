@@ -13,6 +13,37 @@ import { withRetryGenerator } from "./retry.js";
 const ANTHROPIC_MAX_CACHE_BREAKPOINTS = 4;
 
 /**
+ * Single source of truth for Anthropic beta header strings.
+ * All values are verified against official Anthropic / AWS Bedrock docs.
+ * Reference: https://anthropic.com/engineering/advanced-tool-use (2025-11)
+ *            https://docs.aws.amazon.com/bedrock/latest/userguide/tool-use.html
+ */
+export const ANTHROPIC_BETAS = {
+  /** 1-hour extended prompt cache TTL. */
+  EXTENDED_CACHE_TTL:  "extended-cache-ttl-2025-04-11",
+  /** Interleaved extended thinking (models ≤4.6). */
+  INTERLEAVED_THINKING: "interleaved-thinking-2025-05-14",
+  /** Advanced tool use: defer_loading + input_examples + allowed_callers. */
+  ADVANCED_TOOL_USE:   "advanced-tool-use-2025-11-20",
+  /**
+   * Server-side code execution sandbox.
+   * Verified: anthropic.com/engineering/advanced-tool-use blog (2025-11),
+   * litellm & unified.to samples (2025-12 – 2026-03).
+   * Previous value "code_execution_20260120" was a fabricated future-dated string.
+   */
+  CODE_EXECUTION:      "code_execution_20250825",
+  /**
+   * Server-side context management (clear_tool_uses strategy).
+   * Verified: AWS Bedrock docs clear_tool_uses_20250919 (2026).
+   */
+  CONTEXT_MANAGEMENT:  "context-management-2025-06-27",
+  /** Server-side memory tool. */
+  MEMORY_TOOL:         "memory-tool-2025-11",
+  /** Server-side MCP client connector (defer remote tools without local expansion). */
+  MCP_CLIENT:          "mcp-client-2025-11-20",
+} as const;
+
+/**
  * Trim cache breakpoints so the total never exceeds ANTHROPIC_MAX_CACHE_BREAKPOINTS.
  * System (1) + tools (1) = 2 slots consumed; at most 2 remain for history.
  */
@@ -82,6 +113,13 @@ export interface AnthropicModelOptions {
    * Mutually exclusive with createMemoryTool() usage.
    */
   serverSideMemory?: boolean;
+  /**
+   * A1: Variant of the Tool Search server tool to inject when deferred tools are present.
+   * - "regex" (default): tool_search_tool_regex_20251119
+   * - "bm25": tool_search_tool_bm25_20251119
+   * Only relevant when at least one registered tool has deferLoading: true.
+   */
+  toolSearchVariant?: "regex" | "bm25";
 }
 
 export class AnthropicModel implements Model {
@@ -176,7 +214,7 @@ export class AnthropicModel implements Model {
     };
 
     const betas: string[] = [];
-    if (has1hTtl) betas.push("extended-cache-ttl-2025-04-11");
+    if (has1hTtl) betas.push(ANTHROPIC_BETAS.EXTENDED_CACHE_TTL);
 
     // A1: Adaptive thinking / extended thinking support.
     if (opts.thinking && opts.thinking.mode !== "off") {
@@ -185,7 +223,7 @@ export class AnthropicModel implements Model {
         (streamParams as unknown as Record<string, unknown>)["thinking"] = thinkingParam;
         // Adaptive thinking requires interleaved-thinking beta for ≤4.6 models.
         if (!isAdaptiveThinkingModel(this.modelId)) {
-          betas.push("interleaved-thinking-2025-05-14");
+          betas.push(ANTHROPIC_BETAS.INTERLEAVED_THINKING);
         }
         // When thinking is enabled, temperature must be 1 (Anthropic requirement).
         if (opts.temperature === undefined || opts.temperature !== 1) {
@@ -217,18 +255,50 @@ export class AnthropicModel implements Model {
     if (opts.tools && opts.tools.length > 0) {
       const allTools = opts.tools as Array<Record<string, unknown>>;
       const hasDeferredTools = allTools.some((t) => t["deferLoading"] === true);
-      if (hasDeferredTools) betas.push("advanced-tool-use-2025-11-20");
       const hasPtcTools = allTools.some((t) => Array.isArray(t["allowed_callers"]));
-      if (hasPtcTools) betas.push("code_execution_20260120");
 
-      const wireTools = allTools
-        .filter((t) => !t["deferLoading"])
-        .map((t, i, arr) => {
-          const { deferLoading: _dl, ...rest } = t;
-          const wire: Record<string, unknown> = { ...rest };
-          if (i === arr.length - 1) wire["cache_control"] = { type: "ephemeral" };
-          return wire;
-        });
+      if (hasDeferredTools) {
+        betas.push(ANTHROPIC_BETAS.ADVANCED_TOOL_USE);
+      }
+      if (hasPtcTools) {
+        // PTC (programmatic tool calling) uses the code_execution sandbox beta.
+        betas.push(ANTHROPIC_BETAS.CODE_EXECUTION);
+      }
+
+      // A1: When deferred tools are present, inject the tool_search server tool so
+      // the model can retrieve them on demand. Without this, deferred tools are
+      // unreachable — the model has no mechanism to load them.
+      // Per Anthropic docs (advanced-tool-use, 2025-11): tool_search_tool_* MUST be
+      // in the tools array alongside defer_loading:true tool definitions.
+      const toolSearchVariant = this.#opts.toolSearchVariant;
+      const toolSearchType = toolSearchVariant === "bm25"
+        ? "tool_search_tool_bm25_20251119"
+        : "tool_search_tool_regex_20251119";
+
+      // Build wire tools:
+      //  - Non-deferred tools: included as-is (strip deferLoading field if present).
+      //  - Deferred tools: included with defer_loading:true (rename deferLoading → defer_loading).
+      //  - tool_search tool: prepended when any deferred tools exist.
+      const wireTools: Array<Record<string, unknown>> = [];
+
+      if (hasDeferredTools) {
+        wireTools.push({ type: toolSearchType, name: toolSearchType.replace(/_20\d{6}$/, "") });
+      }
+
+      for (let i = 0; i < allTools.length; i++) {
+        const t = allTools[i]!;
+        const isDeferred = t["deferLoading"] === true;
+        const { deferLoading: _dl, ...rest } = t;
+        const wire: Record<string, unknown> = { ...rest };
+        if (isDeferred) {
+          wire["defer_loading"] = true;
+        }
+        // Cache control on the last tool for prompt-cache efficiency.
+        if (i === allTools.length - 1) {
+          wire["cache_control"] = { type: "ephemeral" };
+        }
+        wireTools.push(wire);
+      }
 
       if (wireTools.length > 0) {
         // Merge with any synthetic structured-output tool already added.
@@ -240,8 +310,8 @@ export class AnthropicModel implements Model {
     }
 
     // D1: server-side context management / memory betas.
-    if (this.#opts.serverSideContextManagement) betas.push("context-management-2025-11");
-    if (this.#opts.serverSideMemory) betas.push("memory-tool-2025-11");
+    if (this.#opts.serverSideContextManagement) betas.push(ANTHROPIC_BETAS.CONTEXT_MANAGEMENT);
+    if (this.#opts.serverSideMemory) betas.push(ANTHROPIC_BETAS.MEMORY_TOOL);
 
     if (betas.length > 0) {
       (streamParams as unknown as Record<string, unknown>)["betas"] = betas;

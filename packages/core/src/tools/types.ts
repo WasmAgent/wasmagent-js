@@ -58,6 +58,10 @@ export interface ToolDefinition<TInput = unknown, TOutput = unknown> {
    * L1-2: Few-shot input examples for this tool.
    * Providing 1–5 examples improves parameter accuracy from ~72% to ~90%.
    * Maps to Anthropic API's input_examples field (advanced-tool-use-2025-11-20).
+   *
+   * ⚠️  Mutually exclusive with deferLoading:true — Tool Search does not support
+   * input_examples on deferred tools (Anthropic docs 2026-03).
+   * ToolRegistry.register() throws if both are set.
    */
   inputExamples?: Partial<TInput>[];
   /**

@@ -387,3 +387,113 @@ describe("AnthropicModel D1 — 1h extended TTL cache", () => {
     expect(usageEv?.usage?.cacheWriteTokens1h).toBe(40);
   });
 });
+
+// ── A1: Tool Search injection for deferred tools ──────────────────────────────
+
+describe("AnthropicModel A1 — Tool Search injection for deferred tools", () => {
+  beforeEach(() => { vi.resetModules(); });
+
+  async function captureStreamParams(
+    tools: Array<Record<string, unknown>>,
+    modelId = "claude-sonnet-4-6"
+  ): Promise<Record<string, unknown>> {
+    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
+    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
+    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "a1");
+    const model = new AnthropicModel(modelId, "key");
+    for await (const _ of model.generate(
+      [{ role: "user", content: "hi" }],
+      { tools: tools as never }
+    )) { /* consume */ }
+    vi.doUnmock("@anthropic-ai/sdk");
+    return mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+  }
+
+  it("injects tool_search_tool_regex when deferred tools present", async () => {
+    const params = await captureStreamParams([
+      { name: "eager", description: "eager", input_schema: {}, deferLoading: false },
+      { name: "lazy", description: "lazy", input_schema: {}, deferLoading: true },
+    ]);
+    const wireTools = params["tools"] as Array<Record<string, unknown>>;
+    const types = wireTools.map((t) => t["type"]);
+    expect(types).toContain("tool_search_tool_regex_20251119");
+  });
+
+  it("deferred tool appears in wire with defer_loading:true", async () => {
+    const params = await captureStreamParams([
+      { name: "eager", description: "eager", input_schema: {}, deferLoading: false },
+      { name: "lazy", description: "lazy", input_schema: {}, deferLoading: true },
+    ]);
+    const wireTools = params["tools"] as Array<Record<string, unknown>>;
+    const lazyWire = wireTools.find((t) => t["name"] === "lazy");
+    expect(lazyWire?.["defer_loading"]).toBe(true);
+    // deferLoading (camelCase) must not appear in the wire payload
+    expect(lazyWire?.["deferLoading"]).toBeUndefined();
+  });
+
+  it("eager tool does NOT get defer_loading:true", async () => {
+    const params = await captureStreamParams([
+      { name: "eager", description: "eager", input_schema: {} },
+    ]);
+    const wireTools = params["tools"] as Array<Record<string, unknown>>;
+    const eagerWire = wireTools.find((t) => t["name"] === "eager");
+    expect(eagerWire?.["defer_loading"]).toBeUndefined();
+  });
+
+  it("does NOT inject tool_search when no deferred tools", async () => {
+    const params = await captureStreamParams([
+      { name: "eager", description: "eager", input_schema: {} },
+    ]);
+    const wireTools = params["tools"] as Array<Record<string, unknown>>;
+    const types = wireTools.map((t) => t["type"]);
+    expect(types).not.toContain("tool_search_tool_regex_20251119");
+    expect(types).not.toContain("tool_search_tool_bm25_20251119");
+  });
+
+  it("pushes advanced-tool-use-2025-11-20 beta when deferred tools present", async () => {
+    const params = await captureStreamParams([
+      { name: "lazy", description: "lazy", input_schema: {}, deferLoading: true },
+    ]);
+    const betas = params["betas"] as string[] | undefined;
+    expect(betas).toContain("advanced-tool-use-2025-11-20");
+  });
+});
+
+// ── B1: ANTHROPIC_BETAS constants correctness ─────────────────────────────────
+
+describe("AnthropicModel B1 — ANTHROPIC_BETAS constants", () => {
+  beforeEach(() => { vi.resetModules(); });
+
+  it("code_execution beta does not contain a future year (≥2026)", async () => {
+    const { ANTHROPIC_BETAS } = await import("../models/AnthropicModel.js?t=" + Date.now() + "b1a");
+    const val = ANTHROPIC_BETAS.CODE_EXECUTION;
+    // The old fabricated value was "code_execution_20260120" — must not match
+    expect(val).not.toMatch(/2026/);
+    expect(val).toMatch(/^code_execution_\d{8}$/);
+  });
+
+  it("context-management beta does not use the wrong short form", async () => {
+    const { ANTHROPIC_BETAS } = await import("../models/AnthropicModel.js?t=" + Date.now() + "b1b");
+    const val = ANTHROPIC_BETAS.CONTEXT_MANAGEMENT;
+    // Old wrong value was "context-management-2025-11"
+    expect(val).not.toBe("context-management-2025-11");
+    expect(val).toContain("context-management");
+  });
+
+  it("all betas are assembled from ANTHROPIC_BETAS (no inline literals with dates)", async () => {
+    const { AnthropicModel, ANTHROPIC_BETAS } = await import("../models/AnthropicModel.js?t=" + Date.now() + "b1c");
+    const knownValues = new Set(Object.values(ANTHROPIC_BETAS));
+    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
+    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
+    const model = new AnthropicModel("claude-sonnet-4-6", "key");
+    for await (const _ of model.generate(
+      [{ role: "user", content: "u".repeat(5000), cacheBreakpoint: { type: "ephemeral", ttl: "1h" } }]
+    )) { /* consume */ }
+    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    const betas = (call["betas"] ?? []) as string[];
+    for (const b of betas) {
+      expect(knownValues.has(b)).toBe(true);
+    }
+    vi.doUnmock("@anthropic-ai/sdk");
+  });
+});
