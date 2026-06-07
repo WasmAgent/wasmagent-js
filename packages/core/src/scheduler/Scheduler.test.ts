@@ -32,7 +32,8 @@ describe("Scheduler", () => {
     expect(events).toHaveLength(2);
     expect(events[0]?.type).toBe("node_start");
     expect(events[1]?.type).toBe("node_done");
-    const result = events[1]?.result as { output: unknown };
+    const doneEvent = events[1];
+    const result = (doneEvent?.type === "node_done" ? doneEvent.result : undefined) as { output: unknown };
     expect(result.output).toBe(10);
   });
 

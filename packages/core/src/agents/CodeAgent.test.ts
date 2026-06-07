@@ -42,10 +42,10 @@ describe("CodeAgent", () => {
     expect(runStart?.event === "run_start" && runStart.data.task).toBe("test");
   });
 
-  it("emits final_answer when model returns no code block", async () => {
+  it("emits final_answer when model returns final answer marker without code block", async () => {
     const agent = new CodeAgent({
       tools: [],
-      model: mockModel("The answer is 100."),
+      model: mockModel("Final answer: 100"),
       maxSteps: 3,
     });
     const events = [];

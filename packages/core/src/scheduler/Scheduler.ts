@@ -92,9 +92,11 @@ export class Scheduler {
       // C3 barrier: before running any non-readOnly node, drain all in-flight
       // speculative futures so side-effectful nodes see a consistent state.
       if (readyWriting.length > 0 && speculative.size > 0) {
-        for (const settled of await Promise.allSettled([...speculative.entries()].map(
-          ([id, p]) => p.then((r) => ({ ...r, _id: id }))
-        ))) {
+        // Pre-capture [id, promise] pairs so the settled index maps to the correct node ID.
+        const speculativeEntries = [...speculative.entries()];
+        for (const [i, settled] of (await Promise.allSettled(
+          speculativeEntries.map(([id, p]) => p.then((r) => ({ node: r.node, result: r.result, _id: id })))
+        )).entries()) {
           if (settled.status === "fulfilled") {
             const { node, result, _id } = settled.value;
             speculative.delete(_id);
@@ -102,20 +104,15 @@ export class Scheduler {
             yield { type: "node_done", nodeId: node.id, result };
             this.#unblockDependents(node.id, remaining);
           } else {
-            // Find which nodeId this promise belonged to by checking speculative map keys.
-            // The map entry was already iterated above; find the failed node id by elimination.
+            // Use the pre-captured index to identify exactly which node rejected.
+            const failedId = speculativeEntries[i]![0];
             const reason = settled.reason;
             const isAbort = reason instanceof Error && reason.name === "AbortError";
             if (!isAbort) {
               console.error("[scheduler] speculative node rejected unexpectedly:", reason);
             }
-            for (const [id] of speculative) {
-              if (!completed.has(id)) {
-                speculative.delete(id);
-                yield { type: "node_done", nodeId: id, result: undefined };
-                break;
-              }
-            }
+            speculative.delete(failedId);
+            yield { type: "node_error", nodeId: failedId, error: isAbort ? undefined : reason };
           }
         }
         // Re-evaluate after barrier — some previously-blocked nodes may now be unblocked.
@@ -144,9 +141,11 @@ export class Scheduler {
     // Q8: abort the remaining speculative in-flight futures on early generator exit.
     // Only speculative futures in-flight — drain them all to make progress.
     if (speculative.size > 0) {
-        for (const settled of await Promise.allSettled([...speculative.entries()].map(
-          ([id, p]) => p.then((r) => ({ ...r, _id: id }))
-        ))) {
+        // Pre-capture [id, promise] pairs so the settled index maps to the correct node ID.
+        const speculativeEntries = [...speculative.entries()];
+        for (const [i, settled] of (await Promise.allSettled(
+          speculativeEntries.map(([id, p]) => p.then((r) => ({ node: r.node, result: r.result, _id: id })))
+        )).entries()) {
           if (settled.status === "fulfilled") {
             const { node, result, _id } = settled.value;
             speculative.delete(_id);
@@ -154,18 +153,14 @@ export class Scheduler {
             yield { type: "node_done", nodeId: node.id, result };
             this.#unblockDependents(node.id, remaining);
           } else {
+            const failedId = speculativeEntries[i]![0];
             const reason = settled.reason;
             const isAbort = reason instanceof Error && reason.name === "AbortError";
             if (!isAbort) {
               console.error("[scheduler] speculative node rejected unexpectedly:", reason);
             }
-            for (const [id] of speculative) {
-              if (!completed.has(id)) {
-                speculative.delete(id);
-                yield { type: "node_done", nodeId: id, result: undefined };
-                break;
-              }
-            }
+            speculative.delete(failedId);
+            yield { type: "node_error", nodeId: failedId, error: isAbort ? undefined : reason };
           }
         }
       }
@@ -179,8 +174,7 @@ export class Scheduler {
   }
 }
 
-export interface SchedulerEvent {
-  type: "node_start" | "node_done";
-  nodeId: string;
-  result?: unknown;
-}
+export type SchedulerEvent =
+  | { type: "node_start"; nodeId: string }
+  | { type: "node_done"; nodeId: string; result: unknown }
+  | { type: "node_error"; nodeId: string; error: unknown };

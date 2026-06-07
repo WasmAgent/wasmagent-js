@@ -40,6 +40,8 @@ export class MessageAssembler {
   #sealedAt: Set<number> = new Set();
   /** Running total of messages across all cached steps — used to pre-allocate build() result. */
   #flatMsgCount = 0;
+  /** Guard: true while compact() is in progress to prevent concurrent invocations. */
+  #compacting = false;
 
   constructor(config: AssemblerConfig) {
     this.#config = config;
@@ -137,7 +139,12 @@ export class MessageAssembler {
     model: import("../models/types.js").Model,
     keepRecentSteps = 5
   ): Promise<number> {
+    if (this.#compacting) {
+      throw new Error("MessageAssembler.compact() is already in progress; concurrent invocations are not allowed.");
+    }
     if (this.#history.length <= keepRecentSteps) return 0;
+    this.#compacting = true;
+    try {
 
     const cutoff = this.#history.length - keepRecentSteps;
     const toSummarize = this.#history.slice(0, cutoff);
@@ -192,6 +199,9 @@ export class MessageAssembler {
       }
     }
     return cutoff;
+    } finally {
+      this.#compacting = false;
+    }
   }
 
   /** Returns the number of completed sealed chunks in the current history (B2). */

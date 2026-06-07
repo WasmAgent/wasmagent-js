@@ -95,6 +95,10 @@ export async function runCommand(
     typeof opts["max-steps"] === "string" ? opts["max-steps"] : "20",
     10
   );
+  if (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 1000) {
+    console.error("Error: --max-steps must be a whole number between 1 and 1000");
+    process.exit(1);
+  }
   const agent = new CodeAgent({ tools: [], model, maxSteps });
 
   if (!streamMode) console.log(`Running: ${task}\n`);
