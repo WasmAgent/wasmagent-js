@@ -3,28 +3,29 @@
  *
  * Every event emitted by an agent run must carry these fields so the host
  * (or a frontend) can split streams per-branch and reconstruct the parent→child tree.
+ *
+ * AgentEvent is a discriminated union on the `event` field. TypeScript narrows
+ * `data` automatically based on which `event` variant is matched — no unsafe casts needed.
  */
-export interface AgentEvent {
-  /** Unique identifier for this agent's execution branch (e.g. "main", "main.sub1"). */
+
+interface AgentEventBase {
+  /** Unique identifier for this agent's execution branch. */
   traceId: string;
   /** Parent agent's traceId, or null for the root agent. */
   parentTraceId: string | null;
-  /** Output channel this event belongs to. */
-  channel: "thinking" | "text" | "tool" | "status";
-  /** Semantic event type. */
-  event:
-    | "run_start"
-    | "step_start"
-    | "thinking_delta"   // Q6: split from step_start — carries {delta} thinking token stream
-    | "tool_call"
-    | "tool_result"
-    | "planning"
-    | "final_answer"
-    | "error"
-    | "status";          // U1: background phase progress (tool executing, model generating, etc.)
-  data: unknown;
   timestampMs: number;
 }
+
+export type AgentEvent =
+  | AgentEventBase & { channel: "text";     event: "run_start";       data: { task: string } }
+  | AgentEventBase & { channel: "thinking"; event: "step_start";      data: { step: number } }
+  | AgentEventBase & { channel: "thinking"; event: "thinking_delta";  data: { delta: string; step: number } }
+  | AgentEventBase & { channel: "tool";     event: "tool_call";       data: { toolName: string; args: Record<string, unknown>; callId: string; batchId: string; batchSize: number; stepIndex: number } }
+  | AgentEventBase & { channel: "tool";     event: "tool_result";     data: { callId: string; toolName: string; output: unknown; error?: { code: "execution_error"; message: string }; batchId: string; batchSize: number; stepIndex: number } }
+  | AgentEventBase & { channel: "thinking"; event: "planning";        data: { step: number; plan: string; facts: string } }
+  | AgentEventBase & { channel: "text";     event: "final_answer";    data: { answer: unknown } }
+  | AgentEventBase & { channel: "text";     event: "error";           data: { error: string; step?: number } }
+  | AgentEventBase & { channel: "status";   event: "status";          data: { phase: string; toolName?: string; callId?: string; step: number } };
 
 /** Structured step types mirroring smolagents' ActionStep / PlanningStep / FinalAnswerStep. */
 export type StepType = "action" | "planning" | "final_answer" | "tool_use" | "parallel_tool_use" | "user_message";

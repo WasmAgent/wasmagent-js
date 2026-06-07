@@ -9,8 +9,8 @@ import { TokenBudget } from "../models/types.js";
 import { SelfConsistencyRunner } from "../enhancement/SelfConsistencyRunner.js";
 import { ReflectRefineRunner } from "../enhancement/ReflectRefineRunner.js";
 import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
-import type { AgentEvent, ActionStep, PlanningStep, FinalAnswerStep } from "../types/events.js";
-import { PLANNING_PROMPT } from "./prompts.js";
+import type { AgentEvent, ActionStep, FinalAnswerStep } from "../types/events.js";
+import { runPlanningStep, extractTagContent } from "./prompts.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant who can solve any task using code.
 To solve the task, you must plan forward to proceed in a series of steps.
@@ -264,35 +264,7 @@ export class CodeAgent {
     step: number,
     budget: TokenBudget
   ): AsyncGenerator<AgentEvent> {
-    const planningMessages = this.#assembler.build();
-    planningMessages.push({ role: "user", content: PLANNING_PROMPT });
-
-    let planResponse = "";
-    let planReceivedUsage = false;
-    for await (const event of this.#model.generate(planningMessages, { stream: true })) {
-      if (event.type === "text_delta" && event.delta) {
-        planResponse += event.delta;
-      } else if (event.type === "usage" && event.usage) {
-        budget.recordUsage(event.usage);
-        planReceivedUsage = true;
-      }
-    }
-    if (!planReceivedUsage) budget.estimateFallback(planningMessages, planResponse);
-
-    const plan = extractTagContent(planResponse, "plan") ?? planResponse;
-    const facts = extractTagContent(planResponse, "facts") ?? "";
-
-    const planningStep: PlanningStep = { type: "planning", plan, facts };
-    this.#assembler.addStep(planningStep);
-
-    yield {
-      traceId,
-      parentTraceId,
-      channel: "thinking",
-      event: "planning",
-      data: { step, plan, facts },
-      timestampMs: Date.now(),
-    };
+    yield* runPlanningStep(traceId, parentTraceId, step, this.#model, this.#assembler, budget);
   }
 
   async *#emitFinalAnswer(
@@ -336,18 +308,13 @@ export class CodeAgent {
   }
 }
 
-function extractCode(response: string): string | null {
-  const match = /<code>([\s\S]*?)<\/code>/.exec(response) ??
-    /```(?:js|javascript)?\n([\s\S]*?)```/.exec(response);
-  return match?.[1]?.trim() ?? null;
-}
-
 function extractThoughts(response: string): string {
   return extractTagContent(response, "thoughts") ?? "";
 }
 
-function extractTagContent(text: string, tag: string): string | null {
-  const match = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`).exec(text);
+function extractCode(response: string): string | null {
+  const match = /<code>([\s\S]*?)<\/code>/.exec(response) ??
+    /```(?:js|javascript)?\n([\s\S]*?)```/.exec(response);
   return match?.[1]?.trim() ?? null;
 }
 

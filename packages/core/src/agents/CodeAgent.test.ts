@@ -38,7 +38,8 @@ describe("CodeAgent", () => {
       events.push(e);
     }
     expect(events[0]?.event).toBe("run_start");
-    expect((events[0]?.data as { task: string }).task).toBe("test");
+    const runStart = events.find((e) => e.event === "run_start");
+    expect(runStart?.event === "run_start" && runStart.data.task).toBe("test");
   });
 
   it("emits final_answer when model returns no code block", async () => {
@@ -74,7 +75,7 @@ describe("CodeAgent", () => {
     }
     const finalEvent = events.find((e) => e.event === "final_answer");
     expect(finalEvent).toBeDefined();
-    expect((finalEvent?.data as { answer: unknown }).answer).toBe(42);
+    expect(finalEvent?.event === "final_answer" && finalEvent.data.answer).toBe(42);
   });
 
   it("emits error event on kernel execution failure", async () => {
@@ -111,7 +112,7 @@ describe("CodeAgent", () => {
     }
     const errEvent = events.find((e) => e.event === "error");
     expect(errEvent).toBeDefined();
-    expect((errEvent?.data as { error: string }).error).toContain("max steps");
+    expect(errEvent?.event === "error" && errEvent.data.error).toContain("max steps");
   });
 
   it("propagates parentTraceId in all events", async () => {

@@ -107,44 +107,35 @@ async function runCommand(
       case "run_start":
         break;
       case "step_start": {
-        const data = event.data as Record<string, unknown>;
-        if (typeof data["step"] === "number") {
-          stepCount = data["step"] as number;
-          process.stderr.write(`\n[step ${stepCount}] `);
-        }
+        stepCount = event.data.step;
+        process.stderr.write(`\n[step ${stepCount}] `);
         break;
       }
-      case "thinking_delta": {
-        const data = event.data as { delta: string };
-        process.stdout.write(data.delta);
+      case "thinking_delta":
+        process.stdout.write(event.data.delta);
         break;
-      }
       case "planning": {
-        const data = event.data as { step: number; plan: string; facts: string };
-        console.log(`\n\n[planning @ step ${data.step ?? stepCount}]`);
-        console.log(`Plan: ${data.plan}`);
-        if (data.facts) console.log(`Facts: ${data.facts}`);
+        const { step, plan, facts } = event.data;
+        console.log(`\n\n[planning @ step ${step ?? stepCount}]`);
+        console.log(`Plan: ${plan}`);
+        if (facts) console.log(`Facts: ${facts}`);
         break;
       }
-      case "tool_call": {
-        const data = event.data as { toolName: string; args: unknown };
-        console.log(`\n[tool_call] ${data.toolName}(${JSON.stringify(data.args)})`);
+      case "tool_call":
+        console.log(`\n[tool_call] ${event.data.toolName}(${JSON.stringify(event.data.args)})`);
         break;
-      }
-      case "tool_result": {
-        const data = event.data as { toolName: string; output: unknown; error?: unknown };
-        if (data.error) {
-          console.log(`[tool_result] ERROR: ${JSON.stringify(data.error)}`);
+      case "tool_result":
+        if (event.data.error) {
+          console.log(`[tool_result] ERROR: ${JSON.stringify(event.data.error)}`);
         } else {
-          console.log(`[tool_result] ${data.toolName} → ${JSON.stringify(data.output)}`);
+          console.log(`[tool_result] ${event.data.toolName} → ${JSON.stringify(event.data.output)}`);
         }
         break;
-      }
       case "final_answer":
-        console.log("\n\nFinal answer:", (event.data as { answer: unknown }).answer);
+        console.log("\n\nFinal answer:", event.data.answer);
         break;
       case "error":
-        console.error("\nError:", (event.data as { error: string }).error);
+        console.error("\nError:", event.data.error);
         break;
     }
   }

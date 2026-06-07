@@ -8,8 +8,8 @@ import { TokenBudget } from "../models/types.js";
 import { SelfConsistencyRunner } from "../enhancement/SelfConsistencyRunner.js";
 import { ReflectRefineRunner } from "../enhancement/ReflectRefineRunner.js";
 import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
-import type { AgentEvent, FinalAnswerStep, ParallelToolUseCall, ParallelToolUseStep, PlanningStep, ToolUseStep, UserMessageStep } from "../types/events.js";
-import { PLANNING_PROMPT } from "./prompts.js";
+import type { AgentEvent, FinalAnswerStep, ParallelToolUseCall, ParallelToolUseStep, ToolUseStep, UserMessageStep } from "../types/events.js";
+import { runPlanningStep } from "./prompts.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant. Use the provided tools to answer questions.
 When you have a final answer, respond with plain text (no tool call).`;
@@ -271,14 +271,19 @@ export class ToolCallingAgent {
           ? {
               callId: call.id,
               toolName: call.name,
-              output: null,
+              output: null as unknown,
               error: { code: "execution_error" as const, message: toolOutput },
+              batchId,
+              batchSize,
+              stepIndex: step,
             }
           : {
               callId: call.id,
               toolName: call.name,
               output: (() => { try { return JSON.parse(toolOutput); } catch { return toolOutput; } })(),
-              error: undefined,
+              batchId,
+              batchSize,
+              stepIndex: step,
             };
 
         yield {
@@ -286,7 +291,7 @@ export class ToolCallingAgent {
           parentTraceId,
           channel: "tool",
           event: "tool_result",
-          data: { ...resultData, batchId, batchSize, stepIndex: step },
+          data: resultData,
           timestampMs: Date.now(),
         };
 
@@ -341,36 +346,6 @@ export class ToolCallingAgent {
     step: number,
     budget: TokenBudget
   ): AsyncGenerator<AgentEvent> {
-    const planningMessages = this.#assembler.build();
-    planningMessages.push({ role: "user", content: PLANNING_PROMPT });
-
-    let planResponse = "";
-    let planReceivedUsage = false;
-    for await (const event of this.#model.generate(planningMessages, { stream: true })) {
-      if (event.type === "text_delta" && event.delta) {
-        planResponse += event.delta;
-      } else if (event.type === "usage" && event.usage) {
-        budget.recordUsage(event.usage);
-        planReceivedUsage = true;
-      }
-    }
-    if (!planReceivedUsage) budget.estimateFallback(planningMessages, planResponse);
-
-    const planMatch = /<plan>([\s\S]*?)<\/plan>/.exec(planResponse);
-    const factsMatch = /<facts>([\s\S]*?)<\/facts>/.exec(planResponse);
-    const plan = planMatch?.[1]?.trim() ?? planResponse;
-    const facts = factsMatch?.[1]?.trim() ?? "";
-
-    const planningStep: PlanningStep = { type: "planning", plan, facts };
-    this.#assembler.addStep(planningStep);
-
-    yield {
-      traceId,
-      parentTraceId,
-      channel: "thinking",
-      event: "planning",
-      data: { step, plan, facts },
-      timestampMs: Date.now(),
-    };
+    yield* runPlanningStep(traceId, parentTraceId, step, this.#model, this.#assembler, budget);
   }
 }

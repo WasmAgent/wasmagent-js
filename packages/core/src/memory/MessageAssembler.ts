@@ -32,6 +32,8 @@ export interface AssemblerConfig {
 export class MessageAssembler {
   #config: AssemblerConfig;
   #history: Step[] = [];
+  /** Cached ModelMessage[] per step, built once in addStep() instead of every build(). */
+  #msgCache: ModelMessage[][] = [];
 
   constructor(config: AssemblerConfig) {
     this.#config = config;
@@ -39,6 +41,7 @@ export class MessageAssembler {
 
   addStep(step: Step): void {
     this.#history.push(step);
+    this.#msgCache.push(this.#stepToMessages(step));
   }
 
   /**
@@ -47,6 +50,9 @@ export class MessageAssembler {
    * The immutable prefix (tools + system + few-shot) is always placed first
    * and ends with a cache breakpoint so Anthropic's prefix cache can save it.
    * Completed history chunks are also breakpointed (B2).
+   *
+   * O(n) per call: each step's messages are cached in #msgCache at addStep() time,
+   * so build() only iterates once to assemble the final array.
    */
   build(): ModelMessage[] {
     const messages: ModelMessage[] = [];
@@ -63,41 +69,23 @@ export class MessageAssembler {
       messages.push(...this.#config.fewShotExamples);
     }
 
-    // 3. History steps converted to messages, with B2 chunk breakpoints.
+    // 3. Determine B2 chunk seal positions (one pass over #history).
     const chunkSize = this.#config.chunkSizeSteps ?? 0;
-    // Count action + tool_use + parallel_tool_use steps for chunking — these are the
-    // steps both CodeAgent and ToolCallingAgent produce uniformly as history grows.
-    const actionStepIndices: number[] = [];
-    const allMessages: ModelMessage[][] = this.#history.map((step, i) => {
-      if (this.#isChunkableStep(step)) actionStepIndices.push(i);
-      return this.#stepToMessages(step);
-    });
+    const sealedChunkEnds = this.#computeSealedChunkEnds(chunkSize);
 
-    // Determine which history entries end a chunk (B2).
-    const sealedChunkEnds = new Set<number>();
-    if (chunkSize > 0) {
-      for (let chunk = chunkSize; chunk <= actionStepIndices.length; chunk += chunkSize) {
-        // The chunk boundary falls after the (chunk)-th action step.
-        const idx = actionStepIndices[chunk - 1];
-        if (idx !== undefined) sealedChunkEnds.add(idx);
-      }
-    }
-
-    for (let i = 0; i < allMessages.length; i++) {
-      const stepMsgs = allMessages[i];
-      if (!stepMsgs || stepMsgs.length === 0) continue;
+    // 4. Assemble from cache — O(n) total.
+    for (let i = 0; i < this.#msgCache.length; i++) {
+      const stepMsgs = this.#msgCache[i]!;
+      if (stepMsgs.length === 0) continue;
 
       if (sealedChunkEnds.has(i)) {
-        // Seal this chunk: add breakpoint to the last message in the group (B2).
-        const sealed = [...stepMsgs];
-        const last = sealed[sealed.length - 1];
-        if (last) {
-          sealed[sealed.length - 1] = {
-            ...last,
-            cacheBreakpoint: { afterBlockIndex: 0, type: "ephemeral" },
-          };
-        }
-        messages.push(...sealed);
+        // Add breakpoint to the last message of this sealed chunk (B2).
+        // Slice avoids mutating the cached array.
+        messages.push(...stepMsgs.slice(0, -1));
+        messages.push({
+          ...stepMsgs.at(-1)!,
+          cacheBreakpoint: { afterBlockIndex: 0, type: "ephemeral" },
+        });
       } else {
         messages.push(...stepMsgs);
       }
@@ -108,6 +96,7 @@ export class MessageAssembler {
 
   reset(): void {
     this.#history = [];
+    this.#msgCache = [];
   }
 
   /** Current history length (number of steps recorded). */
@@ -169,6 +158,10 @@ export class MessageAssembler {
     };
 
     this.#history = [summaryStep, ...recent];
+    this.#msgCache = [
+      this.#stepToMessages(summaryStep),
+      ...recent.map((s) => this.#stepToMessages(s)),
+    ];
     return cutoff;
   }
 
@@ -183,6 +176,21 @@ export class MessageAssembler {
   /** True for step types that count toward B2 chunk boundaries. */
   #isChunkableStep(step: Step): boolean {
     return step.type === "action" || step.type === "tool_use" || step.type === "parallel_tool_use";
+  }
+
+  /** Computes the set of history indices that end a sealed chunk (B2). */
+  #computeSealedChunkEnds(chunkSize: number): Set<number> {
+    const sealedChunkEnds = new Set<number>();
+    if (chunkSize === 0) return sealedChunkEnds;
+    const actionStepIndices: number[] = [];
+    for (let i = 0; i < this.#history.length; i++) {
+      if (this.#isChunkableStep(this.#history[i]!)) actionStepIndices.push(i);
+    }
+    for (let chunk = chunkSize; chunk <= actionStepIndices.length; chunk += chunkSize) {
+      const idx = actionStepIndices[chunk - 1];
+      if (idx !== undefined) sealedChunkEnds.add(idx);
+    }
+    return sealedChunkEnds;
   }
 
   /** Stable representation of system content + tools schema (B1 byte-stability). */

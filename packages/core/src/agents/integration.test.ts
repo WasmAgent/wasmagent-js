@@ -75,7 +75,7 @@ describe("CodeAgent integration", () => {
 
     const finalEvent = events.find((e) => e.event === "final_answer");
     expect(finalEvent).toBeDefined();
-    expect((finalEvent?.data as { answer: unknown }).answer).toBe(42);
+    expect(finalEvent?.event === "final_answer" && finalEvent.data.answer).toBe(42);
   });
 
   it("run_start → step_start... → final_answer event ordering", async () => {
@@ -142,7 +142,7 @@ describe("ToolCallingAgent integration", () => {
     for await (const e of agent.run("What is 3+4?")) events.push(e);
 
     const toolResult = events.find((e) => e.event === "tool_result");
-    expect((toolResult?.data as { output: unknown }).output).toBe(7);
+    expect(toolResult?.event === "tool_result" && toolResult.data.output).toBe(7);
 
     const finalEvent = events.find((e) => e.event === "final_answer");
     expect(finalEvent).toBeDefined();
@@ -160,8 +160,8 @@ describe("ToolCallingAgent integration", () => {
 
     const toolResults = events.filter((e) => e.event === "tool_result");
     expect(toolResults).toHaveLength(2);
-    expect((toolResults[0]?.data as { output: unknown }).output).toBe(3);
-    expect((toolResults[1]?.data as { output: unknown }).output).toBe(7);
+    expect(toolResults[0]?.event === "tool_result" && toolResults[0].data.output).toBe(3);
+    expect(toolResults[1]?.event === "tool_result" && toolResults[1].data.output).toBe(7);
 
     expect(events.some((e) => e.event === "final_answer")).toBe(true);
   });

@@ -72,7 +72,7 @@ describe("ToolCallingAgent", () => {
     for await (const e of agent.run("What is 3+4?")) events.push(e);
     const finalEvent = events.find((e) => e.event === "final_answer");
     expect(finalEvent).toBeDefined();
-    expect((finalEvent?.data as { answer: string }).answer).toContain("7");
+    expect(finalEvent?.event === "final_answer" && finalEvent.data.answer).toContain("7");
   });
 
   it("executes a tool call and emits tool_call + tool_result events", async () => {
@@ -85,11 +85,11 @@ describe("ToolCallingAgent", () => {
     for await (const e of agent.run("Add 3 and 4")) events.push(e);
     const toolCallEvent = events.find((e) => e.event === "tool_call");
     expect(toolCallEvent).toBeDefined();
-    expect((toolCallEvent?.data as { toolName: string }).toolName).toBe("add");
+    expect(toolCallEvent?.event === "tool_call" && toolCallEvent.data.toolName).toBe("add");
 
     const toolResultEvent = events.find((e) => e.event === "tool_result");
     expect(toolResultEvent).toBeDefined();
-    expect((toolResultEvent?.data as { output: unknown }).output).toBe(7);
+    expect(toolResultEvent?.event === "tool_result" && toolResultEvent.data.output).toBe(7);
   });
 
   it("emits final_answer after tool call", async () => {
@@ -141,8 +141,7 @@ describe("ToolCallingAgent", () => {
     for await (const e of agent.run("call unknown tool")) events.push(e);
     const toolResult = events.find((e) => e.event === "tool_result");
     expect(toolResult).toBeDefined();
-    const data = toolResult?.data as { error?: { message: string } };
-    expect(data.error?.message).toContain("Unknown tool");
+    expect(toolResult?.event === "tool_result" && toolResult.data.error?.message).toContain("Unknown tool");
   });
 
   it("all events carry traceId", async () => {
@@ -218,14 +217,14 @@ describe("ToolCallingAgent", () => {
     // Both tool_call events must be emitted.
     const toolCallEvents = events.filter((e) => e.event === "tool_call");
     expect(toolCallEvents).toHaveLength(2);
-    expect((toolCallEvents[0]?.data as { callId: string }).callId).toBe("c1");
-    expect((toolCallEvents[1]?.data as { callId: string }).callId).toBe("c2");
+    expect(toolCallEvents[0]?.event === "tool_call" && toolCallEvents[0].data.callId).toBe("c1");
+    expect(toolCallEvents[1]?.event === "tool_call" && toolCallEvents[1].data.callId).toBe("c2");
 
     // Both tool_result events must be present with correct outputs.
     const toolResultEvents = events.filter((e) => e.event === "tool_result");
     expect(toolResultEvents).toHaveLength(2);
-    expect((toolResultEvents[0]?.data as { output: unknown }).output).toBe(3);
-    expect((toolResultEvents[1]?.data as { output: unknown }).output).toBe(30);
+    expect(toolResultEvents[0]?.event === "tool_result" && toolResultEvents[0].data.output).toBe(3);
+    expect(toolResultEvents[1]?.event === "tool_result" && toolResultEvents[1].data.output).toBe(30);
 
     // Final answer must arrive.
     expect(events.some((e) => e.event === "final_answer")).toBe(true);

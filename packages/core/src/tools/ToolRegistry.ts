@@ -1,5 +1,10 @@
-import { z } from "zod";
+import { zodToJsonSchema as zodToJsonSchemaLib } from "zod-to-json-schema";
 import type { ToolCall, ToolDefinition, ToolResult } from "./types.js";
+
+/** Converts a Zod schema to a JSON Schema object (OpenAPI 3.0 compatible). */
+export function zodToJsonSchema(schema: import("zod").ZodSchema): object {
+  return zodToJsonSchemaLib(schema, { target: "openApi3", $refStrategy: "none" });
+}
 
 /**
  * Registry that holds all tools available to an agent.
@@ -123,113 +128,3 @@ export class ToolRegistry {
   }
 }
 
-/**
- * Zod → JSON Schema converter (D2 — full subset for tool input schemas).
- *
- * Handles: ZodObject, ZodString, ZodNumber, ZodBoolean, ZodArray,
- *          ZodOptional, ZodNullable, ZodEnum, ZodLiteral, ZodUnion,
- *          ZodDefault (unwrap inner), plus .describe() passthrough.
- */
-export function zodToJsonSchema(schema: z.ZodSchema): object {
-  const def = schema._def as Record<string, unknown>;
-  const typeName = def["typeName"] as string | undefined;
-
-  // Pull description from .describe() if present (works for all types).
-  const description =
-    typeof def["description"] === "string" ? def["description"] : undefined;
-
-  const withDesc = (base: Record<string, unknown>): object => {
-    if (description) return { ...base, description };
-    return base;
-  };
-
-  // ZodObject
-  if ("shape" in def && typeof def["shape"] === "function") {
-    const shape = (def["shape"] as () => Record<string, z.ZodSchema>)();
-    const properties: Record<string, object> = {};
-    const required: string[] = [];
-    for (const [key, fieldSchema] of Object.entries(shape)) {
-      properties[key] = zodToJsonSchema(fieldSchema);
-      if (!isOptionalOrNullable(fieldSchema)) {
-        required.push(key);
-      }
-    }
-    return withDesc({ type: "object", properties, ...(required.length ? { required } : {}) });
-  }
-
-  // ZodOptional / ZodNullable — unwrap and mark nullable
-  if (typeName === "ZodOptional" || typeName === "ZodNullable") {
-    const inner = def["innerType"] as z.ZodSchema;
-    const innerSchema = zodToJsonSchema(inner) as Record<string, unknown>;
-    if (typeName === "ZodNullable") {
-      return withDesc({ ...innerSchema, nullable: true });
-    }
-    return withDesc(innerSchema);
-  }
-
-  // ZodDefault — unwrap inner, the default value is only relevant at runtime
-  if (typeName === "ZodDefault") {
-    const inner = def["innerType"] as z.ZodSchema;
-    return zodToJsonSchema(inner);
-  }
-
-  // ZodArray
-  if (typeName === "ZodArray") {
-    const items = zodToJsonSchema(def["type"] as z.ZodSchema);
-    return withDesc({ type: "array", items });
-  }
-
-  // ZodEnum — z.enum(["a","b","c"])
-  if (typeName === "ZodEnum") {
-    const values = def["values"] as string[];
-    return withDesc({ type: "string", enum: values });
-  }
-
-  // ZodNativeEnum — z.nativeEnum(SomeEnum)
-  if (typeName === "ZodNativeEnum") {
-    const enumObj = def["values"] as Record<string, string | number>;
-    const values = Object.values(enumObj);
-    return withDesc({ enum: values });
-  }
-
-  // ZodLiteral
-  if (typeName === "ZodLiteral") {
-    const value = def["value"];
-    const literalType =
-      typeof value === "string" ? "string" :
-      typeof value === "number" ? "number" :
-      typeof value === "boolean" ? "boolean" : undefined;
-    return withDesc({ ...(literalType ? { type: literalType } : {}), const: value });
-  }
-
-  // ZodUnion — anyOf
-  if (typeName === "ZodUnion") {
-    const options = def["options"] as z.ZodSchema[];
-    return withDesc({ anyOf: options.map(zodToJsonSchema) });
-  }
-
-  // ZodDiscriminatedUnion
-  if (typeName === "ZodDiscriminatedUnion") {
-    const options = def["options"] as z.ZodSchema[];
-    return withDesc({ anyOf: options.map(zodToJsonSchema) });
-  }
-
-  // Primitives
-  if (typeName === "ZodString") return withDesc({ type: "string" });
-  if (typeName === "ZodNumber" || typeName === "ZodBigInt") return withDesc({ type: "number" });
-  if (typeName === "ZodBoolean") return withDesc({ type: "boolean" });
-  if (typeName === "ZodNull") return withDesc({ type: "null" });
-  if (typeName === "ZodAny" || typeName === "ZodUnknown") return withDesc({});
-  if (typeName === "ZodRecord") {
-    const valueType = zodToJsonSchema(def["valueType"] as z.ZodSchema);
-    return withDesc({ type: "object", additionalProperties: valueType });
-  }
-
-  // Fallback — emit an empty schema (accepts anything)
-  return withDesc({});
-}
-
-function isOptionalOrNullable(schema: z.ZodSchema): boolean {
-  const typeName = (schema._def as Record<string, unknown>)["typeName"] as string;
-  return typeName === "ZodOptional" || typeName === "ZodNullable" || typeName === "ZodDefault";
-}
