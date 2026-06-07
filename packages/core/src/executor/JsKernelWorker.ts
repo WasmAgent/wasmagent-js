@@ -56,6 +56,7 @@ parentPort!.on("message", async (msg: {
   code: string;
   capabilities?: Partial<CapabilityManifest>;
   serial: number;
+  timeoutMs?: number;
 }) => {
   // Q3: localise per-call mutable state to avoid pollution if handlers ever overlap.
   const localLogs: string[] = [];
@@ -79,7 +80,7 @@ parentPort!.on("message", async (msg: {
 
   try {
     const script = new Script(msg.code, { filename: "agent-step.js" });
-    let output = script.runInContext(sandbox);
+    let output = script.runInContext(sandbox, { timeout: msg.timeoutMs });
 
     // If the code returned a Promise (e.g. __fs__.readFile(...)), await it so the
     // resolved value can be structured-cloned back to the host.

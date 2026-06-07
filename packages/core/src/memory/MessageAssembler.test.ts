@@ -34,7 +34,7 @@ describe("MessageAssembler", () => {
 
   it("system message has cache breakpoint (B1)", () => {
     const messages = assembler.build();
-    expect(messages[0]?.cacheBreakpoint).toEqual({ afterBlockIndex: 0, type: "ephemeral" });
+    expect(messages[0]?.cacheBreakpoint).toEqual({ type: "ephemeral" });
   });
 
   it("addStep: action step produces assistant + user message pair", () => {

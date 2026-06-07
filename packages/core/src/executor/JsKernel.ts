@@ -107,7 +107,7 @@ export class JsKernel implements WasmKernel {
       }, this.#timeoutMs);
 
       worker.on("message", handler);
-      worker.postMessage({ type: "run", code, capabilities: capPayload, serial });
+      worker.postMessage({ type: "run", code, capabilities: capPayload, serial, timeoutMs: this.#timeoutMs });
     });
   }
 
