@@ -1,6 +1,6 @@
 // Agents
-export { CodeAgent, ToolCallingAgent } from "./agents/index.js";
-export type { CodeAgentOptions, ToolCallingAgentOptions } from "./agents/index.js";
+export { CodeAgent, ToolCallingAgent, stepCountIs, noProgress, costBudget, callFingerprint, asTool } from "./agents/index.js";
+export type { CodeAgentOptions, ToolCallingAgentOptions, StopCondition, StopConditionContext, AsToolOptions, SubagentRunnable } from "./agents/index.js";
 
 // Executor
 export { JsKernel, V8WasmKernel, createKernel, buildCapabilityGlobals, buildSandboxFetch, assertPathAllowed, matchGlob } from "./executor/index.js";
@@ -13,8 +13,8 @@ export type {
 } from "./executor/index.js";
 
 // Memory
-export { MessageAssembler, LazyObservationHandle } from "./memory/index.js";
-export type { AssemblerConfig } from "./memory/index.js";
+export { MessageAssembler, LazyObservationHandle, InMemoryVectorStore, makeRetrievalTool } from "./memory/index.js";
+export type { AssemblerConfig, Retriever, EmbedResult, SearchResult } from "./memory/index.js";
 
 // Models
 export { AnthropicModel, AnthropicModels, OpenAIModel, OpenAIModels, CACHE_MIN_TOKENS, estimateTokens, estimateMessagesTokens, TokenBudget } from "./models/index.js";
@@ -54,8 +54,8 @@ export { ToolRegistry, zodToJsonSchema, McpToolCollection } from "./tools/index.
 export type { ToolDefinition, ToolCall, ToolResult } from "./tools/index.js";
 
 // Scheduler
-export { Scheduler, SimpleIR } from "./scheduler/index.js";
-export type { ActionIR, IRNode, SchedulerEvent } from "./scheduler/index.js";
+export { Scheduler, SimpleIR, deriveDependencies } from "./scheduler/index.js";
+export type { ActionIR, IRNode, SchedulerEvent, CallDescriptor } from "./scheduler/index.js";
 
 // Evals (B1)
 export { exactMatch, toolCallAccuracy, trajectoryValidity, finalAnswerLength, collectTrace, runEval } from "./evals/index.js";
@@ -66,8 +66,8 @@ export { OtelBridge, InMemorySpanExporter, withOtel } from "./observability/inde
 export type { SpanExporter, ReadableSpan, SpanAttributes, OtelBridgeOptions } from "./observability/index.js";
 
 // Checkpoint / durable workflows (B4)
-export { InMemoryCheckpointer, CheckpointableRun, restoreFromSnapshot } from "./checkpoint/index.js";
-export type { Checkpointer, AgentSnapshot, CheckpointableAgentOptions } from "./checkpoint/index.js";
+export { InMemoryCheckpointer, KvCheckpointer, CheckpointableRun, restoreFromSnapshot } from "./checkpoint/index.js";
+export type { Checkpointer, AgentSnapshot, CheckpointableAgentOptions, KvBackend } from "./checkpoint/index.js";
 
 // Types
 export type { AgentEvent, Step, ActionStep, PlanningStep, FinalAnswerStep, ToolUseStep, ParallelToolUseStep, ParallelToolUseCall, UserMessageStep } from "./types/index.js";

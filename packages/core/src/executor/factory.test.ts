@@ -65,4 +65,15 @@ describe("createKernel factory", () => {
     expect(err).toBeInstanceOf(Error);
     expect((err as Error).message).toContain("pnpm add @agentkit-js/kernel-wasmtime");
   });
+
+  it("B1-edge: throws with quickjs guidance when worker_threads unavailable", async () => {
+    // Simulate a non-Node edge runtime by mocking process.release
+    const origRelease = process.release;
+    Object.defineProperty(process, "release", { value: { name: "not-node" }, configurable: true });
+    try {
+      await expect(createKernel({ engine: "js" })).rejects.toThrow(/@agentkit-js\/kernel-quickjs/);
+    } finally {
+      Object.defineProperty(process, "release", { value: origRelease, configurable: true });
+    }
+  });
 });

@@ -92,6 +92,61 @@ export class InMemoryCheckpointer implements Checkpointer {
   get size(): number { return this.#store.size; }
 }
 
+// ── KvCheckpointer ────────────────────────────────────────────────────────────
+
+/**
+ * Generic KV-backed checkpointer compatible with any KV store that exposes
+ * get/put/delete (Cloudflare KV, Upstash Redis, etc.).
+ *
+ * Usage with Cloudflare Workers KV:
+ *   const checkpointer = new KvCheckpointer(env.MY_KV_NAMESPACE);
+ *
+ * Usage with a plain Map (testing):
+ *   const kv = new Map<string, string>();
+ *   const checkpointer = new KvCheckpointer({
+ *     get: async (k) => kv.get(k) ?? null,
+ *     put: async (k, v) => { kv.set(k, v); },
+ *     delete: async (k) => { kv.delete(k); },
+ *   });
+ */
+export interface KvBackend {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string): Promise<void>;
+  delete(key: string): Promise<void>;
+}
+
+export class KvCheckpointer implements Checkpointer {
+  readonly #kv: KvBackend;
+
+  constructor(kv: KvBackend) {
+    this.#kv = kv;
+  }
+
+  async save(traceId: string, snapshot: AgentSnapshot): Promise<void> {
+    await this.#kv.put(traceId, JSON.stringify(snapshot));
+  }
+
+  async load(traceId: string): Promise<AgentSnapshot | null> {
+    const raw = await this.#kv.get(traceId);
+    if (!raw) return null;
+    return JSON.parse(raw) as AgentSnapshot;
+  }
+
+  async delete(traceId: string): Promise<void> {
+    await this.#kv.delete(traceId);
+  }
+
+  async respond(traceId: string, promptId: string, response: string): Promise<void> {
+    const snapshot = await this.load(traceId);
+    if (!snapshot) throw new Error(`No checkpoint found for traceId: ${traceId}`);
+    if (snapshot.pendingHumanInput?.promptId !== promptId) {
+      throw new Error(`promptId mismatch: expected ${snapshot.pendingHumanInput?.promptId}, got ${promptId}`);
+    }
+    snapshot.humanResponse = { promptId, response };
+    await this.save(traceId, snapshot);
+  }
+}
+
 // ── CheckpointableAgent wrapper ───────────────────────────────────────────────
 
 import type { AgentEvent, UserMessageStep } from "../types/events.js";

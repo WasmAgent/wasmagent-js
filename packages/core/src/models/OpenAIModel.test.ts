@@ -307,3 +307,51 @@ describe("OpenAIModel generate() with structured content messages", () => {
     expect(msgs[0]?.["content"]).toBe("hello\n world");
   });
 });
+
+// D1: reasoning model detection tests
+describe("OpenAIModel D1 reasoning-model params", () => {
+  async function getParams(modelId: string): Promise<Record<string, unknown>> {
+    vi.resetModules();
+    const { MockOpenAI, mockCreate } = makeOpenAIMock([
+      { choices: [{ delta: {}, finish_reason: "stop" }] },
+    ]);
+    vi.doMock("openai", () => ({ default: MockOpenAI }));
+    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "r");
+    const model = new OpenAIModel(modelId, "key");
+    for await (const _ of model.generate([{ role: "user", content: "hi" }])) { /* consume */ }
+    vi.doUnmock("openai");
+    return mockCreate.mock.calls[0]?.[0] as Record<string, unknown>;
+  }
+
+  it("D1: standard model uses max_tokens and no max_completion_tokens", async () => {
+    const params = await getParams("gpt-4o");
+    expect(params["max_tokens"]).toBeDefined();
+    expect(params["max_completion_tokens"]).toBeUndefined();
+  });
+
+  it("D1: o3 model uses max_completion_tokens and no max_tokens", async () => {
+    const params = await getParams("o3");
+    expect(params["max_completion_tokens"]).toBeDefined();
+    expect(params["max_tokens"]).toBeUndefined();
+  });
+
+  it("D1: o4-mini model uses max_completion_tokens", async () => {
+    const params = await getParams("o4-mini");
+    expect(params["max_completion_tokens"]).toBeDefined();
+    expect(params["max_tokens"]).toBeUndefined();
+  });
+
+  it("D1: temperature is not set for o-series models", async () => {
+    vi.resetModules();
+    const { MockOpenAI, mockCreate } = makeOpenAIMock([
+      { choices: [{ delta: {}, finish_reason: "stop" }] },
+    ]);
+    vi.doMock("openai", () => ({ default: MockOpenAI }));
+    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "r2");
+    const model = new OpenAIModel("o3", { apiKey: "key", samplingParams: { temperature: 0.7 } });
+    for await (const _ of model.generate([{ role: "user", content: "hi" }])) { /* consume */ }
+    vi.doUnmock("openai");
+    const params = mockCreate.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(params["temperature"]).toBeUndefined();
+  });
+});

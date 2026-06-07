@@ -32,6 +32,13 @@ export interface ToolDefinition<TInput = unknown, TOutput = unknown> {
    * without round-tripping through Zod (which would discard properties/required).
    */
   rawInputJsonSchema?: object;
+  /**
+   * Whether to pause and wait for human approval before executing this tool.
+   * Can be a static boolean or a dynamic predicate on the tool input.
+   * When true/truthy, the agent emits an "await_human_input" event and suspends
+   * until a response is provided via Checkpointer.respond().
+   */
+  needsApproval?: boolean | ((input: never) => boolean | Promise<boolean>);
   forward(input: TInput, signal?: AbortSignal): Promise<TOutput>;
 }
 

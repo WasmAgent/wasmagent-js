@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { InMemoryCheckpointer, CheckpointableRun } from "../checkpoint/index.js";
+import { InMemoryCheckpointer, KvCheckpointer, CheckpointableRun } from "../checkpoint/index.js";
 import { MessageAssembler } from "../memory/MessageAssembler.js";
 import type { AgentEvent } from "../types/events.js";
 
@@ -50,6 +50,68 @@ describe("InMemoryCheckpointer (B4)", () => {
       pendingHumanInput: { promptId: "p1", prompt: "?" },
     });
     await expect(cp.respond("t1", "wrong-id", "yes")).rejects.toThrow(/promptId mismatch/);
+  });
+});
+
+describe("KvCheckpointer (C3)", () => {
+  function makeKv() {
+    const store = new Map<string, string>();
+    return {
+      backend: {
+        get: async (k: string) => store.get(k) ?? null,
+        put: async (k: string, v: string) => { store.set(k, v); },
+        delete: async (k: string) => { store.delete(k); },
+      },
+      store,
+    };
+  }
+
+  it("save and load round-trips snapshot via KV", async () => {
+    const { backend } = makeKv();
+    const cp = new KvCheckpointer(backend);
+    const snapshot = { traceId: "kv1", task: "test", history: [], stepIndex: 2, savedAtMs: 999 };
+    await cp.save("kv1", snapshot);
+    const loaded = await cp.load("kv1");
+    expect(loaded).toEqual(snapshot);
+  });
+
+  it("load returns null for missing key", async () => {
+    const { backend } = makeKv();
+    const cp = new KvCheckpointer(backend);
+    expect(await cp.load("no-such")).toBeNull();
+  });
+
+  it("delete removes the key", async () => {
+    const { backend } = makeKv();
+    const cp = new KvCheckpointer(backend);
+    await cp.save("kv1", { traceId: "kv1", task: "x", history: [], stepIndex: 1, savedAtMs: 0 });
+    await cp.delete("kv1");
+    expect(await cp.load("kv1")).toBeNull();
+  });
+
+  it("respond persists humanResponse and new instance can read it", async () => {
+    const { backend } = makeKv();
+    const cp = new KvCheckpointer(backend);
+    await cp.save("kv1", {
+      traceId: "kv1", task: "x", history: [], stepIndex: 1, savedAtMs: 0,
+      pendingHumanInput: { promptId: "p1", prompt: "OK?" },
+    });
+    await cp.respond("kv1", "p1", "approve");
+
+    // Simulate a new instance reading from the same KV backend.
+    const cp2 = new KvCheckpointer(backend);
+    const loaded = await cp2.load("kv1");
+    expect(loaded?.humanResponse).toEqual({ promptId: "p1", response: "approve" });
+  });
+
+  it("responds preserves step history order", async () => {
+    const { backend } = makeKv();
+    const cp = new KvCheckpointer(backend);
+    const history = [{ type: "user_message" as const, content: "hi" }];
+    await cp.save("kv1", { traceId: "kv1", task: "t", history, stepIndex: 3, savedAtMs: 0 });
+    const loaded = await cp.load("kv1");
+    expect(loaded?.history).toEqual(history);
+    expect(loaded?.stepIndex).toBe(3);
   });
 });
 
@@ -111,3 +173,5 @@ describe("CheckpointableRun (B4)", () => {
     expect(ev.data.promptId).toBe("p1");
   });
 });
+
+

@@ -406,4 +406,52 @@ describe("MessageAssembler", () => {
       expect(a.historyLength).toBeLessThan(midLength + 5);
     });
   });
+
+  describe("D2 scratchpad working memory", () => {
+    it("scratchpad appears in build() output after setScratchpad()", () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      a.setScratchpad("remember: user prefers concise answers");
+      const msgs = a.build();
+      const scratchpadMsg = msgs.find((m) => typeof m.content === "string" && m.content.includes("<scratchpad>"));
+      expect(scratchpadMsg).toBeDefined();
+      expect(scratchpadMsg?.content as string).toContain("remember: user prefers concise answers");
+    });
+
+    it("scratchpad is absent when not set", () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      const msgs = a.build();
+      const hasScrachpad = msgs.some((m) => typeof m.content === "string" && m.content.includes("<scratchpad>"));
+      expect(hasScrachpad).toBe(false);
+    });
+
+    it("setScratchpad(null) removes scratchpad from build()", () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      a.setScratchpad("some notes");
+      a.setScratchpad(null);
+      const msgs = a.build();
+      const hasScrachpad = msgs.some((m) => typeof m.content === "string" && m.content.includes("<scratchpad>"));
+      expect(hasScrachpad).toBe(false);
+    });
+
+    it("scratchpad updates are visible across steps without affecting system message", () => {
+      const a = new MessageAssembler({ systemPrompt: "my-system-prompt", toolsSchema: [] });
+      a.setScratchpad("step-1 note");
+      const msgs1 = a.build();
+      const sysMsg = msgs1.find((m) => m.role === "system");
+      expect((sysMsg?.content as string)).toContain("my-system-prompt");
+      expect((sysMsg?.content as string)).not.toContain("step-1 note"); // not in system
+
+      a.setScratchpad("step-2 updated note");
+      const msgs2 = a.build();
+      const scratchpadMsg = msgs2.find((m) => typeof m.content === "string" && m.content.includes("<scratchpad>"));
+      expect(scratchpadMsg?.content as string).toContain("step-2 updated note");
+    });
+
+    it("getScratchpad() returns the current scratchpad content", () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      expect(a.getScratchpad()).toBeNull();
+      a.setScratchpad("hello");
+      expect(a.getScratchpad()).toBe("hello");
+    });
+  });
 });
