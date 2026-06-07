@@ -5,9 +5,22 @@
  * Falls back to V8WasmKernel (pure-JS, serverless-safe) if the native addon
  * is unavailable (Lambda, Alpine, Cloudflare Workers).
  * JsKernel is the default engine for local development.
+ *
+ * Edge runtime detection: if worker_threads is unavailable (Cloudflare Workers,
+ * browser), JsKernel auto-falls back to V8WasmKernel (E1-edge).
  */
 import type { KernelOptions, WasmKernel } from "./types.js";
 import { JsKernel } from "./JsKernel.js";
+
+/** True when the current runtime does not support Node's worker_threads module. */
+async function isEdgeRuntime(): Promise<boolean> {
+  try {
+    await import("node:worker_threads");
+    return false;
+  } catch {
+    return true;
+  }
+}
 
 export async function createKernel(
   opts: KernelOptions = {}
@@ -27,6 +40,15 @@ export async function createKernel(
           '  import { PyodideKernel } from "@agentkit-js/kernel-pyodide";\n' +
           '  const kernel = new PyodideKernel();'
         );
+      }
+      // E1-edge: fall back to V8WasmKernel when worker_threads is not available
+      // (Cloudflare Workers, browser, Deno without --unstable-node-globals).
+      if (await isEdgeRuntime()) {
+        console.warn(
+          "[agentkit] worker_threads unavailable — falling back to V8WasmKernel for edge runtime"
+        );
+        const { V8WasmKernel } = await import("./V8WasmKernel.js");
+        return new V8WasmKernel(opts);
       }
       return new JsKernel();
 

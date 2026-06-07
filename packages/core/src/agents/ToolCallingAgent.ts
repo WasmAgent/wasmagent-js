@@ -3,7 +3,8 @@ import { MessageAssembler } from "../memory/MessageAssembler.js";
 import { LazyObservationHandle } from "../memory/LazyObservationHandle.js";
 import { ToolRegistry } from "../tools/ToolRegistry.js";
 import type { ToolDefinition } from "../tools/types.js";
-import type { Model } from "../models/types.js";
+import type { Model, EnhancementPolicy } from "../models/types.js";
+import { TokenBudget } from "../models/types.js";
 import type {
   AgentEvent,
   FinalAnswerStep,
@@ -28,6 +29,8 @@ export interface ToolCallingAgentOptions {
   /** Emit a planning step every N action steps (mirrors CodeAgent planningInterval). */
   planningInterval?: number;
   systemPrompt?: string;
+  /** Optional enhancement policy — gates self-consistency, reflect-refine, budget limits (P1). */
+  enhancementPolicy?: EnhancementPolicy;
 }
 
 /**
@@ -46,6 +49,7 @@ export class ToolCallingAgent {
   readonly #maxSteps: number;
   readonly #planningInterval: number | undefined;
   readonly #assembler: MessageAssembler;
+  readonly #policy: EnhancementPolicy | undefined;
 
   constructor(opts: ToolCallingAgentOptions) {
     this.#tools = new ToolRegistry();
@@ -55,6 +59,7 @@ export class ToolCallingAgent {
     this.#model = opts.model;
     this.#maxSteps = opts.maxSteps ?? 20;
     this.#planningInterval = opts.planningInterval;
+    this.#policy = opts.enhancementPolicy;
     this.#assembler = new MessageAssembler({
       systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
       toolsSchema: this.#tools.toJsonSchema(),
@@ -80,7 +85,35 @@ export class ToolCallingAgent {
     const seedStep: UserMessageStep = { type: "user_message", content: task };
     this.#assembler.addStep(seedStep);
 
+    const budget = new TokenBudget();
+    const budgetMaxTokens = this.#policy?.budget?.maxTokens;
+    const runStartMs = Date.now();
+    const budgetMaxDurationMs = this.#policy?.budget?.maxDurationMs;
+
     for (let step = 1; step <= this.#maxSteps; step++) {
+      // P1: enforce ResourceBudget limits before each step.
+      if (budgetMaxTokens && budget.total >= budgetMaxTokens) {
+        yield {
+          traceId,
+          parentTraceId,
+          channel: "text",
+          event: "error",
+          data: { error: `Token budget exhausted (${budget.total} >= ${budgetMaxTokens})` },
+          timestampMs: Date.now(),
+        };
+        return;
+      }
+      if (budgetMaxDurationMs && Date.now() - runStartMs >= budgetMaxDurationMs) {
+        yield {
+          traceId,
+          parentTraceId,
+          channel: "text",
+          event: "error",
+          data: { error: `Time budget exhausted (${Date.now() - runStartMs}ms >= ${budgetMaxDurationMs}ms)` },
+          timestampMs: Date.now(),
+        };
+        return;
+      }
       if (this.#planningInterval && step > 1 && (step - 1) % this.#planningInterval === 0) {
         yield* this.#runPlanningStep(traceId, parentTraceId, step);
       }
@@ -101,6 +134,7 @@ export class ToolCallingAgent {
       // Models may return multiple tool_use blocks in a single response
       // (parallel function calling). Three scalars would overwrite; use an array.
       const pendingCalls: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
+      let receivedUsage = false;
 
       for await (const event of this.#model.generate(messages, {
         stream: true,
@@ -114,7 +148,14 @@ export class ToolCallingAgent {
             name: event.toolCall.name,
             input: event.toolCall.input,
           });
+        } else if (event.type === "usage" && event.usage) {
+          budget.recordUsage(event.usage);
+          receivedUsage = true;
         }
+      }
+
+      if (!receivedUsage) {
+        budget.estimateFallback(messages, fullText);
       }
 
       // No tool calls → model responded with text — treat as final answer.
@@ -148,6 +189,18 @@ export class ToolCallingAgent {
           channel: "tool",
           event: "tool_call",
           data: { toolName: call.name, args: call.input, callId: call.id, batchId, batchSize, stepIndex: step },
+          timestampMs: Date.now(),
+        };
+      }
+
+      // U1: emit status events before dispatching tool calls, rescuing TTFT.
+      for (const call of pendingCalls) {
+        yield {
+          traceId,
+          parentTraceId,
+          channel: "status" as const,
+          event: "status" as const,
+          data: { phase: "tool_executing", toolName: call.name, callId: call.id, step },
           timestampMs: Date.now(),
         };
       }

@@ -307,3 +307,59 @@ describe("OpenAIModel generate() with structured content messages", () => {
     expect(msgs[0]?.["content"]).toBe("hello\n world");
   });
 });
+
+/**
+ * S1: response_format / structured output tests.
+ */
+describe("OpenAIModel generate() responseFormat (S1)", () => {
+  beforeEach(() => { vi.resetModules(); });
+
+  async function generateWithOpts(
+    opts: object
+  ): Promise<Record<string, unknown>> {
+    const { MockOpenAI, mockCreate } = makeOpenAIMock([
+      { choices: [{ delta: {}, finish_reason: "stop" }] },
+    ]);
+    vi.doMock("openai", () => ({ default: MockOpenAI }));
+    const { OpenAIModel } = await import("./OpenAIModel.js?t=" + Date.now() + "rf");
+    const model = new OpenAIModel("gpt-4o", "key"); // supportsGrammar=true
+    for await (const _ of model.generate([{ role: "user", content: "q" }], opts)) { /* consume */ }
+    vi.doUnmock("openai");
+    return mockCreate.mock.calls[0]?.[0] as Record<string, unknown>;
+  }
+
+  it("sends response_format json_object when responseFormat.type is json_object", async () => {
+    const params = await generateWithOpts({ responseFormat: { type: "json_object" } });
+    expect((params["response_format"] as Record<string, unknown>)?.["type"]).toBe("json_object");
+  });
+
+  it("sends response_format json_schema with schema and name", async () => {
+    const params = await generateWithOpts({
+      responseFormat: {
+        type: "json_schema",
+        name: "my_schema",
+        schema: { type: "object", properties: { value: { type: "number" } } },
+        strict: true,
+      },
+    });
+    const rf = params["response_format"] as Record<string, unknown>;
+    expect(rf?.["type"]).toBe("json_schema");
+    const js = rf?.["json_schema"] as Record<string, unknown>;
+    expect(js?.["name"]).toBe("my_schema");
+    expect((js?.["schema"] as Record<string, unknown>)?.["type"]).toBe("object");
+    expect(js?.["strict"]).toBe(true);
+  });
+
+  it("uses default name 'response' when name is omitted", async () => {
+    const params = await generateWithOpts({
+      responseFormat: { type: "json_schema", schema: { type: "object" } },
+    });
+    const js = (params["response_format"] as Record<string, unknown>)?.["json_schema"] as Record<string, unknown>;
+    expect(js?.["name"]).toBe("response");
+  });
+
+  it("does NOT send response_format when responseFormat is absent", async () => {
+    const params = await generateWithOpts({});
+    expect(params["response_format"]).toBeUndefined();
+  });
+});

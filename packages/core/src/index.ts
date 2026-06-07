@@ -17,15 +17,30 @@ export { MessageAssembler, LazyObservationHandle } from "./memory/index.js";
 export type { AssemblerConfig } from "./memory/index.js";
 
 // Models
-export { AnthropicModel, OpenAIModel, CACHE_MIN_TOKENS, estimateTokens } from "./models/index.js";
+export { AnthropicModel, OpenAIModel, CACHE_MIN_TOKENS, estimateTokens, estimateMessagesTokens, TokenBudget } from "./models/index.js";
 export type {
   Model,
+  ModelCapabilities,
   ModelMessage,
   ContentBlock,
   GenerateOptions,
+  ResponseFormat,
   StreamEvent,
   TokenUsage,
+  ResourceBudget,
+  EnhancementPolicy,
 } from "./models/index.js";
+
+// Enhancement runners (P2/P3/S4)
+export { SelfConsistencyRunner, ReflectRefineRunner, BudgetForcingRunner } from "./enhancement/index.js";
+export type {
+  SelfConsistencyOptions,
+  SelfConsistencyResult,
+  ReflectRefineOptions,
+  ReflectRefineResult,
+  BudgetForcingOptions,
+  BudgetForcingResult,
+} from "./enhancement/index.js";
 
 // Tools
 export { ToolRegistry, zodToJsonSchema, McpToolCollection } from "./tools/index.js";

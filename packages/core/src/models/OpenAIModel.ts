@@ -1,21 +1,45 @@
 import type {
   GenerateOptions,
   Model,
+  ModelCapabilities,
   ModelMessage,
   StreamEvent,
 } from "./types.js";
 
+export interface OpenAIModelOptions {
+  apiKey?: string;
+  /** Override the API base URL — enables local endpoints like Ollama/vLLM/llama.cpp. */
+  baseURL?: string;
+  /** Extra HTTP headers forwarded to every request (e.g. custom auth, routing keys). */
+  defaultHeaders?: Record<string, string>;
+}
+
 /** OpenAI model adapter (E1) — with streaming tool_call support. */
 export class OpenAIModel implements Model {
   readonly providerId: string;
+  readonly capabilities: ModelCapabilities;
+  readonly #opts: OpenAIModelOptions;
   #client: unknown;
 
+  constructor(modelId: string, apiKeyOrOpts?: string | OpenAIModelOptions);
   constructor(
     readonly modelId: string,
-    readonly apiKey?: string
+    apiKeyOrOpts?: string | OpenAIModelOptions
   ) {
     this.providerId = `openai/${modelId}`;
+    this.#opts = typeof apiKeyOrOpts === "string"
+      ? { apiKey: apiKeyOrOpts }
+      : (apiKeyOrOpts ?? {});
+    this.capabilities = {
+      metered: !this.#opts.baseURL,
+      localEndpoint: !!this.#opts.baseURL,
+      supportsGrammar: true,
+      supportsBudgetForcing: false,
+    };
   }
+
+  get apiKey(): string | undefined { return this.#opts.apiKey; }
+  get baseURL(): string | undefined { return this.#opts.baseURL; }
 
   async *generate(
     messages: ModelMessage[],
@@ -23,7 +47,11 @@ export class OpenAIModel implements Model {
   ): AsyncGenerator<StreamEvent> {
     const { default: OpenAI } = await import("openai");
     if (!this.#client) {
-      this.#client = new OpenAI({ apiKey: this.apiKey });
+      this.#client = new OpenAI({
+        apiKey: this.#opts.apiKey,
+        ...(this.#opts.baseURL ? { baseURL: this.#opts.baseURL } : {}),
+        ...(this.#opts.defaultHeaders ? { defaultHeaders: this.#opts.defaultHeaders } : {}),
+      });
     }
     const client = this.#client as InstanceType<typeof OpenAI>;
 
@@ -39,6 +67,36 @@ export class OpenAIModel implements Model {
       stream: true,
       stream_options: { include_usage: true },
     };
+    if (opts.temperature !== undefined) {
+      (params as unknown as Record<string, unknown>)["temperature"] = opts.temperature;
+    }
+    if (opts.topP !== undefined) {
+      (params as unknown as Record<string, unknown>)["top_p"] = opts.topP;
+    }
+    if (opts.seed !== undefined) {
+      (params as unknown as Record<string, unknown>)["seed"] = opts.seed;
+    }
+    if (opts.stopSequences && opts.stopSequences.length > 0) {
+      (params as unknown as Record<string, unknown>)["stop"] = opts.stopSequences;
+    }
+    if (opts.responseFormat) {
+      // S1: structured output — only applied when capabilities.supportsGrammar is true.
+      // OpenAI: pass response_format directly. Callers fall back to S2 when not supported.
+      if (this.capabilities.supportsGrammar) {
+        if (opts.responseFormat.type === "json_schema") {
+          (params as unknown as Record<string, unknown>)["response_format"] = {
+            type: "json_schema",
+            json_schema: {
+              name: opts.responseFormat.name ?? "response",
+              schema: opts.responseFormat.schema,
+              strict: opts.responseFormat.strict ?? true,
+            },
+          };
+        } else {
+          (params as unknown as Record<string, unknown>)["response_format"] = { type: "json_object" };
+        }
+      }
+    }
     if (opts.tools && opts.tools.length > 0) {
       (params as unknown as Record<string, unknown>)["tools"] = opts.tools.map((t) => ({
         type: "function",

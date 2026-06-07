@@ -1,5 +1,6 @@
 export type {
   Model,
+  ModelCapabilities,
   ModelMessage,
   ContentBlock,
   TextBlock,
@@ -7,11 +8,14 @@ export type {
   ToolUseBlock,
   ToolResultBlock,
   GenerateOptions,
+  ResponseFormat,
   StreamEvent,
   TokenUsage,
   CacheBreakpoint,
+  ResourceBudget,
+  EnhancementPolicy,
 } from "./types.js";
-export { CACHE_MIN_TOKENS, estimateTokens } from "./types.js";
+export { CACHE_MIN_TOKENS, estimateTokens, estimateMessagesTokens, TokenBudget } from "./types.js";
 
 /**
  * AnthropicModel and OpenAIModel are re-exported here for backward compatibility.

@@ -90,7 +90,7 @@ agentkit-js/
 |--------|---------|--------|
 | A1 | `JsKernel` — stateful JS sandbox, snapshot/restore | ✅ Done |
 | A1 | `V8WasmKernel` — serverless-safe fallback | ✅ Done |
-| A1 | `WasmtimeKernel` — native WASM binding | ⏳ M1 (requires native addon) |
+| A1 | `WasmtimeKernel` — native WASM binding | ⏳ Remaining (requires native addon) |
 | A2 | Capability manifest enforcement (hosts, paths) | ✅ Done |
 | A2 | `extraCapabilities` per-tool access control | ✅ Done |
 | A4 | `PyodideKernel` — CPython-in-WASM via `pyodide` npm package | ✅ Done |
@@ -112,6 +112,22 @@ agentkit-js/
 | D6 | `agentkit init-tool` scaffold | ✅ Done |
 | E1 | `AnthropicModel` — streaming + tool_use + cache | ✅ Done |
 | E1 | `OpenAIModel` — streaming + tool_call | ✅ Done |
+| **O1** | **`OpenAIModel` `baseURL` + custom headers — local model support (Ollama/vLLM/llama.cpp)** | ⏳ Remaining |
+| **O2** | **Sampling params end-to-end (`temperature`/`top_p`/`seed`/`stop`) — both adapters** | ⏳ Remaining |
+| **O3** | **`Model.capabilities` descriptor + local-endpoint auto-detection** | ⏳ Remaining |
+| **S1** | **Structured output constraints (`responseFormat` — grammar/json_schema, capability-gated)** | ⏳ Remaining |
+| **S2** | **Parse-failure self-healing — retry with format correction (`maxParseRetries`)** | ⏳ Remaining |
+| **S3** | **Cache determinism hardening — `toJsonSchema()` sorted, no dynamic prefix, tools `cache_control`** | ⏳ Remaining |
+| **S4** | **Budget Forcing ("Wait" prefill injection, capability-gated)** | ⏳ Remaining |
+| **P0** | **`ResourceBudget` usage fallback — `estimateTokens()` when backend omits usage events** | ⏳ Remaining |
+| **P1** | **`EnhancementPolicy` + `ResourceBudget` config — adaptive defaults, all overridable** | ⏳ Remaining |
+| **P2** | **Self-consistency runner — adaptive N, early-stop majority vote, concurrency cap** | ⏳ Remaining |
+| **P3** | **Critique-refine loop — signal-triggered, context-isolated, budget-gated** | ⏳ Remaining |
+| **P4** | **Long-history compaction (`MessageAssembler.compact`) — cache-aware, metered vs. local** | 🔬 Remaining |
+| **E1-edge** | **`createKernel` edge-runtime detection — auto-select QuickJS/V8 when `worker_threads` absent** | ⏳ Remaining |
+| **U1** | **`channel:"status"` events — progress stream during self-consistency/refine background work** | ⏳ Remaining |
+| **D1** | MicroPython execution backend | ⏳ Remaining |
+| **L4** | Client-side fork-join parallel reasoning (`ParallelForkJoin`, shared-prefix spawn) | 🔬 Future |
 
 ### Roadmap
 
@@ -121,7 +137,13 @@ agentkit-js/
 | **M1** ✅ | `V8WasmKernel`, A2 capability enforcement, C1 streaming, D2 typed tools |
 | **M2** ✅ | C2 DAG scheduling, C3 speculative execution, B2 segment caching, E1 model adapters |
 | **M3** ✅ | `PyodideKernel` (A4), `LazyObservationHandle` (B3), `McpToolCollection` (D4), `init-tool` (D6), C4 session KV |
-| **Remaining** | `WasmtimeKernel` native addon (A1 M1+), MicroPython backend (D1) |
+| **M4** | L0: O1+O2 (baseURL + sampling); L1: S2+S3 (parse self-heal + cache hardening); E1-edge kernel auto-select |
+| **M5** | L0: O3 (capabilities); L1: S1+S4 (grammar constraints + budget forcing); P0+P1 (policy skeleton) |
+| **M6** | L2: P2+P3+U1 (self-consistency + critique-refine + status events) |
+| **M7** | P4 long-history compaction (🔬 validate quality first); WasmtimeKernel native addon; MicroPython |
+| **Future** | L4 fork-join parallel reasoning (🔬 requires explicit task decomposition) |
+
+> Status legend: ✅ Done · ⏳ Planned · 🔬 Requires experimental validation first
 
 ## Development
 

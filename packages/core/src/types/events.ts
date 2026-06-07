@@ -10,7 +10,7 @@ export interface AgentEvent {
   /** Parent agent's traceId, or null for the root agent. */
   parentTraceId: string | null;
   /** Output channel this event belongs to. */
-  channel: "thinking" | "text" | "tool";
+  channel: "thinking" | "text" | "tool" | "status";
   /** Semantic event type. */
   event:
     | "run_start"
@@ -20,7 +20,8 @@ export interface AgentEvent {
     | "tool_result"
     | "planning"
     | "final_answer"
-    | "error";
+    | "error"
+    | "status";          // U1: background phase progress (tool executing, model generating, etc.)
   data: unknown;
   timestampMs: number;
 }

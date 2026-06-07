@@ -1,6 +1,7 @@
 import type {
   GenerateOptions,
   Model,
+  ModelCapabilities,
   ModelMessage,
   StreamEvent,
   TokenUsage,
@@ -19,6 +20,11 @@ export { CACHE_MIN_TOKENS };
  */
 export class AnthropicModel implements Model {
   readonly providerId: string;
+  readonly capabilities: ModelCapabilities = {
+    metered: true,
+    supportsGrammar: false,
+    supportsBudgetForcing: true,
+  };
   #client: unknown;
 
   constructor(
@@ -70,11 +76,20 @@ export class AnthropicModel implements Model {
     const streamParams: StreamParams = {
       model: this.modelId,
       max_tokens: opts.maxTokens ?? 4096,
+      ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+      ...(opts.topP !== undefined ? { top_p: opts.topP } : {}),
+      ...(opts.stopSequences && opts.stopSequences.length > 0 ? { stop_sequences: opts.stopSequences } : {}),
       ...(systemParam ? { system: systemParam } : {}),
       messages: anthropicMessages,
     };
     if (opts.tools && opts.tools.length > 0) {
-      (streamParams as unknown as Record<string, unknown>)["tools"] = opts.tools;
+      // Mark the last tool with cache_control so tools array is cached as a prefix (B1).
+      const tools = opts.tools.map((t, i) =>
+        i === opts.tools!.length - 1
+          ? { ...t as object, cache_control: { type: "ephemeral" as const } }
+          : t
+      );
+      (streamParams as unknown as Record<string, unknown>)["tools"] = tools;
     }
     const stream = client.messages.stream(streamParams);
 

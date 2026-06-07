@@ -40,13 +40,16 @@ export class ToolRegistry {
     return [...this.#tools.values()];
   }
 
-  /** JSON schema for all tools — passed to model as tool definitions (E1). */
+  /** JSON schema for all tools — passed to model as tool definitions (E1).
+   * Sorted by name for deterministic cache keys across registrations. */
   toJsonSchema(): object[] {
-    return this.list().map((t) => ({
-      name: t.name,
-      description: t.description,
-      input_schema: t.inputSchema ? zodToJsonSchema(t.inputSchema) : {},
-    }));
+    return [...this.#tools.values()]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((t) => ({
+        name: t.name,
+        description: t.description,
+        input_schema: t.inputSchema ? zodToJsonSchema(t.inputSchema) : {},
+      }));
   }
 
   async call(toolCall: ToolCall, grantedCapabilities?: string[]): Promise<ToolResult> {

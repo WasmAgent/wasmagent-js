@@ -333,4 +333,77 @@ describe("MessageAssembler", () => {
       expect(aBlocks.every((b) => b["type"] !== "text")).toBe(true);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // compact() tests (P4)
+  // -------------------------------------------------------------------------
+  describe("compact()", () => {
+    function mockModel(summary: string): import("../models/types.js").Model {
+      return {
+        providerId: "mock/test",
+        async *generate(): AsyncGenerator<import("../models/types.js").StreamEvent> {
+          yield { type: "text_delta", delta: summary };
+          yield { type: "stop", stopReason: "end_turn" };
+        },
+      };
+    }
+
+    it("returns 0 and does not mutate when history <= keepRecentSteps", async () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      a.addStep(makeAction(1));
+      a.addStep(makeAction(2));
+      const before = a.build().length;
+      const compacted = await a.compact(mockModel("summary"), 5);
+      expect(compacted).toBe(0);
+      expect(a.build().length).toBe(before);
+    });
+
+    it("compacts older steps and keeps recent steps verbatim", async () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      for (let i = 1; i <= 8; i++) a.addStep(makeAction(i));
+      // keepRecentSteps=3 → compact first 5 steps
+      const compacted = await a.compact(mockModel("steps 1-5 summary"), 3);
+      expect(compacted).toBe(5);
+      // History should now have 1 summary step + 3 recent = 4 steps
+      expect(a.historyLength).toBe(4);
+    });
+
+    it("summary text appears in built messages", async () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      for (let i = 1; i <= 6; i++) a.addStep(makeAction(i));
+      await a.compact(mockModel("COMPACT_SUMMARY_MARKER"), 2);
+      const messages = a.build();
+      const allContent = messages.map((m) => JSON.stringify(m.content)).join(" ");
+      expect(allContent).toContain("COMPACT_SUMMARY_MARKER");
+    });
+
+    it("reduces total message count after compaction", async () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      for (let i = 1; i <= 10; i++) a.addStep(makeAction(i));
+      const before = a.build().length;
+      await a.compact(mockModel("summary"), 3);
+      const after = a.build().length;
+      expect(after).toBeLessThan(before);
+    });
+
+    it("historyLength reflects post-compact state", async () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      for (let i = 1; i <= 7; i++) a.addStep(makeAction(i));
+      expect(a.historyLength).toBe(7);
+      await a.compact(mockModel("summary"), 3);
+      // 1 summary step + 3 recent = 4
+      expect(a.historyLength).toBe(4);
+    });
+
+    it("multiple compact() calls further reduce history", async () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      for (let i = 1; i <= 10; i++) a.addStep(makeAction(i));
+      await a.compact(mockModel("first summary"), 4);
+      const midLength = a.historyLength;
+      // Add more steps then compact again
+      for (let i = 11; i <= 15; i++) a.addStep(makeAction(i));
+      await a.compact(mockModel("second summary"), 2);
+      expect(a.historyLength).toBeLessThan(midLength + 5);
+    });
+  });
 });

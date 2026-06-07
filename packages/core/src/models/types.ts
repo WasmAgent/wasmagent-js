@@ -65,10 +65,26 @@ export interface GenerateOptions {
   stream?: boolean;
   maxTokens?: number;
   temperature?: number;
+  /** Nucleus sampling probability mass (0-1). Passed as top_p to OpenAI, top_p to Anthropic. */
+  topP?: number;
+  /** Random seed for deterministic sampling (OpenAI only). */
+  seed?: number;
   /** Explicit cache breakpoints for prompt prefix caching (B1). */
   cacheBreakpoints?: CacheBreakpoint[];
   stopSequences?: string[];
+  /**
+   * Structured output constraint (S1).
+   * When set, the model is instructed to produce JSON matching the given JSON Schema.
+   * Only used when ModelCapabilities.supportsGrammar is true.
+   * Callers should fall back to S2 (extractCode retry) when the capability is absent.
+   */
+  responseFormat?: ResponseFormat;
 }
+
+/** Structured output format constraint for JSON grammar (S1). */
+export type ResponseFormat =
+  | { type: "json_object" }
+  | { type: "json_schema"; schema: object; name?: string; strict?: boolean };
 
 export interface TokenUsage {
   inputTokens: number;
@@ -94,10 +110,67 @@ export interface StreamEvent {
 export interface Model {
   /** Provider identifier for logging and cache-threshold validation (B1). */
   providerId: string;
+  /** Optional capability descriptor — agents use this to gate features (O3). */
+  capabilities?: ModelCapabilities;
   generate(
     messages: ModelMessage[],
     opts?: GenerateOptions
   ): AsyncGenerator<StreamEvent>;
+}
+
+/** Describes what an underlying model endpoint can and cannot do (O3). */
+export interface ModelCapabilities {
+  /** True when the endpoint is a local/private server (Ollama, vLLM, llama.cpp). */
+  localEndpoint?: boolean;
+  /** True when the provider charges per-token (affects budget-aware strategies). */
+  metered?: boolean;
+  /** True when the model supports grammar/response_format structured output (S1). */
+  supportsGrammar?: boolean;
+  /** True when the model supports "Wait" budget-forcing prefill injection (S4). */
+  supportsBudgetForcing?: boolean;
+  /** Context window size in tokens (for compaction threshold). */
+  contextWindow?: number;
+}
+
+/**
+ * Token and step budget limits for a single agent run (P1).
+ * Agents check these limits before each step and abort gracefully when exceeded.
+ */
+export interface ResourceBudget {
+  /** Maximum total tokens (input + output) across all steps. */
+  maxTokens?: number;
+  /** Maximum number of steps before forcing a final answer. */
+  maxSteps?: number;
+  /** Maximum wall-clock milliseconds for the entire run. */
+  maxDurationMs?: number;
+}
+
+/**
+ * Enhancement policy — controls which optional quality strategies are enabled (P1).
+ * Agents read this config to decide whether to run self-consistency, budget
+ * forcing, Reflect-Refine, etc.
+ */
+export interface EnhancementPolicy {
+  /** Resource budget for the run. */
+  budget?: ResourceBudget;
+  /** Enable self-consistency voting (P2). N candidate generations, majority vote. */
+  selfConsistency?: {
+    enabled: boolean;
+    /** Number of candidate completions to generate (default 3). */
+    n?: number;
+    /** Abort early when this fraction of votes agree (default 0.6). */
+    earlyStopThreshold?: number;
+  };
+  /** Enable Reflect-Refine loop (P3). Critique then regenerate when quality is low. */
+  reflectRefine?: {
+    enabled: boolean;
+    /** Max reflection-refinement cycles per answer (default 1). */
+    maxCycles?: number;
+  };
+  /** Enable budget-forcing "Wait" prefill injection (S4). Requires model support. */
+  budgetForcing?: {
+    enabled: boolean;
+  };
 }
 
 /** Minimum token threshold per model for cache breakpoints to be effective (B1). */
@@ -136,4 +209,43 @@ export function estimateTokens(text: string): number {
   }
   // wide: 1 token/char lower bound (not /1.5 — see function comment)
   return Math.ceil(ascii / 4 + wide);
+}
+
+/** Estimates total tokens across a message array (sum of all content text). */
+export function estimateMessagesTokens(messages: ModelMessage[]): number {
+  let total = 0;
+  for (const m of messages) {
+    if (typeof m.content === "string") {
+      total += estimateTokens(m.content);
+    } else {
+      for (const block of m.content) {
+        if (block.type === "text") total += estimateTokens(block.text);
+        else if (block.type === "tool_result") total += estimateTokens(block.content);
+      }
+    }
+  }
+  return total;
+}
+
+/**
+ * Token budget tracker — accumulates real usage from model events and falls
+ * back to estimateTokens() when the model does not report usage (P0).
+ */
+export class TokenBudget {
+  inputTokens = 0;
+  outputTokens = 0;
+
+  /** Record real usage from a usage StreamEvent. */
+  recordUsage(usage: TokenUsage): void {
+    this.inputTokens += usage.inputTokens;
+    this.outputTokens += usage.outputTokens;
+  }
+
+  /** Fall back to estimation when no usage event was received for a step. */
+  estimateFallback(messages: ModelMessage[], responseText: string): void {
+    this.inputTokens += estimateMessagesTokens(messages);
+    this.outputTokens += estimateTokens(responseText);
+  }
+
+  get total(): number { return this.inputTokens + this.outputTokens; }
 }
