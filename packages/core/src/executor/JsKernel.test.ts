@@ -74,13 +74,10 @@ describe("JsKernel (worker_threads isolation)", () => {
     }
   }, 5_000);
 
-  it("snapshot() throws NotImplemented", async () => {
-    await kernel.run("var z = 42;");
-    await expect(kernel.snapshot()).rejects.toThrow(/does not support snapshot/);
-  });
-
-  it("restore() throws NotImplemented", async () => {
-    await expect(kernel.restore(new Uint8Array())).rejects.toThrow(/does not support snapshot/);
+  it("snapshot and restore are not implemented (optional interface)", async () => {
+    const k = kernel as import("./types.js").WasmKernel;
+    expect(k.snapshot).toBeUndefined();
+    expect(k.restore).toBeUndefined();
   });
 
   it("[Symbol.asyncDispose] terminates the worker cleanly", async () => {

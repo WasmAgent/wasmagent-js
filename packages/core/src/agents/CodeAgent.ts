@@ -6,7 +6,11 @@ import { ToolRegistry } from "../tools/ToolRegistry.js";
 import type { ToolDefinition } from "../tools/types.js";
 import type { Model, EnhancementPolicy } from "../models/types.js";
 import { TokenBudget } from "../models/types.js";
+import { SelfConsistencyRunner } from "../enhancement/SelfConsistencyRunner.js";
+import { ReflectRefineRunner } from "../enhancement/ReflectRefineRunner.js";
+import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
 import type { AgentEvent, ActionStep, PlanningStep, FinalAnswerStep } from "../types/events.js";
+import { PLANNING_PROMPT } from "./prompts.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant who can solve any task using code.
 To solve the task, you must plan forward to proceed in a series of steps.
@@ -15,10 +19,6 @@ Think about the current step to be executed, then generate the JS code to perfor
 To signal a final answer, set: __finalAnswer__ = <your answer>;
 
 Code output is available as the return value of your code block.`;
-
-const PLANNING_PROMPT = `Based on the task and observations so far, provide:
-1. A structured plan for remaining steps (inside <plan>...</plan> tags)
-2. Key facts established so far (inside <facts>...</facts> tags)`;
 
 export interface CodeAgentOptions {
   tools: ToolDefinition[];
@@ -66,7 +66,7 @@ export class CodeAgent {
       this.#tools.register(tool);
     }
     this.#model = opts.model;
-    this.#maxSteps = opts.maxSteps ?? 20;
+    this.#maxSteps = opts.maxSteps ?? opts.enhancementPolicy?.budget?.maxSteps ?? 20;
     this.#planningInterval = opts.planningInterval;
     this.#policy = opts.enhancementPolicy;
     // D1: use provided kernel or create one via factory.
@@ -300,14 +300,37 @@ export class CodeAgent {
     parentTraceId: string | null,
     answer: unknown
   ): AsyncGenerator<AgentEvent> {
-    const finalStep: FinalAnswerStep = { type: "final_answer", answer };
+    // Apply enhancement runners when configured (mirrors ToolCallingAgent).
+    let refined: unknown = answer;
+    const messages = this.#assembler.build();
+    const answerStr = typeof answer === "string" ? answer : String(answer);
+    if (this.#policy?.budgetForcing?.enabled && this.#model.capabilities?.supportsBudgetForcing) {
+      const result = await new BudgetForcingRunner().run(this.#model, messages);
+      refined = result.answer || answerStr;
+    } else if (this.#policy?.reflectRefine?.enabled) {
+      const reflectOpts = this.#policy.reflectRefine.maxCycles !== undefined
+        ? { maxCycles: this.#policy.reflectRefine.maxCycles }
+        : {};
+      const result = await new ReflectRefineRunner(reflectOpts).run(this.#model, messages);
+      refined = result.answer || answerStr;
+    } else if (this.#policy?.selfConsistency?.enabled) {
+      const scOpts: { n?: number; earlyStopThreshold?: number } = {};
+      if (this.#policy.selfConsistency.n !== undefined) scOpts.n = this.#policy.selfConsistency.n;
+      if (this.#policy.selfConsistency.earlyStopThreshold !== undefined) {
+        scOpts.earlyStopThreshold = this.#policy.selfConsistency.earlyStopThreshold;
+      }
+      const result = await new SelfConsistencyRunner(scOpts).run(this.#model, messages);
+      refined = result.answer || answerStr;
+    }
+
+    const finalStep: FinalAnswerStep = { type: "final_answer", answer: refined };
     this.#assembler.addStep(finalStep);
     yield {
       traceId,
       parentTraceId,
       channel: "text",
       event: "final_answer",
-      data: { answer },
+      data: { answer: refined },
       timestampMs: Date.now(),
     };
   }

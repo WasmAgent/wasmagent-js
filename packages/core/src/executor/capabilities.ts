@@ -30,6 +30,9 @@ export function buildSandboxFetch(
 
   return async (input: string | URL, init?: RequestInit): Promise<Response> => {
     let url = new URL(typeof input === "string" ? input : input.href);
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      throw new Error(`CapabilityDenied: fetch only supports http/https, got "${url.protocol}"`);
+    }
     checkHost(url.hostname, url.href);
 
     let hops = 0;
@@ -44,6 +47,11 @@ export function buildSandboxFetch(
         const location = response.headers.get("location");
         if (!location) return response;
         const next = new URL(location, url.href);
+        if (next.protocol !== url.protocol) {
+          throw new Error(
+            `CapabilityDenied: redirect protocol downgrade from "${url.protocol}" to "${next.protocol}"`
+          );
+        }
         checkHost(next.hostname, next.href);
         url = next;
         hops++;
@@ -63,6 +71,11 @@ export function buildSandboxFetch(
  *   1. Traversal — /allowed/../../etc/passwd resolves outside /allowed.
  *   2. Prefix confusion — /allowed-sibling/x would pass a startsWith("/allowed")
  *      check but is rejected because the resolved prefix is appended with sep.
+ *
+ * Note: path.resolve() is a lexical operation — it does NOT follow symlinks.
+ * If the filesystem under an allowed prefix contains symlinks pointing outside
+ * the prefix, they will pass this check and the underlying readFile/writeFile
+ * will follow them. Ensure the allowed prefixes do not contain untrusted symlinks.
  */
 export function assertPathAllowed(
   path: string,
@@ -131,13 +144,19 @@ export function buildCapabilityGlobals(
 }
 
 /**
- * Minimal glob matcher supporting '*' and '?' wildcards.
- * Used for matching hostnames against allowedHosts patterns.
+ * Minimal glob matcher supporting '*' and '?' wildcards for hostnames.
+ * '*' matches any single DNS label (no dots), consistent with shell-style host globs.
+ * '?' matches any single character that is not a dot.
+ *
+ * Examples:
+ *   matchGlob("*.example.com", "api.example.com")   → true
+ *   matchGlob("*.example.com", "a.b.example.com")   → false  (* does not cross dots)
+ *   matchGlob("api.example.com", "api.example.com") → true
  */
 export function matchGlob(pattern: string, value: string): boolean {
   const regexStr = pattern
     .replace(/[.+^${}()|[\]\\]/g, "\\$&") // escape regex specials except * and ?
-    .replace(/\*/g, ".*")
-    .replace(/\?/g, ".");
+    .replace(/\*/g, "[^.]*")               // * matches one label (no dots)
+    .replace(/\?/g, "[^.]");               // ? matches one non-dot char
   return new RegExp(`^${regexStr}$`).test(value);
 }

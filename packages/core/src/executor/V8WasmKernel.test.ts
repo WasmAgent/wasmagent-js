@@ -42,15 +42,11 @@ describe("V8WasmKernel", () => {
     await expect(kernel.run("fetch('https://example.com')")).rejects.toThrow();
   });
 
-  it("snapshot() throws NotImplemented", async () => {
+  it("snapshot and restore are not implemented (optional interface)", async () => {
     const kernel = new V8WasmKernel();
-    await kernel.run("var z = 77;");
-    await expect(kernel.snapshot()).rejects.toThrow(/does not support snapshot/);
-  });
-
-  it("restore() throws NotImplemented", async () => {
-    const kernel = new V8WasmKernel();
-    await expect(kernel.restore(new Uint8Array())).rejects.toThrow(/does not support snapshot/);
+    const k = kernel as import("./types.js").WasmKernel;
+    expect(k.snapshot).toBeUndefined();
+    expect(k.restore).toBeUndefined();
   });
 
   it("injects capability globals via run() capabilities parameter", async () => {

@@ -119,19 +119,6 @@ export class JsKernel implements WasmKernel {
     this.#worker = null;
   }
 
-  async snapshot(): Promise<Uint8Array> {
-    throw new Error(
-      "JsKernel does not support snapshot/restore — state cannot be faithfully serialised. " +
-        "Use WasmtimeKernel for true linear-memory snapshots."
-    );
-  }
-
-  async restore(_snapshot: Uint8Array): Promise<void> {
-    throw new Error(
-      "JsKernel does not support snapshot/restore — use WasmtimeKernel."
-    );
-  }
-
   async [Symbol.asyncDispose](): Promise<void> {
     if (this.#worker) {
       await this.#worker.terminate();

@@ -91,11 +91,26 @@ export class Scheduler {
       // C3 barrier: before running any non-readOnly node, drain all in-flight
       // speculative futures so side-effectful nodes see a consistent state.
       if (readyWriting.length > 0 && speculative.size > 0) {
-        for (const { node, result } of await Promise.all([...speculative.values()])) {
-          speculative.delete(node.id);
-          completed.add(node.id);
-          yield { type: "node_done", nodeId: node.id, result };
-          this.#unblockDependents(node.id, remaining);
+        for (const settled of await Promise.allSettled([...speculative.entries()].map(
+          ([id, p]) => p.then((r) => ({ ...r, _id: id }))
+        ))) {
+          if (settled.status === "fulfilled") {
+            const { node, result, _id } = settled.value;
+            speculative.delete(_id);
+            completed.add(node.id);
+            yield { type: "node_done", nodeId: node.id, result };
+            this.#unblockDependents(node.id, remaining);
+          } else {
+            // Find which nodeId this promise belonged to by checking speculative map keys.
+            // The map entry was already iterated above; find the failed node id by elimination.
+            for (const [id] of speculative) {
+              if (!completed.has(id)) {
+                speculative.delete(id);
+                yield { type: "node_done", nodeId: id, result: undefined };
+                break;
+              }
+            }
+          }
         }
         // Re-evaluate after barrier — some previously-blocked nodes may now be unblocked.
         continue;
@@ -123,11 +138,24 @@ export class Scheduler {
     // Q8: abort the remaining speculative in-flight futures on early generator exit.
     // Only speculative futures in-flight — drain them all to make progress.
     if (speculative.size > 0) {
-        for (const { node, result } of await Promise.all([...speculative.values()])) {
-          speculative.delete(node.id);
-          completed.add(node.id);
-          yield { type: "node_done", nodeId: node.id, result };
-          this.#unblockDependents(node.id, remaining);
+        for (const settled of await Promise.allSettled([...speculative.entries()].map(
+          ([id, p]) => p.then((r) => ({ ...r, _id: id }))
+        ))) {
+          if (settled.status === "fulfilled") {
+            const { node, result, _id } = settled.value;
+            speculative.delete(_id);
+            completed.add(node.id);
+            yield { type: "node_done", nodeId: node.id, result };
+            this.#unblockDependents(node.id, remaining);
+          } else {
+            for (const [id] of speculative) {
+              if (!completed.has(id)) {
+                speculative.delete(id);
+                yield { type: "node_done", nodeId: id, result: undefined };
+                break;
+              }
+            }
+          }
         }
       }
     }

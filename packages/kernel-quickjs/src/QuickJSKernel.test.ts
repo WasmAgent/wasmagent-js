@@ -59,8 +59,10 @@ describe("QuickJSKernel (edge-safe, no node:vm)", () => {
     await timedKernel[Symbol.asyncDispose]();
   }, 5_000);
 
-  it("snapshot() throws NotImplemented", async () => {
-    await expect(kernel.snapshot()).rejects.toThrow(/does not support snapshot/);
+  it("snapshot and restore are not implemented (optional interface)", () => {
+    const k = kernel as import("@agentkit-js/core/executor").WasmKernel;
+    expect(k.snapshot).toBeUndefined();
+    expect(k.restore).toBeUndefined();
   });
 
   it("throws KernelSerializationError for circular reference output (matches JsKernel DataCloneError behaviour)", async () => {

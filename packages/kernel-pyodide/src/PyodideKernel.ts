@@ -208,7 +208,7 @@ del _urllib_parse
 
   async reset(): Promise<void> {
     if (!this.#py) return;
-    // Clear all user-defined globals and re-seed the sentinel.
+    // Clear all user-defined globals and re-seed both sentinel spellings.
     this.#py.runPython(`
 import sys
 # Remove all user-defined names, keep builtins.
@@ -216,6 +216,7 @@ for _k in list(globals().keys()):
     if not _k.startswith('__'):
         del globals()[_k]
 __final_answer__ = None
+__finalAnswer__ = None
 `);
     this.#logs = [];
   }

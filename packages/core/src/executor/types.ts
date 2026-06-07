@@ -40,10 +40,16 @@ export interface WasmKernel {
   run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult>;
   /** Reset kernel state (clear all cross-step variables). */
   reset(): Promise<void>;
-  /** Snapshot linear memory + variable scope (A1 / A3). */
-  snapshot(): Promise<Uint8Array>;
-  /** Restore from a previous snapshot. Host handles are re-established by the virtualisation layer (A3). */
-  restore(snapshot: Uint8Array): Promise<void>;
+  /**
+   * Snapshot linear memory + variable scope (A1 / A3).
+   * Optional — only WasmtimeKernel implements this. Check `kernel.snapshot` before calling.
+   */
+  snapshot?(): Promise<Uint8Array>;
+  /**
+   * Restore from a previous snapshot. Host handles are re-established by the virtualisation layer (A3).
+   * Optional — only WasmtimeKernel implements this. Check `kernel.restore` before calling.
+   */
+  restore?(snapshot: Uint8Array): Promise<void>;
   /** Explicit resource management — releases all host handles (A3 deterministic cleanup). */
   [Symbol.asyncDispose](): Promise<void>;
 }

@@ -105,20 +105,8 @@ export class V8WasmKernel implements WasmKernel {
     this.#logs = [];
   }
 
-  async snapshot(): Promise<Uint8Array> {
-    throw new Error(
-      "V8WasmKernel does not support snapshot/restore — state cannot be faithfully serialised. " +
-        "Use WasmtimeKernel for true linear-memory snapshots."
-    );
-  }
-
-  async restore(_snapshot: Uint8Array): Promise<void> {
-    throw new Error(
-      "V8WasmKernel does not support snapshot/restore — use WasmtimeKernel."
-    );
-  }
-
   async [Symbol.asyncDispose](): Promise<void> {
-    await this.reset();
+    // Drop references; GC reclaims the vm.Context.
+    this.#logs = [];
   }
 }

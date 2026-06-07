@@ -8,10 +8,12 @@ describe("matchGlob", () => {
     expect(matchGlob("example.com", "other.com")).toBe(false);
   });
 
-  it("wildcard * matches any segment", () => {
+  it("wildcard * matches single DNS label (no dots)", () => {
     expect(matchGlob("*.example.com", "api.example.com")).toBe(true);
     expect(matchGlob("*.example.com", "example.com")).toBe(false);
-    expect(matchGlob("api.*", "api.example.com")).toBe(true);
+    expect(matchGlob("*.example.com", "a.b.example.com")).toBe(false);  // * does not cross dots
+    expect(matchGlob("api.*", "api.example")).toBe(true);               // single label after dot
+    expect(matchGlob("api.*", "api.example.com")).toBe(false);          // two labels, not one
   });
 
   it("wildcard * in middle", () => {

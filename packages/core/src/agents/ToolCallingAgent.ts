@@ -8,22 +8,11 @@ import { TokenBudget } from "../models/types.js";
 import { SelfConsistencyRunner } from "../enhancement/SelfConsistencyRunner.js";
 import { ReflectRefineRunner } from "../enhancement/ReflectRefineRunner.js";
 import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
-import type {
-  AgentEvent,
-  FinalAnswerStep,
-  ParallelToolUseCall,
-  ParallelToolUseStep,
-  PlanningStep,
-  ToolUseStep,
-  UserMessageStep,
-} from "../types/events.js";
+import type { AgentEvent, FinalAnswerStep, ParallelToolUseCall, ParallelToolUseStep, PlanningStep, ToolUseStep, UserMessageStep } from "../types/events.js";
+import { PLANNING_PROMPT } from "./prompts.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant. Use the provided tools to answer questions.
 When you have a final answer, respond with plain text (no tool call).`;
-
-const PLANNING_PROMPT = `Based on the task and observations so far, provide:
-1. A structured plan for remaining steps (inside <plan>...</plan> tags)
-2. Key facts established so far (inside <facts>...</facts> tags)`;
 
 export interface ToolCallingAgentOptions {
   tools: ToolDefinition[];
@@ -53,6 +42,7 @@ export class ToolCallingAgent {
   readonly #planningInterval: number | undefined;
   readonly #assembler: MessageAssembler;
   readonly #policy: EnhancementPolicy | undefined;
+  readonly #toolsSchema: object[];
 
   constructor(opts: ToolCallingAgentOptions) {
     this.#tools = new ToolRegistry();
@@ -60,12 +50,13 @@ export class ToolCallingAgent {
       this.#tools.register(tool);
     }
     this.#model = opts.model;
-    this.#maxSteps = opts.maxSteps ?? 20;
+    this.#maxSteps = opts.maxSteps ?? opts.enhancementPolicy?.budget?.maxSteps ?? 20;
     this.#planningInterval = opts.planningInterval;
     this.#policy = opts.enhancementPolicy;
+    this.#toolsSchema = this.#tools.toJsonSchema();
     this.#assembler = new MessageAssembler({
       systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
-      toolsSchema: this.#tools.toJsonSchema(),
+      toolsSchema: this.#toolsSchema,
     });
   }
 
@@ -141,7 +132,7 @@ export class ToolCallingAgent {
 
       for await (const event of this.#model.generate(messages, {
         stream: true,
-        tools: this.#tools.toJsonSchema(),
+        tools: this.#toolsSchema,
       })) {
         if (event.type === "text_delta" && event.delta) {
           fullText += event.delta;

@@ -22,14 +22,6 @@ export class WasmtimeKernel implements WasmKernel {
     return Promise.reject(new Error("WasmtimeKernel not available"));
   }
 
-  snapshot(): Promise<Uint8Array> {
-    return Promise.reject(new Error("WasmtimeKernel not available"));
-  }
-
-  restore(_snapshot: Uint8Array): Promise<void> {
-    return Promise.reject(new Error("WasmtimeKernel not available"));
-  }
-
   [Symbol.asyncDispose](): Promise<void> {
     return Promise.resolve();
   }

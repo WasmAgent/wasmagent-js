@@ -293,16 +293,6 @@ export class QuickJSKernel implements WasmKernel {
     if (this.#jsonObj) { try { this.#jsonObj.dispose(); } catch { /* ignore */ } this.#jsonObj = null; }
   }
 
-  async snapshot(): Promise<Uint8Array> {
-    throw new Error(
-      "QuickJSKernel does not support snapshot/restore. Use WasmtimeKernel for byte-exact snapshots."
-    );
-  }
-
-  async restore(_snapshot: Uint8Array): Promise<void> {
-    throw new Error("QuickJSKernel does not support snapshot/restore.");
-  }
-
   async [Symbol.asyncDispose](): Promise<void> {
     this.#disposeContextHandles();
     if (this.#ctx) { try { this.#ctx.dispose(); } catch { /* ignore */ } this.#ctx = null; }

@@ -42,25 +42,48 @@ export interface Env {
   AGENTKIT_LOG_LEVEL?: string;
   /** Optional KV namespace for session result caching (C4). */
   AGENTKIT_SESSIONS?: KVNamespace;
+  /**
+   * Optional Bearer token that POST /run callers must supply in the
+   * Authorization header. When absent the endpoint is effectively public —
+   * suitable only for local dev or deployments that enforce auth at the
+   * edge/gateway layer.
+   */
+  AGENTKIT_CLIENT_TOKEN?: string;
+  /**
+   * Comma-separated list of allowed CORS origins (e.g. "https://app.example.com").
+   * Falls back to "*" when not set — restrict in production.
+   */
+  AGENTKIT_ALLOWED_ORIGIN?: string;
 }
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Max-Age": "86400",
-} as const;
-
 const SESSION_TTL_SECONDS = 3600; // 1 hour
+const MAX_TASK_BYTES = 10_240;    // 10 KB input cap
+const MAX_STEPS_CAP = 50;         // hard cap regardless of caller value
+const MAX_KV_EVENTS = 500;        // KV event accumulator cap (~5 MB safety margin)
 
-function jsonError(message: string, status: number): Response {
-  return Response.json({ error: message }, { status, headers: CORS_HEADERS });
+function getCorsHeaders(env: Env, request: Request): Record<string, string> {
+  const allowed = env.AGENTKIT_ALLOWED_ORIGIN ?? "*";
+  const origin = request.headers.get("Origin") ?? "";
+  const allowOrigin = allowed === "*" ? "*" : (origin === allowed ? origin : "null");
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    ...(allowed !== "*" ? { "Vary": "Origin" } : {}),
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Max-Age": "86400",
+  };
+}
+
+function jsonError(message: string, status: number, corsHeaders: Record<string, string>): Response {
+  return Response.json({ error: message }, { status, headers: corsHeaders });
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const corsHeaders = getCorsHeaders(env, request);
+
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
+      return new Response(null, { status: 204, headers: corsHeaders });
     }
 
     const url = new URL(request.url);
@@ -68,15 +91,15 @@ export default {
     if (url.pathname === "/health" && request.method === "GET") {
       return Response.json(
         { status: "ok", version: "0.1.0" },
-        { headers: CORS_HEADERS }
+        { headers: corsHeaders }
       );
     }
 
     if (url.pathname === "/run" && request.method === "POST") {
-      return handleRun(request, env);
+      return handleRun(request, env, ctx, corsHeaders);
     }
 
-    return jsonError("Not Found", 404);
+    return jsonError("Not Found", 404, corsHeaders);
   },
 } satisfies ExportedHandler<Env>;
 
@@ -104,40 +127,56 @@ function isRunBody(v: unknown): v is RunBody {
   );
 }
 
-async function handleRun(request: Request, env: Env): Promise<Response> {
+async function handleRun(request: Request, env: Env, ctx: ExecutionContext, corsHeaders: Record<string, string>): Promise<Response> {
+  // Auth check: require Bearer token when AGENTKIT_CLIENT_TOKEN is configured.
+  if (env.AGENTKIT_CLIENT_TOKEN) {
+    const auth = request.headers.get("Authorization") ?? "";
+    if (auth !== `Bearer ${env.AGENTKIT_CLIENT_TOKEN}`) {
+      return jsonError("Unauthorized", 401, corsHeaders);
+    }
+  }
+
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return jsonError("Invalid JSON body", 400);
+    return jsonError("Invalid JSON body", 400, corsHeaders);
   }
 
   if (!isRunBody(body)) {
-    return jsonError('Body must include { "task": string }', 400);
+    return jsonError('Body must include { "task": string }', 400, corsHeaders);
   }
 
-  const { task, agentType = "code", maxSteps = 10, sessionId } = body;
+  const { task, agentType = "code", maxSteps = 10 } = body;
+
+  // Input size cap to prevent DoS via oversized prompts.
+  if (new TextEncoder().encode(task).byteLength > MAX_TASK_BYTES) {
+    return jsonError(`task must be under ${MAX_TASK_BYTES} bytes`, 400, corsHeaders);
+  }
 
   if (!env.ANTHROPIC_API_KEY) {
-    return jsonError("ANTHROPIC_API_KEY secret not configured", 500);
+    return jsonError("ANTHROPIC_API_KEY secret not configured", 500, corsHeaders);
   }
 
   if (agentType !== "code" && agentType !== "tool-calling") {
-    return jsonError('agentType must be "code" or "tool-calling"', 400);
+    return jsonError('agentType must be "code" or "tool-calling"', 400, corsHeaders);
   }
+
+  // Clamp maxSteps to prevent runaway cost.
+  const clampedMaxSteps = Math.min(maxSteps, MAX_STEPS_CAP);
 
   // C4: content-addressed cache key = SHA-256(task + agentType + maxSteps + model).
   // sessionId is an optional grouping/audit label; the content hash is the actual key.
   // This prevents a different task with the same sessionId from returning stale results.
   const MODEL_ID = "claude-sonnet-4-6";
   const kvKey = env.AGENTKIT_SESSIONS
-    ? await contentHash({ task, agentType, maxSteps, model: MODEL_ID })
+    ? await contentHash({ task, agentType, maxSteps: clampedMaxSteps, model: MODEL_ID })
     : null;
 
   if (kvKey && env.AGENTKIT_SESSIONS) {
     const cached = await env.AGENTKIT_SESSIONS.get(kvKey, "text");
     if (cached) {
-      return replayCachedSession(cached);
+      return replayCachedSession(cached, corsHeaders);
     }
   }
 
@@ -152,11 +191,11 @@ async function handleRun(request: Request, env: Env): Promise<Response> {
 
   const agentRun: AsyncGenerator<AgentEvent> =
     agentType === "tool-calling"
-      ? new ToolCallingAgent({ tools: [], model, maxSteps }).run(task)
+      ? new ToolCallingAgent({ tools: [], model, maxSteps: clampedMaxSteps }).run(task)
       : new CodeAgent({
           tools: [],
           model,
-          maxSteps,
+          maxSteps: clampedMaxSteps,
           kernel: quickJSKernel,
         }).run(task);
 
@@ -164,14 +203,17 @@ async function handleRun(request: Request, env: Env): Promise<Response> {
   const writer = writable.getWriter();
   const encoder = new TextEncoder();
 
-  (async () => {
+  // Use ctx.waitUntil so the Worker stays alive until the stream and KV write finish.
+  ctx.waitUntil((async () => {
     const allEvents: AgentEvent[] = [];
     let ranSuccessfully = false;
     try {
       for await (const event of agentRun) {
         const line = `data: ${JSON.stringify(event)}\n\n`;
         await writer.write(encoder.encode(line));
-        if (kvKey && env.AGENTKIT_SESSIONS) allEvents.push(event);
+        if (kvKey && env.AGENTKIT_SESSIONS && allEvents.length < MAX_KV_EVENTS) {
+          allEvents.push(event);
+        }
         if (event.event === "final_answer") ranSuccessfully = true;
       }
       await writer.write(encoder.encode("data: [DONE]\n\n"));
@@ -179,28 +221,34 @@ async function handleRun(request: Request, env: Env): Promise<Response> {
       // C4: only cache runs that completed with a final_answer.
       // Errors and partial runs are not cached to avoid poisoning the cache.
       if (kvKey && env.AGENTKIT_SESSIONS && ranSuccessfully && allEvents.length > 0) {
-        await env.AGENTKIT_SESSIONS.put(
-          kvKey,
-          JSON.stringify(allEvents),
-          { expirationTtl: SESSION_TTL_SECONDS }
-        );
+        try {
+          await env.AGENTKIT_SESSIONS.put(
+            kvKey,
+            JSON.stringify(allEvents),
+            { expirationTtl: SESSION_TTL_SECONDS }
+          );
+        } catch {
+          // KV write failure is non-fatal; the client already received the full stream.
+        }
       }
     } catch (err) {
-      const errEvent = {
-        event: "error",
-        data: { error: err instanceof Error ? err.message : String(err) },
-      };
-      await writer.write(encoder.encode(`data: ${JSON.stringify(errEvent)}\n\n`));
+      try {
+        const errEvent = {
+          event: "error",
+          data: { error: err instanceof Error ? err.message : String(err) },
+        };
+        await writer.write(encoder.encode(`data: ${JSON.stringify(errEvent)}\n\n`));
+      } catch { /* consumer disconnected */ }
     } finally {
-      await writer.close();
+      await writer.close().catch(() => {});
     }
-  })();
+  })());
 
   return new Response(readable, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      ...CORS_HEADERS,
+      ...corsHeaders,
     },
   });
 }
@@ -209,13 +257,13 @@ async function handleRun(request: Request, env: Env): Promise<Response> {
  * Replay a cached session from KV as a streaming SSE response (C4).
  * The cached value is a JSON array of AgentEvent objects.
  */
-function replayCachedSession(cachedJson: string): Response {
+function replayCachedSession(cachedJson: string, corsHeaders: Record<string, string>): Response {
   let events: AgentEvent[];
   try {
     events = JSON.parse(cachedJson) as AgentEvent[];
   } catch {
     // Corrupted cache entry — treat as cache miss by returning an error.
-    return jsonError("Cached session data is corrupted", 500);
+    return jsonError("Cached session data is corrupted", 500, corsHeaders);
   }
 
   const encoder = new TextEncoder();
@@ -223,11 +271,14 @@ function replayCachedSession(cachedJson: string): Response {
   const writer = writable.getWriter();
 
   (async () => {
-    for (const event of events) {
-      await writer.write(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+    try {
+      for (const event of events) {
+        await writer.write(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+      }
+      await writer.write(encoder.encode("data: [DONE]\n\n"));
+    } catch { /* consumer disconnected */ } finally {
+      await writer.close().catch(() => {});
     }
-    await writer.write(encoder.encode("data: [DONE]\n\n"));
-    await writer.close();
   })();
 
   return new Response(readable, {
@@ -235,7 +286,7 @@ function replayCachedSession(cachedJson: string): Response {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       "X-Agentkit-Cache": "HIT",
-      ...CORS_HEADERS,
+      ...corsHeaders,
     },
   });
 }
