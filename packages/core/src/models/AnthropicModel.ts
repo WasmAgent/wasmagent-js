@@ -36,10 +36,19 @@ export class AnthropicModel implements Model {
 
   /**
    * The minimum token count the system message must reach before cache_control
-   * breakpoints are injected (B1). Falls back to 1024 for unknown models.
+   * breakpoints are injected (B1).
+   *
+   * Lookup order:
+   *   1. Exact match in CACHE_MIN_TOKENS (known models).
+   *   2. Tier inference from model ID substring ("opus" → 4096, "haiku" → 2048, "sonnet" → 1024).
+   *   3. Conservative default of 1024 for unknown future models.
    */
   get cacheMinTokens(): number {
-    return CACHE_MIN_TOKENS[this.modelId] ?? 1024;
+    if (CACHE_MIN_TOKENS[this.modelId] !== undefined) return CACHE_MIN_TOKENS[this.modelId]!;
+    const id = this.modelId.toLowerCase();
+    if (id.includes("opus")) return 4096;
+    if (id.includes("haiku")) return 2048;
+    return 1024;
   }
 
   async *generate(

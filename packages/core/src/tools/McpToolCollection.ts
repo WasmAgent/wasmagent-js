@@ -84,14 +84,18 @@ export class McpToolCollection {
     try {
       const { StreamableHTTPClientTransport } =
         await import("@modelcontextprotocol/sdk/client/streamableHttp.js");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await client.connect(new (StreamableHTTPClientTransport as any)(baseUrl));
+      const transport = new (StreamableHTTPClientTransport as StreamableHTTPConstructor)(baseUrl);
+      await client.connect(transport as unknown as Parameters<typeof client.connect>[0]);
     } catch (err) {
       // Q4: distinguish module-not-found (SDK too old, dep missing) from connection errors.
       // A missing module means Streamable HTTP is unavailable in this SDK version —
       // re-throw instead of silently falling back to SSE (which would mask the real problem).
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes("ERR_MODULE_NOT_FOUND") || msg.includes("Cannot find module")) {
+      // Check both error.code (Node.js module error) and message string as a fallback.
+      const isModuleNotFound =
+        (err instanceof Error && (err as NodeJS.ErrnoException).code === "ERR_MODULE_NOT_FOUND") ||
+        (err instanceof Error && (err.message.includes("ERR_MODULE_NOT_FOUND") || err.message.includes("Cannot find module")));
+      if (isModuleNotFound) {
+        const msg = err instanceof Error ? err.message : String(err);
         throw new Error(
           `McpToolCollection.fromHttp: StreamableHTTPClientTransport not available in the ` +
             `installed @modelcontextprotocol/sdk version. ` +
@@ -101,7 +105,8 @@ export class McpToolCollection {
       }
       // Connection error (4xx, network timeout, server doesn't support Streamable HTTP) →
       // fall back to SSE with a warning so the caller can see the degradation.
-      console.warn(`[mcp] Streamable HTTP failed (${msg}), falling back to SSE`);
+      const connMsg = err instanceof Error ? err.message : String(err);
+      console.warn(`[mcp] Streamable HTTP failed (${connMsg}), falling back to SSE`);
       const { SSEClientTransport } = await import("@modelcontextprotocol/sdk/client/sse.js");
       const fallbackClient = new Client({ name: "agentkit-js", version: "0.1.0" });
       await fallbackClient.connect(new SSEClientTransport(baseUrl));
@@ -167,6 +172,11 @@ export class McpToolCollection {
 }
 
 // ── MCP SDK type stubs (avoid importing types that may not be installed) ─────
+
+/** Minimal constructor shape for StreamableHTTPClientTransport (SDK ≥ 1.7.0). */
+interface StreamableHTTPConstructor {
+  new(url: URL): { start(): Promise<void>; close(): Promise<void> };
+}
 
 interface McpClientInterface {
   listTools(): Promise<{ tools: McpToolSchema[] }>;
