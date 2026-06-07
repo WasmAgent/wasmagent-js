@@ -367,3 +367,47 @@ describe("ToolCallingAgent — A1 DAG scheduler", () => {
     );
   });
 });
+
+describe("B2 — External kill-switch", () => {
+  it("aborts run immediately when signal is pre-aborted", async () => {
+    const model = textAnswerModel("this should not be reached");
+    const agent = new ToolCallingAgent({ tools: [addTool], model, maxSteps: 5 });
+    const controller = new AbortController();
+    controller.abort(); // abort before run starts
+
+    const events = [];
+    for await (const e of agent.run("task", null, { signal: controller.signal })) {
+      events.push(e);
+    }
+    // Should get a run_start then an error from abort.
+    const errEv = events.find((e) => e.event === "error");
+    expect(errEv).toBeDefined();
+    expect(errEv?.event === "error" && errEv.data.error).toContain("aborted");
+  });
+
+  it("aborts mid-run when signal fires between steps", async () => {
+    const controller = new AbortController();
+    let stepCount = 0;
+
+    // Model that keeps calling the add tool indefinitely.
+    const loopModel: Model = {
+      providerId: "mock/loop",
+      async *generate(): AsyncGenerator<StreamEvent> {
+        stepCount++;
+        // Abort after step 1 is processed.
+        if (stepCount === 2) controller.abort();
+        yield { type: "tool_call", toolCall: { type: "tool_use", id: `c${stepCount}`, name: "add", input: { a: 1, b: 2 } } };
+        yield { type: "stop", stopReason: "tool_use" };
+      },
+    };
+
+    const agent = new ToolCallingAgent({ tools: [addTool], model: loopModel, maxSteps: 10 });
+    const events = [];
+    for await (const e of agent.run("keep going", null, { signal: controller.signal })) {
+      events.push(e);
+    }
+    const errEv = events.find((e) => e.event === "error");
+    expect(errEv).toBeDefined();
+    expect(events.length).toBeLessThan(50); // didn't run all 10 steps
+  });
+});

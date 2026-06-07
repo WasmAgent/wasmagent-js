@@ -52,7 +52,7 @@ export type {
 
 // Tools
 export { ToolRegistry, zodToJsonSchema, McpToolCollection } from "./tools/index.js";
-export type { ToolDefinition, ToolCall, ToolResult } from "./tools/index.js";
+export type { ToolDefinition, ToolCall, ToolResult, McpIntegrityOptions, McpToolSchema } from "./tools/index.js";
 
 // Scheduler
 export { Scheduler, SimpleIR, deriveDependencies } from "./scheduler/index.js";

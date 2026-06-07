@@ -1,0 +1,39 @@
+{
+  "name": "@agentkit-js/kernel-remote",
+  "version": "0.1.0",
+  "description": "RemoteSandboxKernel — microVM third isolation tier for agentkit-js via E2B / Cloudflare Sandbox",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "e2b": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "e2b": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": ["microvm", "e2b", "sandbox", "remote", "agentkit"],
+  "license": "Apache-2.0"
+}

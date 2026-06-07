@@ -69,6 +69,8 @@ export interface ToolUseStep {
   toolOutput: string;
   /** True when the tool returned an error instead of a result. */
   isError: boolean;
+  /** True when the tool output is from an untrusted external source (B1 injection defense). */
+  isUntrusted?: boolean;
 }
 
 /**
@@ -84,6 +86,8 @@ export interface ParallelToolUseCall {
   toolInput: Record<string, unknown>;
   toolOutput: string;
   isError: boolean;
+  /** True when the tool output is from an untrusted external source (B1 injection defense). */
+  isUntrusted?: boolean;
 }
 
 export interface ParallelToolUseStep {

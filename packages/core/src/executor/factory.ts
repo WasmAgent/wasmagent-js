@@ -1,24 +1,26 @@
 /**
- * Dual-engine kernel factory (A1 dual-engine fallback).
+ * Multi-engine kernel factory.
  *
- * Tries to load the wasmtime Node binding first (best perf + real WASM sandbox).
- * Falls back to VmKernel (pure-JS, serverless-safe) if the native addon
- * is unavailable (Lambda, Alpine, Cloudflare Workers).
- * JsKernel is the default engine for local development.
+ * Supported engines:
+ *   "js"       — JsKernel (Node.js vm module, default)
+ *   "v8-wasm"  — VmKernel (pure-JS, serverless-safe)
+ *   "quickjs"  — QuickJSKernel from @agentkit-js/kernel-quickjs (edge-safe, WASM)
+ *   "wasmtime" — WasmtimeKernel from @agentkit-js/kernel-wasmtime (true WASM + WASI)
+ *   "remote"   — RemoteSandboxKernel from @agentkit-js/kernel-remote (microVM via E2B)
+ *
+ * actionLanguage="pyodide" routes to @agentkit-js/kernel-pyodide (Python-in-WASM).
  *
  * Edge runtime detection: if worker_threads is unavailable (Cloudflare Workers,
- * browser), JsKernel auto-falls back to VmKernel (E1-edge).
+ * browser), "js" throws with guidance to use "quickjs".
  */
 import type { KernelOptions, WasmKernel } from "./types.js";
 import { JsKernel } from "./JsKernel.js";
 
 /** True when the current runtime does not support Node's worker_threads module. */
 async function isEdgeRuntime(): Promise<boolean> {
-  // Non-Node runtimes (Cloudflare Workers, browser, Deno) don't expose process.release.
   if (typeof process === "undefined" || process.release?.name !== "node") {
     return true;
   }
-  // On real Node, confirm worker_threads is usable (guards against stripped builds).
   try {
     await import("node:worker_threads");
     return false;
@@ -27,28 +29,36 @@ async function isEdgeRuntime(): Promise<boolean> {
   }
 }
 
+function kernelNotInstalled(pkg: string, extra?: string): Error {
+  const err = new Error(
+    `${pkg} is not installed.\n` +
+    `  Install: pnpm add ${pkg}\n` +
+    (extra ? `  ${extra}\n` : "")
+  ) as Error & { code: string };
+  err.code = "KERNEL_NOT_INSTALLED";
+  return err;
+}
+
 export async function createKernel(
   opts: KernelOptions = {}
 ): Promise<WasmKernel> {
   const { engine = "js", actionLanguage } = opts;
 
+  // actionLanguage="pyodide" always routes to kernel-pyodide regardless of engine.
+  if (actionLanguage === "pyodide") {
+    const PYODIDE_PKG = "@agentkit-js/kernel-pyodide";
+    try {
+      const mod = await import(PYODIDE_PKG) as { PyodideKernel: new (opts?: KernelOptions) => WasmKernel };
+      return new mod.PyodideKernel(opts);
+    } catch (cause) {
+      const err = kernelNotInstalled(PYODIDE_PKG, "Docs: https://pyodide.org") as Error & { cause: unknown };
+      err.cause = cause;
+      throw err;
+    }
+  }
+
   switch (engine) {
     case "js":
-      if (actionLanguage === "pyodide") {
-        // PyodideKernel lives in @agentkit-js/kernel-pyodide to keep core lean.
-        // Import it directly from that package instead of using createKernel:
-        //   import { PyodideKernel } from "@agentkit-js/kernel-pyodide";
-        //   const kernel = new PyodideKernel();
-        throw new Error(
-          'actionLanguage "pyodide" is not routed through createKernel.\n' +
-          'Import PyodideKernel directly:\n' +
-          '  import { PyodideKernel } from "@agentkit-js/kernel-pyodide";\n' +
-          '  const kernel = new PyodideKernel();'
-        );
-      }
-      // E1-edge: non-Node runtimes (Cloudflare Workers, browser) lack node:vm and
-      // worker_threads. VmKernel also uses node:vm and will crash at runtime.
-      // Direct users to the edge-safe kernel package instead.
       if (await isEdgeRuntime()) {
         throw new Error(
           "[agentkit] Non-Node runtime detected (Cloudflare Workers / browser / Deno).\n" +
@@ -60,20 +70,28 @@ export async function createKernel(
       }
       return new JsKernel();
 
+    case "quickjs": {
+      const QUICKJS_PKG = "@agentkit-js/kernel-quickjs";
+      try {
+        const mod = await import(QUICKJS_PKG) as { QuickJSKernel: new (opts?: KernelOptions) => WasmKernel };
+        return new mod.QuickJSKernel(opts);
+      } catch (cause) {
+        const err = kernelNotInstalled(QUICKJS_PKG) as Error & { cause: unknown };
+        err.cause = cause;
+        throw err;
+      }
+    }
+
     case "wasmtime": {
-      // Try loading @agentkit-js/kernel-wasmtime (optional external package).
       const WASMTIME_PKG = "@agentkit-js/kernel-wasmtime";
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mod = await import(WASMTIME_PKG) as { WasmtimeKernel: new (opts?: KernelOptions) => import("./types.js").WasmKernel };
+        const mod = await import(WASMTIME_PKG) as { WasmtimeKernel: new (opts?: KernelOptions) => WasmKernel };
         return new mod.WasmtimeKernel(opts);
       } catch (cause) {
-        const err = new Error(
-          "@agentkit-js/kernel-wasmtime is not installed or javy CLI is not in PATH.\n" +
-          "  Install: pnpm add @agentkit-js/kernel-wasmtime\n" +
-          "  javy: https://github.com/bytecodealliance/javy/releases"
-        ) as Error & { code: string; cause: unknown };
-        err.code = "KERNEL_NOT_INSTALLED";
+        const err = kernelNotInstalled(
+          WASMTIME_PKG,
+          "javy: https://github.com/bytecodealliance/javy/releases"
+        ) as Error & { cause: unknown };
         err.cause = cause;
         throw err;
       }
@@ -82,6 +100,21 @@ export async function createKernel(
     case "v8-wasm": {
       const { VmKernel } = await import("./VmKernel.js");
       return new VmKernel(opts);
+    }
+
+    case "remote": {
+      const REMOTE_PKG = "@agentkit-js/kernel-remote";
+      try {
+        const mod = await import(REMOTE_PKG) as { RemoteSandboxKernel: new (opts?: KernelOptions) => WasmKernel };
+        return new mod.RemoteSandboxKernel(opts);
+      } catch (cause) {
+        const err = kernelNotInstalled(
+          REMOTE_PKG,
+          "Also requires the 'e2b' peer dependency: pnpm add e2b"
+        ) as Error & { cause: unknown };
+        err.cause = cause;
+        throw err;
+      }
     }
 
     default:

@@ -106,8 +106,10 @@ export class ToolCallingAgent {
 
   async *run(
     task: string,
-    parentTraceId: string | null = null
+    parentTraceId: string | null = null,
+    opts: { signal?: AbortSignal } = {}
   ): AsyncGenerator<AgentEvent> {
+    const { signal } = opts;
     const traceId = `agent-${randomUUID()}`;
 
     yield {
@@ -131,6 +133,20 @@ export class ToolCallingAgent {
     const callHistory: string[][] = [];
 
     for (let step = 1; step <= this.#maxSteps; step++) {
+      // B2: external kill-switch — check before every step and abort if signalled.
+      if (signal?.aborted) {
+        if (this.#checkpointer) {
+          await this.#checkpointer.save(traceId, {
+            traceId, task, history: [], stepIndex: step, savedAtMs: Date.now(),
+          });
+        }
+        yield {
+          traceId, parentTraceId, channel: "text", event: "error",
+          data: { error: "Agent aborted by external signal", step },
+          timestampMs: Date.now(),
+        };
+        return;
+      }
       // C2: check composable stop conditions before each step.
       if (this.#stopWhen.length > 0) {
         const ctx = {
@@ -383,12 +399,13 @@ export class ToolCallingAgent {
 
         // Collect results from scheduler events, mapping node_done/node_error back
         // to resolvedCalls in the same order as pendingCalls.
-        const resultMap = new Map<string, { output: string; isError: boolean }>();
+        const resultMap = new Map<string, { output: string; isError: boolean; isUntrusted: boolean }>();
         for await (const evt of scheduler.execute(ir)) {
           if (evt.type === "node_done") {
             const toolResult = evt.result as import("../tools/types.js").ToolResult;
             let output: string;
             let isError = false;
+            const isUntrusted = toolResult?.trust === "untrusted";
             if (toolResult?.error !== undefined) {
               isError = true;
               output = toolResult.error.message || "Tool execution failed with no output.";
@@ -400,18 +417,19 @@ export class ToolCallingAgent {
                 output = `Tool output could not be serialised: ${e instanceof Error ? e.message : String(e)}`;
               }
             }
-            resultMap.set(evt.nodeId, { output, isError });
+            resultMap.set(evt.nodeId, { output, isError, isUntrusted });
           } else if (evt.type === "node_error") {
             const reason = evt.error;
             resultMap.set(evt.nodeId, {
               output: `Tool dispatch threw: ${reason instanceof Error ? reason.message : String(reason ?? "unknown error")}`,
               isError: true,
+              isUntrusted: false,
             });
           }
         }
 
         for (const call of pendingCalls) {
-          const res = resultMap.get(call.id) ?? { output: "Tool execution failed with no output.", isError: true };
+          const res = resultMap.get(call.id) ?? { output: "Tool execution failed with no output.", isError: true, isUntrusted: false };
           yield {
             traceId,
             parentTraceId,
@@ -422,7 +440,7 @@ export class ToolCallingAgent {
               : { callId: call.id, toolName: call.name, output: (() => { try { return JSON.parse(res.output); } catch { return res.output; } })(), batchId, batchSize, stepIndex: step },
             timestampMs: Date.now(),
           };
-          resolvedCalls.push({ toolCallId: call.id, toolName: call.name, toolInput: call.input, toolOutput: res.output, isError: res.isError });
+          resolvedCalls.push({ toolCallId: call.id, toolName: call.name, toolInput: call.input, toolOutput: res.output, isError: res.isError, ...(res.isUntrusted ? { isUntrusted: true } : {}) });
         }
       } else {
         // "parallel" mode: original Promise.all path.
@@ -485,6 +503,7 @@ export class ToolCallingAgent {
           toolInput: c.toolInput,
           toolOutput: c.toolOutput,
           isError: c.isError,
+          ...(c.isUntrusted ? { isUntrusted: true } : {}),
         };
         this.#assembler.addStep(singleStep);
       } else {

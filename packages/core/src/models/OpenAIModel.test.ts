@@ -425,3 +425,66 @@ describe("OpenAIModel D2 — prompt_tokens_details.cached_tokens", () => {
     expect(usageEv?.usage?.cacheReadTokens).toBeUndefined();
   });
 });
+
+describe("OpenAIModel apiMode", () => {
+  it("defaults to 'responses' when no baseURL", async () => {
+    vi.resetModules();
+    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "am1");
+    const model = new OpenAIModel("gpt-4o", "key");
+    expect(model.apiMode).toBe("responses");
+  });
+
+  it("defaults to 'chat' when baseURL is set", async () => {
+    vi.resetModules();
+    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "am2");
+    const model = new OpenAIModel("gpt-4o", { baseURL: "http://localhost:11434/v1" });
+    expect(model.apiMode).toBe("chat");
+  });
+
+  it("explicit apiMode='chat' overrides auto-detection", async () => {
+    vi.resetModules();
+    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "am3");
+    const model = new OpenAIModel("gpt-4o", { apiMode: "chat" });
+    expect(model.apiMode).toBe("chat");
+  });
+
+  it("explicit apiMode='responses' works with baseURL", async () => {
+    vi.resetModules();
+    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "am4");
+    const model = new OpenAIModel("gpt-4o", { baseURL: "https://oai-proxy.example.com", apiMode: "responses" });
+    expect(model.apiMode).toBe("responses");
+  });
+
+  it("Responses API path falls back to chat when responses.create absent", async () => {
+    vi.resetModules();
+    // Mock only has chat.completions.create, no responses.
+    const mockCreate = vi.fn().mockResolvedValue({
+      [Symbol.asyncIterator]() {
+        let done = false;
+        return {
+          async next() {
+            if (!done) {
+              done = true;
+              return { value: { choices: [{ delta: { content: "hi" }, finish_reason: "stop" }] }, done: false };
+            }
+            return { value: undefined, done: true };
+          },
+        };
+      },
+    });
+    const MockOpenAI = vi.fn().mockImplementation(() => ({
+      chat: { completions: { create: mockCreate } },
+      // No responses property — forces fallback.
+    }));
+    vi.doMock("openai", () => ({ default: MockOpenAI }));
+    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "am5");
+    const model = new OpenAIModel("gpt-4o", "key"); // apiMode="responses" by default
+    const events: StreamEvent[] = [];
+    for await (const ev of model.generate([{ role: "user", content: "hello" }])) {
+      events.push(ev);
+    }
+    vi.doUnmock("openai");
+    // Falls back to chat completions — should produce text_delta.
+    expect(events.some((e) => e.type === "text_delta")).toBe(true);
+  });
+});

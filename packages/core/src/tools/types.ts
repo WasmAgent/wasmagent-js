@@ -53,6 +53,24 @@ export interface ToolDefinition<TInput = unknown, TOutput = unknown> {
    * out of the context window.
    */
   allowedCallers?: string[];
+  /**
+   * Trust level of outputs from this tool.
+   * - "trusted" (default): tool output is treated as instructions/data from the agent framework.
+   * - "untrusted": tool output comes from external/user-controlled content (e.g. web fetch, MCP).
+   *   Untrusted outputs are wrapped in <untrusted_tool_output> delimiters by MessageAssembler
+   *   to prevent indirect prompt injection (OWASP ASI01/ASI02).
+   */
+  trust?: "trusted" | "untrusted";
+  /**
+   * Optional sanitization hook called on the raw string output of this tool before it
+   * enters the message context. Use to integrate Prompt Shields / LLM-Guard scanners.
+   * Only called when trust is "untrusted" or the output is otherwise flagged.
+   *
+   * @param text  Raw string output from the tool.
+   * @param ctx   Tool call context (toolName, callId, input args).
+   * @returns     Sanitized string (may be the same as input).
+   */
+  sanitizeToolResult?: (text: string, ctx: { toolName: string; callId: string; input: unknown }) => string | Promise<string>;
   forward(input: TInput, signal?: AbortSignal): Promise<TOutput>;
 }
 
@@ -70,6 +88,14 @@ export interface ToolResult {
   callId: string;
   toolName: string;
   output: unknown;
+  /**
+   * Trust level of the tool output.
+   * - "trusted": internal/first-party tools whose output is treated as instructions.
+   * - "untrusted": external or MCP tools whose output is data, not instructions.
+   *   MessageAssembler wraps untrusted outputs in <untrusted_tool_output> delimiters
+   *   to prevent indirect prompt injection (OWASP ASI01/ASI02).
+   */
+  trust?: "trusted" | "untrusted";
   error?: {
     code: "validation_error" | "capability_denied" | "execution_error";
     message: string;
