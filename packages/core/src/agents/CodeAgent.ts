@@ -119,6 +119,9 @@ export class CodeAgent {
 
     for (let step = 1; step <= this.#maxSteps; step++) {
       // P1: enforce ResourceBudget limits before each step.
+      // Note: budget.total is updated only when a usage event arrives (after the full
+      // model response). A streaming response that exceeds the limit mid-stream will
+      // not be interrupted — the check catches it at the START of the NEXT step.
       if (budgetMaxTokens && budget.total >= budgetMaxTokens) {
         yield {
           traceId, parentTraceId, channel: "text", event: "error",
@@ -315,6 +318,11 @@ function extractThoughts(response: string): string {
 function extractCode(response: string): string | null {
   const match = /<code>([\s\S]*?)<\/code>/.exec(response) ??
     /```(?:js|javascript)?\n([\s\S]*?)```/.exec(response);
+  if (!match) {
+    // Log a truncated snippet to aid debugging without flooding output with large responses.
+    const snippet = response.length > 200 ? `${response.slice(0, 200)}…` : response;
+    console.debug(`[CodeAgent] extractCode: no code block found in response: ${snippet}`);
+  }
   return match?.[1]?.trim() ?? null;
 }
 

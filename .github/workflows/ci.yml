@@ -106,7 +106,6 @@ jobs:
       # Increase the limit in .size-limit.json only with a conscious PR review.
       - name: Check bundle size budget (A2)
         run: pnpm --filter @agentkit-js/cloudflare-worker size
-        continue-on-error: true  # Non-blocking until baseline is calibrated in CI
 
       - name: Deploy to Cloudflare Workers
         # Skip gracefully when secrets are not configured (forks, draft PRs).
