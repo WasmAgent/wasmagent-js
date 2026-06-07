@@ -30,7 +30,7 @@
  * variant/variantLoader options. No runtime WASM compilation is needed.
  */
 
-import { CodeAgent, ToolCallingAgent, AnthropicModel } from "@agentkit-js/core";
+import { CodeAgent, ToolCallingAgent, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
 import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
 import type { QuickJSKernelOptions } from "@agentkit-js/kernel-quickjs";
 import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
@@ -185,7 +185,7 @@ async function handleRun(request: Request, env: Env, ctx: ExecutionContext, cors
   // C4: content-addressed cache key = SHA-256(task + agentType + maxSteps + model).
   // sessionId is an optional grouping/audit label; the content hash is the actual key.
   // This prevents a different task with the same sessionId from returning stale results.
-  const MODEL_ID = "claude-sonnet-4-6";
+  const MODEL_ID = AnthropicModels.CLAUDE_SONNET_4;
   const kvKey = env.AGENTKIT_SESSIONS
     ? await contentHash({ task, agentType, maxSteps: clampedMaxSteps, model: MODEL_ID })
     : null;

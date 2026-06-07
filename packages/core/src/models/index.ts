@@ -26,5 +26,8 @@ export { CACHE_MIN_TOKENS, estimateTokens, estimateMessagesTokens, TokenBudget }
  * These re-exports will be removed in a future major version.
  */
 export { AnthropicModel } from "./AnthropicModel.js";
+export type { AnthropicModelOptions, AnthropicModelId } from "./AnthropicModel.js";
+export { AnthropicModels } from "./AnthropicModel.js";
 export { OpenAIModel } from "./OpenAIModel.js";
-export type { OpenAIModelOptions } from "./OpenAIModel.js";
+export type { OpenAIModelOptions, OpenAIModelId } from "./OpenAIModel.js";
+export { OpenAIModels } from "./OpenAIModel.js";

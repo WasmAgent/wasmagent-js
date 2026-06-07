@@ -10,14 +10,20 @@ import { CACHE_MIN_TOKENS, estimateTokens } from "./types.js";
 
 export { CACHE_MIN_TOKENS };
 
-/**
- * Anthropic model adapter (E1).
- *
- * Key differences from smolagents models.py:
- *  - Fully async (AsyncGenerator)
- *  - Emits cache_control breakpoints for prompt caching (B1)
- *  - Validates cache breakpoint token thresholds (B1)
- */
+/** Canonical Anthropic model IDs. Update here when Anthropic releases new versions. */
+export const AnthropicModels = {
+  CLAUDE_OPUS_4:    "claude-opus-4-8",
+  CLAUDE_SONNET_4:  "claude-sonnet-4-6",
+  CLAUDE_HAIKU_4:   "claude-haiku-4-5-20251001",
+} as const;
+
+export type AnthropicModelId = typeof AnthropicModels[keyof typeof AnthropicModels] | (string & {});
+
+export interface AnthropicModelOptions {
+  apiKey?: string;
+  baseURL?: string;
+}
+
 export class AnthropicModel implements Model {
   readonly providerId: string;
   readonly capabilities: ModelCapabilities = {
@@ -26,12 +32,22 @@ export class AnthropicModel implements Model {
     supportsBudgetForcing: true,
   };
   #client: unknown;
+  readonly #opts: AnthropicModelOptions;
 
   constructor(
-    readonly modelId: string,
-    readonly apiKey?: string
+    readonly modelId: AnthropicModelId,
+    optsOrApiKey?: AnthropicModelOptions | string
   ) {
     this.providerId = `anthropic/${modelId}`;
+    if (typeof optsOrApiKey === "string") {
+      this.#opts = { apiKey: optsOrApiKey };
+    } else {
+      this.#opts = optsOrApiKey ?? {};
+    }
+  }
+
+  get apiKey(): string | undefined {
+    return this.#opts.apiKey;
   }
 
   /**
@@ -57,7 +73,10 @@ export class AnthropicModel implements Model {
   ): AsyncGenerator<StreamEvent> {
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     if (!this.#client) {
-      this.#client = new Anthropic({ apiKey: this.apiKey });
+      this.#client = new Anthropic({
+        apiKey: this.#opts.apiKey,
+        ...(this.#opts.baseURL ? { baseURL: this.#opts.baseURL } : {}),
+      });
     }
     const client = this.#client as InstanceType<typeof Anthropic>;
 

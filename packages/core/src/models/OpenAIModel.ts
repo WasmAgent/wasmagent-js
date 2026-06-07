@@ -12,7 +12,19 @@ export interface OpenAIModelOptions {
   baseURL?: string;
   /** Extra HTTP headers forwarded to every request (e.g. custom auth, routing keys). */
   defaultHeaders?: Record<string, string>;
+  samplingParams?: { temperature?: number; seed?: number };
 }
+
+/** Canonical OpenAI model IDs. Update here when OpenAI releases new versions. */
+export const OpenAIModels = {
+  GPT_4O:       "gpt-4o",
+  GPT_4O_MINI:  "gpt-4o-mini",
+  GPT_4_1:      "gpt-4.1",
+  O3:           "o3",
+  O4_MINI:      "o4-mini",
+} as const;
+
+export type OpenAIModelId = typeof OpenAIModels[keyof typeof OpenAIModels] | (string & {});
 
 /** OpenAI model adapter (E1) — with streaming tool_call support. */
 export class OpenAIModel implements Model {
@@ -69,12 +81,16 @@ export class OpenAIModel implements Model {
     };
     if (opts.temperature !== undefined) {
       (params as unknown as Record<string, unknown>)["temperature"] = opts.temperature;
+    } else if (this.#opts.samplingParams?.temperature !== undefined) {
+      (params as unknown as Record<string, unknown>)["temperature"] = this.#opts.samplingParams.temperature;
     }
     if (opts.topP !== undefined) {
       (params as unknown as Record<string, unknown>)["top_p"] = opts.topP;
     }
     if (opts.seed !== undefined) {
       (params as unknown as Record<string, unknown>)["seed"] = opts.seed;
+    } else if (this.#opts.samplingParams?.seed !== undefined) {
+      (params as unknown as Record<string, unknown>)["seed"] = this.#opts.samplingParams.seed;
     }
     if (opts.stopSequences && opts.stopSequences.length > 0) {
       (params as unknown as Record<string, unknown>)["stop"] = opts.stopSequences;
