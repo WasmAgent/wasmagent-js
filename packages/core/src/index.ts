@@ -17,7 +17,7 @@ export { MessageAssembler, LazyObservationHandle } from "./memory/index.js";
 export type { AssemblerConfig } from "./memory/index.js";
 
 // Models
-export { AnthropicModel, OpenAIModel, CACHE_MIN_TOKENS, estimateTokens, estimateMessagesTokens, TokenBudget } from "./models/index.js";
+export { AnthropicModel, AnthropicModels, OpenAIModel, OpenAIModels, CACHE_MIN_TOKENS, estimateTokens, estimateMessagesTokens, TokenBudget } from "./models/index.js";
 export type {
   Model,
   ModelCapabilities,
@@ -29,6 +29,10 @@ export type {
   TokenUsage,
   ResourceBudget,
   EnhancementPolicy,
+  AnthropicModelOptions,
+  AnthropicModelId,
+  OpenAIModelOptions,
+  OpenAIModelId,
 } from "./models/index.js";
 
 // Enhancement runners (P2/P3/S4/L4)

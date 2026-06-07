@@ -13,7 +13,7 @@
 import { parseArgs } from "node:util";
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { CodeAgent, AnthropicModel } from "@agentkit-js/core";
+import { CodeAgent, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
 import type { AgentEvent } from "@agentkit-js/core";
 
 // Only run CLI dispatch when executed as the entry point, not when imported by tests.
@@ -26,7 +26,7 @@ if (isMain) {
   const { values, positionals } = parseArgs({
     args: process.argv.slice(2),
     options: {
-      model: { type: "string", default: "claude-sonnet-4-6" },
+      model: { type: "string", default: AnthropicModels.CLAUDE_SONNET_4 },
       "max-steps": { type: "string", default: "20" },
       "api-key": { type: "string" },
       stream: { type: "boolean", default: false },
@@ -88,7 +88,7 @@ export async function runCommand(
   );
 
   const model = new AnthropicModel(
-    typeof opts["model"] === "string" ? opts["model"] : "claude-sonnet-4-6",
+    typeof opts["model"] === "string" ? opts["model"] : AnthropicModels.CLAUDE_SONNET_4,
     apiKey
   );
   const maxSteps = parseInt(
