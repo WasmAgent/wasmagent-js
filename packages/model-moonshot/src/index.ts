@@ -99,7 +99,7 @@ export class MoonshotModel extends OpenAICompatModel {
       return { extra_body: { thinking: { type: "disabled" } } };
     }
 
-    if (!this.#preserveThinking && mode === undefined) {
+    if (!this.#preserveThinking && (mode === undefined || mode === "adaptive")) {
       return {};
     }
 

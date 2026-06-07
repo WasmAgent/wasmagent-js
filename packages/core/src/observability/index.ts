@@ -55,6 +55,18 @@ export class InMemorySpanExporter implements SpanExporter {
 
 const NOOP_EXPORTER: SpanExporter = { export() {} };
 
+function inferGenAiSystem(modelId: string): string {
+  if (modelId.startsWith("claude-")) return "anthropic";
+  if (modelId.startsWith("gpt-") || modelId.startsWith("o1") || modelId.startsWith("o3") || modelId.startsWith("o4")) return "openai";
+  if (modelId.startsWith("deepseek-")) return "deepseek";
+  if (modelId.startsWith("doubao-") || modelId.startsWith("ep-")) return "volcengine";
+  if (modelId.startsWith("moonshot-") || modelId.startsWith("kimi-")) return "moonshot";
+  if (modelId.startsWith("qwen-")) return "alibaba";
+  if (modelId.startsWith("glm-")) return "zhipu";
+  if (modelId.startsWith("MiniMax-")) return "minimax";
+  return "unknown";
+}
+
 let _spanCounter = 0;
 function nextSpanId(): string {
   return `span-${(++_spanCounter).toString(16).padStart(8, "0")}`;
@@ -165,7 +177,7 @@ export class OtelBridge {
         const child = this.#open(traceId, parentId, spanName, timestampMs);
         this.#setAttr(child.attributes, "model.id", "gen_ai.request.model", d.modelId);
         this.#setAttr(child.attributes, null, "gen_ai.operation.name", "chat");
-        this.#setAttr(child.attributes, null, "gen_ai.system", "anthropic");
+        this.#setAttr(child.attributes, null, "gen_ai.system", inferGenAiSystem(d.modelId));
         this.#inferences.set(inferKey, { span: child, ended: false });
         break;
       }

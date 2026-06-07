@@ -90,9 +90,6 @@ function isAdaptiveThinkingModel(modelId: string): boolean {
   // claude-*-4-7 and later support adaptive thinking.
   const match = modelId.match(/claude-\w+-4-(\d+)/);
   if (match) return parseInt(match[1]!, 10) >= 7;
-  // claude-*-4-8 special form
-  const match2 = modelId.match(/claude-\w+-4-(\d+)/);
-  if (match2) return parseInt(match2[1]!, 10) >= 7;
   return false;
 }
 
@@ -285,6 +282,13 @@ export class AnthropicModel implements Model {
         wireTools.push({ type: toolSearchType, name: toolSearchType.replace(/_20\d{6}$/, "") });
       }
 
+      // Find the last non-deferred tool index for cache_control placement.
+      // Anthropic's advanced-tool-use beta does not support cache_control on deferred tools.
+      let lastEagerIdx = -1;
+      for (let i = allTools.length - 1; i >= 0; i--) {
+        if (allTools[i]!["deferLoading"] !== true) { lastEagerIdx = i; break; }
+      }
+
       for (let i = 0; i < allTools.length; i++) {
         const t = allTools[i]!;
         const isDeferred = t["deferLoading"] === true;
@@ -293,8 +297,8 @@ export class AnthropicModel implements Model {
         if (isDeferred) {
           wire["defer_loading"] = true;
         }
-        // Cache control on the last tool for prompt-cache efficiency.
-        if (i === allTools.length - 1) {
+        // Cache control on the last non-deferred tool for prompt-cache efficiency.
+        if (i === lastEagerIdx) {
           wire["cache_control"] = { type: "ephemeral" };
         }
         wireTools.push(wire);
