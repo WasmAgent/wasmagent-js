@@ -20,10 +20,14 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
 
 async function collectEvents(
   chunks: OAIChunk[],
-  modelId = "glm-5-1",
-  opts: Parameters<import("./index.js").ZhipuModel["generate"]>[1] = {}
+  modelId = "glm-5",
+  opts: Parameters<import("./index.js").ZhipuModel["generate"]>[1] = {},
+  captureParams?: { ref: Record<string, unknown> | null }
 ): Promise<StreamEvent[]> {
-  const mockCreate = vi.fn().mockResolvedValue(makeChunkStream(chunks));
+  const mockCreate = vi.fn().mockImplementation((params: Record<string, unknown>) => {
+    if (captureParams) captureParams.ref = params;
+    return Promise.resolve(makeChunkStream(chunks));
+  });
   vi.doMock("openai", () => ({ default: vi.fn().mockImplementation(() => ({ chat: { completions: { create: mockCreate } } })) }));
   const { ZhipuModel } = await import("./index.js?t=" + Date.now());
   const model = new ZhipuModel(modelId, "key");
@@ -44,15 +48,23 @@ describe("ZhipuModel", () => {
     expect(events.filter((e) => e.type === "text_delta")[0]?.delta).toBe("Hi");
   });
 
-  it("emits thinking_delta for reasoning_content on glm-5-1", async () => {
+  it("emits thinking_delta for reasoning_content on glm-5", async () => {
     const events = await collectEvents([
       { choices: [{ delta: { reasoning_content: "thinking..." }, finish_reason: null }] },
       { choices: [{ delta: {}, finish_reason: "stop" }] },
-    ], "glm-5-1");
+    ], "glm-5");
     expect(events.filter((e) => e.type === "thinking_delta")[0]?.delta).toBe("thinking...");
   });
 
-  it("does NOT emit thinking_delta for glm-4-plus", async () => {
+  it("emits thinking_delta for reasoning_content on glm-4.7 (hybrid model)", async () => {
+    const events = await collectEvents([
+      { choices: [{ delta: { reasoning_content: "thinking..." }, finish_reason: null }] },
+      { choices: [{ delta: {}, finish_reason: "stop" }] },
+    ], "glm-4.7");
+    expect(events.filter((e) => e.type === "thinking_delta")[0]?.delta).toBe("thinking...");
+  });
+
+  it("does NOT emit thinking_delta for glm-4-plus (non-reasoning model)", async () => {
     const events = await collectEvents([
       { choices: [{ delta: { reasoning_content: "ignored" }, finish_reason: null }] },
       { choices: [{ delta: {}, finish_reason: "stop" }] },
@@ -60,18 +72,42 @@ describe("ZhipuModel", () => {
     expect(events.filter((e) => e.type === "thinking_delta")).toHaveLength(0);
   });
 
-  it("opts.thinking.mode:off suppresses thinking_delta even on glm-5 model", async () => {
+  // ── L10-1: thinking:{type} via extra_body ───────────────────────────────
+
+  it("glm-5 default: sends thinking:{type:enabled} in extra_body", async () => {
+    const captured = { ref: null as Record<string, unknown> | null };
+    await collectEvents([{ choices: [{ delta: {}, finish_reason: "stop" }] }], "glm-5", {}, captured);
+    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
+    expect(body?.["thinking"]).toMatchObject({ type: "enabled" });
+  });
+
+  it("mode:off sends thinking:{type:disabled}", async () => {
+    const captured = { ref: null as Record<string, unknown> | null };
+    await collectEvents(
+      [{ choices: [{ delta: {}, finish_reason: "stop" }] }],
+      "glm-5",
+      { thinking: { mode: "off" } },
+      captured
+    );
+    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
+    expect(body?.["thinking"]).toMatchObject({ type: "disabled" });
+  });
+
+  it("mode:off suppresses thinking_delta even on glm-5", async () => {
     const events = await collectEvents([
       { choices: [{ delta: { reasoning_content: "hidden" }, finish_reason: null }] },
       { choices: [{ delta: {}, finish_reason: "stop" }] },
-    ], "glm-5-1", { thinking: { mode: "off" } });
+    ], "glm-5", { thinking: { mode: "off" } });
     expect(events.filter((e) => e.type === "thinking_delta")).toHaveLength(0);
   });
 
-  it("GLMModels.LATEST is defined", async () => {
+  // ── L10-2: Model constants ───────────────────────────────────────────────
+
+  it("GLMModels.LATEST is defined and points to glm-5", async () => {
     vi.doMock("openai", () => ({ default: vi.fn() }));
     const { GLMModels } = await import("./index.js?t=" + Date.now() + "e");
     expect(typeof GLMModels.LATEST).toBe("string");
+    expect(GLMModels.LATEST).toBe("glm-5");
     vi.doUnmock("openai");
   });
 });

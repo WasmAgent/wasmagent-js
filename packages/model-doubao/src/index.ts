@@ -73,8 +73,8 @@ export class DoubaoModel extends OpenAICompatModel {
     return { reasoningContentField: "reasoning_content" };
   }
 
-  protected override requiresReasoningRoundTrip(): boolean {
-    return true;
+  protected override reasoningRoundTripPolicy(): "never" | "tool-turns-only" | "always" {
+    return "tool-turns-only";
   }
 
   /**

@@ -33,9 +33,14 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
 
 async function collectEvents(
   chunks: OAIChunk[],
-  modelId = "deepseek-reasoner"
+  modelId = "deepseek-v4-pro",
+  opts: Parameters<import("./index.js").DeepSeekModel["generate"]>[1] = {},
+  captureParams?: { ref: Record<string, unknown> | null }
 ): Promise<StreamEvent[]> {
-  const mockCreate = vi.fn().mockResolvedValue(makeChunkStream(chunks));
+  const mockCreate = vi.fn().mockImplementation((params: Record<string, unknown>) => {
+    if (captureParams) captureParams.ref = params;
+    return Promise.resolve(makeChunkStream(chunks));
+  });
   const MockOpenAI = vi.fn().mockImplementation(() => ({
     chat: { completions: { create: mockCreate } },
   }));
@@ -45,7 +50,7 @@ async function collectEvents(
   const model = new DeepSeekModel(modelId, "test-key");
 
   const events: StreamEvent[] = [];
-  for await (const e of model.generate([{ role: "user", content: "test" }])) {
+  for await (const e of model.generate([{ role: "user", content: "test" }], opts)) {
     events.push(e);
   }
   vi.doUnmock("openai");
@@ -98,10 +103,76 @@ describe("DeepSeekModel", () => {
     vi.doUnmock("openai");
   });
 
-  it("DeepSeekModels.LATEST is defined", async () => {
+  it("DeepSeekModels.LATEST is defined and V4_FLASH is a string", async () => {
     vi.doMock("openai", () => ({ default: vi.fn() }));
     const { DeepSeekModels } = await import("./index.js?t=" + Date.now() + "e");
     expect(typeof DeepSeekModels.LATEST).toBe("string");
+    expect(typeof DeepSeekModels.V4_FLASH).toBe("string");
+    expect(DeepSeekModels.V4_FLASH).toBe("deepseek-v4-flash");
     vi.doUnmock("openai");
+  });
+
+  // ── Thinking mode params ────────────────────────────────────────────────
+
+  it("mode:off sends thinking:{type:disabled} in extra_body", async () => {
+    const captured = { ref: null as Record<string, unknown> | null };
+    await collectEvents(
+      [{ choices: [{ delta: {}, finish_reason: "stop" }] }],
+      "deepseek-v4-pro",
+      { thinking: { mode: "off" } },
+      captured
+    );
+    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
+    expect(body?.["thinking"]).toMatchObject({ type: "disabled" });
+  });
+
+  it("mode:off does NOT produce thinking_delta", async () => {
+    const events = await collectEvents(
+      [
+        { choices: [{ delta: { reasoning_content: "hidden" }, finish_reason: null }] },
+        { choices: [{ delta: {}, finish_reason: "stop" }] },
+      ],
+      "deepseek-v4-pro",
+      { thinking: { mode: "off" } }
+    );
+    expect(events.filter((e) => e.type === "thinking_delta")).toHaveLength(0);
+  });
+
+  it("default (no thinking opts) sends thinking:{type:enabled}", async () => {
+    const captured = { ref: null as Record<string, unknown> | null };
+    await collectEvents(
+      [{ choices: [{ delta: {}, finish_reason: "stop" }] }],
+      "deepseek-v4-pro",
+      {},
+      captured
+    );
+    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
+    expect(body?.["thinking"]).toMatchObject({ type: "enabled" });
+  });
+
+  it("effort:max maps to effort:max in thinking body", async () => {
+    const captured = { ref: null as Record<string, unknown> | null };
+    await collectEvents(
+      [{ choices: [{ delta: {}, finish_reason: "stop" }] }],
+      "deepseek-v4-pro",
+      { thinking: { mode: "enabled", effort: "max" } },
+      captured
+    );
+    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
+    const thinking = body?.["thinking"] as Record<string, unknown> | undefined;
+    expect(thinking?.["effort"]).toBe("max");
+  });
+
+  it("effort:low maps to effort:high in thinking body (DeepSeek consolidates low→high)", async () => {
+    const captured = { ref: null as Record<string, unknown> | null };
+    await collectEvents(
+      [{ choices: [{ delta: {}, finish_reason: "stop" }] }],
+      "deepseek-v4-pro",
+      { thinking: { mode: "enabled", effort: "low" } },
+      captured
+    );
+    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
+    const thinking = body?.["thinking"] as Record<string, unknown> | undefined;
+    expect(thinking?.["effort"]).toBe("high");
   });
 });
