@@ -195,3 +195,96 @@ describe("AnthropicModel generate()", () => {
     vi.doUnmock("@anthropic-ai/sdk");
   });
 });
+
+// ── A2: cache breakpoint trimming ────────────────────────────────────────────
+
+describe("AnthropicModel — A2 cache breakpoint trimming", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  // Helper: build messages with N history cacheBreakpoints (each with large-enough text).
+  function makeHistoryMessages(n: number): ModelMessage[] {
+    // Use a system prompt long enough to pass cacheMinTokens (1024 tokens = ~4096 chars for Sonnet).
+    const sysPrompt = "s".repeat(5000);
+    const msgs: ModelMessage[] = [{ role: "system", content: sysPrompt }];
+    for (let i = 0; i < n; i++) {
+      // Each history chunk needs enough tokens to pass the per-chunk guard (1024 tokens = ~4096 chars).
+      const largeText = "x".repeat(5000); // ~1250 tokens, safely above 1024
+      msgs.push({
+        role: "assistant",
+        content: largeText,
+        cacheBreakpoint: { type: "ephemeral" },
+      });
+      msgs.push({ role: "user", content: `result ${i}` });
+    }
+    return msgs;
+  }
+
+  function countCacheControlInMessages(streamCall: unknown): number {
+    const params = streamCall as { messages: Array<{ content: unknown }> };
+    let count = 0;
+    for (const msg of params.messages ?? []) {
+      if (Array.isArray(msg.content)) {
+        for (const block of msg.content) {
+          if ((block as Record<string, unknown>)["cache_control"]) count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  it("trims history breakpoints so total cache_control ≤ 2 in messages (A2)", async () => {
+    // 6 history breakpoints → after trim only 2 remain (newest 2)
+    const messages = makeHistoryMessages(6);
+    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
+    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
+    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "a2a");
+    const model = new AnthropicModel("claude-sonnet-4-6", "key");
+    for await (const _ of model.generate(messages)) { /* consume */ }
+    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    const count = countCacheControlInMessages(call);
+    // 2 slots for history (system + tools = 2 external slots not in messages array)
+    expect(count).toBeLessThanOrEqual(2);
+    vi.doUnmock("@anthropic-ai/sdk");
+  });
+
+  it("keeps newest breakpoints when trimming (A2)", async () => {
+    const messages = makeHistoryMessages(4); // 4 breakpoints > 2 budget
+    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
+    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
+    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "a2b");
+    const model = new AnthropicModel("claude-sonnet-4-6", "key");
+    for await (const _ of model.generate(messages)) { /* consume */ }
+    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    const params = call as { messages: Array<{ content: unknown }> };
+    // The last assistant message with a breakpoint should still have cache_control.
+    const assistantMsgs = (params.messages ?? []).filter(
+      (m: Record<string, unknown>) => m["role"] === "assistant" && Array.isArray(m["content"])
+    );
+    const lastAssistant = assistantMsgs.at(-1) as { content: Array<Record<string, unknown>> } | undefined;
+    const lastBlock = lastAssistant?.content.find((b) => b["type"] === "text");
+    // The newest chunk should have its breakpoint preserved.
+    expect(lastBlock?.["cache_control"]).toBeDefined();
+    vi.doUnmock("@anthropic-ai/sdk");
+  });
+
+  it("does not inject breakpoint on history chunk below token threshold (A2)", async () => {
+    // tiny assistant message, well below cacheMinTokens
+    const messages: ModelMessage[] = [
+      { role: "system", content: "s".repeat(5000) },
+      { role: "assistant", content: "short", cacheBreakpoint: { type: "ephemeral" } },
+      { role: "user", content: "ok" },
+    ];
+    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
+    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
+    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "a2c");
+    const model = new AnthropicModel("claude-sonnet-4-6", "key");
+    for await (const _ of model.generate(messages)) { /* consume */ }
+    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    const count = countCacheControlInMessages(call);
+    // "short" is below 1024 token threshold → no breakpoint injected
+    expect(count).toBe(0);
+    vi.doUnmock("@anthropic-ai/sdk");
+  });
+});

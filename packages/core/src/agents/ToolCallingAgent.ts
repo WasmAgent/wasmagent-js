@@ -11,6 +11,9 @@ import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
 import { ParallelForkJoinRunner } from "../enhancement/ParallelForkJoinRunner.js";
 import type { AgentEvent, FinalAnswerStep, ParallelToolUseCall, ParallelToolUseStep, ToolUseStep, UserMessageStep } from "../types/events.js";
 import { runPlanningStep } from "./prompts.js";
+import { Scheduler } from "../scheduler/Scheduler.js";
+import { SimpleIR } from "../scheduler/ir.js";
+import type { IRNode } from "../scheduler/ir.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant. Use the provided tools to answer questions.
 When you have a final answer, respond with plain text (no tool call).`;
@@ -30,6 +33,10 @@ export interface ToolCallingAgentOptions {
    * Default: no timeout (tool can run indefinitely).
    */
   toolTimeoutMs?: number;
+  /** Inject a pre-configured MessageAssembler (e.g. for compaction tests). */
+  assembler?: MessageAssembler;
+  /** DAG scheduler mode for parallel tool dispatch. Default: "dag". */
+  scheduler?: "dag" | "parallel";
 }
 
 /**
@@ -51,6 +58,7 @@ export class ToolCallingAgent {
   readonly #policy: EnhancementPolicy | undefined;
   readonly #toolsSchema: object[];
   readonly #toolTimeoutMs: number | undefined;
+  readonly #schedulerMode: "dag" | "parallel";
 
   constructor(opts: ToolCallingAgentOptions) {
     this.#tools = new ToolRegistry();
@@ -62,11 +70,17 @@ export class ToolCallingAgent {
     this.#planningInterval = opts.planningInterval;
     this.#policy = opts.enhancementPolicy;
     this.#toolTimeoutMs = opts.toolTimeoutMs;
+    this.#schedulerMode = opts.scheduler ?? "dag";
     this.#toolsSchema = this.#tools.toJsonSchema();
-    this.#assembler = new MessageAssembler({
+    this.#assembler = opts.assembler ?? new MessageAssembler({
       systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
       toolsSchema: this.#toolsSchema,
     });
+  }
+
+  /** Read-only access to the underlying MessageAssembler for compaction. */
+  get assembler(): MessageAssembler {
+    return this.#assembler;
   }
 
   async *run(
@@ -214,9 +228,6 @@ export class ToolCallingAgent {
 
       // Q8: batchId groups tool_call / tool_result events that belong to the same
       // parallel dispatch (single model response with N tool_use blocks).
-      // Consumers can use batchId to distinguish "show N loaders simultaneously"
-      // (same batch) from "sequential steps" (different batchIds).
-      // Single-call steps also get a batchId (batchSize=1) for uniform consumer logic.
       const batchId = randomUUID();
       const batchSize = pendingCalls.length;
 
@@ -231,7 +242,7 @@ export class ToolCallingAgent {
         };
       }
 
-      // U1: emit status events before dispatching tool calls, rescuing TTFT.
+      // U1: emit status events before dispatching tool calls.
       for (const call of pendingCalls) {
         yield {
           traceId,
@@ -243,85 +254,116 @@ export class ToolCallingAgent {
         };
       }
 
-      // B3: dispatch ALL calls in parallel immediately using LazyObservationHandle.
-      // Carry isError as a separate boolean so it is never inferred from string
-      // content — startsWith("Error: ") would silently misclassify tools whose
-      // successful output happens to start with that prefix.
-      // Each promise must never reject — unexpected throws (e.g. JSON.stringify on
-      // circular references) are caught and turned into structured error strings so
-      // Promise.all always settles and every tool_call gets a paired tool_result.
-      const handles = pendingCalls.map((call) => {
-        let callIsError = false;
-        const signal = this.#toolTimeoutMs ? AbortSignal.timeout(this.#toolTimeoutMs) : undefined;
-        const settled = this.#tools
-          .call({ toolName: call.name, args: call.input, callId: call.id, ...(signal ? { signal } : {}) })
-          .then(
-            (r) => {
-              if (r.error !== undefined) {
-                callIsError = true;
-                return r.error.message || "Tool execution failed with no output.";
-              }
-              try {
-                return r.output === undefined ? "null" : JSON.stringify(r.output);
-              } catch (e) {
-                callIsError = true;
-                return `Tool output could not be serialised: ${e instanceof Error ? e.message : String(e)}`;
-              }
-            },
-            (e) => {
-              callIsError = true;
-              return `Tool dispatch threw: ${e instanceof Error ? e.message : String(e)}`;
-            }
-          );
-        const handle = LazyObservationHandle.fromToolResult(settled);
-        return { call, handle, getIsError: () => callIsError };
-      });
-
-      // Await all results in parallel — wall-clock = slowest single call.
-      const outputs = await Promise.all(handles.map((h) => h.handle.resolve()));
-
-      // Emit tool_result events and build resolved call records.
+      // A1: build DAG IR and execute via Scheduler when scheduler="dag" (default).
+      // Falls back to Promise.all when scheduler="parallel".
       const resolvedCalls: ParallelToolUseCall[] = [];
-      for (let i = 0; i < handles.length; i++) {
-        const { call, getIsError } = handles[i]!;
-        const toolOutput = outputs[i]!;
-        const isError = getIsError();
 
-        const resultData = isError
-          ? {
-              callId: call.id,
-              toolName: call.name,
-              output: null as unknown,
-              error: { code: "execution_error" as const, message: toolOutput },
-              batchId,
-              batchSize,
-              stepIndex: step,
-            }
-          : {
-              callId: call.id,
-              toolName: call.name,
-              output: (() => { try { return JSON.parse(toolOutput); } catch { return toolOutput; } })(),
-              batchId,
-              batchSize,
-              stepIndex: step,
-            };
-
-        yield {
-          traceId,
-          parentTraceId,
-          channel: "tool",
-          event: "tool_result",
-          data: resultData,
-          timestampMs: Date.now(),
-        };
-
-        resolvedCalls.push({
-          toolCallId: call.id,
-          toolName: call.name,
-          toolInput: call.input,
-          toolOutput,
-          isError,
+      if (this.#schedulerMode === "dag") {
+        // Map tool_use blocks to IRNode[] using readOnly/idempotent from ToolDefinition.
+        // Conservative dependency rule: no cross-call input references → no dependsOn edges.
+        const nodes: IRNode[] = pendingCalls.map((call) => {
+          const toolDef = this.#tools.get(call.name);
+          return {
+            id: call.id,
+            toolName: call.name,
+            args: call.input,
+            dependsOn: [],
+            readOnly: toolDef?.readOnly ?? false,
+            idempotent: toolDef?.idempotent ?? false,
+          };
         });
+        const ir = new SimpleIR(nodes);
+        const scheduler = new Scheduler(this.#tools);
+
+        // Collect results from scheduler events, mapping node_done/node_error back
+        // to resolvedCalls in the same order as pendingCalls.
+        const resultMap = new Map<string, { output: string; isError: boolean }>();
+        for await (const evt of scheduler.execute(ir)) {
+          if (evt.type === "node_done") {
+            const toolResult = evt.result as import("../tools/types.js").ToolResult;
+            let output: string;
+            let isError = false;
+            if (toolResult?.error !== undefined) {
+              isError = true;
+              output = toolResult.error.message || "Tool execution failed with no output.";
+            } else {
+              try {
+                output = toolResult?.output === undefined ? "null" : JSON.stringify(toolResult.output);
+              } catch (e) {
+                isError = true;
+                output = `Tool output could not be serialised: ${e instanceof Error ? e.message : String(e)}`;
+              }
+            }
+            resultMap.set(evt.nodeId, { output, isError });
+          } else if (evt.type === "node_error") {
+            const reason = evt.error;
+            resultMap.set(evt.nodeId, {
+              output: `Tool dispatch threw: ${reason instanceof Error ? reason.message : String(reason ?? "unknown error")}`,
+              isError: true,
+            });
+          }
+        }
+
+        for (const call of pendingCalls) {
+          const res = resultMap.get(call.id) ?? { output: "Tool execution failed with no output.", isError: true };
+          yield {
+            traceId,
+            parentTraceId,
+            channel: "tool",
+            event: "tool_result",
+            data: res.isError
+              ? { callId: call.id, toolName: call.name, output: null as unknown, error: { code: "execution_error" as const, message: res.output }, batchId, batchSize, stepIndex: step }
+              : { callId: call.id, toolName: call.name, output: (() => { try { return JSON.parse(res.output); } catch { return res.output; } })(), batchId, batchSize, stepIndex: step },
+            timestampMs: Date.now(),
+          };
+          resolvedCalls.push({ toolCallId: call.id, toolName: call.name, toolInput: call.input, toolOutput: res.output, isError: res.isError });
+        }
+      } else {
+        // "parallel" mode: original Promise.all path.
+        const handles = pendingCalls.map((call) => {
+          let callIsError = false;
+          const signal = this.#toolTimeoutMs ? AbortSignal.timeout(this.#toolTimeoutMs) : undefined;
+          const settled = this.#tools
+            .call({ toolName: call.name, args: call.input, callId: call.id, ...(signal ? { signal } : {}) })
+            .then(
+              (r) => {
+                if (r.error !== undefined) {
+                  callIsError = true;
+                  return r.error.message || "Tool execution failed with no output.";
+                }
+                try {
+                  return r.output === undefined ? "null" : JSON.stringify(r.output);
+                } catch (e) {
+                  callIsError = true;
+                  return `Tool output could not be serialised: ${e instanceof Error ? e.message : String(e)}`;
+                }
+              },
+              (e) => {
+                callIsError = true;
+                return `Tool dispatch threw: ${e instanceof Error ? e.message : String(e)}`;
+              }
+            );
+          const handle = LazyObservationHandle.fromToolResult(settled);
+          return { call, handle, getIsError: () => callIsError };
+        });
+
+        const outputs = await Promise.all(handles.map((h) => h.handle.resolve()));
+        for (let i = 0; i < handles.length; i++) {
+          const { call, getIsError } = handles[i]!;
+          const toolOutput = outputs[i]!;
+          const isError = getIsError();
+          yield {
+            traceId,
+            parentTraceId,
+            channel: "tool",
+            event: "tool_result",
+            data: isError
+              ? { callId: call.id, toolName: call.name, output: null as unknown, error: { code: "execution_error" as const, message: toolOutput }, batchId, batchSize, stepIndex: step }
+              : { callId: call.id, toolName: call.name, output: (() => { try { return JSON.parse(toolOutput); } catch { return toolOutput; } })(), batchId, batchSize, stepIndex: step },
+            timestampMs: Date.now(),
+          };
+          resolvedCalls.push({ toolCallId: call.id, toolName: call.name, toolInput: call.input, toolOutput, isError });
+        }
       }
 
       // Store in history: single call → ToolUseStep (backward compat);

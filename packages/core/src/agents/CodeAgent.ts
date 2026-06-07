@@ -37,6 +37,8 @@ export interface CodeAgentOptions {
   systemPrompt?: string;
   /** Optional enhancement policy — gates budget limits (P1). */
   enhancementPolicy?: EnhancementPolicy;
+  /** Inject a pre-configured MessageAssembler (e.g. for compaction tests or custom chunking). */
+  assembler?: MessageAssembler;
 }
 
 /**
@@ -71,15 +73,18 @@ export class CodeAgent {
     this.#planningInterval = opts.planningInterval;
     this.#policy = opts.enhancementPolicy;
     // D1: use provided kernel or create one via factory.
-    // For PyodideKernel: import { PyodideKernel } from "@agentkit-js/kernel-pyodide"
-    // and pass new PyodideKernel() as opts.kernel.
     this.#kernelPromise = opts.kernel
       ? Promise.resolve(opts.kernel)
       : createKernel({ engine: "js", actionLanguage: opts.actionLanguage ?? "js" });
-    this.#assembler = new MessageAssembler({
+    this.#assembler = opts.assembler ?? new MessageAssembler({
       systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
       toolsSchema: this.#tools.toJsonSchema(),
     });
+  }
+
+  /** Read-only access to the underlying MessageAssembler for compaction. */
+  get assembler(): MessageAssembler {
+    return this.#assembler;
   }
 
   /**

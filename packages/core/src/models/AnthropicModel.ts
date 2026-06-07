@@ -7,6 +7,55 @@ import type {
   TokenUsage,
 } from "./types.js";
 import { CACHE_MIN_TOKENS, estimateTokens } from "./types.js";
+import type { RetryPolicy } from "./retry.js";
+import { withRetryGenerator } from "./retry.js";
+
+/**
+ * Anthropic hard limit: max 4 cache_control breakpoints per request.
+ * Exceeding this causes the API to silently drop all but the last 4,
+ * which evicts the high-value system/tools prefix from the cache.
+ *
+ * Strategy: always reserve 1 slot for system, 1 for tools (last), leaving
+ * at most 2 slots for history chunks. When there are more than 2 history
+ * breakpoints, keep only the newest ones (they cover the longest prefix).
+ */
+const ANTHROPIC_MAX_CACHE_BREAKPOINTS = 4;
+
+/**
+ * Trim cache breakpoints in a converted Anthropic message array so the total
+ * count never exceeds ANTHROPIC_MAX_CACHE_BREAKPOINTS.
+ *
+ * The system message and tools are always assigned slots 0 and 1 respectively
+ * (via the systemParam / tools array in the caller). The remaining 2 slots are
+ * given to the *newest* (last-occurring) history breakpoints so the longest
+ * stable prefix wins.
+ *
+ * This function operates on the already-converted AnthropicMessage[] and
+ * removes cache_control from the oldest blocks when over-budget.
+ */
+function trimCacheBreakpoints(messages: AnthropicMessage[]): void {
+  // Collect indices (into messages[]) of text blocks that carry cache_control.
+  type Ref = { msgIdx: number; block: AnthropicTextBlock };
+  const refs: Ref[] = [];
+  for (let i = 0; i < messages.length; i++) {
+    const content = messages[i]!.content;
+    if (Array.isArray(content)) {
+      for (const block of content) {
+        if (block.type === "text" && (block as AnthropicTextBlock).cache_control) {
+          refs.push({ msgIdx: i, block: block as AnthropicTextBlock });
+        }
+      }
+    }
+  }
+  // system (1) + tools (1) = 2 slots already consumed; 2 remain for history.
+  const historyBudget = ANTHROPIC_MAX_CACHE_BREAKPOINTS - 2;
+  if (refs.length <= historyBudget) return;
+  // Drop oldest breakpoints (keep the newest historyBudget ones).
+  const toDrop = refs.slice(0, refs.length - historyBudget);
+  for (const { block } of toDrop) {
+    delete block.cache_control;
+  }
+}
 
 export { CACHE_MIN_TOKENS };
 
@@ -22,6 +71,8 @@ export type AnthropicModelId = typeof AnthropicModels[keyof typeof AnthropicMode
 export interface AnthropicModelOptions {
   apiKey?: string;
   baseURL?: string;
+  /** Retry policy for 429/5xx/network errors (C1). */
+  retry?: RetryPolicy;
 }
 
 export class AnthropicModel implements Model {
@@ -71,6 +122,13 @@ export class AnthropicModel implements Model {
     messages: ModelMessage[],
     opts: GenerateOptions = {}
   ): AsyncGenerator<StreamEvent> {
+    yield* withRetryGenerator(() => this.#doGenerate(messages, opts), this.#opts.retry);
+  }
+
+  async *#doGenerate(
+    messages: ModelMessage[],
+    opts: GenerateOptions = {}
+  ): AsyncGenerator<StreamEvent> {
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     if (!this.#client) {
       this.#client = new Anthropic({
@@ -87,7 +145,11 @@ export class AnthropicModel implements Model {
     const estimatedSystemTokens = estimateTokens(systemMessage);
     const shouldCache = estimatedSystemTokens >= this.cacheMinTokens;
 
-    const anthropicMessages = convertMessages(messages, shouldCache) as Parameters<
+    const anthropicMessages = convertMessages(messages, shouldCache, this.cacheMinTokens);
+    // A2: Trim history breakpoints so total cache_control blocks ≤ 4 (system + tools
+    // already occupy 2 slots; at most 2 more are allowed for history chunks).
+    trimCacheBreakpoints(anthropicMessages as AnthropicMessage[]);
+    const trimmedMessages = anthropicMessages as Parameters<
       typeof client.messages.stream
     >[0]["messages"];
 
@@ -108,7 +170,7 @@ export class AnthropicModel implements Model {
       ...(opts.topP !== undefined ? { top_p: opts.topP } : {}),
       ...(opts.stopSequences && opts.stopSequences.length > 0 ? { stop_sequences: opts.stopSequences } : {}),
       ...(systemParam ? { system: systemParam } : {}),
-      messages: anthropicMessages,
+      messages: trimmedMessages,
     };
     if (opts.tools && opts.tools.length > 0) {
       // Mark the last tool with cache_control so tools array is cached as a prefix (B1).
@@ -211,15 +273,16 @@ interface AnthropicMessage {
   content: AnthropicContent;
 }
 
-function convertMessages(messages: ModelMessage[], shouldCache: boolean): AnthropicMessage[] {
+function convertMessages(messages: ModelMessage[], shouldCache: boolean, cacheMinTokens: number): AnthropicMessage[] {
   return messages
     .filter((m) => m.role !== "system")
     .map((m) => {
       const role = m.role === "assistant" ? "assistant" as const : "user" as const;
 
       if (typeof m.content === "string") {
-        // Apply cache breakpoint only when the prefix is large enough (B1).
-        if (m.cacheBreakpoint && shouldCache) {
+        // A2: guard — only inject breakpoint when the chunk is large enough to be cached.
+        const chunkTokens = estimateTokens(m.content);
+        if (m.cacheBreakpoint && shouldCache && chunkTokens >= cacheMinTokens) {
           return {
             role,
             content: [
@@ -260,10 +323,16 @@ function convertMessages(messages: ModelMessage[], shouldCache: boolean): Anthro
         })
         .filter((b): b is AnthropicBlock => b !== null);
 
-      // Apply cache breakpoint to last text block in the sequence (B1).
+      // A2: guard — only inject breakpoint when the chunk text is large enough.
       if (m.cacheBreakpoint && shouldCache && blocks.length > 0) {
-        const lastText = [...blocks].reverse().find((b): b is AnthropicTextBlock => b.type === "text");
-        if (lastText) lastText.cache_control = { type: "ephemeral" };
+        const textContent = blocks
+          .filter((b): b is AnthropicTextBlock => b.type === "text")
+          .map((b) => b.text)
+          .join("");
+        if (estimateTokens(textContent) >= cacheMinTokens) {
+          const lastText = [...blocks].reverse().find((b): b is AnthropicTextBlock => b.type === "text");
+          if (lastText) lastText.cache_control = { type: "ephemeral" };
+        }
       }
 
       return { role, content: blocks.length > 0 ? blocks : "" };

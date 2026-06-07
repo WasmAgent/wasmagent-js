@@ -59,24 +59,20 @@ export async function createKernel(
 
     case "wasmtime": {
       // Try loading @agentkit-js/kernel-wasmtime (optional external package).
-      // We use a runtime-computed specifier so TypeScript does not attempt to
-      // resolve the module at type-check time (the package is an optional peer
-      // and is not in core's dependency graph — importing it statically would
-      // create a circular dependency: kernel-wasmtime → core → kernel-wasmtime).
       const WASMTIME_PKG = "@agentkit-js/kernel-wasmtime";
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mod = await import(WASMTIME_PKG) as { WasmtimeKernel: new (opts?: KernelOptions) => import("./types.js").WasmKernel };
         return new mod.WasmtimeKernel(opts);
-      } catch {
-        console.warn(
-          "[agentkit] @agentkit-js/kernel-wasmtime unavailable (or javy CLI not in PATH) — " +
-            "falling back to V8 WebAssembly path.\n" +
-            "  Install: pnpm add @agentkit-js/kernel-wasmtime && " +
-            "https://github.com/bytecodealliance/javy/releases"
-        );
-        const { V8WasmKernel } = await import("./V8WasmKernel.js");
-        return new V8WasmKernel(opts);
+      } catch (cause) {
+        const err = new Error(
+          "@agentkit-js/kernel-wasmtime is not installed or javy CLI is not in PATH.\n" +
+          "  Install: pnpm add @agentkit-js/kernel-wasmtime\n" +
+          "  javy: https://github.com/bytecodealliance/javy/releases"
+        ) as Error & { code: string; cause: unknown };
+        err.code = "KERNEL_NOT_INSTALLED";
+        err.cause = cause;
+        throw err;
       }
     }
 
