@@ -97,3 +97,71 @@ describe("SelfConsistencyRunner", () => {
     expect((capturedOpts[0] as { temperature: number }).temperature).toBe(0.7);
   });
 });
+
+// ── C1: answer extraction tests ───────────────────────────────────────────────
+
+describe("SelfConsistencyRunner — C1 answer extraction", () => {
+  it("extracts \\boxed{} answers and votes on the extracted value", async () => {
+    const runner = new SelfConsistencyRunner({ n: 3, earlyStopThreshold: 1.0 });
+    // All three give 42 via \boxed{} but with different surrounding text
+    const model = mockModel([
+      "Let me think... the answer is \\boxed{42}",
+      "After calculation: \\boxed{42}",
+      "The result: \\boxed{99}",
+    ]);
+    const result = await runner.run(model, [{ role: "user", content: "q" }]);
+    expect(result.votes).toBeGreaterThanOrEqual(2);
+    // The returned answer should be the full original text (not just the boxed part)
+    expect(result.answer).toContain("\\boxed{42}");
+  });
+
+  it("falls back to last line when no \\boxed{}", async () => {
+    const runner = new SelfConsistencyRunner({ n: 3, earlyStopThreshold: 1.0 });
+    const model = mockModel([
+      "Step 1: ...\nStep 2: ...\nAnswer: Paris",
+      "Thinking...\nAnswer: Paris",
+      "The capital is\nAnswer: Berlin",
+    ]);
+    const result = await runner.run(model, [{ role: "user", content: "q" }]);
+    expect(result.votes).toBeGreaterThanOrEqual(2);
+    expect(result.answer).toContain("Paris");
+  });
+
+  it("custom extractAnswer hook overrides default", async () => {
+    // Extract only the number from "Answer: 42"
+    const extractAnswer = (text: string) => {
+      const m = /Answer:\s*(\d+)/.exec(text);
+      return m ? m[1]! : text;
+    };
+    const runner = new SelfConsistencyRunner({ n: 3, earlyStopThreshold: 1.0, extractAnswer });
+    const model = mockModel([
+      "I computed Answer: 42 via method A",
+      "Using method B, Answer: 42",
+      "Different reasoning, Answer: 99",
+    ]);
+    const result = await runner.run(model, [{ role: "user", content: "q" }]);
+    expect(result.votes).toBeGreaterThanOrEqual(2);
+    // Full original text returned, not just the extracted key
+    expect(result.answer).toContain("Answer: 42");
+  });
+
+  it("without extractAnswer, plain answers still vote correctly (regression)", async () => {
+    const runner = new SelfConsistencyRunner({ n: 3, earlyStopThreshold: 1.0 });
+    const model = mockModel(["42", "42", "43"]);
+    const result = await runner.run(model, [{ role: "user", content: "q" }]);
+    expect(result.answer).toBe("42");
+    expect(result.votes).toBe(2);
+  });
+
+  it("returns full text for winning candidate, not the extracted key", async () => {
+    const runner = new SelfConsistencyRunner({ n: 2, earlyStopThreshold: 1.0 });
+    const model = mockModel([
+      "Long reasoning text...\nFinal answer: yes",
+      "Different reasoning but...\nFinal answer: yes",
+    ]);
+    const result = await runner.run(model, [{ role: "user", content: "q" }]);
+    // The returned answer must be the full original text (contains "Final answer: yes")
+    expect(result.answer).toContain("Final answer: yes");
+    expect(result.answer.length).toBeGreaterThan("Final answer: yes".length);
+  });
+});

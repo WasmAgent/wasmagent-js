@@ -162,6 +162,7 @@ export class OpenAIModel implements Model {
 
     let inputTokens = 0;
     let outputTokens = 0;
+    let _cacheReadTokens = 0;
 
     for await (const chunk of stream) {
       const choice = chunk.choices[0];
@@ -209,11 +210,19 @@ export class OpenAIModel implements Model {
       if (chunk.usage) {
         inputTokens = chunk.usage.prompt_tokens;
         outputTokens = chunk.usage.completion_tokens;
+        // D2: read OpenAI automatic prefix cache hit tokens.
+        // OpenAI caches prefixes >1024 tokens automatically (no explicit markers needed).
+        // cached_tokens appear in prompt_tokens_details and are charged at ~50% of normal.
+        const details = (chunk.usage as unknown as Record<string, unknown>)["prompt_tokens_details"] as Record<string, unknown> | undefined;
+        const cached = details?.["cached_tokens"];
+        if (typeof cached === "number") _cacheReadTokens = cached;
       }
     }
 
     if (inputTokens > 0 || outputTokens > 0) {
-      yield { type: "usage", usage: { inputTokens, outputTokens } };
+      const usage: import("./types.js").TokenUsage = { inputTokens, outputTokens };
+      if (_cacheReadTokens > 0) usage.cacheReadTokens = _cacheReadTokens;
+      yield { type: "usage", usage };
     }
   }
 }

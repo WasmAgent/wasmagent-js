@@ -10,7 +10,7 @@ import { ReflectRefineRunner } from "../enhancement/ReflectRefineRunner.js";
 import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
 import { ParallelForkJoinRunner } from "../enhancement/ParallelForkJoinRunner.js";
 import type { AgentEvent, FinalAnswerStep, ParallelToolUseCall, ParallelToolUseStep, ToolUseStep, UserMessageStep } from "../types/events.js";
-import { runPlanningStep } from "./prompts.js";
+import { runPlanningStep, TOOL_DEP_INSTRUCTIONS } from "./prompts.js";
 import { Scheduler } from "../scheduler/Scheduler.js";
 import { SimpleIR } from "../scheduler/ir.js";
 import type { IRNode } from "../scheduler/ir.js";
@@ -20,7 +20,8 @@ import { callFingerprint } from "./stopConditions.js";
 import type { Checkpointer } from "../checkpoint/index.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant. Use the provided tools to answer questions.
-When you have a final answer, respond with plain text (no tool call).`;
+When you have a final answer, respond with plain text (no tool call).
+${TOOL_DEP_INSTRUCTIONS}`;
 
 export interface ToolCallingAgentOptions {
   tools: ToolDefinition[];

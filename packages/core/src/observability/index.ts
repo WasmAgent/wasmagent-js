@@ -1,5 +1,5 @@
 /**
- * OpenTelemetry observability bridge (C2).
+ * OpenTelemetry observability bridge.
  *
  * Bridges AgentEvent streams to OTel-compatible spans without a hard dependency
  * on @opentelemetry/api. The bridge works with any exporter that implements the
@@ -7,6 +7,14 @@
  *  - InMemorySpanExporter (for tests)
  *  - OTLP HTTP/gRPC exporters
  *  - ConsoleSpanExporter
+ *
+ * E1 — OTel GenAI semantic conventions (gen_ai.*):
+ * By default the bridge emits BOTH legacy private attributes (task, usage.inputTokens,
+ * tool.name, …) AND the standardized gen_ai.* attributes so existing dashboards keep
+ * working while Datadog/Honeycomb/Grafana GenAI views are automatically populated.
+ *
+ * Set `semconvMode: "stable"` to suppress legacy attribute names.
+ * Set `semconvMode: "legacy"` to suppress gen_ai.* names (original behavior).
  *
  * Usage:
  *   const exporter = new InMemorySpanExporter();
@@ -70,6 +78,15 @@ interface LiveSpan {
 
 export interface OtelBridgeOptions {
   exporter?: SpanExporter;
+  /**
+   * Attribute naming mode (E1 — GenAI semconv).
+   *
+   * - "both" (default): emit both legacy names (task, usage.inputTokens, tool.name)
+   *   AND gen_ai.* semconv names. Backward-compatible while enabling GenAI dashboards.
+   * - "stable": emit only gen_ai.* names. Use when all consumers understand semconv.
+   * - "legacy": emit only legacy names. Original behavior, no semconv.
+   */
+  semconvMode?: "both" | "stable" | "legacy";
 }
 
 /**
@@ -78,13 +95,14 @@ export interface OtelBridgeOptions {
  * Create one instance per agent.run() call (or reuse across runs — the bridge
  * tracks open spans per traceId and flushes them automatically when the run ends).
  *
- * Span hierarchy:
- *   run_start   → root span (name = "agent.run")
- *   step_start  → child span (name = "agent.step.<N>")
- *   tool_call   → grandchild span (name = "tool.<toolName>")
+ * Span hierarchy (E1 semconv names in parentheses):
+ *   run_start   → root span "agent.run"      (gen_ai.operation.name = "agent")
+ *   step_start  → child span "agent.step.<N>"
+ *   tool_call   → grandchild span "execute_tool" (gen_ai.operation.name = "execute_tool")
  */
 export class OtelBridge {
   readonly #exporter: SpanExporter;
+  readonly #semconvMode: "both" | "stable" | "legacy";
   readonly #runs = new Map<string, LiveSpan>();     // traceId → run span
   readonly #steps = new Map<string, LiveSpan>();    // `${traceId}:${step}` → step span
   readonly #tools = new Map<string, LiveSpan>();    // callId → tool span
@@ -92,6 +110,7 @@ export class OtelBridge {
 
   constructor(opts: OtelBridgeOptions = {}) {
     this.#exporter = opts.exporter ?? NOOP_EXPORTER;
+    this.#semconvMode = opts.semconvMode ?? "both";
   }
 
   record(ev: AgentEvent): void {
@@ -100,7 +119,9 @@ export class OtelBridge {
     switch (ev.event) {
       case "run_start": {
         const span = this.#open(traceId, undefined, "agent.run", timestampMs);
-        span.attributes["task"] = String((ev as { data: { task: string } }).data.task ?? "");
+        const task = String((ev as { data: { task: string } }).data.task ?? "");
+        this.#setAttr(span.attributes, "task", "gen_ai.agent.task", task);
+        this.#setAttr(span.attributes, null, "gen_ai.operation.name", "agent");
         this.#runs.set(traceId, { span, ended: false });
         break;
       }
@@ -109,7 +130,7 @@ export class OtelBridge {
         const step = (ev as { data: { step: number } }).data.step;
         const runSpan = this.#runs.get(traceId);
         const child = this.#open(traceId, runSpan?.span.spanId, `agent.step.${step}`, timestampMs);
-        child.attributes["step"] = step;
+        this.#setAttr(child.attributes, "step", "gen_ai.agent.step", step);
         this.#steps.set(`${traceId}:${step}`, { span: child, ended: false });
         break;
       }
@@ -118,9 +139,12 @@ export class OtelBridge {
         const d = (ev as { data: { toolName: string; callId: string; stepIndex: number } }).data;
         const stepSpan = this.#steps.get(`${traceId}:${d.stepIndex}`);
         const parentId = stepSpan?.span.spanId ?? this.#runs.get(traceId)?.span.spanId;
-        const child = this.#open(traceId, parentId, `tool.${d.toolName}`, timestampMs);
-        child.attributes["tool.name"] = d.toolName;
-        child.attributes["tool.callId"] = d.callId;
+        // E1: tool execution span is named "execute_tool" per OTel GenAI semconv.
+        const spanName = this.#semconvMode === "legacy" ? `tool.${d.toolName}` : "execute_tool";
+        const child = this.#open(traceId, parentId, spanName, timestampMs);
+        this.#setAttr(child.attributes, "tool.name", "gen_ai.tool.name", d.toolName);
+        this.#setAttr(child.attributes, "tool.callId", "gen_ai.tool.call.id", d.callId);
+        this.#setAttr(child.attributes, null, "gen_ai.operation.name", "execute_tool");
         this.#tools.set(d.callId, { span: child, ended: false });
         break;
       }
@@ -141,7 +165,7 @@ export class OtelBridge {
         const runLive = this.#runs.get(traceId);
         if (runLive && !runLive.ended) {
           runLive.span.status = "ok";
-          runLive.span.attributes["final_answer"] = String(d.answer ?? "");
+          this.#setAttr(runLive.span.attributes, "final_answer", "gen_ai.agent.final_answer", String(d.answer ?? ""));
           // Close any still-open step span.
           for (const [key, live] of this.#steps) {
             if (key.startsWith(`${traceId}:`) && !live.ended) {
@@ -159,7 +183,7 @@ export class OtelBridge {
         const runLive = this.#runs.get(traceId);
         if (runLive && !runLive.ended) {
           runLive.span.status = "error";
-          runLive.span.attributes["error"] = String((ev as { data: { error: string } }).data.error ?? "");
+          this.#setAttr(runLive.span.attributes, "error", "gen_ai.error.message", String((ev as { data: { error: string } }).data.error ?? ""));
           this.#close(runLive, timestampMs);
           this.#runs.delete(traceId);
         }
@@ -170,12 +194,27 @@ export class OtelBridge {
         // Handle usage-shaped data (inputTokens/outputTokens) forwarded from model events.
         const anyEv = ev as { data?: Record<string, unknown> };
         if (anyEv.data && typeof anyEv.data["inputTokens"] === "number") {
-          const d = anyEv.data as { inputTokens?: number; outputTokens?: number; cacheReadTokens?: number };
+          const d = anyEv.data as {
+            inputTokens?: number;
+            outputTokens?: number;
+            cacheReadTokens?: number;
+            cacheReadTokens1h?: number;
+          };
           const runLive = this.#runs.get(traceId);
           if (runLive) {
-            if (d.inputTokens !== undefined) runLive.span.attributes["usage.inputTokens"] = ((runLive.span.attributes["usage.inputTokens"] as number) ?? 0) + d.inputTokens;
-            if (d.outputTokens !== undefined) runLive.span.attributes["usage.outputTokens"] = ((runLive.span.attributes["usage.outputTokens"] as number) ?? 0) + d.outputTokens;
-            if (d.cacheReadTokens !== undefined) runLive.span.attributes["usage.cacheReadTokens"] = ((runLive.span.attributes["usage.cacheReadTokens"] as number) ?? 0) + d.cacheReadTokens;
+            const attrs = runLive.span.attributes;
+            if (d.inputTokens !== undefined) {
+              this.#addAttr(attrs, "usage.inputTokens", "gen_ai.usage.input_tokens", d.inputTokens);
+            }
+            if (d.outputTokens !== undefined) {
+              this.#addAttr(attrs, "usage.outputTokens", "gen_ai.usage.output_tokens", d.outputTokens);
+            }
+            if (d.cacheReadTokens !== undefined) {
+              this.#addAttr(attrs, "usage.cacheReadTokens", "gen_ai.usage.cache_read_input_tokens", d.cacheReadTokens);
+            }
+            if (d.cacheReadTokens1h !== undefined) {
+              this.#addAttr(attrs, "usage.cacheReadTokens1h", "gen_ai.usage.cache_read_input_tokens_1h", d.cacheReadTokens1h);
+            }
           }
         }
         break;
@@ -220,6 +259,32 @@ export class OtelBridge {
     live.span.endTimeMs = endTimeMs;
     live.ended = true;
     this.#finished.push(live.span);
+  }
+
+  /** Set attribute under legacy and/or semconv names depending on semconvMode. */
+  #setAttr(
+    attrs: SpanAttributes,
+    legacyKey: string | null,
+    semconvKey: string,
+    value: string | number | boolean
+  ): void {
+    if (legacyKey && this.#semconvMode !== "stable") attrs[legacyKey] = value;
+    if (this.#semconvMode !== "legacy") attrs[semconvKey] = value;
+  }
+
+  /** Accumulate (add) a numeric attribute under legacy and/or semconv names. */
+  #addAttr(
+    attrs: SpanAttributes,
+    legacyKey: string | null,
+    semconvKey: string,
+    delta: number
+  ): void {
+    if (legacyKey && this.#semconvMode !== "stable") {
+      attrs[legacyKey] = ((attrs[legacyKey] as number) ?? 0) + delta;
+    }
+    if (this.#semconvMode !== "legacy") {
+      attrs[semconvKey] = ((attrs[semconvKey] as number) ?? 0) + delta;
+    }
   }
 }
 

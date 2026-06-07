@@ -80,8 +80,8 @@ export async function createKernel(
     }
 
     case "v8-wasm": {
-      const { V8WasmKernel } = await import("./V8WasmKernel.js");
-      return new V8WasmKernel(opts);
+      const { VmKernel } = await import("./VmKernel.js");
+      return new VmKernel(opts);
     }
 
     default:

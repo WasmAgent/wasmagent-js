@@ -18,6 +18,13 @@ interface FinalMessage {
     output_tokens: number;
     cache_read_input_tokens?: number;
     cache_creation_input_tokens?: number;
+    /** D1: per-TTL metering fields returned when extended-cache-ttl beta is active. */
+    ephemeral_5m_input_tokens?: number;
+    ephemeral_1h_input_tokens?: number;
+    cache_creation?: {
+      ephemeral_5m_input_tokens?: number;
+      ephemeral_1h_input_tokens?: number;
+    };
   };
 }
 
@@ -286,5 +293,97 @@ describe("AnthropicModel — A2 cache breakpoint trimming", () => {
     // "short" is below 1024 token threshold → no breakpoint injected
     expect(count).toBe(0);
     vi.doUnmock("@anthropic-ai/sdk");
+  });
+});
+
+// ── D1: 1h extended TTL cache tests ──────────────────────────────────────────
+
+describe("AnthropicModel D1 — 1h extended TTL cache", () => {
+  beforeEach(() => { vi.resetModules(); });
+
+  it("sends ttl:1h in cache_control when breakpoint has ttl='1h'", async () => {
+    const bigContent = "x".repeat(5000);
+    const messages: ModelMessage[] = [
+      { role: "system", content: bigContent },
+      // User content must also be large enough to pass the cacheMinTokens guard.
+      { role: "user", content: "u".repeat(5000), cacheBreakpoint: { type: "ephemeral", ttl: "1h" } },
+    ];
+    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
+    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
+    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "d1a");
+    const model = new AnthropicModel("claude-sonnet-4-6", "key");
+    for await (const _ of model.generate(messages)) { /* consume */ }
+    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    const msgs = call["messages"] as Array<Record<string, unknown>>;
+    const userMsg = msgs.find((m) => m["role"] === "user");
+    const content = userMsg?.["content"] as Array<Record<string, unknown>> | undefined;
+    const cc = content?.[0]?.["cache_control"] as Record<string, unknown> | undefined;
+    expect(cc?.["ttl"]).toBe("1h");
+    vi.doUnmock("@anthropic-ai/sdk");
+  });
+
+  it("injects extended-cache-ttl-2025-04-11 beta header when ttl='1h'", async () => {
+    const messages: ModelMessage[] = [
+      { role: "system", content: "x".repeat(5000) },
+      { role: "user", content: "hi", cacheBreakpoint: { type: "ephemeral", ttl: "1h" } },
+    ];
+    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
+    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
+    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "d1b");
+    const model = new AnthropicModel("claude-sonnet-4-6", "key");
+    for await (const _ of model.generate(messages)) { /* consume */ }
+    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    const betas = call["betas"] as string[] | undefined;
+    expect(betas).toContain("extended-cache-ttl-2025-04-11");
+    vi.doUnmock("@anthropic-ai/sdk");
+  });
+
+  it("does NOT send betas header when no ttl='1h' breakpoint", async () => {
+    const messages: ModelMessage[] = [
+      { role: "system", content: "x".repeat(5000) },
+      { role: "user", content: "hi", cacheBreakpoint: { type: "ephemeral" } },
+    ];
+    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
+    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
+    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "d1c");
+    const model = new AnthropicModel("claude-sonnet-4-6", "key");
+    for await (const _ of model.generate(messages)) { /* consume */ }
+    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(call["betas"]).toBeUndefined();
+    vi.doUnmock("@anthropic-ai/sdk");
+  });
+
+  it("parses ephemeral_5m_input_tokens into cacheReadTokens", async () => {
+    const finalMsg: FinalMessage = {
+      content: [],
+      usage: { input_tokens: 100, output_tokens: 20, ephemeral_5m_input_tokens: 80 },
+    };
+    const { streamEvents } = await collectEvents([], finalMsg);
+    const usageEv = streamEvents.find((e) => e.type === "usage" && (e.usage?.inputTokens ?? 0) > 0);
+    expect(usageEv?.usage?.cacheReadTokens).toBe(80);
+  });
+
+  it("parses ephemeral_1h_input_tokens into cacheReadTokens1h", async () => {
+    const finalMsg: FinalMessage = {
+      content: [],
+      usage: { input_tokens: 100, output_tokens: 20, ephemeral_1h_input_tokens: 60 },
+    };
+    const { streamEvents } = await collectEvents([], finalMsg);
+    const usageEv = streamEvents.find((e) => e.type === "usage" && (e.usage?.inputTokens ?? 0) > 0);
+    expect(usageEv?.usage?.cacheReadTokens1h).toBe(60);
+  });
+
+  it("parses cache_creation.ephemeral_1h_input_tokens into cacheWriteTokens1h", async () => {
+    const finalMsg: FinalMessage = {
+      content: [],
+      usage: {
+        input_tokens: 100,
+        output_tokens: 20,
+        cache_creation: { ephemeral_1h_input_tokens: 40 },
+      },
+    };
+    const { streamEvents } = await collectEvents([], finalMsg);
+    const usageEv = streamEvents.find((e) => e.type === "usage" && (e.usage?.inputTokens ?? 0) > 0);
+    expect(usageEv?.usage?.cacheWriteTokens1h).toBe(40);
   });
 });

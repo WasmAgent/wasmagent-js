@@ -61,8 +61,28 @@ export { CACHE_MIN_TOKENS };
 
 /** Canonical Anthropic model IDs. Update here when Anthropic releases new versions. */
 export const AnthropicModels = {
+  /**
+   * Semantic aliases — always point to the latest recommended model in each tier.
+   * Use these in new code; the versioned aliases below are for backward compatibility.
+   */
+  OPUS_LATEST:   "claude-opus-4-8",
+  SONNET_LATEST: "claude-sonnet-4-6",
+  HAIKU_LATEST:  "claude-haiku-4-5-20251001",
+
+  /**
+   * @deprecated Use OPUS_LATEST. The constant name is misleading: CLAUDE_OPUS_4
+   * maps to claude-opus-4-8, not 4.0. Kept for backward compatibility.
+   */
   CLAUDE_OPUS_4:    "claude-opus-4-8",
+  /**
+   * @deprecated Use SONNET_LATEST. The constant name is misleading: CLAUDE_SONNET_4
+   * maps to claude-sonnet-4-6, not 4.0. Kept for backward compatibility.
+   */
   CLAUDE_SONNET_4:  "claude-sonnet-4-6",
+  /**
+   * @deprecated Use HAIKU_LATEST. The constant name is misleading: CLAUDE_HAIKU_4
+   * maps to claude-haiku-4-5-20251001, not 4.0. Kept for backward compatibility.
+   */
   CLAUDE_HAIKU_4:   "claude-haiku-4-5-20251001",
 } as const;
 
@@ -153,6 +173,9 @@ export class AnthropicModel implements Model {
       typeof client.messages.stream
     >[0]["messages"];
 
+    // D1: detect if any message breakpoint uses the 1h TTL — requires beta header.
+    const has1hTtl = messages.some((m) => m.cacheBreakpoint?.ttl === "1h");
+
     // System message gets cache_control only when estimated tokens >= threshold (B1).
     const systemParam = systemMessage
       ? [{
@@ -172,6 +195,10 @@ export class AnthropicModel implements Model {
       ...(systemParam ? { system: systemParam } : {}),
       messages: trimmedMessages,
     };
+    // D1: inject extended-cache-ttl beta header when any breakpoint uses ttl:"1h".
+    if (has1hTtl) {
+      (streamParams as unknown as Record<string, unknown>)["betas"] = ["extended-cache-ttl-2025-04-11"];
+    }
     if (opts.tools && opts.tools.length > 0) {
       // Mark the last tool with cache_control so tools array is cached as a prefix (B1).
       const tools = opts.tools.map((t, i) =>
@@ -225,12 +252,21 @@ export class AnthropicModel implements Model {
         inputTokens: u.input_tokens,
         outputTokens: u.output_tokens,
       };
-      // Cache stats are optional fields — only include when present (B1).
+      // D1: parse both standard and extended-TTL cache stats.
       const uAny = u as unknown as Record<string, unknown>;
       const cacheRead = uAny["cache_read_input_tokens"];
       const cacheWrite = uAny["cache_creation_input_tokens"];
       if (typeof cacheRead === "number") usage.cacheReadTokens = cacheRead;
       if (typeof cacheWrite === "number") usage.cacheWriteTokens = cacheWrite;
+      // D1: per-TTL cache metering (returned when extended-cache-ttl beta is active).
+      const cache5mRead = uAny["ephemeral_5m_input_tokens"];
+      const cache1hRead = uAny["ephemeral_1h_input_tokens"];
+      const cacheCreation = uAny["cache_creation"] as Record<string, unknown> | undefined;
+      if (typeof cache5mRead === "number") usage.cacheReadTokens = cache5mRead;
+      if (typeof cache1hRead === "number") usage.cacheReadTokens1h = cache1hRead;
+      if (typeof cacheCreation?.["ephemeral_1h_input_tokens"] === "number") {
+        usage.cacheWriteTokens1h = cacheCreation["ephemeral_1h_input_tokens"] as number;
+      }
       yield { type: "usage", usage };
     }
   }
@@ -242,7 +278,7 @@ function extractSystemMessage(messages: ModelMessage[]): string {
   return typeof sys.content === "string" ? sys.content : "";
 }
 
-type AnthropicCacheControl = { type: "ephemeral" };
+type AnthropicCacheControl = { type: "ephemeral"; ttl?: "5m" | "1h" };
 
 interface AnthropicTextBlock {
   type: "text";
@@ -283,13 +319,15 @@ function convertMessages(messages: ModelMessage[], shouldCache: boolean, cacheMi
         // A2: guard — only inject breakpoint when the chunk is large enough to be cached.
         const chunkTokens = estimateTokens(m.content);
         if (m.cacheBreakpoint && shouldCache && chunkTokens >= cacheMinTokens) {
+          const cc: AnthropicCacheControl = { type: "ephemeral" };
+          if (m.cacheBreakpoint.ttl) cc.ttl = m.cacheBreakpoint.ttl;
           return {
             role,
             content: [
               {
                 type: "text" as const,
                 text: m.content,
-                cache_control: { type: "ephemeral" as const },
+                cache_control: cc,
               },
             ],
           };
@@ -331,7 +369,11 @@ function convertMessages(messages: ModelMessage[], shouldCache: boolean, cacheMi
           .join("");
         if (estimateTokens(textContent) >= cacheMinTokens) {
           const lastText = [...blocks].reverse().find((b): b is AnthropicTextBlock => b.type === "text");
-          if (lastText) lastText.cache_control = { type: "ephemeral" };
+          if (lastText) {
+            const cc: AnthropicCacheControl = { type: "ephemeral" };
+            if (m.cacheBreakpoint.ttl) cc.ttl = m.cacheBreakpoint.ttl;
+            lastText.cache_control = cc;
+          }
         }
       }
 

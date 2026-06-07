@@ -78,6 +78,7 @@ export class Scheduler {
       // C3: launch all readOnly ready nodes speculatively right now.
       for (const node of readyReadOnly) {
         yield { type: "node_start", nodeId: node.id };
+        yield { type: "node_speculative", nodeId: node.id };
         speculative.set(
           node.id,
           this.tools
@@ -92,6 +93,7 @@ export class Scheduler {
       // C3 barrier: before running any non-readOnly node, drain all in-flight
       // speculative futures so side-effectful nodes see a consistent state.
       if (readyWriting.length > 0 && speculative.size > 0) {
+        yield { type: "node_barrier_wait", pendingSpeculative: [...speculative.keys()] };
         // Pre-capture [id, promise] pairs so the settled index maps to the correct node ID.
         const speculativeEntries = [...speculative.entries()];
         for (const [i, settled] of (await Promise.allSettled(
@@ -177,4 +179,8 @@ export class Scheduler {
 export type SchedulerEvent =
   | { type: "node_start"; nodeId: string }
   | { type: "node_done"; nodeId: string; result: unknown }
-  | { type: "node_error"; nodeId: string; error: unknown };
+  | { type: "node_error"; nodeId: string; error: unknown }
+  /** Emitted when a readOnly node is launched speculatively ahead of write nodes. */
+  | { type: "node_speculative"; nodeId: string }
+  /** Emitted when the scheduler drains in-flight speculative futures before starting a write node. */
+  | { type: "node_barrier_wait"; pendingSpeculative: string[] };
