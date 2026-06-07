@@ -241,3 +241,86 @@ describe("Scheduler edge cases", () => {
     expect(events).toHaveLength(0);
   });
 });
+
+// ── C1: $ref value substitution ───────────────────────────────────────────────
+
+describe("Scheduler — C1 $ref value substitution", () => {
+  it("substitutes $callId with upstream result in downstream args", async () => {
+    let capturedInput: Record<string, unknown> | undefined;
+
+    const registry = new ToolRegistry();
+    // call-A produces { output: 42 }
+    registry.register({
+      name: "produce",
+      description: "produces a value",
+      inputSchema: z.object({ seed: z.number() }),
+      outputSchema: z.number(),
+      readOnly: true,
+      idempotent: true,
+      forward: async ({ seed }) => seed * 10,
+    });
+    // call-B captures whatever it receives as input
+    registry.register({
+      name: "consume",
+      description: "consumes upstream output",
+      inputSchema: z.object({ src: z.unknown() }),
+      outputSchema: z.string(),
+      readOnly: true,
+      idempotent: true,
+      forward: async (input) => {
+        capturedInput = input as Record<string, unknown>;
+        return "ok";
+      },
+    });
+
+    const scheduler = new Scheduler(registry);
+    const ir = new SimpleIR([
+      { id: "call-A", toolName: "produce", args: { seed: 4 }, dependsOn: [], readOnly: true, idempotent: true },
+      { id: "call-B", toolName: "consume", args: { src: "$call-A" }, dependsOn: ["call-A"], readOnly: true, idempotent: true },
+    ]);
+
+    const events = [];
+    for await (const e of scheduler.execute(ir)) events.push(e);
+
+    // call-B should receive the actual result of call-A, not the literal "$call-A"
+    expect(capturedInput?.["src"]).not.toBe("$call-A");
+    // call-A output is { callId, toolName, output: 40 }
+    const callAResult = events.find((e) => e.type === "node_done" && e.nodeId === "call-A")?.result;
+    expect(capturedInput?.["src"]).toEqual(callAResult);
+  });
+
+  it("does not substitute when no $ref is present (pure-ordering case)", async () => {
+    let capturedArgs: Record<string, unknown> | undefined;
+    const registry = new ToolRegistry();
+    registry.register({
+      name: "passthrough",
+      description: "pass",
+      inputSchema: z.object({ val: z.string() }),
+      outputSchema: z.string(),
+      readOnly: true,
+      idempotent: true,
+      forward: async (input) => { capturedArgs = input as Record<string, unknown>; return "ok"; },
+    });
+
+    const scheduler = new Scheduler(registry);
+    const ir = new SimpleIR([
+      { id: "n1", toolName: "passthrough", args: { val: "literal" }, dependsOn: [], readOnly: true, idempotent: true },
+    ]);
+
+    for await (const _ of scheduler.execute(ir)) { /* consume */ }
+
+    // No substitution should have happened
+    expect(capturedArgs?.["val"]).toBe("literal");
+  });
+
+  it("C1: circular dependencies still throw (not affected by ref substitution)", async () => {
+    const scheduler = new Scheduler(makeRegistry(doubleTool));
+    const ir = new SimpleIR([
+      { id: "a", toolName: "double", args: { value: "$b" }, dependsOn: ["b"], readOnly: true, idempotent: true },
+      { id: "b", toolName: "double", args: { value: "$a" }, dependsOn: ["a"], readOnly: true, idempotent: true },
+    ]);
+    await expect(async () => {
+      for await (const _ of scheduler.execute(ir)) { /* consume */ }
+    }).rejects.toThrow("deadlock");
+  });
+});

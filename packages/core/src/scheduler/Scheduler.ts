@@ -1,5 +1,6 @@
 import type { ToolRegistry } from "../tools/ToolRegistry.js";
 import type { ActionIR, IRNode } from "./ir.js";
+import { resolveRefs } from "./deriveDeps.js";
 
 /**
  * Scheduler (C2/C3).
@@ -56,20 +57,22 @@ export class Scheduler {
       remaining.set(node.id, new Set(node.dependsOn));
     }
 
-    const completed = new Set<string>();
+    // C1: Map from nodeId → its tool result, used to substitute $ref values in
+    // downstream args before dispatch. Replaces the former Set<string>.
+    const completedResults = new Map<string, unknown>();
     // Track in-flight speculative futures (readOnly nodes) for barrier logic.
     const speculative = new Map<string, Promise<{ node: IRNode; result: unknown }>>();
 
-    while (completed.size < ir.nodes.length) {
+    while (completedResults.size < ir.nodes.length) {
       const ready = ir.nodes.filter(
-        (n) => !completed.has(n.id) && !speculative.has(n.id) && (remaining.get(n.id)?.size ?? 0) === 0
+        (n) => !completedResults.has(n.id) && !speculative.has(n.id) && (remaining.get(n.id)?.size ?? 0) === 0
       );
 
       const readyReadOnly = ready.filter((n) => n.readOnly);
       const readyWriting = ready.filter((n) => !n.readOnly);
 
       if (ready.length === 0 && speculative.size === 0) {
-        const pending = ir.nodes.filter((n) => !completed.has(n.id)).map((n) => n.id);
+        const pending = ir.nodes.filter((n) => !completedResults.has(n.id)).map((n) => n.id);
         throw new Error(
           `Scheduler deadlock: circular dependency among nodes [${pending.join(", ")}]`
         );
@@ -79,11 +82,13 @@ export class Scheduler {
       for (const node of readyReadOnly) {
         yield { type: "node_start", nodeId: node.id };
         yield { type: "node_speculative", nodeId: node.id };
+        // C1: substitute $ref placeholders with completed node results before dispatch.
+        const resolvedArgs = resolveRefs(node.args, completedResults) as Record<string, unknown>;
         speculative.set(
           node.id,
           this.tools
             .call(
-              { toolName: node.toolName, args: node.args, callId: node.id, signal },
+              { toolName: node.toolName, args: resolvedArgs, callId: node.id, signal },
               node.extraCapabilities
             )
             .then((result) => ({ node, result }))
@@ -102,7 +107,7 @@ export class Scheduler {
           if (settled.status === "fulfilled") {
             const { node, result, _id } = settled.value;
             speculative.delete(_id);
-            completed.add(node.id);
+            completedResults.set(node.id, result);
             yield { type: "node_done", nodeId: node.id, result };
             this.#unblockDependents(node.id, remaining);
           } else {
@@ -125,24 +130,27 @@ export class Scheduler {
       if (readyWriting.length > 0) {
         for (const node of readyWriting) yield { type: "node_start", nodeId: node.id };
         for (const { node, result } of await Promise.all(
-          readyWriting.map(async (node) => ({
-            node,
-            result: await this.tools.call(
-              { toolName: node.toolName, args: node.args, callId: node.id, signal },
-              node.extraCapabilities
-            ),
-          }))
+          readyWriting.map(async (node) => {
+            // C1: substitute $ref placeholders before dispatch.
+            const resolvedArgs = resolveRefs(node.args, completedResults) as Record<string, unknown>;
+            return {
+              node,
+              result: await this.tools.call(
+                { toolName: node.toolName, args: resolvedArgs, callId: node.id, signal },
+                node.extraCapabilities
+              ),
+            };
+          })
         )) {
-          completed.add(node.id);
+          completedResults.set(node.id, result);
           yield { type: "node_done", nodeId: node.id, result };
           this.#unblockDependents(node.id, remaining);
         }
         continue;
       }
 
-    // Q8: abort the remaining speculative in-flight futures on early generator exit.
-    // Only speculative futures in-flight — drain them all to make progress.
-    if (speculative.size > 0) {
+      // Q8: Only speculative futures in-flight — drain them all to make progress.
+      if (speculative.size > 0) {
         // Pre-capture [id, promise] pairs so the settled index maps to the correct node ID.
         const speculativeEntries = [...speculative.entries()];
         for (const [i, settled] of (await Promise.allSettled(
@@ -151,7 +159,7 @@ export class Scheduler {
           if (settled.status === "fulfilled") {
             const { node, result, _id } = settled.value;
             speculative.delete(_id);
-            completed.add(node.id);
+            completedResults.set(node.id, result);
             yield { type: "node_done", nodeId: node.id, result };
             this.#unblockDependents(node.id, remaining);
           } else {

@@ -55,7 +55,36 @@ function collectRefs(
   return [...found];
 }
 
-/** Topological sort to detect cycles (Kahn's algorithm). */
+/**
+ * C1: Recursively replace $<callId> references in args with the actual
+ * completed node result. Supports whole-value replacement only (not sub-field
+ * path notation). Reuses the same regex as collectRefs for consistency.
+ *
+ * Pure-ordering uses (no $ref strings) pass through unchanged.
+ */
+export function resolveRefs(
+  value: unknown,
+  completed: Map<string, unknown>
+): unknown {
+  if (typeof value === "string") {
+    const m = /^\$(.+)$/.exec(value);
+    if (m && completed.has(m[1]!)) {
+      return completed.get(m[1]!);
+    }
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => resolveRefs(item, completed));
+  }
+  if (value !== null && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      result[k] = resolveRefs(v, completed);
+    }
+    return result;
+  }
+  return value;
+}
 function detectCycles(deps: Map<string, string[]>): void {
   const inDegree = new Map<string, number>();
   for (const id of deps.keys()) inDegree.set(id, 0);

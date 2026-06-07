@@ -39,6 +39,15 @@ export class ToolRegistry {
       );
     }
     this.#tools.set(tool.name, tool);
+    // A2: deferLoading and inputExamples are mutually exclusive — the Tool Search
+    // API does not accept input_examples on deferred tools (see Anthropic docs 2026-03).
+    const toolAny2 = tool as unknown as Record<string, unknown>;
+    if (toolAny2["deferLoading"] === true && Array.isArray(toolAny2["inputExamples"]) && (toolAny2["inputExamples"] as unknown[]).length > 0) {
+      throw new Error(
+        `Tool "${tool.name}" has both deferLoading:true and inputExamples, which are mutually exclusive. ` +
+        `Tool Search does not support input_examples on deferred tools.`
+      );
+    }
     return this;
   }
 

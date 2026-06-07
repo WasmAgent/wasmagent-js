@@ -183,3 +183,80 @@ describe("OtelBridge — semconv modes", () => {
     expect(runSpan.attributes["usage.cacheReadTokens1h"]).toBe(75);
   });
 });
+
+// ── E1: GenAI inference/chat span ─────────────────────────────────────────────
+
+describe("OtelBridge E1 — GenAI inference/chat span", () => {
+  it("opens a 'chat' span on model_start and closes it on model_done", () => {
+    const exporter = new InMemorySpanExporter();
+    const bridge = new OtelBridge({ exporter, semconvMode: "both" });
+    const tid = traceId();
+
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "text", event: "run_start", data: { task: "t" }, timestampMs: 0 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "thinking", event: "step_start", data: { step: 1 }, timestampMs: 10 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "model", event: "model_start", data: { modelId: "claude-sonnet-4-6", step: 1 }, timestampMs: 20 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "model", event: "model_done", data: { modelId: "claude-sonnet-4-6", step: 1, finishReason: "end_turn", inputTokens: 100, outputTokens: 50 }, timestampMs: 80 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "text", event: "final_answer", data: { answer: "x" }, timestampMs: 100 });
+    bridge.flush();
+
+    const chatSpan = exporter.spans.find((s) => s.name === "chat");
+    expect(chatSpan).toBeDefined();
+    expect(chatSpan?.status).toBe("ok");
+    expect(chatSpan?.endTimeMs).toBeDefined();
+  });
+
+  it("chat span has gen_ai.request.model, gen_ai.response.model, gen_ai.system", () => {
+    const exporter = new InMemorySpanExporter();
+    const bridge = new OtelBridge({ exporter, semconvMode: "stable" });
+    const tid = traceId();
+
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "text", event: "run_start", data: { task: "t" }, timestampMs: 0 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "thinking", event: "step_start", data: { step: 1 }, timestampMs: 5 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "model", event: "model_start", data: { modelId: "claude-sonnet-4-6", step: 1 }, timestampMs: 10 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "model", event: "model_done", data: { modelId: "claude-sonnet-4-6", step: 1, finishReason: "tool_use", inputTokens: 200, outputTokens: 30 }, timestampMs: 50 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "text", event: "final_answer", data: { answer: "x" }, timestampMs: 60 });
+    bridge.flush();
+
+    const chatSpan = exporter.spans.find((s) => s.name === "chat")!;
+    expect(chatSpan.attributes["gen_ai.request.model"]).toBe("claude-sonnet-4-6");
+    expect(chatSpan.attributes["gen_ai.response.model"]).toBe("claude-sonnet-4-6");
+    expect(chatSpan.attributes["gen_ai.system"]).toBe("anthropic");
+    expect(chatSpan.attributes["gen_ai.operation.name"]).toBe("chat");
+    expect(chatSpan.attributes["gen_ai.response.finish_reasons"]).toBe("tool_use");
+    expect(chatSpan.attributes["gen_ai.usage.input_tokens"]).toBe(200);
+    expect(chatSpan.attributes["gen_ai.usage.output_tokens"]).toBe(30);
+  });
+
+  it("chat span is nested under step span", () => {
+    const exporter = new InMemorySpanExporter();
+    const bridge = new OtelBridge({ exporter, semconvMode: "both" });
+    const tid = traceId();
+
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "text", event: "run_start", data: { task: "t" }, timestampMs: 0 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "thinking", event: "step_start", data: { step: 1 }, timestampMs: 5 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "model", event: "model_start", data: { modelId: "claude-sonnet-4-6", step: 1 }, timestampMs: 10 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "model", event: "model_done", data: { modelId: "claude-sonnet-4-6", step: 1, finishReason: "end_turn" }, timestampMs: 40 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "text", event: "final_answer", data: { answer: "x" }, timestampMs: 50 });
+    bridge.flush();
+
+    const stepSpan = exporter.spans.find((s) => s.name === "agent.step.1")!;
+    const chatSpan = exporter.spans.find((s) => s.name === "chat")!;
+    expect(chatSpan.parentSpanId).toBe(stepSpan.spanId);
+  });
+
+  it("legacy mode names chat span 'model.chat'", () => {
+    const exporter = new InMemorySpanExporter();
+    const bridge = new OtelBridge({ exporter, semconvMode: "legacy" });
+    const tid = traceId();
+
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "text", event: "run_start", data: { task: "t" }, timestampMs: 0 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "thinking", event: "step_start", data: { step: 1 }, timestampMs: 5 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "model", event: "model_start", data: { modelId: "claude-sonnet-4-6", step: 1 }, timestampMs: 10 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "model", event: "model_done", data: { modelId: "claude-sonnet-4-6", step: 1, finishReason: "end_turn" }, timestampMs: 30 });
+    bridge.record({ traceId: tid, parentTraceId: null, channel: "text", event: "final_answer", data: { answer: "x" }, timestampMs: 40 });
+    bridge.flush();
+
+    const chatSpan = exporter.spans.find((s) => s.name === "model.chat");
+    expect(chatSpan).toBeDefined();
+  });
+});
