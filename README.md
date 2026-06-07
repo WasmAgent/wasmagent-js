@@ -14,16 +14,45 @@ pnpm add @agentkit-js/core openai
 
 ---
 
-## Why agentkit-js?
+## Comparison
 
-| | Other JS agent libs | agentkit-js |
-|---|---|---|
-| **Code execution** | eval / no sandbox | WASM capability model (deny-all by default) |
-| **Context cost** | Full history every step | Cache-stable prefix assembly + Anthropic prompt-caching |
-| **Answer quality** | Single pass | Self-consistency, reflect-refine, budget forcing, parallel fork-join |
-| **Concurrency** | Serial tool calls | DAG scheduler — independent tools run in parallel |
-| **Edge deployment** | Node.js only | Cloudflare Workers out of the box |
-| **Python support** | No | CPython-in-WASM via Pyodide |
+There are several mature TypeScript agent frameworks. Here is an honest assessment of where agentkit-js fits.
+
+| | [Vercel AI SDK](https://github.com/vercel/ai) | [LangGraph.js](https://github.com/langchain-ai/langgraphjs) | [OpenAI Agents JS](https://github.com/openai/openai-agents-js) | [Mastra](https://github.com/mastra-ai/mastra) | [CF Agents SDK](https://github.com/cloudflare/agents) | **agentkit-js** |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **npm downloads/month** | ~57M | ~10M | ~3.8M | ~4M | ~3.2M | early-stage |
+| **ToolCallingAgent** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **CodeAgent (sandboxed code exec)** | ❌ | ❌ | ❌ OS/Docker only | ❌ OS only | ⚠️ Worker isolation | ✅ WASM kernels |
+| **Python execution (edge-safe)** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ Pyodide-in-WASM |
+| **Anthropic prompt-cache management** | ⚠️ pass-through | ⚠️ pass-through | ⚠️ via adapter | ⚠️ pass-through | ❌ | ✅ auto breakpoints |
+| **Self-consistency / reflect-refine runners** | ❌ | ❌ manual | ❌ | ❌ | ❌ | ✅ built-in |
+| **Budget forcing** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **DAG tool scheduler + speculative exec** | ❌ | ⚠️ graph-level | ❌ | ⚠️ workflow graph | ❌ | ✅ |
+| **Long-history compaction** | ⚠️ syntactic prune | ❌ manual | ❌ | ⚠️ observational memory | ❌ | ✅ model-summarised |
+| **MCP support** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Cloudflare Workers** | ⚠️ partial | ✅ | ⚠️ experimental | ⚠️ alpha | ✅ native | ✅ |
+| **UI hooks (React/Next.js)** | ✅ best-in-class | ❌ | ❌ | ⚠️ via AI SDK | ⚠️ | ❌ |
+| **Provider integrations** | 40+ | 300+ | OpenAI-primary | 40+ | CF Workers AI | Anthropic + OpenAI-compat |
+| **Evals framework** | ❌ | ⚠️ LangSmith | ❌ | ✅ 12+ scorers | ❌ | ❌ |
+
+### Where competitors are stronger
+
+- **Vercel AI SDK** — If you're building a chat UI with Next.js, use this. The React hooks (`useChat`, `useAgent`) and 57M monthly downloads speak for themselves.
+- **LangChain/LangGraph.js** — If you need 300+ integrations (vector stores, document loaders, obscure providers) or graph-based durable workflows with checkpointing and human-in-the-loop, LangGraph is battle-tested at LinkedIn, Uber, and GitLab scale.
+- **Mastra** — Best eval framework (12+ built-in scorers including trajectory and tool accuracy). "Observational memory" (background LLM reflection on history) is genuinely novel. Strong developer onboarding.
+- **Cloudflare Agents SDK** — If you're building on Cloudflare specifically, Durable Objects give you stateful agents with persistent scheduling that nothing else matches natively.
+- **OpenAI Agents JS** — If your stack is OpenAI-only and you want first-party support, the cleanest path.
+
+### Where agentkit-js is differentiated
+
+- **WASM code kernels** — No other framework ships JsKernel, V8WasmKernel, PyodideKernel, or WasmtimeKernel. This enables in-process sandboxed code execution that works on edge/serverless without Docker or OS subprocess access.
+- **Quality runners** — Self-consistency (majority vote), reflect-refine, budget forcing ("Wait" prefill), and parallel fork-join are not shipped as first-class APIs by any competitor.
+- **Anthropic prompt-cache optimization** — Framework actively manages `cache_control` breakpoint placement across multi-turn history. Competitors pass through or validate limits but do not optimise placement.
+- **Speculative tool execution** — Read-only, idempotent tools are pre-executed ahead of write barriers within a DAG step. No competitor implements this.
+
+### Honest caveats
+
+agentkit-js is early-stage. The differentiating features (WASM kernels, quality runners, speculative scheduling) are technically novel but also niche — most teams pick a framework based on ecosystem breadth and documentation volume, where the mature options above win. Choose agentkit-js when sandboxed code execution, prompt-cache cost control, or output quality runners are first-order concerns.
 
 ---
 
