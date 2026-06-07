@@ -34,60 +34,74 @@ export class MessageAssembler {
   #history: Step[] = [];
   /** Cached ModelMessage[] per step, built once in addStep() instead of every build(). */
   #msgCache: ModelMessage[][] = [];
+  /** Cached system message — built once at construction time (system prompt and tools never change). */
+  readonly #systemMsg: ModelMessage;
+  /** Set of history indices that are the last step of a sealed B2 chunk. Maintained incrementally in addStep(). */
+  #sealedAt: Set<number> = new Set();
+  /** Running total of messages across all cached steps — used to pre-allocate build() result. */
+  #flatMsgCount = 0;
 
   constructor(config: AssemblerConfig) {
     this.#config = config;
+    this.#systemMsg = {
+      role: "system",
+      content: this.#buildSystemContent(),
+      cacheBreakpoint: { afterBlockIndex: 0, type: "ephemeral" },
+    };
   }
 
   addStep(step: Step): void {
     this.#history.push(step);
-    this.#msgCache.push(this.#stepToMessages(step));
+    const msgs = this.#stepToMessages(step);
+    this.#msgCache.push(msgs);
+    this.#flatMsgCount += msgs.length;
+
+    // Incrementally maintain sealed chunk boundaries (B2) so build() never recomputes.
+    const chunkSize = this.#config.chunkSizeSteps ?? 0;
+    if (chunkSize > 0 && this.#isChunkableStep(step)) {
+      const actionCount = this.#history.filter((s) => this.#isChunkableStep(s)).length;
+      if (actionCount % chunkSize === 0) {
+        this.#sealedAt.add(this.#history.length - 1);
+      }
+    }
   }
 
   /**
    * Build the full message list for the next model call.
    *
-   * The immutable prefix (tools + system + few-shot) is always placed first
-   * and ends with a cache breakpoint so Anthropic's prefix cache can save it.
-   * Completed history chunks are also breakpointed (B2).
-   *
-   * O(n) per call: each step's messages are cached in #msgCache at addStep() time,
-   * so build() only iterates once to assemble the final array.
+   * Pre-allocates the result array to the exact required size and fills by index,
+   * avoiding push() resizing and spread intermediate allocations.
+   * Sealed chunk boundaries are maintained incrementally in addStep(), so build()
+   * needs no extra traversal beyond the single assembly loop.
    */
   build(): ModelMessage[] {
-    const messages: ModelMessage[] = [];
+    const fewShot = this.#config.fewShotExamples?.length ?? 0;
+    const total = 1 + fewShot + this.#flatMsgCount;
+    const messages: ModelMessage[] = new Array(total);
+    let idx = 0;
 
-    // 1. System prompt — immutable, always first (B1).
-    messages.push({
-      role: "system",
-      content: this.#buildSystemContent(),
-      cacheBreakpoint: { afterBlockIndex: 0, type: "ephemeral" },
-    });
+    // 1. System prompt — cached at construction time (B1).
+    messages[idx++] = this.#systemMsg;
 
     // 2. Few-shot examples — immutable.
-    if (this.#config.fewShotExamples?.length) {
-      messages.push(...this.#config.fewShotExamples);
+    if (fewShot) {
+      for (const m of this.#config.fewShotExamples!) messages[idx++] = m;
     }
 
-    // 3. Determine B2 chunk seal positions (one pass over #history).
-    const chunkSize = this.#config.chunkSizeSteps ?? 0;
-    const sealedChunkEnds = this.#computeSealedChunkEnds(chunkSize);
-
-    // 4. Assemble from cache — O(n) total.
+    // 3. Assemble history from cache using index-assignment (no push, no spread).
     for (let i = 0; i < this.#msgCache.length; i++) {
       const stepMsgs = this.#msgCache[i]!;
       if (stepMsgs.length === 0) continue;
 
-      if (sealedChunkEnds.has(i)) {
-        // Add breakpoint to the last message of this sealed chunk (B2).
-        // Slice avoids mutating the cached array.
-        messages.push(...stepMsgs.slice(0, -1));
-        messages.push({
+      if (this.#sealedAt.has(i)) {
+        // Seal last message with a cache breakpoint (B2); copy others by reference.
+        for (let j = 0; j < stepMsgs.length - 1; j++) messages[idx++] = stepMsgs[j]!;
+        messages[idx++] = {
           ...stepMsgs.at(-1)!,
           cacheBreakpoint: { afterBlockIndex: 0, type: "ephemeral" },
-        });
+        };
       } else {
-        messages.push(...stepMsgs);
+        for (const m of stepMsgs) messages[idx++] = m;
       }
     }
 
@@ -97,6 +111,8 @@ export class MessageAssembler {
   reset(): void {
     this.#history = [];
     this.#msgCache = [];
+    this.#sealedAt = new Set();
+    this.#flatMsgCount = 0;
   }
 
   /** Current history length (number of steps recorded). */
@@ -162,35 +178,30 @@ export class MessageAssembler {
       this.#stepToMessages(summaryStep),
       ...recent.map((s) => this.#stepToMessages(s)),
     ];
+    // Rebuild derived state from the compacted history.
+    this.#flatMsgCount = this.#msgCache.reduce((sum, msgs) => sum + msgs.length, 0);
+    this.#sealedAt = new Set();
+    const chunkSize = this.#config.chunkSizeSteps ?? 0;
+    if (chunkSize > 0) {
+      let actionCount = 0;
+      for (let i = 0; i < this.#history.length; i++) {
+        if (this.#isChunkableStep(this.#history[i]!)) {
+          actionCount++;
+          if (actionCount % chunkSize === 0) this.#sealedAt.add(i);
+        }
+      }
+    }
     return cutoff;
   }
 
   /** Returns the number of completed sealed chunks in the current history (B2). */
   get sealedChunkCount(): number {
-    const chunkSize = this.#config.chunkSizeSteps ?? 0;
-    if (chunkSize === 0) return 0;
-    const actionCount = this.#history.filter((s) => this.#isChunkableStep(s)).length;
-    return Math.floor(actionCount / chunkSize);
+    return this.#sealedAt.size;
   }
 
   /** True for step types that count toward B2 chunk boundaries. */
   #isChunkableStep(step: Step): boolean {
     return step.type === "action" || step.type === "tool_use" || step.type === "parallel_tool_use";
-  }
-
-  /** Computes the set of history indices that end a sealed chunk (B2). */
-  #computeSealedChunkEnds(chunkSize: number): Set<number> {
-    const sealedChunkEnds = new Set<number>();
-    if (chunkSize === 0) return sealedChunkEnds;
-    const actionStepIndices: number[] = [];
-    for (let i = 0; i < this.#history.length; i++) {
-      if (this.#isChunkableStep(this.#history[i]!)) actionStepIndices.push(i);
-    }
-    for (let chunk = chunkSize; chunk <= actionStepIndices.length; chunk += chunkSize) {
-      const idx = actionStepIndices[chunk - 1];
-      if (idx !== undefined) sealedChunkEnds.add(idx);
-    }
-    return sealedChunkEnds;
   }
 
   /** Stable representation of system content + tools schema (B1 byte-stability). */

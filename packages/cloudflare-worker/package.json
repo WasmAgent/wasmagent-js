@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "size": "size-limit",
     "clean": "rm -rf dist .wrangler .turbo"

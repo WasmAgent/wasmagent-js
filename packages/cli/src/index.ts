@@ -16,47 +16,53 @@ import { join } from "node:path";
 import { CodeAgent, AnthropicModel } from "@agentkit-js/core";
 import type { AgentEvent } from "@agentkit-js/core";
 
-const { values, positionals } = parseArgs({
-  args: process.argv.slice(2),
-  options: {
-    model: { type: "string", default: "claude-sonnet-4-6" },
-    "max-steps": { type: "string", default: "20" },
-    "api-key": { type: "string" },
-    stream: { type: "boolean", default: false },
-    events: { type: "string" },
-    // init-tool options
-    name: { type: "string" },
-    output: { type: "string", default: "." },
-    /** Language/template for init-tool. Default: "ts". Supported: "ts", "rust". */
-    lang: { type: "string", default: "ts" },
-    help: { type: "boolean", short: "h", default: false },
-  },
-  allowPositionals: true,
-});
+// Only run CLI dispatch when executed as the entry point, not when imported by tests.
+const isMain = process.argv[1] != null &&
+  new URL(import.meta.url).pathname.endsWith(
+    process.argv[1].replace(/\\/g, "/").split("/").at(-1) ?? ""
+  );
 
-if (values["help"] || positionals.length === 0) {
-  printHelp();
-  process.exit(0);
-}
+if (isMain) {
+  const { values, positionals } = parseArgs({
+    args: process.argv.slice(2),
+    options: {
+      model: { type: "string", default: "claude-sonnet-4-6" },
+      "max-steps": { type: "string", default: "20" },
+      "api-key": { type: "string" },
+      stream: { type: "boolean", default: false },
+      events: { type: "string" },
+      name: { type: "string" },
+      output: { type: "string", default: "." },
+      lang: { type: "string", default: "ts" },
+      help: { type: "boolean", short: "h", default: false },
+    },
+    allowPositionals: true,
+  });
 
-const [command, ...rest] = positionals;
-
-switch (command) {
-  case "run":
-    await runCommand(rest.join(" "), values);
-    break;
-  case "init-tool":
-    await initToolCommand(values);
-    break;
-  default:
-    console.error(`Unknown command: ${command}`);
+  if (values["help"] || positionals.length === 0) {
     printHelp();
-    process.exit(1);
+    process.exit(0);
+  }
+
+  const [command, ...rest] = positionals;
+
+  switch (command) {
+    case "run":
+      await runCommand(rest.join(" "), values);
+      break;
+    case "init-tool":
+      await initToolCommand(values);
+      break;
+    default:
+      console.error(`Unknown command: ${command}`);
+      printHelp();
+      process.exit(1);
+  }
 }
 
 // ── run command ───────────────────────────────────────────────────────────────
 
-async function runCommand(
+export async function runCommand(
   task: string,
   opts: Record<string, string | boolean | undefined>
 ): Promise<void> {
@@ -216,7 +222,7 @@ async function initToolRust(
   console.log(`  3. Import the generated JS wrapper from ${wrapperTs}`);
 }
 
-function generateToolTemplate(kebabName: string, pascalName: string): string {
+export function generateToolTemplate(kebabName: string, pascalName: string): string {
   return `import { z } from "zod";
 import type { ToolDefinition } from "@agentkit-js/core";
 
@@ -248,7 +254,7 @@ const outputSchema = ${camelCase(pascalName)}Tool.outputSchema;
 `;
 }
 
-function generateTestTemplate(kebabName: string, pascalName: string): string {
+export function generateTestTemplate(kebabName: string, pascalName: string): string {
   return `import { describe, it, expect } from "vitest";
 import { ${camelCase(pascalName)}Tool } from "./${kebabName}.js";
 
@@ -276,7 +282,7 @@ describe("${pascalName} tool", () => {
 `;
 }
 
-function camelCase(pascal: string): string {
+export function camelCase(pascal: string): string {
   return pascal.charAt(0).toLowerCase() + pascal.slice(1);
 }
 
@@ -385,7 +391,7 @@ const ALL_EVENT_TYPES: EventType[] = [
   "run_start", "step_start", "thinking_delta", "tool_call", "tool_result", "planning", "final_answer", "error",
 ];
 
-function parseEventsFilter(raw: string | undefined, streamMode: boolean): Set<EventType> {
+export function parseEventsFilter(raw: string | undefined, streamMode: boolean): Set<EventType> {
   if (raw) {
     const requested = raw.split(",").map((s) => s.trim()) as EventType[];
     return new Set(requested.filter((e): e is EventType => (ALL_EVENT_TYPES as string[]).includes(e)));
