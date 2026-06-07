@@ -17,6 +17,8 @@ This project draws significant inspiration from Hugging Face's [smolagents](http
 | Language | Python | TypeScript (JS + Pyodide/CPython kernels; MicroPython planned) |
 | Agents | `CodeAgent`, `ToolCallingAgent` | `CodeAgent`, `ToolCallingAgent` |
 | Scheduling | Serial | DAG + speculative execution (C2/C3) |
+| Quality | Single pass | Self-consistency, reflect-refine, budget forcing (P2/P3/S4) |
+| History | Unbounded | `MessageAssembler.compact()` — model-summarised long history (P4) |
 
 ## Quick Start
 
@@ -65,24 +67,91 @@ for await (const event of agent.run("Search for recent AI news")) {
 }
 ```
 
+### Self-Consistency (majority-vote quality)
+
+```ts
+import { SelfConsistencyRunner, AnthropicModel } from "@agentkit-js/core";
+
+const runner = new SelfConsistencyRunner({
+  model: new AnthropicModel("claude-sonnet-4-6"),
+  tools: [],
+  n: 5,           // run up to 5 candidates
+  concurrency: 3, // max 3 in parallel
+  earlyStop: true, // stop when majority threshold is reached
+});
+
+const answer = await runner.run("What is the capital of France?");
+console.log(answer);
+```
+
+### Reflect-Refine (critique loop)
+
+```ts
+import { ReflectRefineRunner, AnthropicModel } from "@agentkit-js/core";
+
+const runner = new ReflectRefineRunner({
+  model: new AnthropicModel("claude-sonnet-4-6"),
+  tools: [],
+  maxCycles: 3,
+  qualitySignal: (answer) => answer.length > 100, // custom signal
+});
+
+const answer = await runner.run("Write a detailed analysis of...");
+console.log(answer);
+```
+
+### Local models (Ollama / vLLM / llama.cpp)
+
+```ts
+import { OpenAIModel } from "@agentkit-js/core";
+
+const model = new OpenAIModel("mistral-7b", {
+  baseURL: "http://localhost:11434/v1",
+  apiKey: "ollama",
+  samplingParams: { temperature: 0.7, seed: 42 },
+});
+```
+
+### Long-history compaction
+
+```ts
+import { CodeAgent, AnthropicModel, MessageAssembler } from "@agentkit-js/core";
+
+const assembler = new MessageAssembler({ chunkSizeSteps: 8 });
+const agent = new CodeAgent({
+  tools: [],
+  model: new AnthropicModel("claude-sonnet-4-6"),
+  maxSteps: 50,
+  assembler,
+});
+
+// After many steps, compact old history into a model-written summary
+await assembler.compact(agent.model, { keepRecentSteps: 5 });
+```
+
 ## Architecture
 
 ```
 agentkit-js/
 ├── packages/
-│   ├── core/                 # Agent runtime, executor, memory, models, tools
+│   ├── core/                 # Agent runtime, executor, memory, models, tools, enhancement
 │   ├── cli/                  # agentkit CLI
+│   ├── kernel-pyodide/       # CPython-in-WASM kernel (Pyodide)
+│   ├── kernel-quickjs/       # QuickJS WASM kernel
+│   ├── model-anthropic/      # Re-export of core AnthropicModel
+│   ├── model-openai/         # Re-export of core OpenAIModel
 │   └── cloudflare-worker/    # Cloudflare Workers HTTP API entry point
 └── examples/
     └── basic-agent/          # Minimal working example
 ```
 
-### Four design pillars
+### Design pillars
 
-- **A — Persistent WASM execution kernel** — `JsKernel` (default) runs JS in a Node.js vm sandbox with capability enforcement (deny-all, per-call `allowedHosts`/`allowedReadPaths`/`allowedWritePaths`). `V8WasmKernel` is the serverless-safe fallback. `WasmtimeKernel` (M1+) requires the optional native addon.
-- **B — Context engineering** — `MessageAssembler` builds cache-stable message prefixes (B1) with configurable history segment caching (B2 `chunkSizeSteps`), so Anthropic prompt caching kicks in from step 2 onwards.
+- **A — Persistent WASM execution kernel** — `JsKernel` (default) runs JS in a Node.js vm sandbox with capability enforcement (deny-all, per-call `allowedHosts`/`allowedReadPaths`/`allowedWritePaths`). `V8WasmKernel` is the serverless-safe fallback; `createKernel()` auto-selects based on runtime. `PyodideKernel` runs CPython in WASM.
+- **B — Context engineering** — `MessageAssembler` builds cache-stable message prefixes (B1) with configurable history segment caching (B2 `chunkSizeSteps`) and `compact()` for long-run history summarisation (P4).
 - **C — DAG scheduling + async core** — `AsyncGenerator`-based streaming with structured `AgentEvent` objects carrying `traceId`/`parentTraceId`. `Scheduler` executes tool DAGs in parallel (C2) with speculative pre-execution of read-only nodes ahead of barriers (C3).
-- **D — Developer ergonomics** — `CodeAgent` and `ToolCallingAgent` constructors mirror smolagents', enabling incremental migration. Tools declare `readOnly`/`idempotent`/`requiredCapability` for scheduling and access control.
+- **D — Developer ergonomics** — `CodeAgent` and `ToolCallingAgent` constructors mirror smolagents', enabling incremental migration. Tools declare `readOnly`/`idempotent`/`requiredCapability` for scheduling and access control. `EnhancementPolicy` wires quality runners per-agent.
+- **P — Output quality runners** — `SelfConsistencyRunner` (adaptive N, majority vote, concurrency cap), `ReflectRefineRunner` (critique-refine cycles, context isolation), `BudgetForcingRunner` ("Wait" prefill injection for deeper reasoning). All are budget-gated and composable.
 
 ### Implementation status
 
@@ -91,7 +160,7 @@ agentkit-js/
 | A1 | `JsKernel` — stateful JS sandbox, snapshot/restore | ✅ Done |
 | A1 | `V8WasmKernel` — serverless-safe fallback | ✅ Done |
 | A1 | `WasmtimeKernel` — native WASM binding | ⏳ Remaining (requires native addon) |
-| A2 | Capability manifest enforcement (hosts, paths) | ✅ Done |
+| A2 | Capability manifest enforcement (hosts, paths, SSRF-safe redirect) | ✅ Done |
 | A2 | `extraCapabilities` per-tool access control | ✅ Done |
 | A4 | `PyodideKernel` — CPython-in-WASM via `pyodide` npm package | ✅ Done |
 | B1 | `MessageAssembler` cache-stable prefix | ✅ Done |
@@ -112,22 +181,23 @@ agentkit-js/
 | D6 | `agentkit init-tool` scaffold | ✅ Done |
 | E1 | `AnthropicModel` — streaming + tool_use + cache | ✅ Done |
 | E1 | `OpenAIModel` — streaming + tool_call | ✅ Done |
-| **O1** | **`OpenAIModel` `baseURL` + custom headers — local model support (Ollama/vLLM/llama.cpp)** | ⏳ Remaining |
-| **O2** | **Sampling params end-to-end (`temperature`/`top_p`/`seed`/`stop`) — both adapters** | ⏳ Remaining |
-| **O3** | **`Model.capabilities` descriptor + local-endpoint auto-detection** | ⏳ Remaining |
-| **S1** | **Structured output constraints (`responseFormat` — grammar/json_schema, capability-gated)** | ⏳ Remaining |
-| **S2** | **Parse-failure self-healing — retry with format correction (`maxParseRetries`)** | ⏳ Remaining |
-| **S3** | **Cache determinism hardening — `toJsonSchema()` sorted, no dynamic prefix, tools `cache_control`** | ⏳ Remaining |
-| **S4** | **Budget Forcing ("Wait" prefill injection, capability-gated)** | ⏳ Remaining |
-| **P0** | **`ResourceBudget` usage fallback — `estimateTokens()` when backend omits usage events** | ⏳ Remaining |
-| **P1** | **`EnhancementPolicy` + `ResourceBudget` config — adaptive defaults, all overridable** | ⏳ Remaining |
-| **P2** | **Self-consistency runner — adaptive N, early-stop majority vote, concurrency cap** | ⏳ Remaining |
-| **P3** | **Critique-refine loop — signal-triggered, context-isolated, budget-gated** | ⏳ Remaining |
-| **P4** | **Long-history compaction (`MessageAssembler.compact`) — cache-aware, metered vs. local** | 🔬 Remaining |
-| **E1-edge** | **`createKernel` edge-runtime detection — auto-select QuickJS/V8 when `worker_threads` absent** | ⏳ Remaining |
-| **U1** | **`channel:"status"` events — progress stream during self-consistency/refine background work** | ⏳ Remaining |
-| **D1** | MicroPython execution backend | ⏳ Remaining |
-| **L4** | Client-side fork-join parallel reasoning (`ParallelForkJoin`, shared-prefix spawn) | 🔬 Future |
+| E1-edge | `createKernel` edge-runtime detection — auto-select V8WasmKernel when `worker_threads` absent | ✅ Done |
+| O1 | `OpenAIModel` `baseURL` + `defaultHeaders` — local model support (Ollama/vLLM/llama.cpp) | ✅ Done |
+| O2 | Sampling params end-to-end (`temperature`/`topP`/`seed`/`stopSequences`) — both adapters | ✅ Done |
+| O3 | `ModelCapabilities` descriptor (`localEndpoint`/`metered`/`supportsGrammar`/`supportsBudgetForcing`/`contextWindow`) | ✅ Done |
+| P0 | `TokenBudget` + `estimateMessagesTokens()` fallback when backend omits usage events | ✅ Done |
+| P1 | `EnhancementPolicy` + `ResourceBudget` config — adaptive defaults, wired into both agents | ✅ Done |
+| P2 | `SelfConsistencyRunner` — adaptive N, early-stop majority vote, concurrency cap | ✅ Done |
+| P3 | `ReflectRefineRunner` — signal-triggered, context-isolated, budget-gated | ✅ Done |
+| P4 | `MessageAssembler.compact()` — cache-aware model-summarised long history | ✅ Done |
+| S1 | Structured output constraints (`responseFormat` — `json_schema`, capability-gated) | ✅ Done |
+| S2 | Parse-failure self-healing — retry with format correction (`extractCode` null guard) | ✅ Done |
+| S3 | Cache determinism hardening — `toJsonSchema()` sorted, tools `cache_control` at last item | ✅ Done |
+| S4 | `BudgetForcingRunner` — "Wait" prefill injection, `maxWaitRounds`, `minResponseTokens` | ✅ Done |
+| U1 | `channel:"status"` events — `tool_executing` phase during tool dispatch | ✅ Done |
+| **D1** | **MicroPython execution backend** | **⏳ Remaining** |
+| **A1** | **`WasmtimeKernel` — native WASM binding** | **⏳ Remaining** |
+| **L4** | **Client-side fork-join parallel reasoning (`ParallelForkJoin`, shared-prefix spawn)** | **🔬 Future** |
 
 ### Roadmap
 
@@ -137,11 +207,11 @@ agentkit-js/
 | **M1** ✅ | `V8WasmKernel`, A2 capability enforcement, C1 streaming, D2 typed tools |
 | **M2** ✅ | C2 DAG scheduling, C3 speculative execution, B2 segment caching, E1 model adapters |
 | **M3** ✅ | `PyodideKernel` (A4), `LazyObservationHandle` (B3), `McpToolCollection` (D4), `init-tool` (D6), C4 session KV |
-| **M4** | L0: O1+O2 (baseURL + sampling); L1: S2+S3 (parse self-heal + cache hardening); E1-edge kernel auto-select |
-| **M5** | L0: O3 (capabilities); L1: S1+S4 (grammar constraints + budget forcing); P0+P1 (policy skeleton) |
-| **M6** | L2: P2+P3+U1 (self-consistency + critique-refine + status events) |
-| **M7** | P4 long-history compaction (🔬 validate quality first); WasmtimeKernel native addon; MicroPython |
-| **Future** | L4 fork-join parallel reasoning (🔬 requires explicit task decomposition) |
+| **M4** ✅ | O1+O2 (baseURL + sampling params); S2+S3 (parse self-heal + cache hardening); E1-edge kernel auto-select |
+| **M5** ✅ | O3 (ModelCapabilities); S1+S4 (structured output + budget forcing); P0+P1 (policy skeleton) |
+| **M6** ✅ | P2+P3+U1 (self-consistency + critique-refine + status events) |
+| **M7** ✅ | P4 long-history compaction (`MessageAssembler.compact`) |
+| **Future** | WasmtimeKernel native addon; MicroPython kernel; L4 fork-join parallel reasoning |
 
 > Status legend: ✅ Done · ⏳ Planned · 🔬 Requires experimental validation first
 
@@ -185,6 +255,7 @@ agentkit run "Write a haiku" --model claude-opus-4-8 --max-steps 5
 | Variable | Where | Purpose |
 |----------|-------|---------|
 | `ANTHROPIC_API_KEY` | `.env` / Wrangler secret | Anthropic model API access |
+| `OPENAI_API_KEY` | `.env` | OpenAI / compatible endpoint API access |
 | `CLOUDFLARE_API_TOKEN` | GitHub secret | CI/CD Worker deployment |
 | `CLOUDFLARE_ACCOUNT_ID` | GitHub secret | CI/CD Worker deployment |
 
