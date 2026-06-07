@@ -146,10 +146,14 @@ describe("generateTestTemplate", () => {
 // ── runCommand ────────────────────────────────────────────────────────────────
 
 describe("runCommand", () => {
-  let stdoutSpy: ReturnType<typeof vi.spyOn>;
-  let stderrSpy: ReturnType<typeof vi.spyOn>;
-  let consoleLogSpy: ReturnType<typeof vi.spyOn>;
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let stdoutSpy: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let stderrSpy: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let consoleLogSpy: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let consoleErrorSpy: any;
 
   beforeEach(() => {
     stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
@@ -240,8 +244,8 @@ describe("runCommand", () => {
       data: { answer: "42" }, timestampMs: 0,
     }];
     await runCommand("test", { "api-key": "sk-test", stream: true });
-    const calls = stdoutSpy.mock.calls.map((c) => c[0] as string);
-    const hasJson = calls.some((c) => {
+    const calls = (stdoutSpy.mock.calls as unknown[][]).map((c) => c[0] as string);
+    const hasJson = calls.some((c: string) => {
       try { JSON.parse(c); return true; } catch { return false; }
     });
     expect(hasJson).toBe(true);

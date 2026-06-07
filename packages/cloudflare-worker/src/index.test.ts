@@ -5,7 +5,7 @@
  * in Node.js without real API calls or WASM loading. Call the exported default
  * handler directly with synthetic Request / Env / ExecutionContext values.
  */
-import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { AgentEvent } from "@agentkit-js/core";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
