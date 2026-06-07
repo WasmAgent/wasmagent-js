@@ -69,7 +69,13 @@ export class SelfConsistencyRunner {
     // Distribute jobs round-robin across worker slots — worker i handles indices i, i+limit, i+2*limit, …
     const workerFn = async (startIdx: number): Promise<void> => {
       for (let jobIdx = startIdx; jobIdx < n && !shouldStop; jobIdx += limit) {
-        const answer = await sampleOne();
+        let answer: string;
+        try {
+          answer = await sampleOne();
+        } catch (err) {
+          shouldStop = true;
+          throw err;
+        }
         if (shouldStop) break;
 
         completed.push(answer);

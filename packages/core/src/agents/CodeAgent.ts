@@ -157,23 +157,32 @@ export class CodeAgent {
       let fullResponse = "";
       let receivedUsage = false;
 
-      for await (const event of this.#model.generate(messages, {
-        stream: true,
-      })) {
-        if (event.type === "text_delta" && event.delta) {
-          fullResponse += event.delta;
-          yield {
-            traceId,
-            parentTraceId,
-            channel: "thinking",
-            event: "thinking_delta",   // Q6: dedicated event for streaming token deltas
-            data: { delta: event.delta, step },
-            timestampMs: Date.now(),
-          };
-        } else if (event.type === "usage" && event.usage) {
-          budget.recordUsage(event.usage);
-          receivedUsage = true;
+      try {
+        for await (const event of this.#model.generate(messages, {
+          stream: true,
+        })) {
+          if (event.type === "text_delta" && event.delta) {
+            fullResponse += event.delta;
+            yield {
+              traceId,
+              parentTraceId,
+              channel: "thinking",
+              event: "thinking_delta",   // Q6: dedicated event for streaming token deltas
+              data: { delta: event.delta, step },
+              timestampMs: Date.now(),
+            };
+          } else if (event.type === "usage" && event.usage) {
+            budget.recordUsage(event.usage);
+            receivedUsage = true;
+          }
         }
+      } catch (err) {
+        yield {
+          traceId, parentTraceId, channel: "text", event: "error",
+          data: { error: `Model generation failed: ${err instanceof Error ? err.message : String(err)}` },
+          timestampMs: Date.now(),
+        };
+        return;
       }
 
       if (!receivedUsage) {
@@ -197,13 +206,22 @@ export class CodeAgent {
         });
         let retryResponse = "";
         let retryReceivedUsage = false;
-        for await (const event of this.#model.generate(retryMessages, { stream: true })) {
-          if (event.type === "text_delta" && event.delta) {
-            retryResponse += event.delta;
-          } else if (event.type === "usage" && event.usage) {
-            budget.recordUsage(event.usage);
-            retryReceivedUsage = true;
+        try {
+          for await (const event of this.#model.generate(retryMessages, { stream: true })) {
+            if (event.type === "text_delta" && event.delta) {
+              retryResponse += event.delta;
+            } else if (event.type === "usage" && event.usage) {
+              budget.recordUsage(event.usage);
+              retryReceivedUsage = true;
+            }
           }
+        } catch (err) {
+          yield {
+            traceId, parentTraceId, channel: "text", event: "error",
+            data: { error: `Model generation failed: ${err instanceof Error ? err.message : String(err)}` },
+            timestampMs: Date.now(),
+          };
+          return;
         }
         if (!retryReceivedUsage) budget.estimateFallback(retryMessages, retryResponse);
         const retryCode = extractCode(retryResponse);
@@ -211,7 +229,16 @@ export class CodeAgent {
           // Use the retry code for kernel execution below.
           fullResponse = retryResponse;
         } else {
-          yield* this.#emitFinalAnswer(traceId, parentTraceId, extractFinalAnswer(retryResponse) ?? retryResponse);
+          const fallbackAnswer = extractFinalAnswer(retryResponse);
+          if (fallbackAnswer) {
+            yield* this.#emitFinalAnswer(traceId, parentTraceId, fallbackAnswer);
+          } else {
+            yield {
+              traceId, parentTraceId, channel: "text", event: "error",
+              data: { error: "Retry response contained neither executable code nor a final answer." },
+              timestampMs: Date.now(),
+            };
+          }
           return;
         }
       }

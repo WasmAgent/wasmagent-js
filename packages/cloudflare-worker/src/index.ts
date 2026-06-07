@@ -133,14 +133,14 @@ function isRunBody(v: unknown): v is RunBody {
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
   const enc = new TextEncoder();
-  const aBytes = enc.encode(a);
-  const bBytes = enc.encode(b);
-  let diff = 0;
-  for (let i = 0; i < aBytes.length; i++) {
-    diff |= (aBytes[i] ?? 0) ^ (bBytes[i] ?? 0);
-  }
+  const aB = enc.encode(a);
+  const bB = enc.encode(b);
+  const len = Math.max(aB.length, bB.length);
+  // XOR lengths first so mismatched-length inputs always return false,
+  // while still running the full byte loop to avoid a timing side-channel.
+  let diff = aB.length ^ bB.length;
+  for (let i = 0; i < len; i++) diff |= (aB[i] ?? 0) ^ (bB[i] ?? 0);
   return diff === 0;
 }
 
@@ -244,8 +244,9 @@ async function handleRun(request: Request, env: Env, ctx: ExecutionContext, cors
             JSON.stringify(allEvents),
             { expirationTtl: SESSION_TTL_SECONDS }
           );
-        } catch {
+        } catch (err) {
           // KV write failure is non-fatal; the client already received the full stream.
+          console.error("[agentkit-worker] KV session write failed:", err instanceof Error ? err.message : String(err));
         }
       }
     } catch (err) {

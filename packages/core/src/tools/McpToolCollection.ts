@@ -42,7 +42,8 @@ export class McpToolCollection {
     const client = new Client({ name: "agentkit-js", version: "0.1.0" });
     await client.connect(transport);
 
-    return McpToolCollection.#fromClient(client as unknown as McpClientInterface);
+    assertMcpClient(client);
+    return McpToolCollection.#fromClient(client);
   }
 
   /**
@@ -62,7 +63,8 @@ export class McpToolCollection {
     const client = new Client({ name: "agentkit-js", version: "0.1.0" });
     await client.connect(transport);
 
-    return McpToolCollection.#fromClient(client as unknown as McpClientInterface);
+    assertMcpClient(client);
+    return McpToolCollection.#fromClient(client);
   }
 
   /**
@@ -110,10 +112,12 @@ export class McpToolCollection {
       const { SSEClientTransport } = await import("@modelcontextprotocol/sdk/client/sse.js");
       const fallbackClient = new Client({ name: "agentkit-js", version: "0.1.0" });
       await fallbackClient.connect(new SSEClientTransport(baseUrl));
-      return McpToolCollection.#fromClient(fallbackClient as unknown as McpClientInterface);
+      assertMcpClient(fallbackClient);
+      return McpToolCollection.#fromClient(fallbackClient);
     }
 
-    return McpToolCollection.#fromClient(client as unknown as McpClientInterface);
+    assertMcpClient(client);
+    return McpToolCollection.#fromClient(client);
   }
 
   static async #fromClient(client: McpClientInterface): Promise<McpToolCollection> {
@@ -182,6 +186,14 @@ interface McpClientInterface {
   listTools(): Promise<{ tools: McpToolSchema[] }>;
   callTool(params: { name: string; arguments?: Record<string, unknown> }): Promise<{ content: McpContent[] }>;
   close(): Promise<void>;
+}
+
+function assertMcpClient(client: unknown): asserts client is McpClientInterface {
+  if (!client || typeof client !== "object") throw new Error("Invalid MCP client: expected object");
+  const c = client as Record<string, unknown>;
+  if (typeof c["listTools"] !== "function") throw new Error("Invalid MCP client: missing listTools()");
+  if (typeof c["callTool"] !== "function") throw new Error("Invalid MCP client: missing callTool()");
+  if (typeof c["close"] !== "function") throw new Error("Invalid MCP client: missing close()");
 }
 
 interface McpToolSchema {
