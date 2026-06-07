@@ -55,7 +55,7 @@ export interface WasmKernel {
 }
 
 /** Which underlying engine to use. */
-export type KernelEngine = "js" | "wasmtime" | "v8-wasm";
+export type KernelEngine = "js" | "wasmtime" | "v8-wasm" | "quickjs" | "remote";
 
 /**
  * Action language — which kernel backend to use for code execution.

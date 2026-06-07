@@ -25,10 +25,25 @@ describe("createKernel factory", () => {
     ).rejects.toThrow(/Unknown kernel engine/);
   });
 
-  it("throws for actionLanguage='pyodide' (use kernel-pyodide package directly)", async () => {
-    await expect(
-      createKernel({ engine: "js", actionLanguage: "pyodide" })
-    ).rejects.toThrow(/kernel-pyodide/);
+  it("routes actionLanguage='pyodide' to kernel-pyodide (throws KERNEL_NOT_INSTALLED when absent)", async () => {
+    const err = await createKernel({ engine: "js", actionLanguage: "pyodide" }).catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error & { code: string }).code).toBe("KERNEL_NOT_INSTALLED");
+    expect((err as Error).message).toContain("@agentkit-js/kernel-pyodide");
+  });
+
+  it("quickjs engine: throws KERNEL_NOT_INSTALLED when package not installed", async () => {
+    const err = await createKernel({ engine: "quickjs" }).catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error & { code: string }).code).toBe("KERNEL_NOT_INSTALLED");
+    expect((err as Error).message).toContain("@agentkit-js/kernel-quickjs");
+  });
+
+  it("remote engine: throws KERNEL_NOT_INSTALLED when package not installed", async () => {
+    const err = await createKernel({ engine: "remote" }).catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error & { code: string }).code).toBe("KERNEL_NOT_INSTALLED");
+    expect((err as Error).message).toContain("@agentkit-js/kernel-remote");
   });
 
   it("does NOT warn for actionLanguage='js'", async () => {

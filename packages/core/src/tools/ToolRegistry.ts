@@ -150,8 +150,22 @@ export class ToolRegistry {
     }
 
     try {
-      const output = await tool.forward(parsed.data, toolCall.signal);
-      return { callId: toolCall.callId, toolName: toolCall.toolName, output };
+      const rawOutput = await tool.forward(parsed.data, toolCall.signal);
+      // B1: apply sanitizeToolResult hook for untrusted tools.
+      let output: unknown = rawOutput;
+      if (tool.trust === "untrusted" && tool.sanitizeToolResult && typeof rawOutput === "string") {
+        output = await tool.sanitizeToolResult(rawOutput, {
+          toolName: toolCall.toolName,
+          callId: toolCall.callId,
+          input: parsed.data,
+        });
+      }
+      return {
+        callId: toolCall.callId,
+        toolName: toolCall.toolName,
+        output,
+        ...(tool.trust === "untrusted" ? { trust: "untrusted" as const } : {}),
+      };
     } catch (err) {
       return {
         callId: toolCall.callId,

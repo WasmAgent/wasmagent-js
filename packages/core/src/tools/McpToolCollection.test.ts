@@ -139,3 +139,88 @@ describe("McpToolCollection (D4)", () => {
 });
 
 import { afterEach } from "vitest";
+
+describe("B3 — MCP supply chain integrity", () => {
+  afterEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+  });
+
+  it("allowedToolNames: tools in allowlist are trusted", async () => {
+    const mockClient = makeMockMcpClient([
+      { name: "allowed_tool", description: "Safe tool" },
+      { name: "dangerous_tool", description: "Unsafe tool" },
+    ]);
+    mockMcpSdk(mockClient);
+
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t1=" + Date.now());
+    const collection = await MTC.fromStdio("echo", [], undefined, {
+      allowedToolNames: ["allowed_tool"],
+    });
+
+    const tools = collection.list();
+    const allowed = tools.find((t: { name: string }) => t.name === "allowed_tool");
+    const dangerous = tools.find((t: { name: string }) => t.name === "dangerous_tool");
+
+    expect(allowed?.trust).toBe("trusted");
+    expect(dangerous?.trust).toBe("untrusted");
+    expect(dangerous?.needsApproval).toBe(true);
+  });
+
+  it("empty allowedToolNames marks ALL tools as untrusted", async () => {
+    const mockClient = makeMockMcpClient([
+      { name: "tool_a" },
+      { name: "tool_b" },
+    ]);
+    mockMcpSdk(mockClient);
+
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t2=" + Date.now());
+    const collection = await MTC.fromStdio("echo", [], undefined, {
+      allowedToolNames: [],
+    });
+
+    for (const tool of collection.list()) {
+      expect(tool.trust).toBe("untrusted");
+      expect(tool.needsApproval).toBe(true);
+    }
+  });
+
+  it("no integrity options: all tools trusted by default", async () => {
+    const mockClient = makeMockMcpClient([{ name: "t1" }, { name: "t2" }]);
+    mockMcpSdk(mockClient);
+
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t3=" + Date.now());
+    const collection = await MTC.fromStdio("echo", []);
+
+    for (const tool of collection.list()) {
+      // trust defaults to "trusted" (undefined means trusted)
+      expect(tool.trust === undefined || tool.trust === "trusted").toBe(true);
+      expect(tool.needsApproval).toBeFalsy();
+    }
+  });
+
+  it("fingerprint mismatch rejects connection", async () => {
+    const mockClient = makeMockMcpClient([{ name: "tool_x" }]);
+    mockMcpSdk(mockClient);
+
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t4=" + Date.now());
+    await expect(
+      MTC.fromStdio("echo", [], undefined, {
+        serverFingerprint: "000000000000000000000000000000000000000000000000000000000000dead",
+      })
+    ).rejects.toThrow(/fingerprint mismatch/i);
+    expect(mockClient.close).toHaveBeenCalledOnce();
+  });
+
+  it("computeFingerprint produces consistent SHA-256", async () => {
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t5=" + Date.now());
+    const tools = [
+      { name: "b_tool", description: "B" },
+      { name: "a_tool", description: "A" },
+    ];
+    const fp1 = await MTC.computeFingerprint(tools);
+    const fp2 = await MTC.computeFingerprint([...tools].reverse());
+    expect(fp1).toBe(fp2); // order-independent
+    expect(fp1).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
