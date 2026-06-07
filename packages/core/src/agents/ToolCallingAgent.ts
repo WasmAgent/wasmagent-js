@@ -23,6 +23,12 @@ export interface ToolCallingAgentOptions {
   systemPrompt?: string;
   /** Optional enhancement policy — gates self-consistency, reflect-refine, budget limits (P1). */
   enhancementPolicy?: EnhancementPolicy;
+  /**
+   * Per-tool execution timeout in milliseconds. If a tool's forward() does not settle
+   * within this window, the call is aborted and the step receives an execution_error.
+   * Default: no timeout (tool can run indefinitely).
+   */
+  toolTimeoutMs?: number;
 }
 
 /**
@@ -43,6 +49,7 @@ export class ToolCallingAgent {
   readonly #assembler: MessageAssembler;
   readonly #policy: EnhancementPolicy | undefined;
   readonly #toolsSchema: object[];
+  readonly #toolTimeoutMs: number | undefined;
 
   constructor(opts: ToolCallingAgentOptions) {
     this.#tools = new ToolRegistry();
@@ -53,6 +60,7 @@ export class ToolCallingAgent {
     this.#maxSteps = opts.maxSteps ?? opts.enhancementPolicy?.budget?.maxSteps ?? 20;
     this.#planningInterval = opts.planningInterval;
     this.#policy = opts.enhancementPolicy;
+    this.#toolTimeoutMs = opts.toolTimeoutMs;
     this.#toolsSchema = this.#tools.toJsonSchema();
     this.#assembler = new MessageAssembler({
       systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
@@ -86,6 +94,9 @@ export class ToolCallingAgent {
 
     for (let step = 1; step <= this.#maxSteps; step++) {
       // P1: enforce ResourceBudget limits before each step.
+      // Note: budget.total is updated only when a usage event arrives (after the full
+      // model response). A streaming response that exceeds the limit mid-stream will
+      // not be interrupted — the check catches it at the START of the NEXT step.
       if (budgetMaxTokens && budget.total >= budgetMaxTokens) {
         yield {
           traceId,
@@ -233,8 +244,9 @@ export class ToolCallingAgent {
       // Promise.all always settles and every tool_call gets a paired tool_result.
       const handles = pendingCalls.map((call) => {
         let callIsError = false;
+        const signal = this.#toolTimeoutMs ? AbortSignal.timeout(this.#toolTimeoutMs) : undefined;
         const settled = this.#tools
-          .call({ toolName: call.name, args: call.input, callId: call.id })
+          .call({ toolName: call.name, args: call.input, callId: call.id, ...(signal ? { signal } : {}) })
           .then(
             (r) => {
               if (r.error !== undefined) {

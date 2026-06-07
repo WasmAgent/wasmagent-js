@@ -46,6 +46,7 @@ export class Scheduler {
       ac.abort();
       // Swallow any in-flight rejections caused by the abort so they don't become
       // unhandledRejection events after the generator has already finished.
+      // Non-abort rejections were already surfaced via the settled loop below.
     }
   }
 
@@ -103,6 +104,11 @@ export class Scheduler {
           } else {
             // Find which nodeId this promise belonged to by checking speculative map keys.
             // The map entry was already iterated above; find the failed node id by elimination.
+            const reason = settled.reason;
+            const isAbort = reason instanceof Error && reason.name === "AbortError";
+            if (!isAbort) {
+              console.error("[scheduler] speculative node rejected unexpectedly:", reason);
+            }
             for (const [id] of speculative) {
               if (!completed.has(id)) {
                 speculative.delete(id);
@@ -148,6 +154,11 @@ export class Scheduler {
             yield { type: "node_done", nodeId: node.id, result };
             this.#unblockDependents(node.id, remaining);
           } else {
+            const reason = settled.reason;
+            const isAbort = reason instanceof Error && reason.name === "AbortError";
+            if (!isAbort) {
+              console.error("[scheduler] speculative node rejected unexpectedly:", reason);
+            }
             for (const [id] of speculative) {
               if (!completed.has(id)) {
                 speculative.delete(id);

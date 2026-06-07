@@ -59,8 +59,10 @@ export class V8WasmKernel implements WasmKernel {
     // Always clear capability globals first, then re-inject only what's granted.
     // This prevents capability leakage across successive run() calls: a call that
     // grants fetch/fs cannot silently leave those globals available to the next call.
-    delete this.#context["fetch"];
-    delete this.#context["__fs__"];
+    // Use assignment to undefined rather than delete — delete on a non-configurable
+    // property silently fails, while assignment always takes effect.
+    this.#context["fetch"] = undefined;
+    this.#context["__fs__"] = undefined;
 
     if (capabilities) {
       const capGlobals = buildCapabilityGlobals(capabilities);
