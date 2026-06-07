@@ -170,10 +170,11 @@ export interface Model {
  * Cache injection strategy for the provider (B3).
  *
  * - "anthropic-explicit": provider uses cache_control blocks (Anthropic).
- * - "auto-prefix":        provider caches automatically by prefix; no explicit markers needed.
+ * - "auto-prefix":        provider caches automatically by prefix; no explicit markers needed (default for compat).
+ * - "ark-context":        Volcengine Ark explicit Context API — requires context_id, incurs per-hour storage cost.
  * - "none":               no caching supported.
  */
-export type CacheStrategy = "anthropic-explicit" | "auto-prefix" | "none";
+export type CacheStrategy = "anthropic-explicit" | "auto-prefix" | "ark-context" | "none";
 
 export interface ModelCapabilities {
   localEndpoint?: boolean;
@@ -256,6 +257,13 @@ export const ModelRegistry: Record<string, ModelMeta> = {
   "qwen3-max":               { contextWindow: 1_000_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
   "qwen3-plus":              { contextWindow: 262_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
   "minimax-text-01":         { contextWindow: 1_000_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
+
+  // ── Doubao / Volcengine Ark ──────────────────────────────────────────────
+  "doubao-seed-1-6-251015":  { contextWindow: 256_000, isReasoning: true, supportsReasoningEffort: true,  supportsVerbosity: false, defaultEffort: "medium" },
+  "doubao-seed-1-6-thinking":{ contextWindow: 256_000, isReasoning: true, supportsReasoningEffort: true,  supportsVerbosity: false, defaultEffort: "medium" },
+  "doubao-1-5-thinking-pro": { contextWindow: 128_000, isReasoning: true, supportsReasoningEffort: true,  supportsVerbosity: false, defaultEffort: "medium" },
+  "doubao-seed-2-0-pro":     { contextWindow: 256_000, isReasoning: true, supportsReasoningEffort: true,  supportsVerbosity: false, defaultEffort: "medium" },
+  "doubao-1-5-pro-32k":      { contextWindow: 32_000,  isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
 };
 
 /**
@@ -273,6 +281,10 @@ export function getModelMeta(modelId: string): ModelMeta {
     const meta: ModelMeta = { contextWindow: 200_000, isReasoning: reasoning, supportsReasoningEffort: reasoning, supportsVerbosity: false };
     if (reasoning) meta.defaultEffort = "standard";
     return meta;
+  }
+  if (id.startsWith("doubao")) {
+    // Endpoint-ID (ep-xxx) or date-stamped variants — treat as thinking-capable by default.
+    return { contextWindow: 256_000, isReasoning: true, supportsReasoningEffort: true, supportsVerbosity: false, defaultEffort: "medium" };
   }
   return { contextWindow: 128_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false };
 }

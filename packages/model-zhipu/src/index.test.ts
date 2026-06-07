@@ -18,13 +18,17 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
   };
 }
 
-async function collectEvents(chunks: OAIChunk[], modelId = "glm-5-1"): Promise<StreamEvent[]> {
+async function collectEvents(
+  chunks: OAIChunk[],
+  modelId = "glm-5-1",
+  opts: Parameters<import("./index.js").ZhipuModel["generate"]>[1] = {}
+): Promise<StreamEvent[]> {
   const mockCreate = vi.fn().mockResolvedValue(makeChunkStream(chunks));
   vi.doMock("openai", () => ({ default: vi.fn().mockImplementation(() => ({ chat: { completions: { create: mockCreate } } })) }));
   const { ZhipuModel } = await import("./index.js?t=" + Date.now());
   const model = new ZhipuModel(modelId, "key");
   const events: StreamEvent[] = [];
-  for await (const e of model.generate([{ role: "user", content: "x" }])) events.push(e);
+  for await (const e of model.generate([{ role: "user", content: "x" }], opts)) events.push(e);
   vi.doUnmock("openai");
   return events;
 }
@@ -53,6 +57,14 @@ describe("ZhipuModel", () => {
       { choices: [{ delta: { reasoning_content: "ignored" }, finish_reason: null }] },
       { choices: [{ delta: {}, finish_reason: "stop" }] },
     ], "glm-4-plus");
+    expect(events.filter((e) => e.type === "thinking_delta")).toHaveLength(0);
+  });
+
+  it("opts.thinking.mode:off suppresses thinking_delta even on glm-5 model", async () => {
+    const events = await collectEvents([
+      { choices: [{ delta: { reasoning_content: "hidden" }, finish_reason: null }] },
+      { choices: [{ delta: {}, finish_reason: "stop" }] },
+    ], "glm-5-1", { thinking: { mode: "off" } });
     expect(events.filter((e) => e.type === "thinking_delta")).toHaveLength(0);
   });
 
