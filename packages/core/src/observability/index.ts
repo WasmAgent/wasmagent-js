@@ -1,33 +1,27 @@
 /**
- * OpenTelemetry observability bridge.
+ * OpenTelemetry observability bridge (C2 — GenAI semconv v1.40/1.41).
  *
  * Bridges AgentEvent streams to OTel-compatible spans without a hard dependency
- * on @opentelemetry/api. The bridge works with any exporter that implements the
- * SpanExporter interface below, including:
- *  - InMemorySpanExporter (for tests)
- *  - OTLP HTTP/gRPC exporters
- *  - ConsoleSpanExporter
+ * on @opentelemetry/api.
  *
- * E1 — OTel GenAI semantic conventions (gen_ai.*):
- * By default the bridge emits BOTH legacy private attributes (task, usage.inputTokens,
- * tool.name, …) AND the standardized gen_ai.* attributes so existing dashboards keep
- * working while Datadog/Honeycomb/Grafana GenAI views are automatically populated.
+ * Semantic convention opt-in (C2):
+ *  Standard env: OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental
+ *  → root span is "invoke_agent", gen_ai.operation.name="invoke_agent"
  *
- * Set `semconvMode: "stable"` to suppress legacy attribute names.
- * Set `semconvMode: "legacy"` to suppress gen_ai.* names (original behavior).
+ * semconvMode override:
+ *  - "both" (default): emit both legacy and gen_ai.* attributes.
+ *  - "stable": emit only gen_ai.* attributes.
+ *  - "legacy": emit only legacy attributes (no semconv).
  *
- * Usage:
- *   const exporter = new InMemorySpanExporter();
- *   const bridge = new OtelBridge({ exporter });
- *   for await (const ev of agent.run(task)) {
- *     bridge.record(ev);
- *   }
- *   bridge.flush();
+ * Span hierarchy:
+ *   invoke_agent (root)           gen_ai.operation.name=invoke_agent
+ *     agent.step.<N>
+ *       execute_tool              gen_ai.operation.name=execute_tool
  */
 
 import type { AgentEvent } from "../types/events.js";
 
-// ── Span model (OTel-compatible, no hard dep) ─────────────────────────────────
+// ── Span model ────────────────────────────────────────────────────────────────
 
 export interface SpanAttributes {
   [key: string]: string | number | boolean | undefined;
@@ -53,18 +47,14 @@ export interface SpanExporter {
 
 export class InMemorySpanExporter implements SpanExporter {
   readonly spans: ReadableSpan[] = [];
-  export(spans: ReadableSpan[]): void {
-    this.spans.push(...spans);
-  }
+  export(spans: ReadableSpan[]): void { this.spans.push(...spans); }
   reset(): void { this.spans.length = 0; }
 }
 
 // ── OtelBridge ────────────────────────────────────────────────────────────────
 
-/** No-op exporter used when no exporter is configured. */
 const NOOP_EXPORTER: SpanExporter = { export() {} };
 
-/** Counter for monotonic span IDs within this process. */
 let _spanCounter = 0;
 function nextSpanId(): string {
   return `span-${(++_spanCounter).toString(16).padStart(8, "0")}`;
@@ -72,45 +62,47 @@ function nextSpanId(): string {
 
 interface LiveSpan {
   span: ReadableSpan;
-  /** True = span has been ended and exported. */
   ended: boolean;
 }
 
 export interface OtelBridgeOptions {
   exporter?: SpanExporter;
   /**
-   * Attribute naming mode (E1 — GenAI semconv).
+   * Attribute naming mode.
+   * - "both" (default): emit both legacy and gen_ai.* names.
+   * - "stable": emit only gen_ai.* names.
+   * - "legacy": emit only legacy names.
    *
-   * - "both" (default): emit both legacy names (task, usage.inputTokens, tool.name)
-   *   AND gen_ai.* semconv names. Backward-compatible while enabling GenAI dashboards.
-   * - "stable": emit only gen_ai.* names. Use when all consumers understand semconv.
-   * - "legacy": emit only legacy names. Original behavior, no semconv.
+   * When omitted, the mode is auto-detected from OTEL_SEMCONV_STABILITY_OPT_IN:
+   *   "gen_ai_latest_experimental" → "stable"
+   *   anything else               → "both"
    */
   semconvMode?: "both" | "stable" | "legacy";
 }
 
-/**
- * OtelBridge — stateful per-agent-run bridge.
- *
- * Create one instance per agent.run() call (or reuse across runs — the bridge
- * tracks open spans per traceId and flushes them automatically when the run ends).
- *
- * Span hierarchy (E1 semconv names in parentheses):
- *   run_start   → root span "agent.run"      (gen_ai.operation.name = "agent")
- *   step_start  → child span "agent.step.<N>"
- *   tool_call   → grandchild span "execute_tool" (gen_ai.operation.name = "execute_tool")
- */
+function resolveSemconvMode(
+  explicit: "both" | "stable" | "legacy" | undefined
+): "both" | "stable" | "legacy" {
+  if (explicit !== undefined) return explicit;
+  // C2: standard env-based opt-in.
+  const envVal = typeof process !== "undefined"
+    ? process.env["OTEL_SEMCONV_STABILITY_OPT_IN"]
+    : undefined;
+  if (envVal === "gen_ai_latest_experimental") return "stable";
+  return "both";
+}
+
 export class OtelBridge {
   readonly #exporter: SpanExporter;
   readonly #semconvMode: "both" | "stable" | "legacy";
-  readonly #runs = new Map<string, LiveSpan>();     // traceId → run span
-  readonly #steps = new Map<string, LiveSpan>();    // `${traceId}:${step}` → step span
-  readonly #tools = new Map<string, LiveSpan>();    // callId → tool span
+  readonly #runs = new Map<string, LiveSpan>();
+  readonly #steps = new Map<string, LiveSpan>();
+  readonly #tools = new Map<string, LiveSpan>();
   readonly #finished: ReadableSpan[] = [];
 
   constructor(opts: OtelBridgeOptions = {}) {
     this.#exporter = opts.exporter ?? NOOP_EXPORTER;
-    this.#semconvMode = opts.semconvMode ?? "both";
+    this.#semconvMode = resolveSemconvMode(opts.semconvMode);
   }
 
   record(ev: AgentEvent): void {
@@ -118,10 +110,12 @@ export class OtelBridge {
 
     switch (ev.event) {
       case "run_start": {
-        const span = this.#open(traceId, undefined, "agent.run", timestampMs);
+        // C2: root span name is "invoke_agent" in stable/both mode; "agent.run" in legacy.
+        const rootSpanName = this.#semconvMode === "legacy" ? "agent.run" : "invoke_agent";
+        const span = this.#open(traceId, undefined, rootSpanName, timestampMs);
         const task = String((ev as { data: { task: string } }).data.task ?? "");
         this.#setAttr(span.attributes, "task", "gen_ai.agent.task", task);
-        this.#setAttr(span.attributes, null, "gen_ai.operation.name", "agent");
+        this.#setAttr(span.attributes, null, "gen_ai.operation.name", "invoke_agent");
         this.#runs.set(traceId, { span, ended: false });
         break;
       }
@@ -139,7 +133,6 @@ export class OtelBridge {
         const d = (ev as { data: { toolName: string; callId: string; stepIndex: number } }).data;
         const stepSpan = this.#steps.get(`${traceId}:${d.stepIndex}`);
         const parentId = stepSpan?.span.spanId ?? this.#runs.get(traceId)?.span.spanId;
-        // E1: tool execution span is named "execute_tool" per OTel GenAI semconv.
         const spanName = this.#semconvMode === "legacy" ? `tool.${d.toolName}` : "execute_tool";
         const child = this.#open(traceId, parentId, spanName, timestampMs);
         this.#setAttr(child.attributes, "tool.name", "gen_ai.tool.name", d.toolName);
@@ -166,7 +159,6 @@ export class OtelBridge {
         if (runLive && !runLive.ended) {
           runLive.span.status = "ok";
           this.#setAttr(runLive.span.attributes, "final_answer", "gen_ai.agent.final_answer", String(d.answer ?? ""));
-          // Close any still-open step span.
           for (const [key, live] of this.#steps) {
             if (key.startsWith(`${traceId}:`) && !live.ended) {
               this.#close(live, timestampMs);
@@ -191,12 +183,12 @@ export class OtelBridge {
       }
 
       default: {
-        // Handle usage-shaped data (inputTokens/outputTokens) forwarded from model events.
         const anyEv = ev as { data?: Record<string, unknown> };
         if (anyEv.data && typeof anyEv.data["inputTokens"] === "number") {
           const d = anyEv.data as {
             inputTokens?: number;
             outputTokens?: number;
+            thinkingTokens?: number;
             cacheReadTokens?: number;
             cacheReadTokens1h?: number;
           };
@@ -208,6 +200,9 @@ export class OtelBridge {
             }
             if (d.outputTokens !== undefined) {
               this.#addAttr(attrs, "usage.outputTokens", "gen_ai.usage.output_tokens", d.outputTokens);
+            }
+            if (d.thinkingTokens !== undefined) {
+              this.#addAttr(attrs, "usage.thinkingTokens", "gen_ai.usage.thinking_tokens", d.thinkingTokens);
             }
             if (d.cacheReadTokens !== undefined) {
               this.#addAttr(attrs, "usage.cacheReadTokens", "gen_ai.usage.cache_read_input_tokens", d.cacheReadTokens);
@@ -222,7 +217,6 @@ export class OtelBridge {
     }
   }
 
-  /** Flush all completed spans to the exporter. */
   flush(): void {
     if (this.#finished.length > 0) {
       this.#exporter.export([...this.#finished]);
@@ -230,7 +224,6 @@ export class OtelBridge {
     }
   }
 
-  /** Force-close any still-open spans and flush. Use when a run exits without final_answer. */
   forceFlush(nowMs: number = Date.now()): void {
     for (const [, live] of this.#runs) if (!live.ended) this.#close(live, nowMs);
     for (const [, live] of this.#steps) if (!live.ended) this.#close(live, nowMs);
@@ -261,7 +254,6 @@ export class OtelBridge {
     this.#finished.push(live.span);
   }
 
-  /** Set attribute under legacy and/or semconv names depending on semconvMode. */
   #setAttr(
     attrs: SpanAttributes,
     legacyKey: string | null,
@@ -272,7 +264,6 @@ export class OtelBridge {
     if (this.#semconvMode !== "legacy") attrs[semconvKey] = value;
   }
 
-  /** Accumulate (add) a numeric attribute under legacy and/or semconv names. */
   #addAttr(
     attrs: SpanAttributes,
     legacyKey: string | null,
@@ -289,13 +280,7 @@ export class OtelBridge {
 }
 
 /**
- * Convenience: pipe an agent event generator through the bridge,
- * flushing on completion.
- *
- * Usage:
- *   const exporter = new InMemorySpanExporter();
- *   const bridge = new OtelBridge({ exporter });
- *   for await (const ev of withOtel(agent.run(task), bridge)) { ... }
+ * Pipe an agent event generator through the bridge, flushing on completion.
  */
 export async function* withOtel(
   source: AsyncGenerator<AgentEvent>,

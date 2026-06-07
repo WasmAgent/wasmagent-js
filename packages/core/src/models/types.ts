@@ -1,10 +1,12 @@
 /**
- * Model abstraction layer (E1).
+ * Model abstraction layer.
  *
- * Mirrors smolagents' model-agnostic design (models.py) while adding:
- *  - Fully async streaming (0 async def in smolagents)
- *  - cache_control breakpoints for Anthropic prompt caching (B1)
- *  - Unified token usage reporting
+ * Unified interface across Anthropic, OpenAI, and OpenAI-compatible endpoints:
+ *  - Adaptive thinking + unified effort/verbosity (A1/A2)
+ *  - Prompt-cache breakpoints (B1/B2)
+ *  - Structured output (A3)
+ *  - ModelRegistry for per-model capability metadata (A4)
+ *  - cacheStrategy for OpenAI-compatible endpoints (B3)
  */
 
 export type ContentRole = "system" | "user" | "assistant" | "tool";
@@ -16,7 +18,6 @@ export interface TextBlock {
 
 export interface ImageBlock {
   type: "image";
-  /** URL or base64 data URI. */
   source: string;
   mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
 }
@@ -32,96 +33,130 @@ export interface ToolResultBlock {
   type: "tool_result";
   toolUseId: string;
   content: string;
-  /** True when the tool execution produced an error. Maps to Anthropic is_error. */
   isError?: boolean;
+}
+
+/** Thinking/reasoning block returned by models that support extended thinking. */
+export interface ThinkingBlock {
+  type: "thinking";
+  thinking: string;
+  /** Opaque signature required to re-send thinking blocks in multi-turn (Anthropic). */
+  signature?: string;
 }
 
 export type ContentBlock =
   | TextBlock
   | ImageBlock
   | ToolUseBlock
-  | ToolResultBlock;
+  | ToolResultBlock
+  | ThinkingBlock;
 
 /**
  * Cache breakpoint — marks end of an immutable prefix segment (B1).
  * Anthropic: cache_control: { type: 'ephemeral', ttl?: '5m' | '1h' }
- *   - '5m' (default): standard 5-minute TTL
- *   - '1h': extended 1-hour TTL (requires extended-cache-ttl-2025-04-11 beta header)
- * OpenAI: implicit prefix caching (no explicit marker needed)
+ * OpenAI/compat: implicit prefix caching (marker ignored)
  */
 export interface CacheBreakpoint {
   type: "ephemeral";
-  /**
-   * Cache TTL for Anthropic breakpoints.
-   * - '5m' (default): standard ephemeral cache, expires in 5 minutes
-   * - '1h': extended cache, expires in 1 hour; use for long agent workflows
-   *         where the same context is reused across many steps
-   */
   ttl?: "5m" | "1h";
 }
 
 export interface ModelMessage {
   role: ContentRole;
   content: string | ContentBlock[];
-  /** Optional cache breakpoint to insert after this message (B1). */
   cacheBreakpoint?: CacheBreakpoint;
 }
+
+// ── Thinking / Reasoning options (A1 / A2) ───────────────────────────────────
+
+/**
+ * Reasoning effort level — shared abstraction across providers.
+ *
+ * Anthropic: maps to thinking.effort (standard/high/xhigh/max).
+ * OpenAI:    maps to reasoning.effort (none/minimal/low/medium/high/xhigh).
+ */
+export type ReasoningEffort =
+  | "none"       // OpenAI only: disable reasoning
+  | "minimal"    // OpenAI only
+  | "standard"   // Anthropic: default adaptive thinking depth
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max";       // Anthropic only
+
+export interface ThinkingOptions {
+  /**
+   * - "adaptive" (Anthropic ≥4.7): automatic depth, driven by effort.
+   * - "enabled":  explicit budget_tokens (Anthropic ≤4.5 only).
+   * - "off":      disable thinking.
+   */
+  mode: "adaptive" | "enabled" | "off";
+  /** Effort level for adaptive mode. Ignored when mode is "enabled" or "off". */
+  effort?: ReasoningEffort;
+  /**
+   * Manual token budget — only for mode:"enabled" on Anthropic ≤4.5.
+   * Using this on Anthropic ≥4.7 throws a clear error (adapter-level guard).
+   */
+  budgetTokens?: number;
+}
+
+// ── GenerateOptions ───────────────────────────────────────────────────────────
 
 export interface GenerateOptions {
   tools?: object[];
   stream?: boolean;
   maxTokens?: number;
   temperature?: number;
-  /** Nucleus sampling probability mass (0-1). Passed as top_p to OpenAI, top_p to Anthropic. */
   topP?: number;
-  /** Random seed for deterministic sampling (OpenAI only). */
   seed?: number;
-  /** Explicit cache breakpoints for prompt prefix caching (B1). */
   cacheBreakpoints?: CacheBreakpoint[];
   stopSequences?: string[];
-  /**
-   * Structured output constraint (S1).
-   * When set, the model is instructed to produce JSON matching the given JSON Schema.
-   * Only used when ModelCapabilities.supportsGrammar is true.
-   * Callers should fall back to S2 (extractCode retry) when the capability is absent.
-   */
   responseFormat?: ResponseFormat;
+  /**
+   * Thinking/reasoning configuration (A1/A2).
+   * Anthropic: thinking.mode + effort.
+   * OpenAI reasoning models: effort only (mode is ignored).
+   */
+  thinking?: ThinkingOptions;
+  /**
+   * Output verbosity hint (A2, OpenAI GPT-5+).
+   * "low" = terse; "medium" = default; "high" = detailed.
+   */
+  verbosity?: "low" | "medium" | "high";
 }
 
-/** Structured output format constraint for JSON grammar (S1). */
 export type ResponseFormat =
   | { type: "json_object" }
   | { type: "json_schema"; schema: object; name?: string; strict?: boolean };
 
+// ── Token usage ───────────────────────────────────────────────────────────────
+
 export interface TokenUsage {
   inputTokens: number;
   outputTokens: number;
-  /** Tokens read from the standard 5-minute cache (Anthropic cache_read_input_tokens / ephemeral_5m). */
+  /** Thinking/reasoning tokens billed separately (Anthropic/OpenAI reasoning). */
+  thinkingTokens?: number;
   cacheReadTokens?: number;
-  /** Tokens written to cache (Anthropic cache_creation_input_tokens). */
   cacheWriteTokens?: number;
-  /** Tokens read from the 1-hour extended cache (Anthropic ephemeral_1h_input_tokens). */
   cacheReadTokens1h?: number;
-  /** Tokens written to the 1-hour extended cache (Anthropic cache_creation ephemeral_1h). */
   cacheWriteTokens1h?: number;
 }
 
+// ── StreamEvent ───────────────────────────────────────────────────────────────
+
 export interface StreamEvent {
-  type: "text_delta" | "tool_call" | "stop" | "usage";
+  type: "text_delta" | "thinking_delta" | "tool_call" | "stop" | "usage";
   delta?: string;
   toolCall?: ToolUseBlock;
   stopReason?: "end_turn" | "tool_use" | "max_tokens";
   usage?: TokenUsage;
 }
 
-/**
- * Unified async model interface (E1).
- * Replaces smolagents' synchronous models.py provider classes.
- */
+// ── Model interface ───────────────────────────────────────────────────────────
+
 export interface Model {
-  /** Provider identifier for logging and cache-threshold validation (B1). */
   providerId: string;
-  /** Optional capability descriptor — agents use this to gate features (O3). */
   capabilities?: ModelCapabilities;
   generate(
     messages: ModelMessage[],
@@ -129,110 +164,143 @@ export interface Model {
   ): AsyncGenerator<StreamEvent>;
 }
 
-/** Describes what an underlying model endpoint can and cannot do (O3). */
+// ── ModelCapabilities ─────────────────────────────────────────────────────────
+
+/**
+ * Cache injection strategy for the provider (B3).
+ *
+ * - "anthropic-explicit": provider uses cache_control blocks (Anthropic).
+ * - "auto-prefix":        provider caches automatically by prefix; no explicit markers needed.
+ * - "none":               no caching supported.
+ */
+export type CacheStrategy = "anthropic-explicit" | "auto-prefix" | "none";
+
 export interface ModelCapabilities {
-  /** True when the endpoint is a local/private server (Ollama, vLLM, llama.cpp). */
   localEndpoint?: boolean;
-  /** True when the provider charges per-token (affects budget-aware strategies). */
   metered?: boolean;
-  /** True when the model supports grammar/response_format structured output (S1). */
+  /** True when the model supports JSON-schema structured output. */
   supportsGrammar?: boolean;
-  /** True when the model supports "Wait" budget-forcing prefill injection (S4). */
   supportsBudgetForcing?: boolean;
-  /** Context window size in tokens (for compaction threshold). */
   contextWindow?: number;
+  /** True when the model supports native reasoning effort control (A2). */
+  supportsReasoningEffort?: boolean;
+  /** True when the model supports verbosity output length control (A2). */
+  supportsVerbosity?: boolean;
+  /**
+   * Cache injection strategy (B3).
+   * Defaults to "auto-prefix" for OpenAI-compatible endpoints.
+   */
+  cacheStrategy?: CacheStrategy;
+  /**
+   * Field name in the raw API response that carries reasoning/thinking text.
+   * Used by OpenAI-compatible adapters that return reasoning in a non-standard field.
+   * E.g. DeepSeek: "reasoning_content", Kimi: "thinking_content".
+   */
+  reasoningContentField?: string;
+}
+
+// ── ModelRegistry (A4) ───────────────────────────────────────────────────────
+
+export interface ModelMeta {
+  /** Maximum context window in tokens. */
+  contextWindow: number;
+  /** Whether the model has built-in reasoning/thinking capability. */
+  isReasoning: boolean;
+  /** Whether the model accepts explicit effort levels. */
+  supportsReasoningEffort: boolean;
+  /** Whether the model accepts verbosity control (OpenAI GPT-5+). */
+  supportsVerbosity: boolean;
+  /** Default effort when reasoning is enabled but no effort is specified. */
+  defaultEffort?: ReasoningEffort;
 }
 
 /**
- * Token and step budget limits for a single agent run (P1).
- * Agents check these limits before each step and abort gracefully when exceeded.
+ * Lightweight registry mapping model IDs to their capability metadata (A4).
+ * Adapters use this instead of scattered string prefix checks.
  */
-export interface ResourceBudget {
-  /** Maximum total tokens (input + output) across all steps. */
-  maxTokens?: number;
-  /** Maximum number of steps before forcing a final answer. */
-  maxSteps?: number;
-  /** Maximum wall-clock milliseconds for the entire run. */
-  maxDurationMs?: number;
-}
+export const ModelRegistry: Record<string, ModelMeta> = {
+  // ── Anthropic ────────────────────────────────────────────────────────────
+  "claude-opus-4-8":             { contextWindow: 200_000, isReasoning: true,  supportsReasoningEffort: true,  supportsVerbosity: false, defaultEffort: "standard" },
+  "claude-opus-4-7":             { contextWindow: 200_000, isReasoning: true,  supportsReasoningEffort: true,  supportsVerbosity: false, defaultEffort: "standard" },
+  "claude-sonnet-4-6":           { contextWindow: 200_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
+  "claude-haiku-4-5-20251001":   { contextWindow: 200_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
 
-/**
- * Enhancement policy — controls which optional quality strategies are enabled (P1).
- * Agents read this config to decide whether to run self-consistency, budget
- * forcing, Reflect-Refine, etc.
- */
-export interface EnhancementPolicy {
-  /** Resource budget for the run. */
-  budget?: ResourceBudget;
-  /** Enable self-consistency voting (P2). N candidate generations, majority vote. */
-  selfConsistency?: {
-    enabled: boolean;
-    /** Number of candidate completions to generate (default 3). */
-    n?: number;
-    /** Abort early when this fraction of votes agree (default 0.6). */
-    earlyStopThreshold?: number;
-  };
-  /** Enable Reflect-Refine loop (P3). Critique then regenerate when quality is low. */
-  reflectRefine?: {
-    enabled: boolean;
-    /** Max reflection-refinement cycles per answer (default 1). */
-    maxCycles?: number;
-  };
-  /** Enable budget-forcing "Wait" prefill injection (S4). Requires model support. */
-  budgetForcing?: {
-    enabled: boolean;
-  };
-  /** Enable parallel fork-join diversity reasoning (L4). Forks N branches, synthesises. */
-  parallelForkJoin?: {
-    enabled: boolean;
-    /** Number of parallel branches (default 3). */
-    branches?: number;
-    /** Max concurrent branch calls (default: branches). */
-    concurrency?: number;
-    /** Aggregation strategy: "summary" (default) or "first". */
-    aggregation?: "summary" | "first";
-  };
-}
+  // ── OpenAI GPT-5.x ───────────────────────────────────────────────────────
+  "gpt-5":       { contextWindow: 1_000_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: true },
+  "gpt-5.1":     { contextWindow: 1_000_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: true },
+  "gpt-5.2":     { contextWindow: 1_000_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: true },
+  "gpt-5.5":     { contextWindow: 1_000_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: true },
+  "gpt-5-mini":  { contextWindow: 128_000,   isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: true },
+  "gpt-5-nano":  { contextWindow: 128_000,   isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: true },
 
-/** Minimum token threshold per model for cache breakpoints to be effective (B1). */
-export const CACHE_MIN_TOKENS: Record<string, number> = {
-  "claude-opus-4": 1024,
-  "claude-opus-4-5": 4096,
-  "claude-opus-4-6": 4096,
-  "claude-sonnet-4": 1024,
-  "claude-sonnet-4-5": 1024,
-  "claude-sonnet-4-6": 1024,
-  "claude-haiku-3": 2048,
-  "claude-haiku-4-5": 4096,
+  // ── OpenAI reasoning (o-series) ──────────────────────────────────────────
+  "o3":      { contextWindow: 200_000, isReasoning: true, supportsReasoningEffort: true, supportsVerbosity: false, defaultEffort: "medium" },
+  "o4-mini": { contextWindow: 200_000, isReasoning: true, supportsReasoningEffort: true, supportsVerbosity: false, defaultEffort: "medium" },
+  "o3-mini": { contextWindow: 200_000, isReasoning: true, supportsReasoningEffort: true, supportsVerbosity: false, defaultEffort: "medium" },
+
+  // ── Legacy GPT-4 ─────────────────────────────────────────────────────────
+  "gpt-4o":      { contextWindow: 128_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
+  "gpt-4o-mini": { contextWindow: 128_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
+  "gpt-4.1":     { contextWindow: 1_000_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
+
+  // ── Chinese models ───────────────────────────────────────────────────────
+  "deepseek-chat":           { contextWindow: 64_000,  isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
+  "deepseek-reasoner":       { contextWindow: 64_000,  isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "deepseek-v4-pro":         { contextWindow: 128_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "moonshot-v1-8k":          { contextWindow: 8_000,   isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
+  "moonshot-v1-32k":         { contextWindow: 32_000,  isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
+  "moonshot-v1-128k":        { contextWindow: 128_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
+  "kimi-k2-6":               { contextWindow: 200_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "glm-4-plus":              { contextWindow: 128_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
+  "glm-5-1":                 { contextWindow: 200_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "qwen3-max":               { contextWindow: 1_000_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "qwen3-plus":              { contextWindow: 262_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "minimax-text-01":         { contextWindow: 1_000_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
 };
 
 /**
- * Estimate token count from a string for cache threshold comparisons (B1).
- *
- * Uses character-category weighting to handle CJK / non-ASCII content:
- *   ASCII: ~4 chars/token (English prose, code)
- *   Non-ASCII: 1 token/char (conservative lower bound)
- *
- * Non-ASCII covers: CJK (~1 token/char), Arabic/Thai/Devanagari (often
- * >1 token/char), and emoji (multi-codepoint, often 2-4 tokens each).
- * Using /1 as the non-ASCII floor means we reliably over-estimate for
- * these scripts rather than under-estimate.
- *
- * This is intentionally conservative (biases to over-estimate) because
- * missing a cache breakpoint costs real money; an extra cache_control
- * annotation costs almost nothing.
+ * Look up model metadata from the registry.
+ * Falls back to heuristics for unknown models.
  */
+export function getModelMeta(modelId: string): ModelMeta {
+  if (ModelRegistry[modelId]) return ModelRegistry[modelId]!;
+  const id = modelId.toLowerCase();
+  if (/^o\d/.test(id)) {
+    return { contextWindow: 200_000, isReasoning: true, supportsReasoningEffort: true, supportsVerbosity: false, defaultEffort: "medium" };
+  }
+  if (id.includes("claude")) {
+    const reasoning = id.includes("opus") && !id.includes("4-5") && !id.includes("4-6");
+    const meta: ModelMeta = { contextWindow: 200_000, isReasoning: reasoning, supportsReasoningEffort: reasoning, supportsVerbosity: false };
+    if (reasoning) meta.defaultEffort = "standard";
+    return meta;
+  }
+  return { contextWindow: 128_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false };
+}
+
+// ── Cache token threshold per model (B1) ─────────────────────────────────────
+
+export const CACHE_MIN_TOKENS: Record<string, number> = {
+  "claude-opus-4":   1024,
+  "claude-opus-4-5": 4096,
+  "claude-opus-4-6": 4096,
+  "claude-opus-4-7": 4096,
+  "claude-opus-4-8": 4096,
+  "claude-sonnet-4":   1024,
+  "claude-sonnet-4-5": 1024,
+  "claude-sonnet-4-6": 1024,
+  "claude-haiku-3":    2048,
+  "claude-haiku-4-5":  4096,
+};
+
 export function estimateTokens(text: string): number {
   let ascii = 0, wide = 0;
   for (const ch of text) {
     if ((ch.codePointAt(0) ?? 0) < 128) ascii++;
     else wide++;
   }
-  // wide: 1 token/char lower bound (not /1.5 — see function comment)
   return Math.ceil(ascii / 4 + wide);
 }
 
-/** Estimates total tokens across a message array (sum of all content text). */
 export function estimateMessagesTokens(messages: ModelMessage[]): number {
   let total = 0;
   for (const m of messages) {
@@ -243,31 +311,56 @@ export function estimateMessagesTokens(messages: ModelMessage[]): number {
         if (block.type === "text") total += estimateTokens(block.text);
         else if (block.type === "tool_result") total += estimateTokens(block.content);
         else if (block.type === "tool_use") total += estimateTokens(JSON.stringify(block.input));
+        else if (block.type === "thinking") total += estimateTokens(block.thinking);
       }
     }
   }
   return total;
 }
 
-/**
- * Token budget tracker — accumulates real usage from model events and falls
- * back to estimateTokens() when the model does not report usage (P0).
- */
 export class TokenBudget {
   inputTokens = 0;
   outputTokens = 0;
 
-  /** Record real usage from a usage StreamEvent. */
   recordUsage(usage: TokenUsage): void {
     this.inputTokens += usage.inputTokens;
     this.outputTokens += usage.outputTokens;
   }
 
-  /** Fall back to estimation when no usage event was received for a step. */
   estimateFallback(messages: ModelMessage[], responseText: string): void {
     this.inputTokens += estimateMessagesTokens(messages);
     this.outputTokens += estimateTokens(responseText);
   }
 
   get total(): number { return this.inputTokens + this.outputTokens; }
+}
+
+// ── ResourceBudget / EnhancementPolicy (unchanged) ───────────────────────────
+
+export interface ResourceBudget {
+  maxTokens?: number;
+  maxSteps?: number;
+  maxDurationMs?: number;
+}
+
+export interface EnhancementPolicy {
+  budget?: ResourceBudget;
+  selfConsistency?: {
+    enabled: boolean;
+    n?: number;
+    earlyStopThreshold?: number;
+  };
+  reflectRefine?: {
+    enabled: boolean;
+    maxCycles?: number;
+  };
+  budgetForcing?: {
+    enabled: boolean;
+  };
+  parallelForkJoin?: {
+    enabled: boolean;
+    branches?: number;
+    concurrency?: number;
+    aggregation?: "summary" | "first";
+  };
 }

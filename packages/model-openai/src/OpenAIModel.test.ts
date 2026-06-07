@@ -363,3 +363,93 @@ describe("OpenAIModel generate() responseFormat (S1)", () => {
     expect(params["response_format"]).toBeUndefined();
   });
 });
+
+// ── A2: Reasoning effort + verbosity (Chat API) ───────────────────────────────
+
+describe("OpenAIModel — reasoning effort (A2)", () => {
+  beforeEach(() => { vi.resetModules(); });
+
+  async function generateAndCapture(
+    modelId: string,
+    opts: object,
+    samplingParams?: object
+  ): Promise<Record<string, unknown>> {
+    const { MockOpenAI, mockCreate } = makeOpenAIMock([
+      { choices: [{ delta: {}, finish_reason: "stop" }] },
+    ]);
+    vi.doMock("openai", () => ({ default: MockOpenAI }));
+    const { OpenAIModel } = await import("./index.js?t=" + Date.now() + "eff");
+    const model = new OpenAIModel(modelId, samplingParams
+      ? { apiKey: "key", samplingParams: samplingParams as Record<string, unknown> }
+      : "key");
+    for await (const _ of model.generate([{ role: "user", content: "hi" }], opts)) { /* consume */ }
+    vi.doUnmock("openai");
+    return mockCreate.mock.calls[0]?.[0] as Record<string, unknown>;
+  }
+
+  it("sends reasoning_effort=medium for effort:'standard' (o3)", async () => {
+    const params = await generateAndCapture("o3", { thinking: { mode: "adaptive", effort: "standard" } });
+    expect(params["reasoning_effort"]).toBe("medium");
+  });
+
+  it("sends reasoning_effort=xhigh for effort:'max'", async () => {
+    const params = await generateAndCapture("o3", { thinking: { mode: "adaptive", effort: "max" } });
+    expect(params["reasoning_effort"]).toBe("xhigh");
+  });
+
+  it("sends reasoning_effort=none for effort:'none'", async () => {
+    const params = await generateAndCapture("o3", { thinking: { mode: "adaptive", effort: "none" } });
+    expect(params["reasoning_effort"]).toBe("none");
+  });
+
+  it("samplingParams.reasoningEffort is used when thinking opts absent", async () => {
+    const params = await generateAndCapture("o4-mini", {}, { reasoningEffort: "high" });
+    expect(params["reasoning_effort"]).toBe("high");
+  });
+
+  it("thinking opts effort overrides samplingParams.reasoningEffort", async () => {
+    const params = await generateAndCapture(
+      "o3",
+      { thinking: { mode: "adaptive", effort: "xhigh" } },
+      { reasoningEffort: "low" }
+    );
+    expect(params["reasoning_effort"]).toBe("xhigh");
+  });
+});
+
+// ── A4: Model enums and capabilities ─────────────────────────────────────────
+
+describe("OpenAIModel — model registry + capabilities (A4)", () => {
+  beforeEach(() => { vi.resetModules(); });
+
+  it("OpenAIModels.LATEST points to gpt-5.5", async () => {
+    vi.doMock("openai", () => ({ default: vi.fn() }));
+    const { OpenAIModels } = await import("./index.js?t=" + Date.now() + "en1");
+    expect(OpenAIModels.LATEST).toBe("gpt-5.5");
+    vi.doUnmock("openai");
+  });
+
+  it("gpt-5 model has supportsVerbosity=true", async () => {
+    vi.doMock("openai", () => ({ default: vi.fn() }));
+    const { OpenAIModel } = await import("./index.js?t=" + Date.now() + "en2");
+    const model = new OpenAIModel("gpt-5", "key");
+    expect(model.capabilities.supportsVerbosity).toBe(true);
+    vi.doUnmock("openai");
+  });
+
+  it("o3 model has supportsReasoningEffort=true", async () => {
+    vi.doMock("openai", () => ({ default: vi.fn() }));
+    const { OpenAIModel } = await import("./index.js?t=" + Date.now() + "en3");
+    const model = new OpenAIModel("o3", "key");
+    expect(model.capabilities.supportsReasoningEffort).toBe(true);
+    vi.doUnmock("openai");
+  });
+
+  it("gpt-4o model has supportsVerbosity=false (legacy)", async () => {
+    vi.doMock("openai", () => ({ default: vi.fn() }));
+    const { OpenAIModel } = await import("./index.js?t=" + Date.now() + "en4");
+    const model = new OpenAIModel("gpt-4o", "key");
+    expect(model.capabilities.supportsVerbosity).toBe(false);
+    vi.doUnmock("openai");
+  });
+});

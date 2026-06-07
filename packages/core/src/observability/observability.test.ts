@@ -17,37 +17,47 @@ function makeRunEvents(tid: string, toolNames: string[] = []): AgentEvent[] {
   return events;
 }
 
-describe("OtelBridge (C2) — backward compatibility (both mode)", () => {
+// ── C2: invoke_agent root span in both/stable mode ────────────────────────────
+
+describe("OtelBridge C2 — invoke_agent root span (both/stable mode)", () => {
   let exporter: InMemorySpanExporter;
   let bridge: OtelBridge;
 
   beforeEach(() => {
     exporter = new InMemorySpanExporter();
-    // Default "both" mode: emits both legacy and gen_ai.* attributes.
-    bridge = new OtelBridge({ exporter });
+    bridge = new OtelBridge({ exporter }); // default "both" mode
   });
 
-  it("creates a root run span with task attribute", () => {
+  it("root span is named 'invoke_agent' in both mode (C2)", () => {
     const tid = traceId();
     for (const ev of makeRunEvents(tid)) bridge.record(ev);
     bridge.flush();
-    const runSpan = exporter.spans.find((s) => s.name === "agent.run");
+    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent");
     expect(runSpan).toBeDefined();
     expect(runSpan?.attributes["task"]).toBe("test task");
+    expect(runSpan?.attributes["gen_ai.agent.task"]).toBe("test task");
     expect(runSpan?.status).toBe("ok");
     expect(runSpan?.endTimeMs).toBeDefined();
   });
 
-  it("creates step child spans nested under run span", () => {
+  it("root span has gen_ai.operation.name=invoke_agent (C2)", () => {
     const tid = traceId();
     for (const ev of makeRunEvents(tid)) bridge.record(ev);
     bridge.flush();
-    const runSpan = exporter.spans.find((s) => s.name === "agent.run");
+    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent")!;
+    expect(runSpan.attributes["gen_ai.operation.name"]).toBe("invoke_agent");
+  });
+
+  it("creates step child spans nested under invoke_agent span", () => {
+    const tid = traceId();
+    for (const ev of makeRunEvents(tid)) bridge.record(ev);
+    bridge.flush();
+    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent");
     const stepSpan = exporter.spans.find((s) => s.name === "agent.step.1");
     expect(stepSpan?.parentSpanId).toBe(runSpan?.spanId);
   });
 
-  it("creates execute_tool spans nested under step span (E1 default name)", () => {
+  it("creates execute_tool spans nested under step span", () => {
     const tid = traceId();
     for (const ev of makeRunEvents(tid, ["search"])) bridge.record(ev);
     bridge.flush();
@@ -55,24 +65,21 @@ describe("OtelBridge (C2) — backward compatibility (both mode)", () => {
     const toolSpan = exporter.spans.find((s) => s.name === "execute_tool");
     expect(toolSpan).toBeDefined();
     expect(toolSpan?.parentSpanId).toBe(stepSpan?.spanId);
-    // Both legacy and gen_ai.* names present in "both" mode.
     expect(toolSpan?.attributes["tool.name"]).toBe("search");
     expect(toolSpan?.attributes["gen_ai.tool.name"]).toBe("search");
   });
 
-  it("accumulates usage tokens on run span with both legacy and gen_ai.* names", () => {
+  it("accumulates usage tokens with both legacy and gen_ai.* names", () => {
     const tid = traceId();
     bridge.record({ traceId: tid, parentTraceId: null, channel: "text", event: "run_start", data: { task: "t" }, timestampMs: 0 });
     bridge.record({ traceId: tid, parentTraceId: null, channel: "status", event: "status", data: { inputTokens: 100, outputTokens: 50, cacheReadTokens: 30 } as unknown as { phase: "tool_executing"; step: number }, timestampMs: 1 });
     bridge.record({ traceId: tid, parentTraceId: null, channel: "status", event: "status", data: { inputTokens: 50, outputTokens: 20 } as unknown as { phase: "tool_executing"; step: number }, timestampMs: 2 });
     bridge.record({ traceId: tid, parentTraceId: null, channel: "text", event: "final_answer", data: { answer: "done" }, timestampMs: 3 });
     bridge.flush();
-    const runSpan = exporter.spans.find((s) => s.name === "agent.run");
-    // Legacy attributes still present.
+    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent");
     expect(runSpan?.attributes["usage.inputTokens"]).toBe(150);
     expect(runSpan?.attributes["usage.outputTokens"]).toBe(70);
     expect(runSpan?.attributes["usage.cacheReadTokens"]).toBe(30);
-    // gen_ai.* also present.
     expect(runSpan?.attributes["gen_ai.usage.input_tokens"]).toBe(150);
     expect(runSpan?.attributes["gen_ai.usage.output_tokens"]).toBe(70);
     expect(runSpan?.attributes["gen_ai.usage.cache_read_input_tokens"]).toBe(30);
@@ -83,7 +90,7 @@ describe("OtelBridge (C2) — backward compatibility (both mode)", () => {
     bridge.record({ traceId: tid, parentTraceId: null, channel: "text", event: "run_start", data: { task: "t" }, timestampMs: 0 });
     bridge.record({ traceId: tid, parentTraceId: null, channel: "text", event: "error", data: { error: "boom" }, timestampMs: 1 });
     bridge.flush();
-    const runSpan = exporter.spans.find((s) => s.name === "agent.run");
+    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent");
     expect(runSpan?.status).toBe("error");
     expect(runSpan?.attributes["error"]).toBe("boom");
   });
@@ -99,16 +106,37 @@ describe("OtelBridge (C2) — backward compatibility (both mode)", () => {
   });
 });
 
-// ── E1: GenAI semconv tests ───────────────────────────────────────────────────
+// ── C2: env-driven semconv opt-in ─────────────────────────────────────────────
 
-describe("OtelBridge E1 — OTel GenAI semantic conventions", () => {
+describe("OtelBridge C2 — OTEL_SEMCONV_STABILITY_OPT_IN env detection", () => {
+  it("auto-selects stable mode when env=gen_ai_latest_experimental", () => {
+    const orig = process.env["OTEL_SEMCONV_STABILITY_OPT_IN"];
+    process.env["OTEL_SEMCONV_STABILITY_OPT_IN"] = "gen_ai_latest_experimental";
+    const exporter = new InMemorySpanExporter();
+    // No explicit semconvMode — should detect from env.
+    const bridge = new OtelBridge({ exporter });
+    const tid = traceId();
+    for (const ev of makeRunEvents(tid)) bridge.record(ev);
+    bridge.flush();
+    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent")!;
+    // In stable mode: gen_ai.* present, legacy absent.
+    expect(runSpan.attributes["gen_ai.agent.task"]).toBe("test task");
+    expect(runSpan.attributes["task"]).toBeUndefined();
+    if (orig !== undefined) process.env["OTEL_SEMCONV_STABILITY_OPT_IN"] = orig;
+    else delete process.env["OTEL_SEMCONV_STABILITY_OPT_IN"];
+  });
+});
+
+// ── semconv mode tests ────────────────────────────────────────────────────────
+
+describe("OtelBridge — semconv modes", () => {
   it("stable mode emits gen_ai.* attrs and suppresses legacy names", () => {
     const exporter = new InMemorySpanExporter();
     const bridge = new OtelBridge({ exporter, semconvMode: "stable" });
     const tid = traceId();
     for (const ev of makeRunEvents(tid, ["search"])) bridge.record(ev);
     bridge.flush();
-    const runSpan = exporter.spans.find((s) => s.name === "agent.run")!;
+    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent")!;
     expect(runSpan.attributes["gen_ai.agent.task"]).toBe("test task");
     expect(runSpan.attributes["task"]).toBeUndefined();
     const toolSpan = exporter.spans.find((s) => s.name === "execute_tool")!;
@@ -116,23 +144,23 @@ describe("OtelBridge E1 — OTel GenAI semantic conventions", () => {
     expect(toolSpan.attributes["tool.name"]).toBeUndefined();
   });
 
-  it("legacy mode emits only private attrs and suppresses gen_ai.* names", () => {
+  it("legacy mode uses 'agent.run' root span and suppresses gen_ai.* names", () => {
     const exporter = new InMemorySpanExporter();
     const bridge = new OtelBridge({ exporter, semconvMode: "legacy" });
     const tid = traceId();
     for (const ev of makeRunEvents(tid, ["calc"])) bridge.record(ev);
     bridge.flush();
     const runSpan = exporter.spans.find((s) => s.name === "agent.run")!;
+    expect(runSpan).toBeDefined();
     expect(runSpan.attributes["task"]).toBe("test task");
     expect(runSpan.attributes["gen_ai.agent.task"]).toBeUndefined();
-    // In legacy mode the tool span is named "tool.<name>".
     const toolSpan = exporter.spans.find((s) => s.name === "tool.calc")!;
     expect(toolSpan).toBeDefined();
     expect(toolSpan.attributes["tool.name"]).toBe("calc");
     expect(toolSpan.attributes["gen_ai.tool.name"]).toBeUndefined();
   });
 
-  it("execute_tool span has gen_ai.operation.name = execute_tool in both/stable modes", () => {
+  it("execute_tool span has gen_ai.operation.name=execute_tool in both/stable modes", () => {
     const exporter = new InMemorySpanExporter();
     const bridge = new OtelBridge({ exporter, semconvMode: "both" });
     const tid = traceId();
@@ -140,16 +168,6 @@ describe("OtelBridge E1 — OTel GenAI semantic conventions", () => {
     bridge.flush();
     const toolSpan = exporter.spans.find((s) => s.name === "execute_tool")!;
     expect(toolSpan.attributes["gen_ai.operation.name"]).toBe("execute_tool");
-  });
-
-  it("agent.run span has gen_ai.operation.name = agent", () => {
-    const exporter = new InMemorySpanExporter();
-    const bridge = new OtelBridge({ exporter, semconvMode: "both" });
-    const tid = traceId();
-    for (const ev of makeRunEvents(tid)) bridge.record(ev);
-    bridge.flush();
-    const runSpan = exporter.spans.find((s) => s.name === "agent.run")!;
-    expect(runSpan.attributes["gen_ai.operation.name"]).toBe("agent");
   });
 
   it("cacheReadTokens1h maps to gen_ai.usage.cache_read_input_tokens_1h", () => {
@@ -160,7 +178,7 @@ describe("OtelBridge E1 — OTel GenAI semantic conventions", () => {
     bridge.record({ traceId: tid, parentTraceId: null, channel: "status", event: "status", data: { inputTokens: 0, cacheReadTokens1h: 75 } as unknown as { phase: "tool_executing"; step: number }, timestampMs: 1 });
     bridge.record({ traceId: tid, parentTraceId: null, channel: "text", event: "final_answer", data: { answer: "ok" }, timestampMs: 2 });
     bridge.flush();
-    const runSpan = exporter.spans.find((s) => s.name === "agent.run")!;
+    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent")!;
     expect(runSpan.attributes["gen_ai.usage.cache_read_input_tokens_1h"]).toBe(75);
     expect(runSpan.attributes["usage.cacheReadTokens1h"]).toBe(75);
   });

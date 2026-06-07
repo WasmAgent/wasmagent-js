@@ -5,53 +5,83 @@ import type {
   ModelMessage,
   StreamEvent,
 } from "./types.js";
+import { getModelMeta } from "./types.js";
 import type { RetryPolicy } from "./retry.js";
 import { withRetryGenerator } from "./retry.js";
 
 export interface OpenAIModelOptions {
   apiKey?: string;
-  /** Override the API base URL — enables local endpoints like Ollama/vLLM/llama.cpp. */
   baseURL?: string;
-  /** Extra HTTP headers forwarded to every request (e.g. custom auth, routing keys). */
   defaultHeaders?: Record<string, string>;
   samplingParams?: {
     temperature?: number;
     seed?: number;
-    /** For o-series reasoning models: controls thinking depth. One of "low" | "medium" | "high". */
-    reasoningEffort?: "low" | "medium" | "high";
+    /**
+     * Reasoning effort for o-series and reasoning-capable models.
+     * Full range: "none" | "minimal" | "standard" | "low" | "medium" | "high" | "xhigh" | "max"
+     * OpenAI wire values: none/minimal/low/medium/high/xhigh (standard→medium, max→xhigh).
+     */
+    reasoningEffort?: import("./types.js").ReasoningEffort;
+    /**
+     * Output verbosity for GPT-5+ models (A2).
+     * "low" = terse, "medium" = default, "high" = detailed.
+     */
+    verbosity?: "low" | "medium" | "high";
   };
-  /** Retry policy for 429/5xx/network errors. */
   retry?: RetryPolicy;
   /**
-   * Which OpenAI API surface to use.
-   *
-   * - "responses" (default for native OpenAI): Uses the Responses API
-   *   (client.responses.create). Provides better caching, native tool search,
-   *   built-in compaction, and reasoning item persistence. Recommended for all
-   *   new projects using api.openai.com.
-   *
-   * - "chat" (default when baseURL is set): Uses Chat Completions API
-   *   (client.chat.completions.create). Required for Ollama, vLLM, llama.cpp,
-   *   and other OpenAI-compatible local endpoints that don't implement Responses.
-   *
-   * The default is auto-detected: "responses" when baseURL is unset,
-   * "chat" when baseURL is set (local endpoint assumed).
+   * API surface to use.
+   * "responses" (default for api.openai.com): Responses API.
+   * "chat" (default when baseURL is set): Chat Completions API.
    */
   apiMode?: "responses" | "chat";
 }
 
-/** Canonical OpenAI model IDs. Update here when OpenAI releases new versions. */
+// ── Model enums (A4) ─────────────────────────────────────────────────────────
+
+/** Canonical OpenAI model IDs — current and recent generations. */
 export const OpenAIModels = {
-  GPT_4O:       "gpt-4o",
-  GPT_4O_MINI:  "gpt-4o-mini",
-  GPT_4_1:      "gpt-4.1",
-  O3:           "o3",
-  O4_MINI:      "o4-mini",
+  // GPT-5.x (2026)
+  GPT_5:       "gpt-5",
+  GPT_5_1:     "gpt-5.1",
+  GPT_5_2:     "gpt-5.2",
+  GPT_5_5:     "gpt-5.5",
+  GPT_5_MINI:  "gpt-5-mini",
+  GPT_5_NANO:  "gpt-5-nano",
+  /** Always points to the recommended latest production model. */
+  LATEST:      "gpt-5.5",
+
+  // Reasoning (o-series)
+  O3:      "o3",
+  O4_MINI: "o4-mini",
+  O3_MINI: "o3-mini",
+
+  // Legacy (retained for compatibility)
+  GPT_4O:      "gpt-4o",
+  GPT_4O_MINI: "gpt-4o-mini",
+  GPT_4_1:     "gpt-4.1",
 } as const;
 
 export type OpenAIModelId = typeof OpenAIModels[keyof typeof OpenAIModels] | (string & {});
 
-/** OpenAI model adapter — with Responses API (default) and Chat Completions fallback. */
+/**
+ * Map the unified ReasoningEffort to OpenAI's accepted wire value.
+ * OpenAI supports: "none" | "low" | "medium" | "high" | "xhigh"
+ * (minimal → low, standard → medium, max → xhigh)
+ */
+function toOpenAIEffort(effort: import("./types.js").ReasoningEffort): string {
+  switch (effort) {
+    case "none":     return "none";
+    case "minimal":  return "low";
+    case "standard": return "medium";
+    case "low":      return "low";
+    case "medium":   return "medium";
+    case "high":     return "high";
+    case "xhigh":    return "xhigh";
+    case "max":      return "xhigh";
+  }
+}
+
 export class OpenAIModel implements Model {
   readonly providerId: string;
   readonly capabilities: ModelCapabilities;
@@ -68,14 +98,19 @@ export class OpenAIModel implements Model {
     this.#opts = typeof apiKeyOrOpts === "string"
       ? { apiKey: apiKeyOrOpts }
       : (apiKeyOrOpts ?? {});
-    // Auto-detect: use "chat" for local endpoints, "responses" for native OpenAI.
     this.#apiMode = this.#opts.apiMode
       ?? (this.#opts.baseURL ? "chat" : "responses");
+
+    const meta = getModelMeta(modelId);
     this.capabilities = {
       metered: !this.#opts.baseURL,
       localEndpoint: !!this.#opts.baseURL,
       supportsGrammar: true,
       supportsBudgetForcing: false,
+      supportsReasoningEffort: meta.supportsReasoningEffort,
+      supportsVerbosity: meta.supportsVerbosity,
+      cacheStrategy: "auto-prefix",
+      contextWindow: meta.contextWindow,
     };
   }
 
@@ -106,14 +141,17 @@ export class OpenAIModel implements Model {
     return this.#client;
   }
 
+  /** Effective reasoning effort: opts.thinking.effort > samplingParams.reasoningEffort > registry default. */
+  #resolveEffort(opts: GenerateOptions): string | undefined {
+    const thinkingEffort = opts.thinking?.effort;
+    const samplingEffort = this.#opts.samplingParams?.reasoningEffort;
+    const effort = thinkingEffort ?? samplingEffort;
+    if (!effort) return undefined;
+    return toOpenAIEffort(effort);
+  }
+
   /**
    * Responses API path (default for api.openai.com).
-   *
-   * Uses client.responses.create with stream:true. Advantages over Chat Completions:
-   * - Better prefix caching (40–80% higher cache hit rate in practice).
-   * - previous_response_id for stateful sessions and built-in compaction.
-   * - Native tool search and built-in tools (web, code, file, remote MCP).
-   * - Reasoning item persistence for o-series models.
    */
   async *#doGenerateResponses(
     messages: ModelMessage[],
@@ -123,35 +161,45 @@ export class OpenAIModel implements Model {
 
     const responsesApi = client["responses"] as Record<string, unknown> | undefined;
     if (!responsesApi || typeof responsesApi["create"] !== "function") {
-      // SDK version doesn't support Responses API — fall back to Chat Completions.
       yield* this.#doGenerateChat(messages, opts);
       return;
     }
 
-    const isReasoningModel = /^o\d/.test(this.modelId);
+    const meta = getModelMeta(this.modelId);
+    const isReasoning = meta.isReasoning;
     const inputItems = convertMessagesToResponsesInput(messages);
 
     const params: Record<string, unknown> = {
       model: this.modelId,
       input: inputItems,
       stream: true,
-      ...(isReasoningModel
+      ...(isReasoning
         ? { max_output_tokens: opts.maxTokens ?? 16384 }
         : { max_output_tokens: opts.maxTokens ?? 4096 }),
     };
 
-    if (!isReasoningModel) {
+    if (!isReasoning) {
       const temp = opts.temperature ?? this.#opts.samplingParams?.temperature;
       if (temp !== undefined) params["temperature"] = temp;
     }
-    if (isReasoningModel && this.#opts.samplingParams?.reasoningEffort) {
-      params["reasoning"] = { effort: this.#opts.samplingParams.reasoningEffort };
+
+    // A2: reasoning effort (full range).
+    const effort = this.#resolveEffort(opts);
+    if (effort !== undefined) params["reasoning"] = { effort };
+
+    // A2: verbosity for GPT-5+ models.
+    const verbosity = opts.verbosity ?? this.#opts.samplingParams?.verbosity;
+    if (verbosity !== undefined && meta.supportsVerbosity) {
+      params["text"] = { ...((params["text"] as Record<string, unknown>) ?? {}), verbosity };
     }
+
     if (opts.topP !== undefined) params["top_p"] = opts.topP;
     if (opts.stopSequences && opts.stopSequences.length > 0) params["stop"] = opts.stopSequences;
+
     if (opts.responseFormat) {
       if (opts.responseFormat.type === "json_schema") {
         params["text"] = {
+          ...((params["text"] as Record<string, unknown>) ?? {}),
           format: {
             type: "json_schema",
             name: opts.responseFormat.name ?? "response",
@@ -160,11 +208,23 @@ export class OpenAIModel implements Model {
           },
         };
       } else {
-        params["text"] = { format: { type: "json_object" } };
+        params["text"] = {
+          ...((params["text"] as Record<string, unknown>) ?? {}),
+          format: { type: "json_object" },
+        };
       }
     }
+
     if (opts.tools && opts.tools.length > 0) {
-      params["tools"] = opts.tools.map((t) => ({ type: "function", ...t }));
+      params["tools"] = opts.tools.map((t) => {
+        const tool = t as Record<string, unknown>;
+        // D2: custom tool grammar support.
+        if (tool["customToolGrammar"]) {
+          const { customToolGrammar, ...rest } = tool;
+          return { type: "function", ...rest, grammar: customToolGrammar };
+        }
+        return { type: "function", ...tool };
+      });
       params["tool_choice"] = "auto";
     }
 
@@ -179,13 +239,11 @@ export class OpenAIModel implements Model {
     for await (const event of stream) {
       const evType = event["type"] as string | undefined;
 
-      // Text delta.
       if (evType === "response.output_text.delta") {
         const delta = event["delta"] as string | undefined;
         if (delta) yield { type: "text_delta", delta };
       }
 
-      // Tool call argument delta.
       if (evType === "response.function_call_arguments.delta") {
         const callId = event["call_id"] as string | undefined;
         const delta = event["delta"] as string | undefined;
@@ -195,7 +253,6 @@ export class OpenAIModel implements Model {
         }
       }
 
-      // Tool call start — captures id and name.
       if (evType === "response.output_item.added") {
         const item = event["item"] as Record<string, unknown> | undefined;
         if (item?.["type"] === "function_call") {
@@ -208,7 +265,6 @@ export class OpenAIModel implements Model {
         }
       }
 
-      // Tool call done — emit tool_call event.
       if (evType === "response.function_call_arguments.done") {
         const callId = event["call_id"] as string | undefined;
         if (callId) {
@@ -228,17 +284,11 @@ export class OpenAIModel implements Model {
         }
       }
 
-      // Completion done.
       if (evType === "response.completed") {
         const response = event["response"] as Record<string, unknown> | undefined;
         const status = response?.["status"] as string | undefined;
         if (status === "completed") {
-          if (toolCallAccum.size > 0) {
-            yield { type: "stop", stopReason: "tool_use" };
-          } else {
-            yield { type: "stop", stopReason: "end_turn" };
-          }
-          // Usage from completed event.
+          yield { type: "stop", stopReason: toolCallAccum.size > 0 ? "tool_use" : "end_turn" };
           const usage = response?.["usage"] as Record<string, unknown> | undefined;
           if (usage) {
             inputTokens = (usage["input_tokens"] as number | undefined) ?? 0;
@@ -273,35 +323,34 @@ export class OpenAIModel implements Model {
 
     type CreateParams = Parameters<typeof client.chat.completions.create>[0];
 
-    const isReasoningModel = /^o\d/.test(this.modelId);
+    const meta = getModelMeta(this.modelId);
+    const isReasoning = meta.isReasoning;
 
     const params: CreateParams = {
       model: this.modelId,
       messages: openAiMessages,
       stream: true,
       stream_options: { include_usage: true },
-      ...(isReasoningModel
+      ...(isReasoning
         ? { max_completion_tokens: opts.maxTokens ?? 16384 }
         : { max_tokens: opts.maxTokens ?? 4096 }),
     };
     const p = params as unknown as Record<string, unknown>;
-    if (!isReasoningModel) {
-      if (opts.temperature !== undefined) {
-        p["temperature"] = opts.temperature;
-      } else if (this.#opts.samplingParams?.temperature !== undefined) {
-        p["temperature"] = this.#opts.samplingParams.temperature;
-      }
+
+    if (!isReasoning) {
+      const temp = opts.temperature ?? this.#opts.samplingParams?.temperature;
+      if (temp !== undefined) p["temperature"] = temp;
     }
-    if (isReasoningModel && this.#opts.samplingParams?.reasoningEffort) {
-      p["reasoning_effort"] = this.#opts.samplingParams.reasoningEffort;
-    }
+
+    // A2: reasoning effort (full range via Chat API).
+    const effort = this.#resolveEffort(opts);
+    if (effort !== undefined) p["reasoning_effort"] = effort;
+
     if (opts.topP !== undefined) p["top_p"] = opts.topP;
-    if (opts.seed !== undefined) {
-      p["seed"] = opts.seed;
-    } else if (this.#opts.samplingParams?.seed !== undefined) {
-      p["seed"] = this.#opts.samplingParams.seed;
-    }
+    const seed = opts.seed ?? this.#opts.samplingParams?.seed;
+    if (seed !== undefined) p["seed"] = seed;
     if (opts.stopSequences && opts.stopSequences.length > 0) p["stop"] = opts.stopSequences;
+
     if (opts.responseFormat && this.capabilities.supportsGrammar) {
       if (opts.responseFormat.type === "json_schema") {
         p["response_format"] = {
@@ -316,8 +365,16 @@ export class OpenAIModel implements Model {
         p["response_format"] = { type: "json_object" };
       }
     }
+
     if (opts.tools && opts.tools.length > 0) {
-      p["tools"] = opts.tools.map((t) => ({ type: "function", function: t }));
+      p["tools"] = opts.tools.map((t) => {
+        const tool = t as Record<string, unknown>;
+        if (tool["customToolGrammar"]) {
+          const { customToolGrammar, ...rest } = tool;
+          return { type: "function", function: rest, grammar: customToolGrammar };
+        }
+        return { type: "function", function: tool };
+      });
       p["tool_choice"] = "auto";
     }
 
@@ -357,7 +414,6 @@ export class OpenAIModel implements Model {
           try {
             input = JSON.parse(tc.arguments || "{}") as Record<string, unknown>;
           } catch {
-            console.warn(`[OpenAIModel] Failed to parse tool-call arguments for "${tc.name}". Raw: ${tc.arguments}`);
             input = { _raw: tc.arguments };
           }
           yield { type: "tool_call", toolCall: { type: "tool_use", id: tc.id, name: tc.name, input } };
@@ -429,6 +485,8 @@ function convertMessages(messages: ModelMessage[]): OpenAIMessage[] {
     for (const block of m.content) {
       if (block.type === "text") {
         textParts.push(block.text);
+      } else if (block.type === "thinking") {
+        // Skip thinking blocks — OpenAI doesn't accept them in history.
       } else if (block.type === "tool_use" && m.role === "assistant") {
         toolCalls.push({
           id: block.id,
@@ -450,17 +508,11 @@ function convertMessages(messages: ModelMessage[]): OpenAIMessage[] {
   return result;
 }
 
-/**
- * Convert ModelMessage[] to Responses API input format.
- * Responses API uses a flat item list with typed items rather than a message array.
- */
 function convertMessagesToResponsesInput(messages: ModelMessage[]): unknown[] {
   const items: unknown[] = [];
 
   for (const m of messages) {
     if (m.role === "system") {
-      // System messages become system instructions in the top-level params,
-      // but the Responses API also accepts them inline as "system" role messages.
       items.push({ type: "message", role: "system", content: typeof m.content === "string" ? m.content : "" });
       continue;
     }
@@ -477,6 +529,8 @@ function convertMessagesToResponsesInput(messages: ModelMessage[]): unknown[] {
     for (const block of m.content) {
       if (block.type === "text") {
         textParts.push(block.text);
+      } else if (block.type === "thinking") {
+        // Skip thinking blocks for Responses API input.
       } else if (block.type === "tool_use" && m.role === "assistant") {
         toolCalls.push({
           type: "function_call",
