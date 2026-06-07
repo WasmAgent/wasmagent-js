@@ -30,7 +30,7 @@ export interface CapabilityManifest {
  * Implementations:
  *  - JsKernel        — Node.js vm module (zero native deps, default)
  *  - WasmtimeKernel  — wasmtime Node binding (best perf, optional M1+)
- *  - V8WasmKernel    — pure-JS fallback (serverless-safe: Workers, Lambda)
+ *  - VmKernel        — pure-JS fallback (serverless-safe: Workers, Lambda)
  *
  * The kernel is stateful: variables/imports persist across run() calls (cross-step state).
  * TS 5.2 explicit resource management: use `await using kernel = new JsKernel(...)`.

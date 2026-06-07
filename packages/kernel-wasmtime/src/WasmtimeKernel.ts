@@ -252,7 +252,7 @@ export function buildJavySource(
   var __error__ = null;
   try {
     // Use indirect eval so the last-expression value is captured, matching
-    // the vm.Script.runInContext() semantics of JsKernel/V8WasmKernel.
+    // the vm.Script.runInContext() semantics of JsKernel/VmKernel.
     __output__ = (0, eval)(${JSON.stringify(code)});
   } catch (e) {
     __error__ = e instanceof Error ? e.message : String(e);

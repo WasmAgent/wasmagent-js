@@ -2,12 +2,12 @@
  * Dual-engine kernel factory (A1 dual-engine fallback).
  *
  * Tries to load the wasmtime Node binding first (best perf + real WASM sandbox).
- * Falls back to V8WasmKernel (pure-JS, serverless-safe) if the native addon
+ * Falls back to VmKernel (pure-JS, serverless-safe) if the native addon
  * is unavailable (Lambda, Alpine, Cloudflare Workers).
  * JsKernel is the default engine for local development.
  *
  * Edge runtime detection: if worker_threads is unavailable (Cloudflare Workers,
- * browser), JsKernel auto-falls back to V8WasmKernel (E1-edge).
+ * browser), JsKernel auto-falls back to VmKernel (E1-edge).
  */
 import type { KernelOptions, WasmKernel } from "./types.js";
 import { JsKernel } from "./JsKernel.js";
@@ -47,12 +47,12 @@ export async function createKernel(
         );
       }
       // E1-edge: non-Node runtimes (Cloudflare Workers, browser) lack node:vm and
-      // worker_threads. V8WasmKernel also uses node:vm and will crash at runtime.
+      // worker_threads. VmKernel also uses node:vm and will crash at runtime.
       // Direct users to the edge-safe kernel package instead.
       if (await isEdgeRuntime()) {
         throw new Error(
           "[agentkit] Non-Node runtime detected (Cloudflare Workers / browser / Deno).\n" +
-          "The default JsKernel and V8WasmKernel both require node:vm, which is unavailable.\n" +
+          "The default JsKernel and VmKernel both require node:vm, which is unavailable.\n" +
           "Use the edge-safe QuickJS kernel instead:\n" +
           "  import { QuickJSKernel } from \"@agentkit-js/kernel-quickjs\";\n" +
           "  const kernel = new QuickJSKernel();"
