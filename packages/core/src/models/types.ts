@@ -169,6 +169,16 @@ export interface EnhancementPolicy {
   budgetForcing?: {
     enabled: boolean;
   };
+  /** Enable parallel fork-join diversity reasoning (L4). Forks N branches, synthesises. */
+  parallelForkJoin?: {
+    enabled: boolean;
+    /** Number of parallel branches (default 3). */
+    branches?: number;
+    /** Max concurrent branch calls (default: branches). */
+    concurrency?: number;
+    /** Aggregation strategy: "summary" (default) or "first". */
+    aggregation?: "summary" | "first";
+  };
 }
 
 /** Minimum token threshold per model for cache breakpoints to be effective (B1). */

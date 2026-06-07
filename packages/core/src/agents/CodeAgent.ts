@@ -9,6 +9,7 @@ import { TokenBudget } from "../models/types.js";
 import { SelfConsistencyRunner } from "../enhancement/SelfConsistencyRunner.js";
 import { ReflectRefineRunner } from "../enhancement/ReflectRefineRunner.js";
 import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
+import { ParallelForkJoinRunner } from "../enhancement/ParallelForkJoinRunner.js";
 import type { AgentEvent, ActionStep, FinalAnswerStep } from "../types/events.js";
 import { runPlanningStep, extractTagContent } from "./prompts.js";
 
@@ -322,6 +323,13 @@ export class CodeAgent {
         scOpts.earlyStopThreshold = this.#policy.selfConsistency.earlyStopThreshold;
       }
       const result = await new SelfConsistencyRunner(scOpts).run(this.#model, messages);
+      refined = result.answer || answerStr;
+    } else if (this.#policy?.parallelForkJoin?.enabled) {
+      const fjOpts: { branches?: number; concurrency?: number; aggregation?: "summary" | "first" } = {};
+      if (this.#policy.parallelForkJoin.branches !== undefined) fjOpts.branches = this.#policy.parallelForkJoin.branches;
+      if (this.#policy.parallelForkJoin.concurrency !== undefined) fjOpts.concurrency = this.#policy.parallelForkJoin.concurrency;
+      if (this.#policy.parallelForkJoin.aggregation !== undefined) fjOpts.aggregation = this.#policy.parallelForkJoin.aggregation;
+      const result = await new ParallelForkJoinRunner(fjOpts).run(this.#model, messages);
       refined = result.answer || answerStr;
     }
 

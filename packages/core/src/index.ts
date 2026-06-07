@@ -31,8 +31,8 @@ export type {
   EnhancementPolicy,
 } from "./models/index.js";
 
-// Enhancement runners (P2/P3/S4)
-export { SelfConsistencyRunner, ReflectRefineRunner, BudgetForcingRunner } from "./enhancement/index.js";
+// Enhancement runners (P2/P3/S4/L4)
+export { SelfConsistencyRunner, ReflectRefineRunner, BudgetForcingRunner, ParallelForkJoinRunner } from "./enhancement/index.js";
 export type {
   SelfConsistencyOptions,
   SelfConsistencyResult,
@@ -40,6 +40,8 @@ export type {
   ReflectRefineResult,
   BudgetForcingOptions,
   BudgetForcingResult,
+  ParallelForkJoinOptions,
+  ParallelForkJoinResult,
 } from "./enhancement/index.js";
 
 // Tools
