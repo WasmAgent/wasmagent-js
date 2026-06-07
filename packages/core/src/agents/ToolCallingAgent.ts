@@ -14,6 +14,10 @@ import { runPlanningStep } from "./prompts.js";
 import { Scheduler } from "../scheduler/Scheduler.js";
 import { SimpleIR } from "../scheduler/ir.js";
 import type { IRNode } from "../scheduler/ir.js";
+import { deriveDependencies } from "../scheduler/deriveDeps.js";
+import type { StopCondition } from "./stopConditions.js";
+import { callFingerprint } from "./stopConditions.js";
+import type { Checkpointer } from "../checkpoint/index.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant. Use the provided tools to answer questions.
 When you have a final answer, respond with plain text (no tool call).`;
@@ -37,6 +41,18 @@ export interface ToolCallingAgentOptions {
   assembler?: MessageAssembler;
   /** DAG scheduler mode for parallel tool dispatch. Default: "dag". */
   scheduler?: "dag" | "parallel";
+  /**
+   * Composable stop conditions checked before each step. The first condition
+   * that returns true terminates the run with a "stop_condition" error event.
+   * See stopConditions.ts for built-ins: stepCountIs, noProgress, costBudget.
+   */
+  stopWhen?: StopCondition[];
+  /**
+   * Optional checkpointer used for per-tool human approval (needsApproval).
+   * Required when any tool has needsApproval set; the agent emits an
+   * "await_human_input" event and polls the checkpointer until a response arrives.
+   */
+  checkpointer?: Checkpointer;
 }
 
 /**
@@ -59,6 +75,8 @@ export class ToolCallingAgent {
   readonly #toolsSchema: object[];
   readonly #toolTimeoutMs: number | undefined;
   readonly #schedulerMode: "dag" | "parallel";
+  readonly #stopWhen: StopCondition[];
+  readonly #checkpointer: Checkpointer | undefined;
 
   constructor(opts: ToolCallingAgentOptions) {
     this.#tools = new ToolRegistry();
@@ -71,6 +89,8 @@ export class ToolCallingAgent {
     this.#policy = opts.enhancementPolicy;
     this.#toolTimeoutMs = opts.toolTimeoutMs;
     this.#schedulerMode = opts.scheduler ?? "dag";
+    this.#stopWhen = opts.stopWhen ?? [];
+    this.#checkpointer = opts.checkpointer;
     this.#toolsSchema = this.#tools.toJsonSchema();
     this.#assembler = opts.assembler ?? new MessageAssembler({
       systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
@@ -106,8 +126,32 @@ export class ToolCallingAgent {
     const budgetMaxTokens = this.#policy?.budget?.maxTokens;
     const runStartMs = Date.now();
     const budgetMaxDurationMs = this.#policy?.budget?.maxDurationMs;
+    // C2: call fingerprint history for noProgress detection.
+    const callHistory: string[][] = [];
 
     for (let step = 1; step <= this.#maxSteps; step++) {
+      // C2: check composable stop conditions before each step.
+      if (this.#stopWhen.length > 0) {
+        const ctx = {
+          step,
+          totalTokens: budget.total,
+          lastCallFingerprints: callHistory.at(-1) ?? [],
+          callHistory,
+        };
+        for (const cond of this.#stopWhen) {
+          if (cond(ctx)) {
+            yield {
+              traceId,
+              parentTraceId,
+              channel: "text",
+              event: "error",
+              data: { error: `Stop condition triggered at step ${step}` },
+              timestampMs: Date.now(),
+            };
+            return;
+          }
+        }
+      }
       // P1: enforce ResourceBudget limits before each step.
       // Note: budget.total is updated only when a usage event arrives (after the full
       // model response). A streaming response that exceeds the limit mid-stream will
@@ -254,20 +298,81 @@ export class ToolCallingAgent {
         };
       }
 
+      // C1: per-tool human approval (needsApproval).
+      // Check each pending call; if any tool requires approval, pause and wait.
+      if (this.#checkpointer) {
+        for (const call of pendingCalls) {
+          const toolDef = this.#tools.get(call.name);
+          if (!toolDef?.needsApproval) continue;
+          const needs = typeof toolDef.needsApproval === "function"
+            ? await toolDef.needsApproval(call.input as never)
+            : toolDef.needsApproval;
+          if (!needs) continue;
+
+          const promptId = `approval-${call.id}`;
+          const prompt = `Approve execution of tool "${call.name}" with args: ${JSON.stringify(call.input)}?`;
+
+          // Save checkpoint so caller can resume after providing response.
+          await this.#checkpointer.save(traceId, {
+            traceId,
+            task,
+            history: [],
+            stepIndex: step,
+            savedAtMs: Date.now(),
+            pendingHumanInput: { promptId, prompt },
+          });
+
+          yield {
+            traceId,
+            parentTraceId,
+            channel: "status",
+            event: "await_human_input",
+            data: { promptId, prompt, step },
+            timestampMs: Date.now(),
+          };
+
+          // Poll for response.
+          let approved = false;
+          for (let poll = 0; poll < 600; poll++) {
+            await new Promise<void>((r) => setTimeout(r, 100));
+            const snapshot = await this.#checkpointer.load(traceId);
+            if (snapshot?.humanResponse?.promptId === promptId) {
+              const resp = snapshot.humanResponse.response.trim().toLowerCase();
+              approved = resp === "yes" || resp === "y" || resp === "approve" || resp === "approved";
+              await this.#checkpointer.delete(traceId);
+              break;
+            }
+          }
+
+          if (!approved) {
+            yield {
+              traceId,
+              parentTraceId,
+              channel: "text",
+              event: "error",
+              data: { error: `Tool "${call.name}" execution denied by human reviewer`, step },
+              timestampMs: Date.now(),
+            };
+            return;
+          }
+        }
+      }
+
       // A1: build DAG IR and execute via Scheduler when scheduler="dag" (default).
       // Falls back to Promise.all when scheduler="parallel".
       const resolvedCalls: ParallelToolUseCall[] = [];
 
       if (this.#schedulerMode === "dag") {
         // Map tool_use blocks to IRNode[] using readOnly/idempotent from ToolDefinition.
-        // Conservative dependency rule: no cross-call input references → no dependsOn edges.
+        // Derive dependsOn edges from $<callId> placeholder references in call inputs.
+        const depMap = deriveDependencies(pendingCalls.map((c) => ({ id: c.id, input: c.input })));
         const nodes: IRNode[] = pendingCalls.map((call) => {
           const toolDef = this.#tools.get(call.name);
           return {
             id: call.id,
             toolName: call.name,
             args: call.input,
-            dependsOn: [],
+            dependsOn: depMap.get(call.id) ?? [],
             readOnly: toolDef?.readOnly ?? false,
             idempotent: toolDef?.idempotent ?? false,
           };
@@ -390,6 +495,8 @@ export class ToolCallingAgent {
         };
         this.#assembler.addStep(parallelStep);
       }
+      // C2: record call fingerprints for noProgress detection.
+      callHistory.push(resolvedCalls.map((c) => callFingerprint(c.toolName, c.toolInput)));
     }
 
     yield {

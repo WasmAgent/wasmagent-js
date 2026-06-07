@@ -14,7 +14,12 @@ export interface OpenAIModelOptions {
   baseURL?: string;
   /** Extra HTTP headers forwarded to every request (e.g. custom auth, routing keys). */
   defaultHeaders?: Record<string, string>;
-  samplingParams?: { temperature?: number; seed?: number };
+  samplingParams?: {
+    temperature?: number;
+    seed?: number;
+    /** For o-series reasoning models: controls thinking depth. One of "low" | "medium" | "high". */
+    reasoningEffort?: "low" | "medium" | "high";
+  };
   /** Retry policy for 429/5xx/network errors (C1). */
   retry?: RetryPolicy;
 }
@@ -83,35 +88,49 @@ export class OpenAIModel implements Model {
     >[0]["messages"];
 
     type CreateParams = Parameters<typeof client.chat.completions.create>[0];
+
+    // D1: detect o-series reasoning models (o1, o3, o4, o4-mini, etc.).
+    // These use max_completion_tokens instead of max_tokens and do not support temperature.
+    const isReasoningModel = /^o\d/.test(this.modelId);
+
     const params: CreateParams = {
       model: this.modelId,
-      max_tokens: opts.maxTokens ?? 4096,
       messages: openAiMessages,
       stream: true,
       stream_options: { include_usage: true },
+      ...(isReasoningModel
+        ? { max_completion_tokens: opts.maxTokens ?? 16384 }
+        : { max_tokens: opts.maxTokens ?? 4096 }),
     };
-    if (opts.temperature !== undefined) {
-      (params as unknown as Record<string, unknown>)["temperature"] = opts.temperature;
-    } else if (this.#opts.samplingParams?.temperature !== undefined) {
-      (params as unknown as Record<string, unknown>)["temperature"] = this.#opts.samplingParams.temperature;
+    const p = params as unknown as Record<string, unknown>;
+    if (!isReasoningModel) {
+      if (opts.temperature !== undefined) {
+        p["temperature"] = opts.temperature;
+      } else if (this.#opts.samplingParams?.temperature !== undefined) {
+        p["temperature"] = this.#opts.samplingParams.temperature;
+      }
+    }
+    // D1: reasoning_effort for o-series (optional, passed through samplingParams).
+    if (isReasoningModel && this.#opts.samplingParams?.reasoningEffort) {
+      p["reasoning_effort"] = this.#opts.samplingParams.reasoningEffort;
     }
     if (opts.topP !== undefined) {
-      (params as unknown as Record<string, unknown>)["top_p"] = opts.topP;
+      p["top_p"] = opts.topP;
     }
     if (opts.seed !== undefined) {
-      (params as unknown as Record<string, unknown>)["seed"] = opts.seed;
+      p["seed"] = opts.seed;
     } else if (this.#opts.samplingParams?.seed !== undefined) {
-      (params as unknown as Record<string, unknown>)["seed"] = this.#opts.samplingParams.seed;
+      p["seed"] = this.#opts.samplingParams.seed;
     }
     if (opts.stopSequences && opts.stopSequences.length > 0) {
-      (params as unknown as Record<string, unknown>)["stop"] = opts.stopSequences;
+      p["stop"] = opts.stopSequences;
     }
     if (opts.responseFormat) {
       // S1: structured output — only applied when capabilities.supportsGrammar is true.
       // OpenAI: pass response_format directly. Callers fall back to S2 when not supported.
       if (this.capabilities.supportsGrammar) {
         if (opts.responseFormat.type === "json_schema") {
-          (params as unknown as Record<string, unknown>)["response_format"] = {
+          p["response_format"] = {
             type: "json_schema",
             json_schema: {
               name: opts.responseFormat.name ?? "response",
@@ -120,16 +139,16 @@ export class OpenAIModel implements Model {
             },
           };
         } else {
-          (params as unknown as Record<string, unknown>)["response_format"] = { type: "json_object" };
+          p["response_format"] = { type: "json_object" };
         }
       }
     }
     if (opts.tools && opts.tools.length > 0) {
-      (params as unknown as Record<string, unknown>)["tools"] = opts.tools.map((t) => ({
+      p["tools"] = opts.tools.map((t) => ({
         type: "function",
         function: t,
       }));
-      (params as unknown as Record<string, unknown>)["tool_choice"] = "auto";
+      p["tool_choice"] = "auto";
     }
 
     type OAIChunk = import("openai/resources/index.js").ChatCompletionChunk;

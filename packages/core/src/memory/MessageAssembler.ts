@@ -42,6 +42,12 @@ export class MessageAssembler {
   #flatMsgCount = 0;
   /** Guard: true while compact() is in progress to prevent concurrent invocations. */
   #compacting = false;
+  /**
+   * D2 working memory scratchpad — persists across steps as a user-role message
+   * injected right after the system message. Does NOT modify the system message,
+   * preserving Anthropic cache prefix stability.
+   */
+  #scratchpad: string | null = null;
 
   constructor(config: AssemblerConfig) {
     this.#config = config;
@@ -78,7 +84,8 @@ export class MessageAssembler {
    */
   build(): ModelMessage[] {
     const fewShot = this.#config.fewShotExamples?.length ?? 0;
-    const total = 1 + fewShot + this.#flatMsgCount;
+    const scratchpadSlot = this.#scratchpad !== null ? 1 : 0;
+    const total = 1 + fewShot + scratchpadSlot + this.#flatMsgCount;
     const messages: ModelMessage[] = new Array(total);
     let idx = 0;
 
@@ -90,7 +97,16 @@ export class MessageAssembler {
       for (const m of this.#config.fewShotExamples!) messages[idx++] = m;
     }
 
-    // 3. Assemble history from cache using index-assignment (no push, no spread).
+    // 3. D2 scratchpad — cross-step working memory, injected as a user message.
+    //    Placed after system/few-shot so it doesn't break the B1 cache prefix.
+    if (this.#scratchpad !== null) {
+      messages[idx++] = {
+        role: "user",
+        content: `<scratchpad>\n${this.#scratchpad}\n</scratchpad>`,
+      };
+    }
+
+    // 4. Assemble history from cache using index-assignment (no push, no spread).
     for (let i = 0; i < this.#msgCache.length; i++) {
       const stepMsgs = this.#msgCache[i]!;
       if (stepMsgs.length === 0) continue;
@@ -119,6 +135,20 @@ export class MessageAssembler {
 
   /** Current history length (number of steps recorded). */
   get historyLength(): number { return this.#history.length; }
+
+  /**
+   * D2 working memory scratchpad.
+   * Set to a non-null string to inject a persistent <scratchpad> block into
+   * every model call, visible across all steps. Set to null to clear.
+   * Does NOT modify the system message — B1 cache prefix stability is preserved.
+   */
+  setScratchpad(content: string | null): void {
+    this.#scratchpad = content;
+  }
+
+  getScratchpad(): string | null {
+    return this.#scratchpad;
+  }
 
   /**
    * Compact long history by summarizing older steps (P4).

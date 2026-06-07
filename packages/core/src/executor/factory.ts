@@ -46,14 +46,17 @@ export async function createKernel(
           '  const kernel = new PyodideKernel();'
         );
       }
-      // E1-edge: fall back to V8WasmKernel when worker_threads is not available
-      // (Cloudflare Workers, browser, Deno without --unstable-node-globals).
+      // E1-edge: non-Node runtimes (Cloudflare Workers, browser) lack node:vm and
+      // worker_threads. V8WasmKernel also uses node:vm and will crash at runtime.
+      // Direct users to the edge-safe kernel package instead.
       if (await isEdgeRuntime()) {
-        console.warn(
-          "[agentkit] worker_threads unavailable — falling back to V8WasmKernel for edge runtime"
+        throw new Error(
+          "[agentkit] Non-Node runtime detected (Cloudflare Workers / browser / Deno).\n" +
+          "The default JsKernel and V8WasmKernel both require node:vm, which is unavailable.\n" +
+          "Use the edge-safe QuickJS kernel instead:\n" +
+          "  import { QuickJSKernel } from \"@agentkit-js/kernel-quickjs\";\n" +
+          "  const kernel = new QuickJSKernel();"
         );
-        const { V8WasmKernel } = await import("./V8WasmKernel.js");
-        return new V8WasmKernel(opts);
       }
       return new JsKernel();
 
