@@ -12,13 +12,14 @@ import { withRetryGenerator } from "./retry.js";
 /**
  * Base class for OpenAI Chat Completions-compatible endpoints (B1).
  *
- * Chinese providers (DeepSeek, Kimi/Moonshot, GLM/Zhipu, Qwen/DashScope, MiniMax)
+ * Chinese providers (DeepSeek, Kimi/Moonshot, GLM/Zhipu, Qwen/DashScope, MiniMax, Doubao/Ark)
  * expose OpenAI-compatible /chat/completions but differ in:
  *  - How they return reasoning/thinking text (non-standard fields).
- *  - Whether they accept/ignore reasoning parameters.
+ *  - How they accept thinking mode and effort parameters.
+ *  - Whether multi-turn requires reasoning_content round-trip.
  *
- * Subclasses override mapReasoningField() and mapRequestParams() to handle
- * provider-specific differences without duplicating retry/stream logic.
+ * Subclasses override mapReasoningField(), mapRequestParams(), mapThinkingParams(),
+ * and requiresReasoningRoundTrip() to handle provider-specific differences.
  */
 export abstract class OpenAICompatModel implements Model {
   readonly providerId: string;
@@ -39,9 +40,9 @@ export abstract class OpenAICompatModel implements Model {
       localEndpoint: false,
       supportsGrammar: true,
       supportsBudgetForcing: false,
-      supportsReasoningEffort: false,
+      supportsReasoningEffort: opts.supportsReasoningEffort ?? false,
       supportsVerbosity: false,
-      cacheStrategy: "auto-prefix",
+      cacheStrategy: opts.cacheStrategy ?? "auto-prefix",
       contextWindow: meta.contextWindow,
       ...this.extraCapabilities(),
     };
@@ -49,7 +50,6 @@ export abstract class OpenAICompatModel implements Model {
       caps.reasoningContentField = opts.reasoningContentField;
     }
     this.capabilities = caps;
-    // Store baseURL on opts for client construction.
     (this.#opts as Record<string, unknown>)["_baseURL"] = baseUrl;
   }
 
@@ -61,17 +61,56 @@ export abstract class OpenAICompatModel implements Model {
   /**
    * Map a raw API chunk to extract reasoning text from a provider-specific field.
    * Return undefined if this chunk contains no reasoning content.
+   *
+   * @param _chunk  Raw API response chunk.
+   * @param _opts   GenerateOptions for the current request (for runtime thinking state).
    */
-  protected mapReasoningField(_chunk: Record<string, unknown>): string | undefined {
+  protected mapReasoningField(
+    _chunk: Record<string, unknown>,
+    _opts: GenerateOptions
+  ): string | undefined {
     return undefined;
   }
 
   /**
-   * Provider-specific request parameter overrides.
-   * Return an object to merge (or override) into the base request params.
+   * Provider-specific request parameter overrides (non-thinking).
+   * Return an object to merge into the base request params.
    */
   protected mapRequestParams(_opts: GenerateOptions): Record<string, unknown> {
     return {};
+  }
+
+  /**
+   * Provider-specific thinking/reasoning parameter encoding.
+   *
+   * Called after mapRequestParams so thinking params take precedence.
+   * Return an object to merge into request params (use extra_body for non-standard keys).
+   *
+   * Default: returns {} (no thinking params emitted).
+   */
+  protected mapThinkingParams(_opts: GenerateOptions): Record<string, unknown> {
+    return {};
+  }
+
+  /**
+   * Whether this provider requires reasoning_content to be echoed back
+   * in subsequent assistant messages for multi-turn correctness.
+   *
+   * DeepSeek and Doubao validate the round-trip; omitting it causes API errors.
+   */
+  protected requiresReasoningRoundTrip(): boolean {
+    return false;
+  }
+
+  /**
+   * Resolve whether thinking is enabled for this request.
+   * opts.thinking.mode takes precedence over the constructor-time default.
+   */
+  protected thinkingEnabled(opts?: GenerateOptions, constructorDefault = true): boolean {
+    const mode = opts?.thinking?.mode;
+    if (mode === "off") return false;
+    if (mode === "enabled" || mode === "adaptive") return true;
+    return constructorDefault;
   }
 
   async *generate(
@@ -99,9 +138,10 @@ export abstract class OpenAICompatModel implements Model {
   ): AsyncGenerator<StreamEvent> {
     const client = await this.#ensureClient() as InstanceType<typeof import("openai").default>;
 
-    const openAiMessages = convertCompatMessages(messages) as Parameters<
-      typeof client.chat.completions.create
-    >[0]["messages"];
+    const openAiMessages = convertCompatMessages(
+      messages,
+      this.requiresReasoningRoundTrip()
+    ) as Parameters<typeof client.chat.completions.create>[0]["messages"];
 
     const meta = getModelMeta(this.modelId);
 
@@ -141,9 +181,15 @@ export abstract class OpenAICompatModel implements Model {
       params["tool_choice"] = "auto";
     }
 
-    // Merge provider-specific params (subclass hook).
+    // Non-thinking provider overrides.
     const extra = this.mapRequestParams(opts);
     for (const [k, v] of Object.entries(extra)) {
+      params[k] = v;
+    }
+
+    // Thinking params — merged last so they take precedence.
+    const thinkingExtra = this.mapThinkingParams(opts);
+    for (const [k, v] of Object.entries(thinkingExtra)) {
       params[k] = v;
     }
 
@@ -162,9 +208,8 @@ export abstract class OpenAICompatModel implements Model {
         yield { type: "text_delta", delta: choice.delta.content };
       }
 
-      // Provider-specific reasoning field extraction.
       const rawChunk = chunk as unknown as Record<string, unknown>;
-      const reasoningText = this.mapReasoningField(rawChunk);
+      const reasoningText = this.mapReasoningField(rawChunk, opts);
       if (reasoningText) {
         yield { type: "thinking_delta", delta: reasoningText };
       }
@@ -222,14 +267,31 @@ export interface OpenAICompatModelOptions {
   retry?: RetryPolicy;
   /**
    * Name of the field in the raw API response chunk that carries reasoning text.
-   * E.g. "reasoning_content" for DeepSeek, "thinking_content" for Kimi.
+   * E.g. "reasoning_content" for DeepSeek/Doubao/Qwen/Zhipu, "thinking_content" for Kimi.
    */
   reasoningContentField?: string;
+  /**
+   * Override the cache strategy declared in capabilities.
+   * Subclasses pass this to customize without overriding extraCapabilities().
+   */
+  cacheStrategy?: import("./types.js").CacheStrategy;
+  /** Whether this adapter supports per-request reasoning effort control. */
+  supportsReasoningEffort?: boolean;
 }
 
-// ── Message converter (same as OpenAIModel but without cache annotations) ────
+// ── Message converter ─────────────────────────────────────────────────────────
 
-function convertCompatMessages(messages: ModelMessage[]): unknown[] {
+/**
+ * Convert agentkit ModelMessage[] to OpenAI-compatible message array.
+ *
+ * @param roundTripReasoning - When true, thinking blocks are echoed back as
+ *   reasoning_content on assistant messages. Required by Doubao/DeepSeek in
+ *   multi-turn thinking mode to avoid API validation errors.
+ */
+export function convertCompatMessages(
+  messages: ModelMessage[],
+  roundTripReasoning = false
+): unknown[] {
   const result: unknown[] = [];
   for (const m of messages) {
     if (m.role === "system") {
@@ -244,11 +306,15 @@ function convertCompatMessages(messages: ModelMessage[]): unknown[] {
     }
     const toolCalls: Array<{ id: string; type: "function"; function: { name: string; arguments: string } }> = [];
     const textParts: string[] = [];
+    let reasoningContent: string | undefined;
     for (const block of m.content) {
       if (block.type === "text") {
         textParts.push(block.text);
       } else if (block.type === "thinking") {
-        // Skip thinking blocks — compat endpoints don't accept them.
+        if (roundTripReasoning && m.role === "assistant") {
+          reasoningContent = block.thinking;
+        }
+        // Otherwise skip — compat endpoints don't accept thinking blocks.
       } else if (block.type === "tool_use" && m.role === "assistant") {
         toolCalls.push({
           id: block.id,
@@ -260,9 +326,19 @@ function convertCompatMessages(messages: ModelMessage[]): unknown[] {
       }
     }
     if (toolCalls.length > 0) {
-      result.push({ role: "assistant", content: textParts.join("\n") || null, tool_calls: toolCalls });
+      const msg: Record<string, unknown> = {
+        role: "assistant",
+        content: textParts.join("\n") || null,
+        tool_calls: toolCalls,
+      };
+      if (reasoningContent !== undefined) msg["reasoning_content"] = reasoningContent;
+      result.push(msg);
     } else if (textParts.length > 0 && (m.role === "user" || m.role === "assistant")) {
-      result.push({ role: m.role, content: textParts.join("\n") });
+      const msg: Record<string, unknown> = { role: m.role, content: textParts.join("\n") };
+      if (reasoningContent !== undefined && m.role === "assistant") {
+        msg["reasoning_content"] = reasoningContent;
+      }
+      result.push(msg);
     }
   }
   return result;

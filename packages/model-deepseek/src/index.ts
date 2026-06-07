@@ -29,6 +29,9 @@ export interface DeepSeekModelOptions extends OpenAICompatModelOptions {
  * field alongside the main `content`. This adapter extracts it and emits
  * it as `thinking_delta` stream events so the rest of the framework treats
  * it uniformly alongside Anthropic thinking.
+ *
+ * Multi-turn: DeepSeek requires reasoning_content to be echoed back in
+ * subsequent assistant messages; omitting it causes API validation errors.
  */
 export class DeepSeekModel extends OpenAICompatModel {
   readonly #preserveThinking: boolean;
@@ -51,11 +54,15 @@ export class DeepSeekModel extends OpenAICompatModel {
     return { reasoningContentField: "reasoning_content" };
   }
 
+  protected override requiresReasoningRoundTrip(): boolean {
+    return true;
+  }
+
   /**
    * Extract DeepSeek's reasoning_content from the delta.
    * The field appears at: chunk.choices[0].delta.reasoning_content
    */
-  protected override mapReasoningField(chunk: Record<string, unknown>): string | undefined {
+  protected override mapReasoningField(chunk: Record<string, unknown>, _opts: GenerateOptions): string | undefined {
     if (!this.#preserveThinking) return undefined;
     const choices = chunk["choices"] as Array<Record<string, unknown>> | undefined;
     const delta = choices?.[0]?.["delta"] as Record<string, unknown> | undefined;

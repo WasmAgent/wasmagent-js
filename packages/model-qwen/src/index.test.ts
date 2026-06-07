@@ -18,13 +18,17 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
   };
 }
 
-async function collectEvents(chunks: OAIChunk[], modelId = "qwen3-max"): Promise<StreamEvent[]> {
+async function collectEvents(
+  chunks: OAIChunk[],
+  modelId = "qwen3-max",
+  opts: Parameters<import("./index.js").QwenModel["generate"]>[1] = {}
+): Promise<StreamEvent[]> {
   const mockCreate = vi.fn().mockResolvedValue(makeChunkStream(chunks));
   vi.doMock("openai", () => ({ default: vi.fn().mockImplementation(() => ({ chat: { completions: { create: mockCreate } } })) }));
   const { QwenModel } = await import("./index.js?t=" + Date.now());
   const model = new QwenModel(modelId, "key");
   const events: StreamEvent[] = [];
-  for await (const e of model.generate([{ role: "user", content: "x" }])) events.push(e);
+  for await (const e of model.generate([{ role: "user", content: "x" }], opts)) events.push(e);
   vi.doUnmock("openai");
   return events;
 }
@@ -51,6 +55,14 @@ describe("QwenModel", () => {
     const events = await collectEvents([
       { choices: [{ delta: { reasoning_content: "skip" }, finish_reason: "stop" }] },
     ], "qwen2.5-72b-instruct");
+    expect(events.filter((e) => e.type === "thinking_delta")).toHaveLength(0);
+  });
+
+  it("opts.thinking.mode:off suppresses thinking_delta even on qwen3 model", async () => {
+    const events = await collectEvents([
+      { choices: [{ delta: { reasoning_content: "hidden" }, finish_reason: null }] },
+      { choices: [{ delta: {}, finish_reason: "stop" }] },
+    ], "qwen3-max", { thinking: { mode: "off" } });
     expect(events.filter((e) => e.type === "thinking_delta")).toHaveLength(0);
   });
 

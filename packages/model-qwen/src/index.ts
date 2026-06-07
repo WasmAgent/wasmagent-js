@@ -25,9 +25,10 @@ export interface QwenModelOptions extends OpenAICompatModelOptions {
  *
  * Qwen3-Max/Plus (262K–1M context) supports thinking via `enable_thinking`
  * parameter. Reasoning text appears in `reasoning_content` on the delta.
+ * Runtime opts.thinking.mode overrides the constructor-time default.
  */
 export class QwenModel extends OpenAICompatModel {
-  readonly #enableThinking: boolean;
+  readonly #defaultEnableThinking: boolean;
 
   constructor(
     modelId: QwenModelId,
@@ -41,15 +42,15 @@ export class QwenModel extends OpenAICompatModel {
       ...opts,
       reasoningContentField: "reasoning_content",
     });
-    this.#enableThinking = opts.enableThinking ?? isThinkingModel;
+    this.#defaultEnableThinking = opts.enableThinking ?? isThinkingModel;
   }
 
   protected override extraCapabilities(): Partial<ModelCapabilities> {
     return { reasoningContentField: "reasoning_content" };
   }
 
-  protected override mapReasoningField(chunk: Record<string, unknown>): string | undefined {
-    if (!this.#enableThinking) return undefined;
+  protected override mapReasoningField(chunk: Record<string, unknown>, opts: GenerateOptions): string | undefined {
+    if (!this.thinkingEnabled(opts, this.#defaultEnableThinking)) return undefined;
     const choices = chunk["choices"] as Array<Record<string, unknown>> | undefined;
     const delta = choices?.[0]?.["delta"] as Record<string, unknown> | undefined;
     const reasoning = delta?.["reasoning_content"];
@@ -57,10 +58,12 @@ export class QwenModel extends OpenAICompatModel {
     return undefined;
   }
 
+  protected override mapThinkingParams(opts: GenerateOptions): Record<string, unknown> {
+    const enabled = this.thinkingEnabled(opts, this.#defaultEnableThinking);
+    return { enable_thinking: enabled };
+  }
+
   protected override mapRequestParams(_opts: GenerateOptions): Record<string, unknown> {
-    if (this.#enableThinking) {
-      return { enable_thinking: true };
-    }
     return {};
   }
 }
