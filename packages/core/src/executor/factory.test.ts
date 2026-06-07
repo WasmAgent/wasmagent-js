@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { createKernel } from "../executor/factory.js";
 import { JsKernel } from "../executor/JsKernel.js";
-import { V8WasmKernel } from "../executor/V8WasmKernel.js";
+import { VmKernel } from "../executor/VmKernel.js";
 
 describe("createKernel factory", () => {
   it("returns JsKernel by default", async () => {
@@ -14,9 +14,9 @@ describe("createKernel factory", () => {
     expect(kernel).toBeInstanceOf(JsKernel);
   });
 
-  it("returns V8WasmKernel for engine='v8-wasm'", async () => {
+  it("returns VmKernel for engine='v8-wasm'", async () => {
     const kernel = await createKernel({ engine: "v8-wasm" });
-    expect(kernel).toBeInstanceOf(V8WasmKernel);
+    expect(kernel).toBeInstanceOf(VmKernel);
   });
 
   it("throws for unknown engine", async () => {

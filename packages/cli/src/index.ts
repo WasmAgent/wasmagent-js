@@ -26,7 +26,7 @@ if (isMain) {
   const { values, positionals } = parseArgs({
     args: process.argv.slice(2),
     options: {
-      model: { type: "string", default: AnthropicModels.CLAUDE_SONNET_4 },
+      model: { type: "string", default: AnthropicModels.SONNET_LATEST },
       "max-steps": { type: "string", default: "20" },
       "api-key": { type: "string" },
       stream: { type: "boolean", default: false },
@@ -88,7 +88,7 @@ export async function runCommand(
   );
 
   const model = new AnthropicModel(
-    typeof opts["model"] === "string" ? opts["model"] : AnthropicModels.CLAUDE_SONNET_4,
+    typeof opts["model"] === "string" ? opts["model"] : AnthropicModels.SONNET_LATEST,
     apiKey
   );
   const maxSteps = parseInt(

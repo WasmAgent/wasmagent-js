@@ -3,7 +3,7 @@ export { CodeAgent, ToolCallingAgent, stepCountIs, noProgress, costBudget, callF
 export type { CodeAgentOptions, ToolCallingAgentOptions, StopCondition, StopConditionContext, AsToolOptions, SubagentRunnable } from "./agents/index.js";
 
 // Executor
-export { JsKernel, V8WasmKernel, createKernel, buildCapabilityGlobals, buildSandboxFetch, assertPathAllowed, matchGlob } from "./executor/index.js";
+export { JsKernel, VmKernel, createKernel, buildCapabilityGlobals, buildSandboxFetch, assertPathAllowed, matchGlob } from "./executor/index.js";
 export type {
   WasmKernel,
   KernelResult,

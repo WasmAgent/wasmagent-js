@@ -66,7 +66,7 @@ parentPort!.on("message", async (msg: {
   sandbox["__finalAnswer__"] = undefined;
   sandbox["__final_answer__"] = undefined;
 
-  // Apply capability globals using buildCapabilityGlobals (same as V8WasmKernel).
+  // Apply capability globals using buildCapabilityGlobals (same as VmKernel).
   // Always clear capability globals first so a truthy-but-empty manifest ({})
   // does not leave capabilities from the previous call in the sandbox.
   delete sandbox["fetch"];

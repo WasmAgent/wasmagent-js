@@ -63,27 +63,10 @@ export { CACHE_MIN_TOKENS };
 export const AnthropicModels = {
   /**
    * Semantic aliases — always point to the latest recommended model in each tier.
-   * Use these in new code; the versioned aliases below are for backward compatibility.
    */
   OPUS_LATEST:   "claude-opus-4-8",
   SONNET_LATEST: "claude-sonnet-4-6",
   HAIKU_LATEST:  "claude-haiku-4-5-20251001",
-
-  /**
-   * @deprecated Use OPUS_LATEST. The constant name is misleading: CLAUDE_OPUS_4
-   * maps to claude-opus-4-8, not 4.0. Kept for backward compatibility.
-   */
-  CLAUDE_OPUS_4:    "claude-opus-4-8",
-  /**
-   * @deprecated Use SONNET_LATEST. The constant name is misleading: CLAUDE_SONNET_4
-   * maps to claude-sonnet-4-6, not 4.0. Kept for backward compatibility.
-   */
-  CLAUDE_SONNET_4:  "claude-sonnet-4-6",
-  /**
-   * @deprecated Use HAIKU_LATEST. The constant name is misleading: CLAUDE_HAIKU_4
-   * maps to claude-haiku-4-5-20251001, not 4.0. Kept for backward compatibility.
-   */
-  CLAUDE_HAIKU_4:   "claude-haiku-4-5-20251001",
 } as const;
 
 export type AnthropicModelId = typeof AnthropicModels[keyof typeof AnthropicModels] | (string & {});

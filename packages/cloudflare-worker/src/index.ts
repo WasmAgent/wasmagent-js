@@ -185,7 +185,7 @@ async function handleRun(request: Request, env: Env, ctx: ExecutionContext, cors
   // C4: content-addressed cache key = SHA-256(task + agentType + maxSteps + model).
   // sessionId is an optional grouping/audit label; the content hash is the actual key.
   // This prevents a different task with the same sessionId from returning stale results.
-  const MODEL_ID = AnthropicModels.CLAUDE_SONNET_4;
+  const MODEL_ID = AnthropicModels.SONNET_LATEST;
   const kvKey = env.AGENTKIT_SESSIONS
     ? await contentHash({ task, agentType, maxSteps: clampedMaxSteps, model: MODEL_ID })
     : null;
