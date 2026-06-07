@@ -48,7 +48,7 @@ describe("createKernel factory", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const kernel = await createKernel({ engine: "wasmtime" });
     expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("wasmtime native addon unavailable")
+      expect.stringContaining("kernel-wasmtime")
     );
     const result = await kernel.run("3 + 3");
     expect(result.output).toBe(6);

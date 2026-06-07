@@ -1,16 +1,18 @@
 import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from "./types.js";
 
 /**
- * WasmtimeKernel — native wasmtime Node binding (M1+).
+ * WasmtimeKernel — placeholder that throws on construction.
  *
- * Not yet implemented. The factory falls back to V8WasmKernel when this
- * module is unavailable (A1 dual-engine fallback).
+ * The real implementation lives in @agentkit-js/kernel-wasmtime (optional).
+ * factory.ts attempts to import that package dynamically when engine:"wasmtime"
+ * is selected; if it is not installed this class is never instantiated.
  */
 export class WasmtimeKernel implements WasmKernel {
   constructor(_opts?: KernelOptions) {
     throw new Error(
-      "WasmtimeKernel: native wasmtime binding not installed. " +
-        "Install the optional @agentkit-js/wasmtime peer dependency (M1)."
+      "WasmtimeKernel: install @agentkit-js/kernel-wasmtime and ensure `javy` CLI is in PATH.\n" +
+        "  pnpm add @agentkit-js/kernel-wasmtime\n" +
+        "  https://github.com/bytecodealliance/javy/releases"
     );
   }
 
