@@ -181,7 +181,7 @@ agentkit-js/
 |--------|---------|--------|
 | A1 | `JsKernel` — stateful JS sandbox, snapshot/restore | ✅ Done |
 | A1 | `V8WasmKernel` — serverless-safe fallback | ✅ Done |
-| A1 | `WasmtimeKernel` — native WASM binding | ⏳ Remaining (requires native addon) |
+| A1 | `WasmtimeKernel` — true WASM sandbox via Javy (QuickJS→WASM + WASI) | ✅ Done (`@agentkit-js/kernel-wasmtime`) |
 | A2 | Capability manifest enforcement (hosts, paths, SSRF-safe redirect) | ✅ Done |
 | A2 | `extraCapabilities` per-tool access control | ✅ Done |
 | A4 | `PyodideKernel` — CPython-in-WASM via `pyodide` npm package | ✅ Done |
@@ -218,7 +218,7 @@ agentkit-js/
 | S4 | `BudgetForcingRunner` — "Wait" prefill injection, `maxWaitRounds`, `minResponseTokens` | ✅ Done |
 | U1 | `channel:"status"` events — `tool_executing` phase during tool dispatch | ✅ Done |
 | L4 | `ParallelForkJoinRunner` — shared-prefix parallel branches, configurable aggregation (summary/first/fn) | ✅ Done |
-| **A1** | **`WasmtimeKernel` — native WASM binding** (requires JS→WASM transpiler, e.g. Javy; not a drop-in npm install) | **⏳ Remaining** |
+| **A1** | **`WasmtimeKernel`** (`@agentkit-js/kernel-wasmtime`) — true WASM sandbox via Javy (QuickJS→WASM + WASI) + Node `node:wasi`. Requires `javy` CLI: [releases](https://github.com/bytecodealliance/javy/releases). | **✅ Done** |
 | **D1** | **MicroPython execution backend** — dropped; no reliable ESM npm package exposes a Python exec() API; use `"pyodide"` instead | **⛔ Dropped** |
 
 ### Roadmap
@@ -233,8 +233,8 @@ agentkit-js/
 | **M5** ✅ | O3 (ModelCapabilities); S1+S4 (structured output + budget forcing); P0+P1 (policy skeleton) |
 | **M6** ✅ | P2+P3+U1 (self-consistency + critique-refine + status events) |
 | **M7** ✅ | P4 long-history compaction (`MessageAssembler.compact`) |
+| **Future (done)** ✅ | `WasmtimeKernel` (`@agentkit-js/kernel-wasmtime`) — Javy compile + WASI run; true WASM memory isolation |
 | **Future (done)** ✅ | L4 `ParallelForkJoinRunner` — shared-prefix parallel branches + synthesis |
-| **Future** | WasmtimeKernel native addon (requires Javy/WASM transpiler); MicroPython dropped (no reliable ESM package) |
 
 > Status legend: ✅ Done · ⏳ Planned · ⛔ Dropped
 
