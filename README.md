@@ -5,7 +5,11 @@
 Build production-grade AI agents in TypeScript — code-execution agents, tool-calling agents, or multi-path reasoning pipelines — with built-in cost controls and Cloudflare Workers deployment.
 
 ```bash
+# For Anthropic (Claude)
 pnpm add @agentkit-js/core @anthropic-ai/sdk
+
+# For OpenAI / compatible endpoints (Ollama, vLLM, etc.)
+pnpm add @agentkit-js/core openai
 ```
 
 ---
