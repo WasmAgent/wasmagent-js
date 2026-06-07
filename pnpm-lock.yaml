@@ -216,8 +216,56 @@ importers:
         version: link:../core
     devDependencies:
       '@anthropic-ai/sdk':
-        specifier: ^0.37.0
-        version: 0.37.0
+        specifier: ^0.55.0
+        version: 0.55.1
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.19)(terser@5.48.0)
+
+  packages/model-deepseek:
+    dependencies:
+      '@agentkit-js/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      openai:
+        specifier: ^4.80.0
+        version: 4.104.0(ws@8.21.0)(zod@3.25.76)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.19)(terser@5.48.0)
+
+  packages/model-minimax:
+    dependencies:
+      '@agentkit-js/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      openai:
+        specifier: ^4.80.0
+        version: 4.104.0(ws@8.21.0)(zod@3.25.76)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.19)(terser@5.48.0)
+
+  packages/model-moonshot:
+    dependencies:
+      '@agentkit-js/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      openai:
+        specifier: ^4.80.0
+        version: 4.104.0(ws@8.21.0)(zod@3.25.76)
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
@@ -226,6 +274,38 @@ importers:
         version: 2.1.9(@types/node@22.19.19)(terser@5.48.0)
 
   packages/model-openai:
+    dependencies:
+      '@agentkit-js/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      openai:
+        specifier: ^4.90.0
+        version: 4.104.0(ws@8.21.0)(zod@3.25.76)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.19)(terser@5.48.0)
+
+  packages/model-qwen:
+    dependencies:
+      '@agentkit-js/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      openai:
+        specifier: ^4.80.0
+        version: 4.104.0(ws@8.21.0)(zod@3.25.76)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.19)(terser@5.48.0)
+
+  packages/model-zhipu:
     dependencies:
       '@agentkit-js/core':
         specifier: workspace:*
@@ -268,6 +348,10 @@ packages:
 
   '@anthropic-ai/sdk@0.37.0':
     resolution: {integrity: sha512-tHjX2YbkUBwEgg0JZU3EFSSAQPoK4qQR/NFYa8Vtzd5UAyXzZksCw2In69Rml4R/TyHPBfRYaLK35XiOe33pjw==}
+
+  '@anthropic-ai/sdk@0.55.1':
+    resolution: {integrity: sha512-gjOMS4chmm8BxClKmCjNHmvf1FrO1Cn++CSX6K3YCZjz5JG4I9ZttQ/xEH4FBsz6HQyZvnUpiKlOAkmxaGmEaQ==}
+    hasBin: true
 
   '@babel/helper-string-parser@7.29.7':
     resolution: {integrity: sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw==}
@@ -2695,6 +2779,8 @@ snapshots:
       node-fetch: 2.7.0
     transitivePeerDependencies:
       - encoding
+
+  '@anthropic-ai/sdk@0.55.1': {}
 
   '@babel/helper-string-parser@7.29.7': {}
 

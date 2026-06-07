@@ -30,6 +30,20 @@ export interface ToolDefinition<TInput = unknown, TOutput = unknown> {
    */
   rawInputJsonSchema?: object;
   /**
+   * C1: Raw JSON Schema for this tool's output (MCP 2025-06-18 structuredContent).
+   * When present, the tool's result may be returned as typed structured data.
+   */
+  rawOutputJsonSchema?: object;
+  /**
+   * D2: Custom tool grammar for OpenAI GPT-5+ models.
+   * Constrains the tool's arguments to a specific syntax (Lark grammar or regex).
+   * Ignored by adapters that do not support custom tool grammars.
+   */
+  customToolGrammar?: {
+    syntax: "lark" | "regex";
+    definition: string;
+  };
+  /**
    * Whether to pause and wait for human approval before executing this tool.
    */
   needsApproval?: boolean | ((input: never) => boolean | Promise<boolean>);

@@ -1,3 +1,2 @@
-// This package is a published alias for @agentkit-js/core's OpenAIModel.
-// The single implementation lives in core; importing from here is equivalent.
-export { OpenAIModel } from "@agentkit-js/core/models";
+export { OpenAIModel, OpenAIModels } from "@agentkit-js/core/models";
+export type { OpenAIModelOptions, OpenAIModelId } from "@agentkit-js/core/models";
