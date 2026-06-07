@@ -285,7 +285,7 @@ describe("Scheduler — C1 $ref value substitution", () => {
     // call-B should receive the actual result of call-A, not the literal "$call-A"
     expect(capturedInput?.["src"]).not.toBe("$call-A");
     // call-A output is { callId, toolName, output: 40 }
-    const callAResult = events.find((e) => e.type === "node_done" && e.nodeId === "call-A")?.result;
+    const callAResult = (events.find((e) => e.type === "node_done" && e.nodeId === "call-A") as { type: "node_done"; nodeId: string; result: unknown } | undefined)?.result;
     expect(capturedInput?.["src"]).toEqual(callAResult);
   });
 
