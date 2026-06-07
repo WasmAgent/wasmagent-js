@@ -245,18 +245,34 @@ export const ModelRegistry: Record<string, ModelMeta> = {
   "gpt-4.1":     { contextWindow: 1_000_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
 
   // ── Chinese models ───────────────────────────────────────────────────────
+  /** @deprecated 2026-07-24 retire — use deepseek-v4-flash or deepseek-v4-pro */
   "deepseek-chat":           { contextWindow: 64_000,  isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
-  "deepseek-reasoner":       { contextWindow: 64_000,  isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
-  "deepseek-v4-pro":         { contextWindow: 128_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  /** @deprecated 2026-07-24 retire — use deepseek-v4-pro */
+  "deepseek-reasoner":       { contextWindow: 64_000,  isReasoning: true,  supportsReasoningEffort: true,  supportsVerbosity: false, defaultEffort: "high" },
+  "deepseek-v4-pro":         { contextWindow: 128_000, isReasoning: true,  supportsReasoningEffort: true,  supportsVerbosity: false, defaultEffort: "high" },
+  "deepseek-v4-flash":       { contextWindow: 128_000, isReasoning: true,  supportsReasoningEffort: true,  supportsVerbosity: false, defaultEffort: "high" },
   "moonshot-v1-8k":          { contextWindow: 8_000,   isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
   "moonshot-v1-32k":         { contextWindow: 32_000,  isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
   "moonshot-v1-128k":        { contextWindow: 128_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
   "kimi-k2-6":               { contextWindow: 200_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "kimi-k2.6":               { contextWindow: 262_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
   "glm-4-plus":              { contextWindow: 128_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
+  "glm-4-air":               { contextWindow: 128_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
+  "glm-5":                   { contextWindow: 128_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "glm-4.7":                 { contextWindow: 128_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "glm-4.6":                 { contextWindow: 128_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  /** @deprecated use glm-5 */
   "glm-5-1":                 { contextWindow: 200_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
   "qwen3-max":               { contextWindow: 1_000_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
   "qwen3-plus":              { contextWindow: 262_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "qwen3-turbo":             { contextWindow: 1_000_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
   "minimax-text-01":         { contextWindow: 1_000_000, isReasoning: false, supportsReasoningEffort: false, supportsVerbosity: false },
+  "MiniMax-M2":              { contextWindow: 1_000_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "MiniMax-M2.1":            { contextWindow: 1_000_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "MiniMax-M2.5":            { contextWindow: 1_000_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "MiniMax-M2.7":            { contextWindow: 1_000_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "MiniMax-M2.7-highspeed":  { contextWindow: 1_000_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
+  "MiniMax-M3":              { contextWindow: 1_000_000, isReasoning: true,  supportsReasoningEffort: false, supportsVerbosity: false },
 
   // ── Doubao / Volcengine Ark ──────────────────────────────────────────────
   "doubao-seed-1-6-251015":  { contextWindow: 256_000, isReasoning: true, supportsReasoningEffort: true,  supportsVerbosity: false, defaultEffort: "medium" },

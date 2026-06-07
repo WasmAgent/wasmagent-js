@@ -96,10 +96,22 @@ export abstract class OpenAICompatModel implements Model {
    * Whether this provider requires reasoning_content to be echoed back
    * in subsequent assistant messages for multi-turn correctness.
    *
-   * DeepSeek and Doubao validate the round-trip; omitting it causes API errors.
+   * @deprecated Use reasoningRoundTripPolicy() instead. Kept for backward compatibility.
    */
   protected requiresReasoningRoundTrip(): boolean {
-    return false;
+    return this.reasoningRoundTripPolicy() !== "never";
+  }
+
+  /**
+   * Conditional reasoning_content round-trip policy.
+   *
+   * - "never":           Thinking blocks are never echoed back (default; safe for all non-reasoning providers).
+   * - "tool-turns-only": Echo reasoning_content only when the assistant message also contains tool_use.
+   *                      Required by DeepSeek/Doubao/Kimi — non-tool turns must NOT include it (causes 400).
+   * - "always":          Always echo reasoning_content in assistant messages (currently unused).
+   */
+  protected reasoningRoundTripPolicy(): "never" | "tool-turns-only" | "always" {
+    return "never";
   }
 
   /**
@@ -140,7 +152,7 @@ export abstract class OpenAICompatModel implements Model {
 
     const openAiMessages = convertCompatMessages(
       messages,
-      this.requiresReasoningRoundTrip()
+      this.reasoningRoundTripPolicy()
     ) as Parameters<typeof client.chat.completions.create>[0]["messages"];
 
     const meta = getModelMeta(this.modelId);
@@ -284,14 +296,21 @@ export interface OpenAICompatModelOptions {
 /**
  * Convert agentkit ModelMessage[] to OpenAI-compatible message array.
  *
- * @param roundTripReasoning - When true, thinking blocks are echoed back as
- *   reasoning_content on assistant messages. Required by Doubao/DeepSeek in
- *   multi-turn thinking mode to avoid API validation errors.
+ * @param policy - Round-trip policy for reasoning_content:
+ *   "never" (default): thinking blocks are discarded.
+ *   "tool-turns-only": reasoning_content echoed back only when assistant message has tool_use.
+ *   "always": reasoning_content always echoed back in assistant messages.
  */
 export function convertCompatMessages(
   messages: ModelMessage[],
-  roundTripReasoning = false
+  policy: "never" | "tool-turns-only" | "always" | boolean = "never"
 ): unknown[] {
+  // Accept legacy boolean for backward compatibility.
+  const resolvedPolicy: "never" | "tool-turns-only" | "always" =
+    typeof policy === "boolean"
+      ? (policy ? "always" : "never")
+      : policy;
+
   const result: unknown[] = [];
   for (const m of messages) {
     if (m.role === "system") {
@@ -311,7 +330,7 @@ export function convertCompatMessages(
       if (block.type === "text") {
         textParts.push(block.text);
       } else if (block.type === "thinking") {
-        if (roundTripReasoning && m.role === "assistant") {
+        if (resolvedPolicy !== "never" && m.role === "assistant") {
           reasoningContent = block.thinking;
         }
         // Otherwise skip — compat endpoints don't accept thinking blocks.
@@ -331,11 +350,15 @@ export function convertCompatMessages(
         content: textParts.join("\n") || null,
         tool_calls: toolCalls,
       };
-      if (reasoningContent !== undefined) msg["reasoning_content"] = reasoningContent;
+      // "tool-turns-only": echo reasoning_content only when there are tool calls.
+      if (reasoningContent !== undefined && (resolvedPolicy === "always" || resolvedPolicy === "tool-turns-only")) {
+        msg["reasoning_content"] = reasoningContent;
+      }
       result.push(msg);
     } else if (textParts.length > 0 && (m.role === "user" || m.role === "assistant")) {
       const msg: Record<string, unknown> = { role: m.role, content: textParts.join("\n") };
-      if (reasoningContent !== undefined && m.role === "assistant") {
+      // "tool-turns-only": do NOT echo reasoning_content on non-tool assistant turns (DeepSeek 400).
+      if (reasoningContent !== undefined && resolvedPolicy === "always" && m.role === "assistant") {
         msg["reasoning_content"] = reasoningContent;
       }
       result.push(msg);

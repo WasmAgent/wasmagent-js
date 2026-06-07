@@ -32,7 +32,7 @@ There are several mature TypeScript agent frameworks. Here is an honest assessme
 | **MCP support** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Cloudflare Workers** | ⚠️ partial | ✅ | ⚠️ experimental | ⚠️ alpha | ✅ native | ✅ |
 | **UI hooks (React/Next.js)** | ✅ best-in-class | ❌ | ❌ | ⚠️ via AI SDK | ⚠️ | ✅ useAgentRun |
-| **Provider integrations** | 40+ | 300+ | OpenAI-primary | 40+ | CF Workers AI | Anthropic + OpenAI-compat |
+| **Provider integrations** | 40+ | 300+ | OpenAI-primary | 40+ | CF Workers AI | Anthropic · OpenAI · Doubao · DeepSeek · Kimi · Qwen · GLM · MiniMax |
 | **Evals framework** | ❌ | ⚠️ LangSmith | ❌ | ✅ 12+ scorers | ❌ | ✅ 4 built-in scorers |
 | **Observability (OTel)** | ⚠️ LangSmith | ⚠️ LangSmith | ❌ | ✅ | ❌ | ✅ OtelBridge + GenAI semconv |
 | **Retry / resilience** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ RetryPolicy |
@@ -258,6 +258,50 @@ const proxied = new AnthropicModel(AnthropicModels.SONNET_LATEST, {
 });
 ```
 
+### Chinese model providers (first-class adapters)
+
+Seven providers ship as dedicated packages with full thinking-mode, reasoning-field, and cache-strategy support:
+
+```ts
+// Doubao / Volcengine Ark (first-class thinking + effort tiers)
+import { DoubaoModel, DoubaoModels } from "@agentkit-js/model-doubao";
+const doubao = new DoubaoModel(DoubaoModels.LATEST, process.env.ARK_API_KEY);
+for await (const e of doubao.generate(msgs, { thinking: { mode: "enabled", effort: "high" } })) { ... }
+
+// DeepSeek V4 (thinking:{type} + effort, V4_FLASH available)
+import { DeepSeekModel, DeepSeekModels } from "@agentkit-js/model-deepseek";
+const ds = new DeepSeekModel(DeepSeekModels.V4_PRO, process.env.DEEPSEEK_API_KEY);
+
+// Kimi K2.6 (reasoning field: delta.reasoning, thinking:{type} via extra_body)
+import { MoonshotModel, KimiModels } from "@agentkit-js/model-moonshot";
+const kimi = new MoonshotModel(KimiModels.LATEST, process.env.MOONSHOT_API_KEY);
+
+// Qwen3 (enable_thinking + thinking_budget, intl region option)
+import { QwenModel, QwenModels } from "@agentkit-js/model-qwen";
+const qwen = new QwenModel(QwenModels.QWEN3_MAX, { region: "cn" });
+
+// GLM-5 (Zhipu self-hosted, thinking:{type} via extra_body)
+import { ZhipuModel, GLMModels } from "@agentkit-js/model-zhipu";
+const glm = new ZhipuModel(GLMModels.GLM_5, process.env.ZHIPU_API_KEY);
+
+// MiniMax M3 (reasoning_split=true → reasoning_details; or <think> tag parsing)
+import { MiniMaxModel, MiniMaxModels } from "@agentkit-js/model-minimax";
+const mm = new MiniMaxModel(MiniMaxModels.M3, process.env.MINIMAX_API_KEY);
+```
+
+**Provider capability reference:**
+
+| Provider | Package | Thinking switch | Reasoning field | Cache strategy | Multi-turn round-trip |
+|---|---|---|---|---|---|
+| **Doubao/Ark** | `model-doubao` | `extra_body.thinking.{type,level}` | `delta.reasoning_content` | `auto-prefix` (transparent) / `ark-context` (explicit) | tool-turns-only |
+| **DeepSeek V4** | `model-deepseek` | `extra_body.thinking.{type,effort}` | `delta.reasoning_content` | `auto-prefix` | tool-turns-only |
+| **Kimi K2.6** | `model-moonshot` | `extra_body.thinking.{type}` | `delta.reasoning` (K2.6) / `delta.reasoning_content` (K2) | `auto-prefix` | tool-turns-only |
+| **Qwen3** | `model-qwen` | `enable_thinking` + `thinking_budget` | `delta.reasoning_content` | `auto-prefix` | never |
+| **GLM-5** | `model-zhipu` | `extra_body.thinking.{type}` | `delta.reasoning_content` | `auto-prefix` | never |
+| **MiniMax M3** | `model-minimax` | `reasoning_split:true` | `delta.reasoning_details` (or `<think>` in content) | `auto-prefix` | never |
+
+> **Note on multi-turn round-trip**: DeepSeek/Doubao/Kimi require `reasoning_content` echoed back in assistant messages containing `tool_use` (not in text-only turns — that causes a 400 error). The adapters implement this automatically via `reasoningRoundTripPolicy: "tool-turns-only"`.
+
 ---
 
 ## Deploy to Cloudflare Workers
@@ -284,6 +328,12 @@ The Worker exposes a POST `/run` endpoint. Session state is stored in KV for cos
 | `@agentkit-js/kernel-quickjs` | QuickJS WASM kernel |
 | `@agentkit-js/kernel-wasmtime` | True WASM sandbox via Javy + WASI (requires `javy` CLI) |
 | `@agentkit-js/cloudflare-worker` | Cloudflare Workers HTTP entry point |
+| `@agentkit-js/model-doubao` | Doubao / Volcengine Ark adapter (thinking tiers, ark-context cache) |
+| `@agentkit-js/model-deepseek` | DeepSeek V4 adapter (thinking:{type}, V4_FLASH) |
+| `@agentkit-js/model-moonshot` | Moonshot / Kimi K2.6 adapter (per-version reasoning field) |
+| `@agentkit-js/model-qwen` | Qwen3 adapter (enable_thinking, thinking_budget, intl region) |
+| `@agentkit-js/model-zhipu` | Zhipu GLM-5 adapter (thinking:{type} via extra_body) |
+| `@agentkit-js/model-minimax` | MiniMax M2/M3 adapter (reasoning_split, &lt;think&gt; tag parsing) |
 
 ---
 
