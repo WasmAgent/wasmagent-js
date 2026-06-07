@@ -48,8 +48,6 @@ export type ContentBlock =
  * OpenAI: implicit prefix caching (no explicit marker needed)
  */
 export interface CacheBreakpoint {
-  /** Block index in the messages array after which to insert the breakpoint. */
-  afterBlockIndex: number;
   type: "ephemeral";
 }
 

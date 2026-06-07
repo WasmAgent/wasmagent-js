@@ -63,6 +63,11 @@ const MAX_KV_EVENTS = 500;        // KV event accumulator cap (~5 MB safety marg
 
 function getCorsHeaders(env: Env, request: Request): Record<string, string> {
   const allowed = env.AGENTKIT_ALLOWED_ORIGIN ?? "*";
+  if (allowed === "*") {
+    console.warn(
+      "[agentkit-worker] AGENTKIT_ALLOWED_ORIGIN is not set; CORS is open to all origins."
+    );
+  }
   const origin = request.headers.get("Origin") ?? "";
   const allowOrigin = allowed === "*" ? "*" : (origin === allowed ? origin : "null");
   return {
@@ -127,11 +132,23 @@ function isRunBody(v: unknown): v is RunBody {
   );
 }
 
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const enc = new TextEncoder();
+  const aBytes = enc.encode(a);
+  const bBytes = enc.encode(b);
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) {
+    diff |= (aBytes[i] ?? 0) ^ (bBytes[i] ?? 0);
+  }
+  return diff === 0;
+}
+
 async function handleRun(request: Request, env: Env, ctx: ExecutionContext, corsHeaders: Record<string, string>): Promise<Response> {
   // Auth check: require Bearer token when AGENTKIT_CLIENT_TOKEN is configured.
   if (env.AGENTKIT_CLIENT_TOKEN) {
     const auth = request.headers.get("Authorization") ?? "";
-    if (auth !== `Bearer ${env.AGENTKIT_CLIENT_TOKEN}`) {
+    if (!timingSafeEqual(auth, `Bearer ${env.AGENTKIT_CLIENT_TOKEN}`)) {
       return jsonError("Unauthorized", 401, corsHeaders);
     }
   }

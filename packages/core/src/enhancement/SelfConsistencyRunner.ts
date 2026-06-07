@@ -66,16 +66,9 @@ export class SelfConsistencyRunner {
       return text.trim();
     };
 
-    // Semaphore: process jobs in a controlled pool.
-    const jobs = Array.from({ length: n }, (_, i) => i);
-    let jobIdx = 0;
-
-    const worker = async (): Promise<void> => {
-      while (true) {
-        if (shouldStop) break;
-        const myJob = jobIdx++;
-        if (myJob >= jobs.length) break;
-
+    // Distribute jobs round-robin across worker slots — worker i handles indices i, i+limit, i+2*limit, …
+    const workerFn = async (startIdx: number): Promise<void> => {
+      for (let jobIdx = startIdx; jobIdx < n && !shouldStop; jobIdx += limit) {
         const answer = await sampleOne();
         if (shouldStop) break;
 
@@ -95,8 +88,8 @@ export class SelfConsistencyRunner {
       }
     };
 
-    // Start `limit` workers concurrently; they self-schedule from the shared jobIdx.
-    await Promise.all(Array.from({ length: limit }, () => worker()));
+    // Start `limit` workers concurrently; they self-schedule via round-robin index striping.
+    await Promise.all(Array.from({ length: limit }, (_, i) => workerFn(i)));
 
     // Pick winner from voteCounts.
     let bestKey = "";

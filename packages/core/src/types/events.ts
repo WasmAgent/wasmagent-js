@@ -25,7 +25,7 @@ export type AgentEvent =
   | AgentEventBase & { channel: "thinking"; event: "planning";        data: { step: number; plan: string; facts: string } }
   | AgentEventBase & { channel: "text";     event: "final_answer";    data: { answer: unknown } }
   | AgentEventBase & { channel: "text";     event: "error";           data: { error: string; step?: number } }
-  | AgentEventBase & { channel: "status";   event: "status";          data: { phase: string; toolName?: string; callId?: string; step: number } };
+  | AgentEventBase & { channel: "status";   event: "status";          data: { phase: "tool_executing"; toolName?: string; callId?: string; step: number } };
 
 /** Structured step types mirroring smolagents' ActionStep / PlanningStep / FinalAnswerStep. */
 export type StepType = "action" | "planning" | "final_answer" | "tool_use" | "parallel_tool_use" | "user_message";

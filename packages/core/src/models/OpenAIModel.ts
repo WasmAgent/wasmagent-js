@@ -147,6 +147,9 @@ export class OpenAIModel implements Model {
           try {
             input = JSON.parse(tc.arguments || "{}") as Record<string, unknown>;
           } catch {
+            console.warn(
+              `[OpenAIModel] Failed to parse tool-call arguments for "${tc.name}" (call ${tc.id}). Raw: ${tc.arguments}`
+            );
             input = { _raw: tc.arguments };
           }
           yield {

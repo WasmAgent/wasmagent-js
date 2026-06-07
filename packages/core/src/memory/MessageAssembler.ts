@@ -46,7 +46,7 @@ export class MessageAssembler {
     this.#systemMsg = {
       role: "system",
       content: this.#buildSystemContent(),
-      cacheBreakpoint: { afterBlockIndex: 0, type: "ephemeral" },
+      cacheBreakpoint: { type: "ephemeral" },
     };
   }
 
@@ -98,7 +98,7 @@ export class MessageAssembler {
         for (let j = 0; j < stepMsgs.length - 1; j++) messages[idx++] = stepMsgs[j]!;
         messages[idx++] = {
           ...stepMsgs.at(-1)!,
-          cacheBreakpoint: { afterBlockIndex: 0, type: "ephemeral" },
+          cacheBreakpoint: { type: "ephemeral" },
         };
       } else {
         for (const m of stepMsgs) messages[idx++] = m;

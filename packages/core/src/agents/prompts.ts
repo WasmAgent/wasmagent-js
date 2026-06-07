@@ -56,6 +56,7 @@ export async function* runPlanningStep(
 
 /** Extracts content between XML-style tags, e.g. <plan>...</plan>. */
 export function extractTagContent(text: string, tag: string): string | null {
-  const match = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`).exec(text);
+  const escapedTag = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`<${escapedTag}>([\\s\\S]*?)<\\/${escapedTag}>`).exec(text);
   return match?.[1]?.trim() ?? null;
 }
