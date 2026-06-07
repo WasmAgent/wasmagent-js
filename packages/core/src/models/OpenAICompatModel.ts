@@ -265,7 +265,7 @@ export abstract class OpenAICompatModel implements Model {
       }
     }
 
-    if (inputTokens > 0 || outputTokens > 0) {
+    if (inputTokens > 0 || outputTokens > 0 || cacheReadTokens > 0) {
       const usage: import("./types.js").TokenUsage = { inputTokens, outputTokens };
       if (cacheReadTokens > 0) usage.cacheReadTokens = cacheReadTokens;
       yield { type: "usage", usage };

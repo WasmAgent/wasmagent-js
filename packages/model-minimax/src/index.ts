@@ -47,9 +47,6 @@ export interface MiniMaxModelOptions extends OpenAICompatModelOptions {
  */
 export class MiniMaxModel extends OpenAICompatModel {
   readonly #reasoningSplit: boolean;
-  // State for cross-chunk <think> tag parsing when reasoningSplit=false.
-  #inThinkTag = false;
-  #thinkBuffer = "";
 
   constructor(
     modelId: MiniMaxModelId,
@@ -113,34 +110,33 @@ export class MiniMaxModel extends OpenAICompatModel {
     }
 
     // reasoning_split=false: intercept text_delta events and parse <think> tags.
-    this.#inThinkTag = false;
-    this.#thinkBuffer = "";
+    // State is local so concurrent generate() calls on the same instance are safe.
+    const state = { inThinkTag: false, buffer: "" };
 
     for await (const event of super.generate(messages, opts)) {
       if (event.type === "text_delta" && typeof event.delta === "string") {
-        yield* this.#parseThinkTags(event.delta);
+        yield* this.#parseThinkTags(event.delta, state);
       } else {
         yield event;
       }
     }
 
-    // Flush any remaining buffered content as text.
-    if (this.#thinkBuffer.length > 0) {
-      yield { type: "text_delta", delta: this.#thinkBuffer };
-      this.#thinkBuffer = "";
+    // Flush any remaining buffered content.
+    if (state.buffer.length > 0) {
+      yield { type: state.inThinkTag ? "thinking_delta" : "text_delta", delta: state.buffer };
     }
   }
 
   /** Parse a text chunk, splitting on `<think>` / `</think>` across chunk boundaries. */
-  *#parseThinkTags(text: string): Generator<StreamEvent> {
+  *#parseThinkTags(text: string, state: { inThinkTag: boolean; buffer: string }): Generator<StreamEvent> {
     // Prepend any buffered partial tag from the previous chunk.
-    const input = this.#thinkBuffer + text;
-    this.#thinkBuffer = "";
+    const input = state.buffer + text;
+    state.buffer = "";
 
     let remaining = input;
 
     while (remaining.length > 0) {
-      if (this.#inThinkTag) {
+      if (state.inThinkTag) {
         const closeIdx = remaining.indexOf("</think>");
         if (closeIdx === -1) {
           // No closing tag — check if end of string is a partial closing tag.
@@ -148,7 +144,7 @@ export class MiniMaxModel extends OpenAICompatModel {
           if (partialLen > 0) {
             // Emit confirmed thinking content, buffer the potential partial tag.
             yield { type: "thinking_delta", delta: remaining.slice(0, remaining.length - partialLen) };
-            this.#thinkBuffer = remaining.slice(remaining.length - partialLen);
+            state.buffer = remaining.slice(remaining.length - partialLen);
             return;
           }
           yield { type: "thinking_delta", delta: remaining };
@@ -156,7 +152,7 @@ export class MiniMaxModel extends OpenAICompatModel {
         }
         // Found closing tag — emit everything before it as thinking.
         if (closeIdx > 0) yield { type: "thinking_delta", delta: remaining.slice(0, closeIdx) };
-        this.#inThinkTag = false;
+        state.inThinkTag = false;
         remaining = remaining.slice(closeIdx + "</think>".length);
       } else {
         const openIdx = remaining.indexOf("<think>");
@@ -167,7 +163,7 @@ export class MiniMaxModel extends OpenAICompatModel {
             if (remaining.length - partialLen > 0) {
               yield { type: "text_delta", delta: remaining.slice(0, remaining.length - partialLen) };
             }
-            this.#thinkBuffer = remaining.slice(remaining.length - partialLen);
+            state.buffer = remaining.slice(remaining.length - partialLen);
             return;
           }
           yield { type: "text_delta", delta: remaining };
@@ -175,7 +171,7 @@ export class MiniMaxModel extends OpenAICompatModel {
         }
         // Found opening tag — emit text before it.
         if (openIdx > 0) yield { type: "text_delta", delta: remaining.slice(0, openIdx) };
-        this.#inThinkTag = true;
+        state.inThinkTag = true;
         remaining = remaining.slice(openIdx + "<think>".length);
       }
     }

@@ -129,9 +129,8 @@ export class Scheduler {
       // Run non-readOnly ready nodes in parallel (they're not speculative).
       if (readyWriting.length > 0) {
         for (const node of readyWriting) yield { type: "node_start", nodeId: node.id };
-        for (const { node, result } of await Promise.all(
+        for (const [i, settled] of (await Promise.allSettled(
           readyWriting.map(async (node) => {
-            // C1: substitute $ref placeholders before dispatch.
             const resolvedArgs = resolveRefs(node.args, completedResults) as Record<string, unknown>;
             return {
               node,
@@ -141,10 +140,21 @@ export class Scheduler {
               ),
             };
           })
-        )) {
-          completedResults.set(node.id, result);
-          yield { type: "node_done", nodeId: node.id, result };
-          this.#unblockDependents(node.id, remaining);
+        )).entries()) {
+          if (settled.status === "fulfilled") {
+            const { node, result } = settled.value;
+            completedResults.set(node.id, result);
+            yield { type: "node_done", nodeId: node.id, result };
+            this.#unblockDependents(node.id, remaining);
+          } else {
+            const failedNode = readyWriting[i]!;
+            const reason = settled.reason;
+            const isAbort = reason instanceof Error && reason.name === "AbortError";
+            if (!isAbort) {
+              console.error("[scheduler] write node rejected:", reason);
+            }
+            yield { type: "node_error", nodeId: failedNode.id, error: isAbort ? undefined : reason };
+          }
         }
         continue;
       }

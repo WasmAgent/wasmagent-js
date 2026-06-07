@@ -72,6 +72,7 @@ export class ZhipuModel extends OpenAICompatModel {
    */
   protected override mapThinkingParams(opts: GenerateOptions): Record<string, unknown> {
     const enabled = this.thinkingEnabled(opts, this.#defaultEnableThinking);
+    if (!enabled && !this.#defaultEnableThinking) return {};
     return { extra_body: { thinking: { type: enabled ? "enabled" : "disabled" } } };
   }
 
