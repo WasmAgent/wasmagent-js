@@ -26,6 +26,11 @@ vi.mock("@agentkit-js/core", () => ({
   AnthropicModel: class {
     constructor(_modelId: string, _apiKey?: string) {}
   },
+  AnthropicModels: {
+    CLAUDE_OPUS_4:   "claude-opus-4-8",
+    CLAUDE_SONNET_4: "claude-sonnet-4-6",
+    CLAUDE_HAIKU_4:  "claude-haiku-4-5-20251001",
+  },
 }));
 
 // ── parseEventsFilter ─────────────────────────────────────────────────────────
