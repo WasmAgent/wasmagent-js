@@ -28,6 +28,11 @@ export class ToolRegistry {
         `Tool "${tool.name}" must declare idempotent: boolean (required for C3/C4 caching)`
       );
     }
+    if (!toolAny["inputSchema"] || typeof (toolAny["inputSchema"] as Record<string, unknown>)["safeParse"] !== "function") {
+      throw new Error(
+        `Tool "${tool.name}" must declare a Zod inputSchema with a safeParse method`
+      );
+    }
     this.#tools.set(tool.name, tool);
     return this;
   }
@@ -48,7 +53,9 @@ export class ToolRegistry {
       .map((t) => ({
         name: t.name,
         description: t.description,
-        input_schema: t.inputSchema ? zodToJsonSchema(t.inputSchema) : {},
+        // Prefer rawInputJsonSchema (e.g. MCP server's own schema) over the Zod-derived
+        // schema, which would discard field names and required constraints.
+        input_schema: t.rawInputJsonSchema ?? (t.inputSchema ? zodToJsonSchema(t.inputSchema) : {}),
       }));
   }
 
@@ -94,13 +101,13 @@ export class ToolRegistry {
         error: {
           code: "validation_error",
           message: parsed.error.message,
-          retryHint: `Fix the arguments: ${parsed.error.flatten().fieldErrors}`,
+          retryHint: `Fix the arguments: ${JSON.stringify(parsed.error.flatten().fieldErrors)}`,
         },
       };
     }
 
     try {
-      const output = await tool.forward(parsed.data);
+      const output = await tool.forward(parsed.data, toolCall.signal);
       return { callId: toolCall.callId, toolName: toolCall.toolName, output };
     } catch (err) {
       return {
@@ -142,11 +149,7 @@ export function zodToJsonSchema(schema: z.ZodSchema): object {
     const properties: Record<string, object> = {};
     const required: string[] = [];
     for (const [key, fieldSchema] of Object.entries(shape)) {
-      const unwrapped = unwrapOptionalNullable(fieldSchema);
       properties[key] = zodToJsonSchema(fieldSchema);
-      if (!(unwrapped !== fieldSchema)) {
-        // field was not optional/nullable — include in required
-      }
       if (!isOptionalOrNullable(fieldSchema)) {
         required.push(key);
       }
@@ -229,12 +232,4 @@ export function zodToJsonSchema(schema: z.ZodSchema): object {
 function isOptionalOrNullable(schema: z.ZodSchema): boolean {
   const typeName = (schema._def as Record<string, unknown>)["typeName"] as string;
   return typeName === "ZodOptional" || typeName === "ZodNullable" || typeName === "ZodDefault";
-}
-
-function unwrapOptionalNullable(schema: z.ZodSchema): z.ZodSchema {
-  const typeName = (schema._def as Record<string, unknown>)["typeName"] as string;
-  if (typeName === "ZodOptional" || typeName === "ZodNullable" || typeName === "ZodDefault") {
-    return (schema._def as Record<string, unknown>)["innerType"] as z.ZodSchema;
-  }
-  return schema;
 }

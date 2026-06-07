@@ -242,13 +242,9 @@ json.dumps(_snap)
 
   async restore(snapshot: Uint8Array): Promise<void> {
     const py = await this.#ensurePyodide();
-    const jsonStr = new TextDecoder().decode(snapshot);
-    py.runPython(`
-import json as _json
-_snap = _json.loads(${JSON.stringify(jsonStr)})
-globals().update(_snap)
-del _snap, _json
-`);
+    const obj = JSON.parse(new TextDecoder().decode(snapshot)) as Record<string, unknown>;
+    py.globals.set("_snap", py.toPy(obj));
+    py.runPython(`globals().update(_snap); del _snap`);
     this.#logs = [];
   }
 

@@ -5,6 +5,9 @@ import { ToolRegistry } from "../tools/ToolRegistry.js";
 import type { ToolDefinition } from "../tools/types.js";
 import type { Model, EnhancementPolicy } from "../models/types.js";
 import { TokenBudget } from "../models/types.js";
+import { SelfConsistencyRunner } from "../enhancement/SelfConsistencyRunner.js";
+import { ReflectRefineRunner } from "../enhancement/ReflectRefineRunner.js";
+import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
 import type {
   AgentEvent,
   FinalAnswerStep,
@@ -115,7 +118,7 @@ export class ToolCallingAgent {
         return;
       }
       if (this.#planningInterval && step > 1 && (step - 1) % this.#planningInterval === 0) {
-        yield* this.#runPlanningStep(traceId, parentTraceId, step);
+        yield* this.#runPlanningStep(traceId, parentTraceId, step, budget);
       }
 
       yield {
@@ -160,7 +163,32 @@ export class ToolCallingAgent {
 
       // No tool calls → model responded with text — treat as final answer.
       if (pendingCalls.length === 0) {
-        const answer = fullText.trim() || "No answer provided";
+        let answer = fullText.trim() || "No answer provided";
+
+        // Apply enhancement runners when configured.
+        // Budget-forcing takes priority (requires model support), then reflect-refine,
+        // then self-consistency. Runners run in isolated contexts — they do not mutate
+        // the assembler history or the main token budget tracking here.
+        const messages = this.#assembler.build();
+        if (this.#policy?.budgetForcing?.enabled && this.#model.capabilities?.supportsBudgetForcing) {
+          const result = await new BudgetForcingRunner().run(this.#model, messages);
+          answer = result.answer || answer;
+        } else if (this.#policy?.reflectRefine?.enabled) {
+          const reflectOpts = this.#policy.reflectRefine.maxCycles !== undefined
+            ? { maxCycles: this.#policy.reflectRefine.maxCycles }
+            : {};
+          const result = await new ReflectRefineRunner(reflectOpts).run(this.#model, messages);
+          answer = result.answer || answer;
+        } else if (this.#policy?.selfConsistency?.enabled) {
+          const scOpts: { n?: number; earlyStopThreshold?: number } = {};
+          if (this.#policy.selfConsistency.n !== undefined) scOpts.n = this.#policy.selfConsistency.n;
+          if (this.#policy.selfConsistency.earlyStopThreshold !== undefined) {
+            scOpts.earlyStopThreshold = this.#policy.selfConsistency.earlyStopThreshold;
+          }
+          const result = await new SelfConsistencyRunner(scOpts).run(this.#model, messages);
+          answer = result.answer || answer;
+        }
+
         const finalStep: FinalAnswerStep = { type: "final_answer", answer };
         this.#assembler.addStep(finalStep);
         yield {
@@ -209,18 +237,32 @@ export class ToolCallingAgent {
       // Carry isError as a separate boolean so it is never inferred from string
       // content — startsWith("Error: ") would silently misclassify tools whose
       // successful output happens to start with that prefix.
+      // Each promise must never reject — unexpected throws (e.g. JSON.stringify on
+      // circular references) are caught and turned into structured error strings so
+      // Promise.all always settles and every tool_call gets a paired tool_result.
       const handles = pendingCalls.map((call) => {
         let callIsError = false;
-        const handle = LazyObservationHandle.fromToolResult(
-          this.#tools
-            .call({ toolName: call.name, args: call.input, callId: call.id })
-            .then((r) => {
-              callIsError = r.error !== undefined;
-              return callIsError
-                ? (r.error!.message || "Tool execution failed with no output.")
-                : JSON.stringify(r.output);
-            })
-        );
+        const settled = this.#tools
+          .call({ toolName: call.name, args: call.input, callId: call.id })
+          .then(
+            (r) => {
+              if (r.error !== undefined) {
+                callIsError = true;
+                return r.error.message || "Tool execution failed with no output.";
+              }
+              try {
+                return r.output === undefined ? "null" : JSON.stringify(r.output);
+              } catch (e) {
+                callIsError = true;
+                return `Tool output could not be serialised: ${e instanceof Error ? e.message : String(e)}`;
+              }
+            },
+            (e) => {
+              callIsError = true;
+              return `Tool dispatch threw: ${e instanceof Error ? e.message : String(e)}`;
+            }
+          );
+        const handle = LazyObservationHandle.fromToolResult(settled);
         return { call, handle, getIsError: () => callIsError };
       });
 
@@ -305,17 +347,23 @@ export class ToolCallingAgent {
   async *#runPlanningStep(
     traceId: string,
     parentTraceId: string | null,
-    step: number
+    step: number,
+    budget: TokenBudget
   ): AsyncGenerator<AgentEvent> {
     const planningMessages = this.#assembler.build();
     planningMessages.push({ role: "user", content: PLANNING_PROMPT });
 
     let planResponse = "";
+    let planReceivedUsage = false;
     for await (const event of this.#model.generate(planningMessages, { stream: true })) {
       if (event.type === "text_delta" && event.delta) {
         planResponse += event.delta;
+      } else if (event.type === "usage" && event.usage) {
+        budget.recordUsage(event.usage);
+        planReceivedUsage = true;
       }
     }
+    if (!planReceivedUsage) budget.estimateFallback(planningMessages, planResponse);
 
     const planMatch = /<plan>([\s\S]*?)<\/plan>/.exec(planResponse);
     const factsMatch = /<facts>([\s\S]*?)<\/facts>/.exec(planResponse);

@@ -1,4 +1,5 @@
-import type { Model, ModelMessage, GenerateOptions, StreamEvent } from "../models/types.js";
+import type { Model, ModelMessage, GenerateOptions } from "../models/types.js";
+import { estimateTokens } from "../models/types.js";
 
 export interface BudgetForcingOptions {
   /**
@@ -73,15 +74,16 @@ export class BudgetForcingRunner {
 
     for (let round = 0; round < this.#maxWaitRounds; round++) {
       // Skip forcing if the response is already long enough.
-      const estimatedTokens = Math.ceil(fullAnswer.length / 4);
-      if (estimatedTokens >= this.#minResponseTokens) break;
+      if (estimateTokens(fullAnswer) >= this.#minResponseTokens) break;
 
       // Inject the prefill token: append the assistant's draft + "Wait" as an
-      // assistant message, then ask the model to continue.
+      // assistant message, then ask the model to restate the complete final answer.
+      // Using "restate complete answer" semantics so fullAnswer = continuation is correct —
+      // the model rewrites the full answer rather than appending a fragment.
       context = [
         ...context,
         { role: "assistant", content: fullAnswer + "\n" + this.#prefillToken },
-        { role: "user", content: "Continue your reasoning and provide the complete answer." },
+        { role: "user", content: "Restate the complete final answer incorporating your prior reasoning." },
       ];
 
       const continuation = await collectText(model, context, opts);
@@ -89,7 +91,7 @@ export class BudgetForcingRunner {
       waitRoundsUsed++;
 
       // If the continuation itself is long enough, stop.
-      if (Math.ceil(continuation.length / 4) >= this.#minResponseTokens) break;
+      if (estimateTokens(continuation) >= this.#minResponseTokens) break;
     }
 
     return { answer: fullAnswer, waitRoundsUsed };

@@ -65,11 +65,11 @@ export class MessageAssembler {
 
     // 3. History steps converted to messages, with B2 chunk breakpoints.
     const chunkSize = this.#config.chunkSizeSteps ?? 0;
-    // Count only action steps (not planning/final) for chunking — they're
-    // the ones that grow the history uniformly.
+    // Count action + tool_use + parallel_tool_use steps for chunking — these are the
+    // steps both CodeAgent and ToolCallingAgent produce uniformly as history grows.
     const actionStepIndices: number[] = [];
     const allMessages: ModelMessage[][] = this.#history.map((step, i) => {
-      if (step.type === "action") actionStepIndices.push(i);
+      if (this.#isChunkableStep(step)) actionStepIndices.push(i);
       return this.#stepToMessages(step);
     });
 
@@ -176,8 +176,13 @@ export class MessageAssembler {
   get sealedChunkCount(): number {
     const chunkSize = this.#config.chunkSizeSteps ?? 0;
     if (chunkSize === 0) return 0;
-    const actionCount = this.#history.filter((s) => s.type === "action" || s.type === "tool_use" || s.type === "parallel_tool_use").length;
+    const actionCount = this.#history.filter((s) => this.#isChunkableStep(s)).length;
     return Math.floor(actionCount / chunkSize);
+  }
+
+  /** True for step types that count toward B2 chunk boundaries. */
+  #isChunkableStep(step: Step): boolean {
+    return step.type === "action" || step.type === "tool_use" || step.type === "parallel_tool_use";
   }
 
   /** Stable representation of system content + tools schema (B1 byte-stability). */

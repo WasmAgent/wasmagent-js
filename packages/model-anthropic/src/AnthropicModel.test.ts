@@ -55,7 +55,8 @@ async function collectEvents(
   const { MockAnthropic, mockStream } = makeAnthropicMock(events, finalMsg);
   vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
 
-  const { AnthropicModel } = await import("./AnthropicModel.js?t=" + Date.now());
+  // Import from the package index (re-export of core) — validates the re-export chain.
+  const { AnthropicModel } = await import("./index.js?t=" + Date.now());
   const model = new AnthropicModel(modelId, "test-key");
 
   const streamEvents: StreamEvent[] = [];
@@ -73,7 +74,7 @@ const EMPTY_FINAL: FinalMessage = {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe("AnthropicModel generate()", () => {
+describe("AnthropicModel generate() (via @agentkit-js/model-anthropic re-export)", () => {
   beforeEach(() => {
     vi.resetModules();
   });
@@ -150,40 +151,27 @@ describe("AnthropicModel generate()", () => {
     expect(toolCalls[0]?.toolCall?.input).toEqual({ query: "TypeScript" });
   });
 
-  it("injects cache_control on system message when tokens >= threshold (B1)", async () => {
-    // claude-haiku-3 threshold is 2048 tokens ≈ 8192 chars
-    // Use a model with low threshold (1024) and a long system prompt
-    const longPrompt = "x".repeat(5000); // ~1250 tokens, >= 1024 threshold
-    const { mockStream } = await collectEvents(
-      [],
-      EMPTY_FINAL,
-      [{ role: "system", content: longPrompt }, { role: "user", content: "hi" }],
-      "claude-sonnet-4-6" // threshold 4096 tokens → 16384 chars; won't cache a 5000-char prompt
-    );
-    // Use a model with a lower threshold to trigger caching
-    vi.resetModules();
-    const { MockAnthropic, mockStream: mockStream2 } = makeAnthropicMock([], EMPTY_FINAL);
+  it("passes temperature/topP/stopSequences through to the SDK (no sampling drift)", async () => {
+    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
     vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
-    const { AnthropicModel } = await import("./AnthropicModel.js?t=" + Date.now() + "2");
+    const { AnthropicModel } = await import("./index.js?t=" + Date.now() + "sp");
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
-    for await (const _ of model.generate([
-      { role: "system", content: longPrompt },
-      { role: "user", content: "hi" },
-    ])) { /* consume */ }
-    const call = mockStream2.mock.calls[0]?.[0] as Record<string, unknown>;
-    const systemParam = call?.["system"] as Array<Record<string, unknown>>;
-    // Whether cache_control is injected depends on threshold; just verify system was passed.
-    expect(Array.isArray(systemParam)).toBe(true);
-    expect(systemParam[0]?.["text"]).toBe(longPrompt);
+    for await (const _ of model.generate(
+      [{ role: "user", content: "hi" }],
+      { temperature: 0.7, topP: 0.9, stopSequences: ["STOP"] }
+    )) { /* consume */ }
+    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(call?.["temperature"]).toBe(0.7);
+    expect(call?.["top_p"]).toBe(0.9);
+    expect(call?.["stop_sequences"]).toEqual(["STOP"]);
     vi.doUnmock("@anthropic-ai/sdk");
-    void mockStream; // suppress unused warning
   });
 
   it("does NOT inject cache_control when system message is below token threshold", async () => {
-    const shortPrompt = "Be helpful."; // ~3 tokens, far below any threshold
+    const shortPrompt = "Be helpful.";
     const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
     vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
-    const { AnthropicModel } = await import("./AnthropicModel.js?t=" + Date.now() + "3");
+    const { AnthropicModel } = await import("./index.js?t=" + Date.now() + "3");
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
     for await (const _ of model.generate([
       { role: "system", content: shortPrompt },

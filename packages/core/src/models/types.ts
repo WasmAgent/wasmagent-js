@@ -221,6 +221,7 @@ export function estimateMessagesTokens(messages: ModelMessage[]): number {
       for (const block of m.content) {
         if (block.type === "text") total += estimateTokens(block.text);
         else if (block.type === "tool_result") total += estimateTokens(block.content);
+        else if (block.type === "tool_use") total += estimateTokens(JSON.stringify(block.input));
       }
     }
   }

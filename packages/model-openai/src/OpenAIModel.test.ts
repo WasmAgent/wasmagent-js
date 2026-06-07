@@ -57,7 +57,7 @@ async function collectEvents(
   vi.doMock("openai", () => ({ default: MockOpenAI }));
 
   // Re-import after mocking to get a fresh module.
-  const { OpenAIModel } = await import("./OpenAIModel.js?t=" + Date.now());
+  const { OpenAIModel } = await import("./index.js?t=" + Date.now());
   const model = new OpenAIModel("gpt-4o", "test-key");
 
   const events: StreamEvent[] = [];
@@ -247,7 +247,7 @@ describe("OpenAIModel generate() with structured content messages", () => {
       { choices: [{ delta: {}, finish_reason: "stop" }] },
     ]);
     vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { OpenAIModel } = await import("./OpenAIModel.js?t=" + Date.now() + "s");
+    const { OpenAIModel } = await import("./index.js?t=" + Date.now() + "s");
     const model = new OpenAIModel("gpt-4o", "key");
     for await (const _ of model.generate(messages)) { /* consume */ }
     vi.doUnmock("openai");
@@ -321,7 +321,7 @@ describe("OpenAIModel generate() responseFormat (S1)", () => {
       { choices: [{ delta: {}, finish_reason: "stop" }] },
     ]);
     vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { OpenAIModel } = await import("./OpenAIModel.js?t=" + Date.now() + "rf");
+    const { OpenAIModel } = await import("./index.js?t=" + Date.now() + "rf");
     const model = new OpenAIModel("gpt-4o", "key"); // supportsGrammar=true
     for await (const _ of model.generate([{ role: "user", content: "q" }], opts)) { /* consume */ }
     vi.doUnmock("openai");

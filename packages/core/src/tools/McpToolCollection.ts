@@ -121,15 +121,18 @@ export class McpToolCollection {
     schema: McpToolSchema,
     client: McpClientInterface
   ): ToolDefinition<Record<string, unknown>, string> {
-    // Convert MCP JSON Schema to a Zod schema for validation.
-    // We use z.record(z.unknown()) as a passthrough since MCP tools have their
-    // own validation on the server side.
+    // z.record(z.unknown()) is a passthrough validator — the MCP server validates
+    // arguments on its side. The actual input schema is preserved in rawInputJsonSchema
+    // so the model receives accurate field names, types, and required constraints.
     const inputSchema = z.record(z.unknown());
 
     return {
       name: schema.name,
       description: schema.description ?? "",
       inputSchema,
+      // Pass through the MCP server's own JSON Schema so toJsonSchema() gives
+      // the model accurate field definitions instead of a bare {type:"object"}.
+      ...(schema.inputSchema !== undefined ? { rawInputJsonSchema: schema.inputSchema } : {}),
       outputSchema: z.string(),
       readOnly: false,   // Conservative: assume MCP tools may have side effects.
       idempotent: false,

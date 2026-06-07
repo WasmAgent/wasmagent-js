@@ -26,7 +26,13 @@ export interface ToolDefinition<TInput = unknown, TOutput = unknown> {
    * Example: "tool:web_search", "tool:file_write"
    */
   requiredCapability?: string;
-  forward(input: TInput): Promise<TOutput>;
+  /**
+   * Raw JSON Schema for this tool's input, preferred over zodToJsonSchema(inputSchema)
+   * when present. Used by McpToolCollection to pass through the MCP server's own schema
+   * without round-tripping through Zod (which would discard properties/required).
+   */
+  rawInputJsonSchema?: object;
+  forward(input: TInput, signal?: AbortSignal): Promise<TOutput>;
 }
 
 /** Validated tool call descriptor emitted by the agent step parser. */
@@ -34,6 +40,8 @@ export interface ToolCall {
   toolName: string;
   args: Record<string, unknown>;
   callId: string;
+  /** AbortSignal forwarded from the Scheduler — best-effort cancellation. */
+  signal?: AbortSignal;
 }
 
 /** Result of a tool execution, including structured feedback for error loops (D2). */

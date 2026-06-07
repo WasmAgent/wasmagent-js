@@ -139,6 +139,8 @@ export class OpenAIModel implements Model {
 
       if (choice?.finish_reason === "stop") {
         yield { type: "stop", stopReason: "end_turn" };
+      } else if (choice?.finish_reason === "length") {
+        yield { type: "stop", stopReason: "max_tokens" };
       } else if (choice?.finish_reason === "tool_calls") {
         for (const [, tc] of [...toolCallAccum.entries()].sort(([a], [b]) => a - b)) {
           let input: Record<string, unknown> = {};

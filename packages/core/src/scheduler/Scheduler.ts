@@ -49,7 +49,7 @@ export class Scheduler {
     }
   }
 
-  async *#executeInner(ir: ActionIR, _signal: AbortSignal): AsyncGenerator<SchedulerEvent> {
+  async *#executeInner(ir: ActionIR, signal: AbortSignal): AsyncGenerator<SchedulerEvent> {
     const remaining = new Map<string, Set<string>>();
     for (const node of ir.nodes) {
       remaining.set(node.id, new Set(node.dependsOn));
@@ -81,7 +81,7 @@ export class Scheduler {
           node.id,
           this.tools
             .call(
-              { toolName: node.toolName, args: node.args, callId: node.id },
+              { toolName: node.toolName, args: node.args, callId: node.id, signal },
               node.extraCapabilities
             )
             .then((result) => ({ node, result }))
@@ -108,7 +108,7 @@ export class Scheduler {
           readyWriting.map(async (node) => ({
             node,
             result: await this.tools.call(
-              { toolName: node.toolName, args: node.args, callId: node.id },
+              { toolName: node.toolName, args: node.args, callId: node.id, signal },
               node.extraCapabilities
             ),
           }))

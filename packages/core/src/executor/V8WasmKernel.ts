@@ -56,6 +56,12 @@ export class V8WasmKernel implements WasmKernel {
     this.#logs = [];
     this.#context["__finalAnswer__"] = undefined;
 
+    // Always clear capability globals first, then re-inject only what's granted.
+    // This prevents capability leakage across successive run() calls: a call that
+    // grants fetch/fs cannot silently leave those globals available to the next call.
+    delete this.#context["fetch"];
+    delete this.#context["__fs__"];
+
     if (capabilities) {
       const capGlobals = buildCapabilityGlobals(capabilities);
       for (const [key, value] of Object.entries(capGlobals)) {
@@ -72,6 +78,16 @@ export class V8WasmKernel implements WasmKernel {
       throw new Error(
         `KernelError: ${err instanceof Error ? err.message : String(err)}`
       );
+    }
+
+    // Await any Promise the code returned, mirroring JsKernelWorker behavior so
+    // async code and async __finalAnswer__ assignments work on the edge path too.
+    if (
+      output instanceof Promise ||
+      (output !== null && typeof output === "object" &&
+        typeof (output as { then?: unknown }).then === "function")
+    ) {
+      output = await (output as Promise<unknown>);
     }
 
     const finalAnswer = this.#context["__finalAnswer__"] as unknown;

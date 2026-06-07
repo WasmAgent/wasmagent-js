@@ -138,7 +138,7 @@ export class CodeAgent {
 
       // Emit a planning step at configured interval.
       if (this.#planningInterval && step > 1 && (step - 1) % this.#planningInterval === 0) {
-        yield* this.#runPlanningStep(traceId, parentTraceId, step);
+        yield* this.#runPlanningStep(traceId, parentTraceId, step, budget);
       }
 
       yield {
@@ -193,21 +193,24 @@ export class CodeAgent {
           content: "Please provide your answer as executable JavaScript inside ```js ... ``` or set __finalAnswer__ = <value>.",
         });
         let retryResponse = "";
+        let retryReceivedUsage = false;
         for await (const event of this.#model.generate(retryMessages, { stream: true })) {
-          if (event.type === "text_delta" && event.delta) retryResponse += event.delta;
+          if (event.type === "text_delta" && event.delta) {
+            retryResponse += event.delta;
+          } else if (event.type === "usage" && event.usage) {
+            budget.recordUsage(event.usage);
+            retryReceivedUsage = true;
+          }
         }
+        if (!retryReceivedUsage) budget.estimateFallback(retryMessages, retryResponse);
         const retryCode = extractCode(retryResponse);
-        const retryAnswer = retryCode ? null : (extractFinalAnswer(retryResponse) ?? retryResponse);
-        if (retryAnswer !== null) {
-          yield* this.#emitFinalAnswer(traceId, parentTraceId, retryAnswer);
+        if (retryCode) {
+          // Use the retry code for kernel execution below.
+          fullResponse = retryResponse;
+        } else {
+          yield* this.#emitFinalAnswer(traceId, parentTraceId, extractFinalAnswer(retryResponse) ?? retryResponse);
           return;
         }
-        if (!retryCode) {
-          yield* this.#emitFinalAnswer(traceId, parentTraceId, retryResponse);
-          return;
-        }
-        // Use the retry code for kernel execution below.
-        fullResponse = retryResponse;
       }
 
       // Execute code in the kernel (A1 stateful execution).
@@ -227,7 +230,7 @@ export class CodeAgent {
           },
           timestampMs: Date.now(),
         };
-        break;
+        return;
       }
 
       const stepRecord: ActionStep = {
@@ -258,17 +261,23 @@ export class CodeAgent {
   async *#runPlanningStep(
     traceId: string,
     parentTraceId: string | null,
-    step: number
+    step: number,
+    budget: TokenBudget
   ): AsyncGenerator<AgentEvent> {
     const planningMessages = this.#assembler.build();
     planningMessages.push({ role: "user", content: PLANNING_PROMPT });
 
     let planResponse = "";
+    let planReceivedUsage = false;
     for await (const event of this.#model.generate(planningMessages, { stream: true })) {
       if (event.type === "text_delta" && event.delta) {
         planResponse += event.delta;
+      } else if (event.type === "usage" && event.usage) {
+        budget.recordUsage(event.usage);
+        planReceivedUsage = true;
       }
     }
+    if (!planReceivedUsage) budget.estimateFallback(planningMessages, planResponse);
 
     const plan = extractTagContent(planResponse, "plan") ?? planResponse;
     const facts = extractTagContent(planResponse, "facts") ?? "";
@@ -320,6 +329,6 @@ function extractTagContent(text: string, tag: string): string | null {
 }
 
 function extractFinalAnswer(response: string): string | null {
-  const match = /(?:final answer|answer)[:\s]+(.+)/i.exec(response);
+  const match = /^\s*final answer\s*[:=]\s*(.+)/im.exec(response);
   return match?.[1]?.trim() ?? null;
 }

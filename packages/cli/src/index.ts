@@ -111,9 +111,12 @@ async function runCommand(
         if (typeof data["step"] === "number") {
           stepCount = data["step"] as number;
           process.stderr.write(`\n[step ${stepCount}] `);
-        } else if (typeof data["delta"] === "string") {
-          process.stdout.write(data["delta"]);
         }
+        break;
+      }
+      case "thinking_delta": {
+        const data = event.data as { delta: string };
+        process.stdout.write(data.delta);
         break;
       }
       case "planning": {
@@ -388,7 +391,7 @@ export const ${camelCase(pascalName)}Tool: ToolDefinition<
 type EventType = AgentEvent["event"];
 
 const ALL_EVENT_TYPES: EventType[] = [
-  "run_start", "step_start", "tool_call", "tool_result", "planning", "final_answer", "error",
+  "run_start", "step_start", "thinking_delta", "tool_call", "tool_result", "planning", "final_answer", "error",
 ];
 
 function parseEventsFilter(raw: string | undefined, streamMode: boolean): Set<EventType> {
@@ -397,7 +400,7 @@ function parseEventsFilter(raw: string | undefined, streamMode: boolean): Set<Ev
     return new Set(requested.filter((e): e is EventType => (ALL_EVENT_TYPES as string[]).includes(e)));
   }
   if (streamMode) return new Set(ALL_EVENT_TYPES);
-  return new Set<EventType>(["step_start", "planning", "tool_call", "tool_result", "final_answer", "error"]);
+  return new Set<EventType>(["step_start", "thinking_delta", "planning", "tool_call", "tool_result", "final_answer", "error"]);
 }
 
 function printHelp(): void {

@@ -66,14 +66,15 @@ parentPort!.on("message", async (msg: {
   sandbox["__final_answer__"] = undefined;
 
   // Apply capability globals using buildCapabilityGlobals (same as V8WasmKernel).
+  // Always clear capability globals first so a truthy-but-empty manifest ({})
+  // does not leave capabilities from the previous call in the sandbox.
+  delete sandbox["fetch"];
+  delete sandbox["__fs__"];
   if (msg.capabilities) {
     const capGlobals = buildCapabilityGlobals(msg.capabilities);
     for (const [k, v] of Object.entries(capGlobals)) {
       sandbox[k] = v;
     }
-  } else {
-    delete sandbox["fetch"];
-    delete sandbox["__fs__"];
   }
 
   try {

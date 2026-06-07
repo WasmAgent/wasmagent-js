@@ -14,6 +14,11 @@ import { JsKernel } from "./JsKernel.js";
 
 /** True when the current runtime does not support Node's worker_threads module. */
 async function isEdgeRuntime(): Promise<boolean> {
+  // Non-Node runtimes (Cloudflare Workers, browser, Deno) don't expose process.release.
+  if (typeof process === "undefined" || process.release?.name !== "node") {
+    return true;
+  }
+  // On real Node, confirm worker_threads is usable (guards against stripped builds).
   try {
     await import("node:worker_threads");
     return false;

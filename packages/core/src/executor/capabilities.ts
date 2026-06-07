@@ -1,5 +1,8 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { resolve, sep } from "node:path";
 import type { CapabilityManifest } from "./types.js";
+
+const MAX_REDIRECT_HOPS = 5;
 
 /**
  * Builds a sandboxed fetch function that enforces the allowedHosts list (A2).
@@ -7,27 +10,59 @@ import type { CapabilityManifest } from "./types.js";
  * If allowedHosts is empty, fetch is not injected into the sandbox (default deny-all).
  * If allowedHosts is non-empty, only URLs whose hostname matches one of the glob
  * patterns in the list are permitted; all others throw CapabilityDenied.
+ *
+ * Redirects are followed manually: each Location header is validated against
+ * allowedHosts before following, preventing SSRF-via-redirect attacks where a
+ * whitelisted host returns a 302 pointing to an internal/metadata endpoint.
  */
 export function buildSandboxFetch(
   allowedHosts: string[]
 ): ((input: string | URL, init?: RequestInit) => Promise<Response>) | undefined {
   if (allowedHosts.length === 0) return undefined;
 
-  return async (input: string | URL, init?: RequestInit): Promise<Response> => {
-    const url = new URL(typeof input === "string" ? input : input.href);
-    const hostname = url.hostname;
+  const checkHost = (hostname: string, input: string): void => {
     if (!allowedHosts.some((pattern) => matchGlob(pattern, hostname))) {
       throw new Error(
         `CapabilityDenied: fetch to "${hostname}" is not in allowedHosts [${allowedHosts.join(", ")}]`
       );
     }
-    return fetch(input, init);
+  };
+
+  return async (input: string | URL, init?: RequestInit): Promise<Response> => {
+    let url = new URL(typeof input === "string" ? input : input.href);
+    checkHost(url.hostname, url.href);
+
+    let hops = 0;
+    while (true) {
+      const response = await fetch(url.href, { ...init, redirect: "manual" });
+      if (response.status >= 300 && response.status < 400) {
+        if (hops >= MAX_REDIRECT_HOPS) {
+          throw new Error(
+            `CapabilityDenied: fetch exceeded ${MAX_REDIRECT_HOPS} redirects`
+          );
+        }
+        const location = response.headers.get("location");
+        if (!location) return response;
+        const next = new URL(location, url.href);
+        checkHost(next.hostname, next.href);
+        url = next;
+        hops++;
+        continue;
+      }
+      return response;
+    }
   };
 }
 
 /**
  * Validates a file-system path against an allow-list of path prefixes (A2).
  * Throws CapabilityDenied if the path is not covered by any prefix.
+ *
+ * Uses path.resolve to canonicalize both the input and each prefix before
+ * comparing, which prevents two attacks:
+ *   1. Traversal — /allowed/../../etc/passwd resolves outside /allowed.
+ *   2. Prefix confusion — /allowed-sibling/x would pass a startsWith("/allowed")
+ *      check but is rejected because the resolved prefix is appended with sep.
  */
 export function assertPathAllowed(
   path: string,
@@ -39,7 +74,12 @@ export function assertPathAllowed(
       `CapabilityDenied: ${operation} access to "${path}" is denied (no paths allowed)`
     );
   }
-  if (!allowedPaths.some((prefix) => path.startsWith(prefix))) {
+  const resolved = resolve(path);
+  const isAllowed = allowedPaths.some((prefix) => {
+    const resolvedPrefix = resolve(prefix);
+    return resolved === resolvedPrefix || resolved.startsWith(resolvedPrefix + sep);
+  });
+  if (!isAllowed) {
     throw new Error(
       `CapabilityDenied: ${operation} access to "${path}" is not in allowed${operation === "read" ? "Read" : "Write"}Paths [${allowedPaths.join(", ")}]`
     );
