@@ -6,6 +6,7 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
+    "build": "wrangler deploy --dry-run --outdir=dist",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run",
