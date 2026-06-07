@@ -17,7 +17,7 @@ This project draws significant inspiration from Hugging Face's [smolagents](http
 | Language | Python | TypeScript (JS + Pyodide/CPython kernels; MicroPython planned) |
 | Agents | `CodeAgent`, `ToolCallingAgent` | `CodeAgent`, `ToolCallingAgent` |
 | Scheduling | Serial | DAG + speculative execution (C2/C3) |
-| Quality | Single pass | Self-consistency, reflect-refine, budget forcing (P2/P3/S4) |
+| Quality | Single pass | Self-consistency, reflect-refine, budget forcing, parallel fork-join (P2/P3/S4/L4) |
 | History | Unbounded | `MessageAssembler.compact()` — model-summarised long history (P4) |
 
 ## Quick Start
@@ -100,7 +100,29 @@ const answer = await runner.run("Write a detailed analysis of...");
 console.log(answer);
 ```
 
-### Local models (Ollama / vLLM / llama.cpp)
+### Parallel Fork-Join (diversity reasoning)
+
+```ts
+import { ParallelForkJoinRunner, AnthropicModel } from "@agentkit-js/core";
+
+const runner = new ParallelForkJoinRunner({
+  branches: 3,           // fork into 3 independent reasoning paths
+  concurrency: 3,        // all 3 run in parallel
+  aggregation: "summary", // synthesise into one final answer
+  // Optional: inject a different angle for each branch
+  branchPrompt: (i, msgs) => [
+    ...msgs,
+    { role: "user", content: `Analyse from perspective ${i + 1} of 3.` },
+  ],
+});
+
+const result = await runner.run(
+  new AnthropicModel("claude-sonnet-4-6"),
+  [{ role: "user", content: "What are the trade-offs of microservices?" }]
+);
+console.log(result.answer);        // synthesised final answer
+console.log(result.branches);      // individual branch answers
+```
 
 ```ts
 import { OpenAIModel } from "@agentkit-js/core";
@@ -151,7 +173,7 @@ agentkit-js/
 - **B — Context engineering** — `MessageAssembler` builds cache-stable message prefixes (B1) with configurable history segment caching (B2 `chunkSizeSteps`) and `compact()` for long-run history summarisation (P4).
 - **C — DAG scheduling + async core** — `AsyncGenerator`-based streaming with structured `AgentEvent` objects carrying `traceId`/`parentTraceId`. `Scheduler` executes tool DAGs in parallel (C2) with speculative pre-execution of read-only nodes ahead of barriers (C3).
 - **D — Developer ergonomics** — `CodeAgent` and `ToolCallingAgent` constructors mirror smolagents', enabling incremental migration. Tools declare `readOnly`/`idempotent`/`requiredCapability` for scheduling and access control. `EnhancementPolicy` wires quality runners per-agent.
-- **P — Output quality runners** — `SelfConsistencyRunner` (adaptive N, majority vote, concurrency cap), `ReflectRefineRunner` (critique-refine cycles, context isolation), `BudgetForcingRunner` ("Wait" prefill injection for deeper reasoning). All are budget-gated and composable.
+- **P — Output quality runners** — `SelfConsistencyRunner` (adaptive N, majority vote, concurrency cap), `ReflectRefineRunner` (critique-refine cycles, context isolation), `BudgetForcingRunner` ("Wait" prefill injection for deeper reasoning), `ParallelForkJoinRunner` (N parallel branches with branchPrompt diversity, summary/first/fn join). All are budget-gated and composable.
 
 ### Implementation status
 
@@ -195,9 +217,9 @@ agentkit-js/
 | S3 | Cache determinism hardening — `toJsonSchema()` sorted, tools `cache_control` at last item | ✅ Done |
 | S4 | `BudgetForcingRunner` — "Wait" prefill injection, `maxWaitRounds`, `minResponseTokens` | ✅ Done |
 | U1 | `channel:"status"` events — `tool_executing` phase during tool dispatch | ✅ Done |
-| **D1** | **MicroPython execution backend** | **⏳ Remaining** |
-| **A1** | **`WasmtimeKernel` — native WASM binding** | **⏳ Remaining** |
-| **L4** | **Client-side fork-join parallel reasoning (`ParallelForkJoin`, shared-prefix spawn)** | **🔬 Future** |
+| L4 | `ParallelForkJoinRunner` — shared-prefix parallel branches, configurable aggregation (summary/first/fn) | ✅ Done |
+| **A1** | **`WasmtimeKernel` — native WASM binding** (requires JS→WASM transpiler, e.g. Javy; not a drop-in npm install) | **⏳ Remaining** |
+| **D1** | **MicroPython execution backend** — dropped; no reliable ESM npm package exposes a Python exec() API; use `"pyodide"` instead | **⛔ Dropped** |
 
 ### Roadmap
 
@@ -211,9 +233,10 @@ agentkit-js/
 | **M5** ✅ | O3 (ModelCapabilities); S1+S4 (structured output + budget forcing); P0+P1 (policy skeleton) |
 | **M6** ✅ | P2+P3+U1 (self-consistency + critique-refine + status events) |
 | **M7** ✅ | P4 long-history compaction (`MessageAssembler.compact`) |
-| **Future** | WasmtimeKernel native addon; MicroPython kernel; L4 fork-join parallel reasoning |
+| **Future (done)** ✅ | L4 `ParallelForkJoinRunner` — shared-prefix parallel branches + synthesis |
+| **Future** | WasmtimeKernel native addon (requires Javy/WASM transpiler); MicroPython dropped (no reliable ESM package) |
 
-> Status legend: ✅ Done · ⏳ Planned · 🔬 Requires experimental validation first
+> Status legend: ✅ Done · ⏳ Planned · ⛔ Dropped
 
 ## Development
 

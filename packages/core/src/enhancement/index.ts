@@ -6,3 +6,6 @@ export type { ReflectRefineOptions, ReflectRefineResult } from "./ReflectRefineR
 
 export { BudgetForcingRunner } from "./BudgetForcingRunner.js";
 export type { BudgetForcingOptions, BudgetForcingResult } from "./BudgetForcingRunner.js";
+
+export { ParallelForkJoinRunner } from "./ParallelForkJoinRunner.js";
+export type { ParallelForkJoinOptions, ParallelForkJoinResult } from "./ParallelForkJoinRunner.js";
