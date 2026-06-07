@@ -31,3 +31,4 @@ export { AnthropicModels } from "./AnthropicModel.js";
 export { OpenAIModel } from "./OpenAIModel.js";
 export type { OpenAIModelOptions, OpenAIModelId } from "./OpenAIModel.js";
 export { OpenAIModels } from "./OpenAIModel.js";
+export type { RetryPolicy } from "./retry.js";

@@ -5,6 +5,8 @@ import type {
   ModelMessage,
   StreamEvent,
 } from "./types.js";
+import type { RetryPolicy } from "./retry.js";
+import { withRetryGenerator } from "./retry.js";
 
 export interface OpenAIModelOptions {
   apiKey?: string;
@@ -13,6 +15,8 @@ export interface OpenAIModelOptions {
   /** Extra HTTP headers forwarded to every request (e.g. custom auth, routing keys). */
   defaultHeaders?: Record<string, string>;
   samplingParams?: { temperature?: number; seed?: number };
+  /** Retry policy for 429/5xx/network errors (C1). */
+  retry?: RetryPolicy;
 }
 
 /** Canonical OpenAI model IDs. Update here when OpenAI releases new versions. */
@@ -54,6 +58,13 @@ export class OpenAIModel implements Model {
   get baseURL(): string | undefined { return this.#opts.baseURL; }
 
   async *generate(
+    messages: ModelMessage[],
+    opts: GenerateOptions = {}
+  ): AsyncGenerator<StreamEvent> {
+    yield* withRetryGenerator(() => this.#doGenerate(messages, opts), this.#opts.retry);
+  }
+
+  async *#doGenerate(
     messages: ModelMessage[],
     opts: GenerateOptions = {}
   ): AsyncGenerator<StreamEvent> {

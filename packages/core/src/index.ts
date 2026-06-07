@@ -33,6 +33,7 @@ export type {
   AnthropicModelId,
   OpenAIModelOptions,
   OpenAIModelId,
+  RetryPolicy,
 } from "./models/index.js";
 
 // Enhancement runners (P2/P3/S4/L4)
@@ -56,5 +57,18 @@ export type { ToolDefinition, ToolCall, ToolResult } from "./tools/index.js";
 export { Scheduler, SimpleIR } from "./scheduler/index.js";
 export type { ActionIR, IRNode, SchedulerEvent } from "./scheduler/index.js";
 
+// Evals (B1)
+export { exactMatch, toolCallAccuracy, trajectoryValidity, finalAnswerLength, collectTrace, runEval } from "./evals/index.js";
+export type { Scorer, ScorerResult, AgentTrace, EvalSample, EvalRunResult, AgentRunner } from "./evals/index.js";
+
+// Observability (C2)
+export { OtelBridge, InMemorySpanExporter, withOtel } from "./observability/index.js";
+export type { SpanExporter, ReadableSpan, SpanAttributes, OtelBridgeOptions } from "./observability/index.js";
+
+// Checkpoint / durable workflows (B4)
+export { InMemoryCheckpointer, CheckpointableRun, restoreFromSnapshot } from "./checkpoint/index.js";
+export type { Checkpointer, AgentSnapshot, CheckpointableAgentOptions } from "./checkpoint/index.js";
+
 // Types
 export type { AgentEvent, Step, ActionStep, PlanningStep, FinalAnswerStep, ToolUseStep, ParallelToolUseStep, ParallelToolUseCall, UserMessageStep } from "./types/index.js";
+

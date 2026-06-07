@@ -44,18 +44,25 @@ describe("createKernel factory", () => {
     expect(result.output).toBe(4);
   });
 
-  it("wasmtime engine: falls back to V8WasmKernel and warns when WasmtimeKernel throws", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const kernel = await createKernel({ engine: "wasmtime" });
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("kernel-wasmtime")
-    );
-    const result = await kernel.run("3 + 3");
-    expect(result.output).toBe(6);
-    warn.mockRestore();
+  it("wasmtime engine: throws when WasmtimeKernel package is absent (A4 — no silent fallback)", async () => {
+    await expect(createKernel({ engine: "wasmtime" })).rejects.toThrow(/kernel-wasmtime/);
   });
 
   // timeoutMs test moved to JsKernel.test.ts — running while(true){} in this
   // process blocks the vitest worker thread even with vm timeout (50ms of blocking).
   // The timeout feature is verified in JsKernel.test.ts via the "denies access to fetch" test pattern.
+
+  // A4: wasmtime throws KERNEL_NOT_INSTALLED when package is absent.
+  it("wasmtime engine: throws KERNEL_NOT_INSTALLED error when package not installed (A4)", async () => {
+    // The package @agentkit-js/kernel-wasmtime is not installed in the test environment.
+    await expect(
+      createKernel({ engine: "wasmtime" })
+    ).rejects.toMatchObject({ code: "KERNEL_NOT_INSTALLED" });
+  });
+
+  it("wasmtime KERNEL_NOT_INSTALLED error message contains install instructions (A4)", async () => {
+    const err = await createKernel({ engine: "wasmtime" }).catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toContain("pnpm add @agentkit-js/kernel-wasmtime");
+  });
 });
