@@ -164,6 +164,20 @@ export class McpToolCollection {
     return [...this.#tools];
   }
 
+  /**
+   * L1-1: Mark all tools in this collection as deferred (deferLoading: true).
+   *
+   * Call this on large MCP server collections (≥10 tools) to exclude their schemas
+   * from the system prompt prefix and load them on-demand via Tool Search.
+   * Returns this instance for chaining.
+   */
+  deferAll(): this {
+    for (const tool of this.#tools) {
+      (tool as unknown as Record<string, unknown>)["deferLoading"] = true;
+    }
+    return this;
+  }
+
   /** Number of tools available from the connected server. */
   get size(): number {
     return this.#tools.length;

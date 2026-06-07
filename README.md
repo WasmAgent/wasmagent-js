@@ -36,11 +36,11 @@ There are several mature TypeScript agent frameworks. Here is an honest assessme
 | **Evals framework** | ❌ | ⚠️ LangSmith | ❌ | ✅ 12+ scorers | ❌ | ✅ 4 built-in scorers |
 | **Observability (OTel)** | ⚠️ LangSmith | ⚠️ LangSmith | ❌ | ✅ | ❌ | ✅ OtelBridge + GenAI semconv |
 | **Retry / resilience** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ RetryPolicy |
-| **Durable workflows / checkpointing** | ❌ | ✅ LangGraph | ❌ | ⚠️ partial | ✅ Durable Objects | ✅ Checkpointer |
+| **Durable workflows / checkpointing** | ✅ DurableAgent (AI SDK 6) | ✅ LangGraph | ❌ (Assistants API retiring 2026-08-26) | ⚠️ partial | ✅ Durable Objects | ✅ Checkpointer |
 
 ### Where competitors are stronger
 
-- **Vercel AI SDK** — If you're building a chat UI with Next.js, use this. The React hooks (`useChat`, `useAgent`) and 57M monthly downloads speak for themselves.
+- **Vercel AI SDK** — If you're building a chat UI with Next.js, use this. The React hooks (`useChat`, `useAgent`), `DurableAgent` for stateful/resumable workflows (AI SDK 6), native MCP support, and DevTools panel are all best-in-class. 57M monthly downloads.
 - **LangChain/LangGraph.js** — If you need 300+ integrations (vector stores, document loaders, obscure providers) or graph-based durable workflows with checkpointing and human-in-the-loop, LangGraph is battle-tested at LinkedIn, Uber, and GitLab scale.
 - **Mastra** — Best eval framework (12+ built-in scorers including trajectory and tool accuracy). "Observational memory" (background LLM reflection on history) is genuinely novel. Strong developer onboarding.
 - **Cloudflare Agents SDK** — If you're building on Cloudflare specifically, Durable Objects give you stateful agents with persistent scheduling that nothing else matches natively.
@@ -64,7 +64,12 @@ agentkit-js is early-stage. The differentiating features (code execution kernels
 
 - **Two agent modes** — `CodeAgent` (writes + executes code) and `ToolCallingAgent` (native tool_use)
 - **Code execution — three isolation tiers** — `VmKernel` (node:vm, in-process dev/test), `QuickJSKernel` / `PyodideKernel` / `WasmtimeKernel` (true WASM, language-level isolation, edge-safe), `RemoteSandboxKernel` (E2B / Cloudflare Sandbox microVM, full process isolation). Mix tiers via `factory.createKernel()`.
+- **Programmatic Tool Calling (PTC)** — `ProgrammaticOrchestrator` executes model-generated scripts inside any kernel; `callTool()` calls registered tools without surfacing intermediate results to the context (−37% tokens). Self-hosted alternative to Anthropic's managed PTC container.
 - **Prompt-cache optimization** — `MessageAssembler` builds cache-stable prefixes; Anthropic `cache_control` breakpoints respect the 4-breakpoint limit, per-chunk token thresholds, and the 1-hour extended TTL (`ttl:"1h"`); per-TTL usage metering (5m vs 1h); OpenAI automatic prefix cache hit tracking
+- **Tool deferred loading** — `deferLoading: true` on any tool (or `McpToolCollection.deferAll()`) excludes its schema from the system prefix and loads on-demand via Anthropic Tool Search (−85% tokens for large MCP server collections)
+- **Tool Use Examples** — `inputExamples` on any tool maps to Anthropic's `input_examples` wire field (72%→90% parameter accuracy)
+- **Context editing** — `assembler.editToolResults({ maxTokens, keepRecent })` truncates old tool outputs reversibly without breaking conversation structure (+29% task performance, −84% tokens on web search)
+- **Cross-session Memory Tool** — `createMemoryTool({ backend })` gives agents persistent read/write/list/delete memory backed by any `KvBackend` (Cloudflare KV, Redis, in-memory Map)
 - **Quality runners** — majority-vote self-consistency with answer extraction (boxed / last-line / custom hook), critique-refine cycles, "Wait" prefill budget forcing, parallel fork-join with synthesis
 - **DAG scheduling** — independent tool calls execute concurrently via `Scheduler`; read-only tools speculatively pre-execute ahead of write barriers; `$<callId>` dependency syntax in system prompt enables true data-dependency ordering; wired into `ToolCallingAgent` by default
 - **Long-history compaction** — `agent.assembler.compact(model, keepRecentSteps)` summarises old steps; inject a custom `MessageAssembler` via `assembler` option
@@ -88,7 +93,7 @@ import { CodeAgent, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
 
 const agent = new CodeAgent({
   tools: [],
-  model: new AnthropicModel(AnthropicModels.CLAUDE_SONNET_4),
+  model: new AnthropicModel(AnthropicModels.SONNET_LATEST),
   maxSteps: 10,
 });
 
@@ -115,7 +120,7 @@ const searchTool = {
 
 const agent = new ToolCallingAgent({
   tools: [searchTool],
-  model: new AnthropicModel(AnthropicModels.CLAUDE_SONNET_4),
+  model: new AnthropicModel(AnthropicModels.SONNET_LATEST),
   maxSteps: 5,
 });
 
@@ -150,7 +155,7 @@ agentkit run "Write a haiku" --model claude-opus-4-8 --max-steps 5
 import { SelfConsistencyRunner, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
 
 const runner = new SelfConsistencyRunner({
-  model: new AnthropicModel(AnthropicModels.CLAUDE_SONNET_4),
+  model: new AnthropicModel(AnthropicModels.SONNET_LATEST),
   tools: [],
   n: 5,
   concurrency: 3,
@@ -166,7 +171,7 @@ const answer = await runner.run("What is the capital of France?");
 import { ReflectRefineRunner, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
 
 const runner = new ReflectRefineRunner({
-  model: new AnthropicModel(AnthropicModels.CLAUDE_SONNET_4),
+  model: new AnthropicModel(AnthropicModels.SONNET_LATEST),
   tools: [],
   maxCycles: 3,
   qualitySignal: (answer) => answer.length > 100,
@@ -191,7 +196,7 @@ const runner = new ParallelForkJoinRunner({
 });
 
 const result = await runner.run(
-  new AnthropicModel(AnthropicModels.CLAUDE_SONNET_4),
+  new AnthropicModel(AnthropicModels.SONNET_LATEST),
   [{ role: "user", content: "What are the trade-offs of microservices?" }]
 );
 console.log(result.answer);   // synthesised
@@ -203,7 +208,7 @@ console.log(result.branches); // individual paths
 ```ts
 import { CodeAgent, AnthropicModel, AnthropicModels, MessageAssembler } from "@agentkit-js/core";
 
-const model = new AnthropicModel(AnthropicModels.CLAUDE_SONNET_4);
+const model = new AnthropicModel(AnthropicModels.SONNET_LATEST);
 const assembler = new MessageAssembler({ chunkSizeSteps: 8 });
 const agent = new CodeAgent({
   tools: [],
@@ -244,10 +249,10 @@ const local = new OpenAIModel("mistral-7b", {
 import { AnthropicModel, AnthropicModels } from "@agentkit-js/core";
 
 // Standard usage — reads ANTHROPIC_API_KEY from environment
-const model = new AnthropicModel(AnthropicModels.CLAUDE_SONNET_4);
+const model = new AnthropicModel(AnthropicModels.SONNET_LATEST);
 
 // Third-party proxy or private endpoint
-const proxied = new AnthropicModel(AnthropicModels.CLAUDE_SONNET_4, {
+const proxied = new AnthropicModel(AnthropicModels.SONNET_LATEST, {
   apiKey: "your-proxy-key",
   baseURL: "https://your-proxy.example.com",
 });
@@ -351,6 +356,115 @@ function ChatUI() {
     </>
   );
 }
+```
+
+### Tool Deferred Loading (L1-1)
+
+Exclude large MCP server tool schemas from the context prefix; load on-demand via Anthropic Tool Search. Reduces token usage by up to 85% on servers with many tools.
+
+```ts
+import { McpToolCollection, ToolCallingAgent, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+
+// Option A: defer all tools from an MCP server with many tools.
+const tools = await McpToolCollection.fromHttp("https://big-mcp-server.example.com");
+tools.deferAll(); // marks all tools as deferLoading: true
+
+// Option B: defer individual tools via the ToolDefinition field.
+const myTool = {
+  name: "my_tool",
+  deferLoading: true,   // excluded from system prefix
+  // ... other fields
+};
+
+const agent = new ToolCallingAgent({
+  tools: tools.list(),
+  model: new AnthropicModel(AnthropicModels.SONNET_LATEST),
+});
+```
+
+### Tool Use Examples (L1-2)
+
+Provide few-shot examples to improve parameter accuracy from ~72% to ~90%.
+
+```ts
+const searchTool = {
+  name: "search",
+  description: "Search the web for information",
+  inputSchema: z.object({ query: z.string(), maxResults: z.number().optional() }),
+  inputExamples: [
+    { query: "latest AI research 2026", maxResults: 5 },
+    { query: "TypeScript best practices" },
+  ],
+  // ...
+};
+```
+
+### Context Editing (L2-1)
+
+Truncate old tool outputs reversibly to reduce context size without breaking conversation structure.
+
+```ts
+import { MessageAssembler, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+
+const model = new AnthropicModel(AnthropicModels.SONNET_LATEST);
+const assembler = new MessageAssembler({ chunkSizeSteps: 8 });
+const agent = new ToolCallingAgent({ tools, model, assembler, maxSteps: 50 });
+
+// After many steps, truncate old tool outputs that are taking too many tokens.
+// Keeps the 3 most recent tool steps verbatim; truncates older ones.
+const truncated = agent.assembler.editToolResults({ maxTokens: 4096, keepRecent: 3 });
+console.log(`Truncated ${truncated} tool outputs`);
+```
+
+### Cross-Session Memory Tool (L2-2)
+
+Give agents persistent memory that survives across separate `run()` calls.
+
+```ts
+import { createMemoryTool, MapKvBackend, ToolCallingAgent, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+
+// Use MapKvBackend for in-process use, or KvCheckpointer's backend for persistence.
+const memory = createMemoryTool({ backend: new MapKvBackend() });
+
+const agent = new ToolCallingAgent({
+  tools: [memory, ...otherTools],
+  model: new AnthropicModel(AnthropicModels.SONNET_LATEST),
+});
+
+// Session 1: agent learns something
+for await (const ev of agent.run("What's the capital of France? Remember it for later.")) { }
+
+// Session 2: agent recalls it
+for await (const ev of agent.run("What did you remember about France's capital?")) {
+  if (ev.event === "final_answer") console.log(ev.data.answer); // "Paris"
+}
+```
+
+### Programmatic Tool Calling / Self-Hosted PTC (L3-1)
+
+Execute model-generated orchestration scripts inside a kernel; only the final result enters the context window.
+
+```ts
+import { ProgrammaticOrchestrator, JsKernel, ToolRegistry } from "@agentkit-js/core";
+
+const kernel = new JsKernel();
+const registry = new ToolRegistry();
+registry.register(searchTool);
+registry.register(calcTool);
+
+const orchestrator = new ProgrammaticOrchestrator(kernel, registry, {
+  extraCapabilities: ["tool:search", "tool:calc"],
+});
+
+// Model-generated script — intermediate results never enter the LLM context.
+const script = `
+  const results = callTool('search', { query: 'AI news 2026' });
+  const count = callTool('calc', { expr: results.length + ' items' });
+  count + ' found';
+`;
+const { finalOutput, toolCallCount } = await orchestrator.run(script);
+console.log(finalOutput);    // Only this enters the context window.
+console.log(toolCallCount);  // e.g. 2 — intermediate results stayed in the kernel.
 ```
 
 ---

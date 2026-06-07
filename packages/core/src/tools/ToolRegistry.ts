@@ -50,18 +50,56 @@ export class ToolRegistry {
     return [...this.#tools.values()];
   }
 
-  /** JSON schema for all tools — passed to model as tool definitions (E1).
-   * Sorted by name for deterministic cache keys across registrations. */
+  /**
+   * JSON schema for all non-deferred tools — passed to model as tool definitions.
+   * Deferred tools (deferLoading: true) are excluded; they are loaded on-demand.
+   * Sorted by name for deterministic cache keys across registrations.
+   */
   toJsonSchema(): object[] {
     return [...this.#tools.values()]
+      .filter((t) => !t.deferLoading)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((t) => {
+        const schema: Record<string, unknown> = {
+          name: t.name,
+          description: t.description,
+          input_schema: t.rawInputJsonSchema ?? (t.inputSchema ? zodToJsonSchema(t.inputSchema) : {}),
+        };
+        // L1-2: include few-shot examples when provided.
+        if (t.inputExamples && t.inputExamples.length > 0) {
+          schema["input_examples"] = t.inputExamples;
+        }
+        // L1-3: include allowed_callers for PTC when provided.
+        if (t.allowedCallers && t.allowedCallers.length > 0) {
+          schema["allowed_callers"] = t.allowedCallers;
+        }
+        return schema;
+      });
+  }
+
+  /**
+   * L1-1: JSON schema for deferred tools only.
+   * Used by AnthropicModel to inject tool_search_tool_regex when deferLoading tools exist.
+   */
+  toDeferredJsonSchema(): object[] {
+    return [...this.#tools.values()]
+      .filter((t) => t.deferLoading)
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((t) => ({
         name: t.name,
         description: t.description,
-        // Prefer rawInputJsonSchema (e.g. MCP server's own schema) over the Zod-derived
-        // schema, which would discard field names and required constraints.
         input_schema: t.rawInputJsonSchema ?? (t.inputSchema ? zodToJsonSchema(t.inputSchema) : {}),
       }));
+  }
+
+  /** True when any registered tool has deferLoading: true. */
+  get hasDeferred(): boolean {
+    return [...this.#tools.values()].some((t) => t.deferLoading);
+  }
+
+  /** True when any registered tool has allowedCallers set (PTC mode). */
+  get hasProgrammaticCallers(): boolean {
+    return [...this.#tools.values()].some((t) => t.allowedCallers && t.allowedCallers.length > 0);
   }
 
   async call(toolCall: ToolCall, grantedCapabilities?: string[]): Promise<ToolResult> {

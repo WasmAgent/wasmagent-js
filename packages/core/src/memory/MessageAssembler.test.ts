@@ -5,6 +5,19 @@ function makeAction(stepIndex: number) {
   return { type: "action" as const, stepIndex, thoughts: `t${stepIndex}`, code: `c${stepIndex}`, observations: `o${stepIndex}` };
 }
 
+function makeToolUse(stepIndex: number, output = "result") {
+  return {
+    type: "tool_use" as const,
+    stepIndex,
+    thoughts: "",
+    toolCallId: `tc-${stepIndex}`,
+    toolName: "search",
+    toolInput: { q: "test" },
+    toolOutput: output,
+    isError: false,
+  };
+}
+
 describe("MessageAssembler", () => {
   let assembler: MessageAssembler;
 
@@ -452,6 +465,179 @@ describe("MessageAssembler", () => {
       expect(a.getScratchpad()).toBeNull();
       a.setScratchpad("hello");
       expect(a.getScratchpad()).toBe("hello");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // L1-1: Deferred tool loading
+  // -------------------------------------------------------------------------
+  describe("L1-1: deferred tool loading", () => {
+    it("excludes deferred tools from system prefix", () => {
+      const a = new MessageAssembler({
+        systemPrompt: "sys",
+        toolsSchema: [
+          { name: "eager_tool", description: "always present", deferLoading: false },
+          { name: "deferred_tool", description: "lazy loaded", deferLoading: true },
+        ],
+      });
+      const msgs = a.build();
+      const sysContent = msgs[0]?.content as string;
+      expect(sysContent).toContain("eager_tool");
+      expect(sysContent).not.toContain("deferred_tool");
+    });
+
+    it("includes all tools when none are deferred", () => {
+      const a = new MessageAssembler({
+        systemPrompt: "sys",
+        toolsSchema: [
+          { name: "tool_a", description: "a" },
+          { name: "tool_b", description: "b" },
+        ],
+      });
+      const msgs = a.build();
+      const sysContent = msgs[0]?.content as string;
+      expect(sysContent).toContain("tool_a");
+      expect(sysContent).toContain("tool_b");
+    });
+
+    it("empty system tools section when all tools are deferred", () => {
+      const a = new MessageAssembler({
+        systemPrompt: "sys",
+        toolsSchema: [
+          { name: "tool_x", description: "x", deferLoading: true },
+          { name: "tool_y", description: "y", deferLoading: true },
+        ],
+      });
+      const msgs = a.build();
+      const sysContent = msgs[0]?.content as string;
+      expect(sysContent).not.toContain("tool_x");
+      expect(sysContent).not.toContain("tool_y");
+      // The tools section still exists but is empty.
+      expect(sysContent).toContain("<tools>");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // L2-1: Context editing (reversible tool result cleanup)
+  // -------------------------------------------------------------------------
+  describe("L2-1: editToolResults()", () => {
+    it("truncates old tool outputs when they exceed token budget", () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      // Add 5 tool-use steps with large outputs.
+      const largeOutput = "x".repeat(2000);
+      for (let i = 1; i <= 5; i++) a.addStep(makeToolUse(i, largeOutput));
+
+      const truncated = a.editToolResults({ maxTokens: 100, keepRecent: 1 });
+      expect(truncated).toBeGreaterThan(0);
+    });
+
+    it("preserves the keepRecent most recent tool steps verbatim", () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      for (let i = 1; i <= 4; i++) a.addStep(makeToolUse(i, "x".repeat(2000)));
+
+      a.editToolResults({ maxTokens: 100, keepRecent: 2 });
+
+      const msgs = a.build();
+      // The last 2 tool steps should be untouched.
+      const toolResults = msgs.filter(
+        (m) => Array.isArray(m.content) &&
+          (m.content as unknown as Array<Record<string, unknown>>).some((b) => b["type"] === "tool_result")
+      );
+      // Last 2 should have original output.
+      const lastTwo = toolResults.slice(-2);
+      for (const msg of lastTwo) {
+        const blocks = msg.content as unknown as Array<Record<string, unknown>>;
+        const result = blocks.find((b) => b["type"] === "tool_result");
+        expect((result?.["content"] as string)).not.toContain("truncated");
+      }
+    });
+
+    it("conversation structure remains valid after editing (tool_use/tool_result pairs intact)", () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      for (let i = 1; i <= 3; i++) a.addStep(makeToolUse(i, "x".repeat(1000)));
+
+      a.editToolResults({ maxTokens: 50, keepRecent: 0 });
+
+      const msgs = a.build();
+      // Find all assistant messages with tool_use blocks.
+      const assistantMsgs = msgs.filter(
+        (m) => m.role === "assistant" &&
+          Array.isArray(m.content) &&
+          (m.content as unknown as Array<Record<string, unknown>>).some((b) => b["type"] === "tool_use")
+      );
+      const userMsgs = msgs.filter(
+        (m) => m.role === "user" &&
+          Array.isArray(m.content) &&
+          (m.content as unknown as Array<Record<string, unknown>>).some((b) => b["type"] === "tool_result")
+      );
+      // Pairs must match.
+      expect(assistantMsgs.length).toBe(userMsgs.length);
+      expect(assistantMsgs.length).toBeGreaterThan(0);
+    });
+
+    it("returns 0 when no tool steps exist", () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      for (let i = 1; i <= 3; i++) a.addStep(makeAction(i));
+      const truncated = a.editToolResults({ maxTokens: 10, keepRecent: 1 });
+      expect(truncated).toBe(0);
+    });
+
+    it("cache breakpoints remain ≤4 after editing", () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [], chunkSizeSteps: 2 });
+      for (let i = 1; i <= 6; i++) a.addStep(makeToolUse(i, "x".repeat(500)));
+
+      a.editToolResults({ maxTokens: 50, keepRecent: 1 });
+
+      const msgs = a.build();
+      const breakpointCount = msgs.filter((m) => m.cacheBreakpoint).length;
+      // Edited steps lose their seal; total breakpoints should be ≤ 4.
+      expect(breakpointCount).toBeLessThanOrEqual(4);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // L3-2: buildAsync() — async message assembly
+  // -------------------------------------------------------------------------
+  describe("L3-2: buildAsync()", () => {
+    it("returns same result as build() when no lazy handles present", async () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      a.addStep(makeAction(1));
+      const sync = a.build();
+      const async_ = await a.buildAsync();
+      expect(async_.length).toBe(sync.length);
+      expect(async_[0]?.content).toBe(sync[0]?.content);
+    });
+
+    it("awaits a lazy handle stored as toolOutput", async () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      // Simulate a LazyObservationHandle as toolOutput.
+      let resolveHandle!: (v: string) => void;
+      const pending = new Promise<string>((r) => { resolveHandle = r; });
+      const lazyHandle = { resolve: () => pending };
+
+      a.addStep({
+        type: "tool_use",
+        stepIndex: 1,
+        thoughts: "",
+        toolCallId: "tc-lazy",
+        toolName: "slow_tool",
+        toolInput: {},
+        toolOutput: lazyHandle as unknown as string,
+        isError: false,
+      });
+
+      resolveHandle("lazy_result_value");
+      const msgs = await a.buildAsync();
+      const userMsg = msgs.find((m) => m.role === "user");
+      const blocks = userMsg?.content as unknown as Array<Record<string, unknown>>;
+      const result = blocks?.find((b) => b["type"] === "tool_result");
+      expect(result?.["content"]).toBe("lazy_result_value");
+    });
+
+    it("preserves B1 cache breakpoint on system message after buildAsync()", async () => {
+      const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+      const msgs = await a.buildAsync();
+      expect(msgs[0]?.cacheBreakpoint).toEqual({ type: "ephemeral" });
     });
   });
 });

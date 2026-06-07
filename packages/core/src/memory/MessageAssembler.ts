@@ -1,5 +1,7 @@
 import type { ModelMessage } from "../models/types.js";
+import { estimateTokens } from "../models/types.js";
 import type { Step } from "../types/events.js";
+import type { LazyObservationHandle } from "./LazyObservationHandle.js";
 
 /**
  * Message assembler for cache-friendly prefix construction (B1/B2).
@@ -13,9 +15,6 @@ import type { Step } from "../types/events.js";
  * the last message in that completed chunk gets a cache breakpoint. The prefix
  * up to that point is byte-identical across future steps and qualifies for
  * Anthropic's long-TTL (5 min) prompt cache.
- *
- * Replaces smolagents' write_memory_to_messages (agents.py:758) which rebuilds
- * the full message list every step (O(steps) token growth, zero caching).
  */
 export interface AssemblerConfig {
   systemPrompt: string;
@@ -27,6 +26,20 @@ export interface AssemblerConfig {
    * Recommended: 5–10 for long-running agents.
    */
   chunkSizeSteps?: number;
+}
+
+/** Options for L2-1 context editing (reversible tool result cleanup). */
+export interface EditToolResultsOptions {
+  /**
+   * Total estimated token budget for tool outputs. Outputs are truncated oldest-first
+   * until the total falls within this budget.
+   */
+  maxTokens: number;
+  /**
+   * Number of most-recent tool steps to preserve verbatim (not truncated).
+   * Default: 3.
+   */
+  keepRecent?: number;
 }
 
 export class MessageAssembler {
@@ -89,16 +102,12 @@ export class MessageAssembler {
     const messages: ModelMessage[] = new Array(total);
     let idx = 0;
 
-    // 1. System prompt — cached at construction time (B1).
     messages[idx++] = this.#systemMsg;
 
-    // 2. Few-shot examples — immutable.
     if (fewShot) {
       for (const m of this.#config.fewShotExamples!) messages[idx++] = m;
     }
 
-    // 3. D2 scratchpad — cross-step working memory, injected as a user message.
-    //    Placed after system/few-shot so it doesn't break the B1 cache prefix.
     if (this.#scratchpad !== null) {
       messages[idx++] = {
         role: "user",
@@ -106,13 +115,11 @@ export class MessageAssembler {
       };
     }
 
-    // 4. Assemble history from cache using index-assignment (no push, no spread).
     for (let i = 0; i < this.#msgCache.length; i++) {
       const stepMsgs = this.#msgCache[i]!;
       if (stepMsgs.length === 0) continue;
 
       if (this.#sealedAt.has(i)) {
-        // Seal last message with a cache breakpoint (B2); copy others by reference.
         for (let j = 0; j < stepMsgs.length - 1; j++) messages[idx++] = stepMsgs[j]!;
         messages[idx++] = {
           ...stepMsgs.at(-1)!,
@@ -124,6 +131,46 @@ export class MessageAssembler {
     }
 
     return messages;
+  }
+
+  /**
+   * L3-2: Async variant of build() that awaits pending LazyObservationHandles.
+   *
+   * Use this path when tool outputs may still be resolving (cross-step lazy
+   * references). Preserves all B1/B2 cache breakpoints.
+   */
+  async buildAsync(): Promise<ModelMessage[]> {
+    // Resolve any pending lazy handles in the history before building.
+    for (let i = 0; i < this.#history.length; i++) {
+      const step = this.#history[i]!;
+      if (step.type === "tool_use" && isLazyHandle(step.toolOutput)) {
+        const resolved = await (step.toolOutput as unknown as LazyObservationHandle).resolve();
+        const updatedStep = { ...step, toolOutput: resolved };
+        this.#history[i] = updatedStep;
+        this.#msgCache[i] = this.#stepToMessages(updatedStep);
+        // Recalculate flatMsgCount
+      } else if (step.type === "parallel_tool_use") {
+        let changed = false;
+        const resolvedCalls = await Promise.all(
+          step.calls.map(async (c) => {
+            if (isLazyHandle(c.toolOutput)) {
+              changed = true;
+              const resolved = await (c.toolOutput as unknown as LazyObservationHandle).resolve();
+              return { ...c, toolOutput: resolved };
+            }
+            return c;
+          })
+        );
+        if (changed) {
+          const updatedStep = { ...step, calls: resolvedCalls };
+          this.#history[i] = updatedStep;
+          this.#msgCache[i] = this.#stepToMessages(updatedStep);
+        }
+      }
+    }
+    // Recompute flatMsgCount after potential resolution.
+    this.#flatMsgCount = this.#msgCache.reduce((sum, msgs) => sum + msgs.length, 0);
+    return this.build();
   }
 
   reset(): void {
@@ -138,9 +185,6 @@ export class MessageAssembler {
 
   /**
    * D2 working memory scratchpad.
-   * Set to a non-null string to inject a persistent <scratchpad> block into
-   * every model call, visible across all steps. Set to null to clear.
-   * Does NOT modify the system message — B1 cache prefix stability is preserved.
    */
   setScratchpad(content: string | null): void {
     this.#scratchpad = content;
@@ -151,15 +195,84 @@ export class MessageAssembler {
   }
 
   /**
-   * Compact long history by summarizing older steps (P4).
+   * L2-1: Context Editing — reversible tool result cleanup.
+   *
+   * Truncates tool outputs in older tool_use and parallel_tool_use steps to reduce
+   * total context size without removing the tool call/result structure (which would
+   * break the Anthropic API's required tool_use/tool_result pairing).
+   *
+   * Unlike compact(), this operation:
+   *   - Preserves the tool_use blocks and conversation structure (API valid)
+   *   - Replaces only the *content* of tool_result blocks with a placeholder
+   *   - Is targeted: only truncates beyond keepRecent steps
+   *   - Invalidates B2 cache breakpoints for affected chunks (they're dirty)
+   *
+   * @returns Number of tool outputs that were truncated.
+   */
+  editToolResults(opts: EditToolResultsOptions): number {
+    const { maxTokens, keepRecent = 3 } = opts;
+
+    // Collect eligible tool steps (oldest first, excluding keepRecent most recent).
+    const toolStepIndices: number[] = [];
+    for (let i = 0; i < this.#history.length; i++) {
+      const step = this.#history[i]!;
+      if (step.type === "tool_use" || step.type === "parallel_tool_use") {
+        toolStepIndices.push(i);
+      }
+    }
+
+    // Exclude the keepRecent most recent tool steps.
+    const editableIndices = toolStepIndices.slice(0, Math.max(0, toolStepIndices.length - keepRecent));
+    if (editableIndices.length === 0) return 0;
+
+    // Estimate current total tool output tokens.
+    let truncated = 0;
+
+    for (const idx of editableIndices) {
+      const step = this.#history[idx]!;
+      if (step.type === "tool_use" && step.toolOutput && step.toolOutput.length > 0) {
+        const currentTokens = estimateTokens(step.toolOutput);
+        if (currentTokens > maxTokens / editableIndices.length) {
+          const truncatedOutput = `[truncated — ${currentTokens} tokens removed by context editing]`;
+          const updatedStep = { ...step, toolOutput: truncatedOutput };
+          this.#history[idx] = updatedStep;
+          this.#msgCache[idx] = this.#stepToMessages(updatedStep);
+          // Invalidate B2 seal for this chunk (dirty content).
+          this.#sealedAt.delete(idx);
+          truncated++;
+        }
+      } else if (step.type === "parallel_tool_use") {
+        let changed = false;
+        const updatedCalls = step.calls.map((c) => {
+          if (c.toolOutput && c.toolOutput.length > 0) {
+            const currentTokens = estimateTokens(c.toolOutput);
+            if (currentTokens > maxTokens / editableIndices.length) {
+              changed = true;
+              return { ...c, toolOutput: `[truncated — ${currentTokens} tokens removed by context editing]` };
+            }
+          }
+          return c;
+        });
+        if (changed) {
+          const updatedStep = { ...step, calls: updatedCalls };
+          this.#history[idx] = updatedStep;
+          this.#msgCache[idx] = this.#stepToMessages(updatedStep);
+          this.#sealedAt.delete(idx);
+          truncated++;
+        }
+      }
+    }
+
+    // Recompute flatMsgCount after edits.
+    this.#flatMsgCount = this.#msgCache.reduce((sum, msgs) => sum + msgs.length, 0);
+    return truncated;
+  }
+
+  /**
+   * Compact long history by summarizing older steps.
    *
    * Keeps the most recent `keepRecentSteps` steps verbatim and replaces all
-   * older steps with a single summary step (a planning step whose `plan` field
-   * holds the compressed text). The summary is generated by calling `model`.
-   *
-   * This reduces context window consumption without discarding agent state.
-   * Only call when history is genuinely long; use `estimateMessagesTokens` to
-   * check token count first.
+   * older steps with a single summary step. The summary is generated by calling `model`.
    *
    * @param model           Model used to generate the summary.
    * @param keepRecentSteps Number of recent steps to preserve verbatim (default 5).
@@ -180,7 +293,6 @@ export class MessageAssembler {
     const toSummarize = this.#history.slice(0, cutoff);
     const recent = this.#history.slice(cutoff);
 
-    // Build a minimal message list representing only the steps to summarize.
     const summaryContext: import("../models/types.js").ModelMessage[] = [
       {
         role: "system",
@@ -203,7 +315,6 @@ export class MessageAssembler {
     }
     summaryText = summaryText.trim() || "(no summary generated)";
 
-    // Replace old steps with a single planning/summary step.
     const summaryStep: import("../types/events.js").PlanningStep = {
       type: "planning",
       plan: summaryText,
@@ -215,7 +326,6 @@ export class MessageAssembler {
       this.#stepToMessages(summaryStep),
       ...recent.map((s) => this.#stepToMessages(s)),
     ];
-    // Rebuild derived state from the compacted history.
     this.#flatMsgCount = this.#msgCache.reduce((sum, msgs) => sum + msgs.length, 0);
     this.#sealedAt = new Set();
     const chunkSize = this.#config.chunkSizeSteps ?? 0;
@@ -246,7 +356,11 @@ export class MessageAssembler {
 
   /** Stable representation of system content + tools schema (B1 byte-stability). */
   #buildSystemContent(): string {
-    const toolsJson = JSON.stringify(this.#config.toolsSchema, null, 0);
+    // L1-1: exclude deferred tools from B1 prefix — their schemas are loaded on-demand.
+    const activeSchema = this.#config.toolsSchema.filter(
+      (t) => !(t as Record<string, unknown>)["deferLoading"]
+    );
+    const toolsJson = JSON.stringify(activeSchema, null, 0);
     return `${this.#config.systemPrompt}\n\n<tools>${toolsJson}</tools>`;
   }
 
@@ -264,8 +378,6 @@ export class MessageAssembler {
           },
         ];
       case "tool_use":
-        // Produce the assistant tool_use block + user tool_result block required
-        // by the Anthropic and OpenAI multi-turn tool conversation format.
         return [
           {
             role: "assistant",
@@ -294,9 +406,6 @@ export class MessageAssembler {
           },
         ];
       case "parallel_tool_use":
-        // One assistant message with N tool_use blocks + one user message with N
-        // tool_result blocks in matching order — required by the Anthropic API
-        // when the model calls multiple tools in a single turn.
         return [
           {
             role: "assistant",
@@ -335,4 +444,13 @@ export class MessageAssembler {
         return [{ role: "user", content: step.content }];
     }
   }
+}
+
+/** Runtime check: is a value a LazyObservationHandle (has a resolve() method)? */
+function isLazyHandle(value: unknown): boolean {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    typeof (value as Record<string, unknown>)["resolve"] === "function"
+  );
 }

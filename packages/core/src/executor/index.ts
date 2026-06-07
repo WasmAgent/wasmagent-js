@@ -15,4 +15,5 @@ export {
   assertPathAllowed,
   matchGlob,
 } from "./capabilities.js";
-
+export { ProgrammaticOrchestrator } from "./ProgrammaticOrchestrator.js";
+export type { ProgrammaticResult } from "./ProgrammaticOrchestrator.js";
