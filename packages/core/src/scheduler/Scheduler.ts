@@ -119,8 +119,7 @@ export class Scheduler {
               console.error("[scheduler] speculative node rejected unexpectedly:", reason);
             }
             speculative.delete(failedId);
-            completedResults.set(failedId, undefined);
-            this.#unblockDependents(failedId, remaining);
+            yield* this.#cascadeNodeFailure(failedId, ir, completedResults, remaining, reason);
             yield { type: "node_error", nodeId: failedId, error: isAbort ? undefined : reason };
           }
         }
@@ -155,8 +154,7 @@ export class Scheduler {
             if (!isAbort) {
               console.error("[scheduler] write node rejected:", reason);
             }
-            completedResults.set(failedNode.id, undefined);
-            this.#unblockDependents(failedNode.id, remaining);
+            yield* this.#cascadeNodeFailure(failedNode.id, ir, completedResults, remaining, reason);
             yield { type: "node_error", nodeId: failedNode.id, error: isAbort ? undefined : reason };
           }
         }
@@ -184,8 +182,7 @@ export class Scheduler {
               console.error("[scheduler] speculative node rejected unexpectedly:", reason);
             }
             speculative.delete(failedId);
-            completedResults.set(failedId, undefined);
-            this.#unblockDependents(failedId, remaining);
+            yield* this.#cascadeNodeFailure(failedId, ir, completedResults, remaining, reason);
             yield { type: "node_error", nodeId: failedId, error: isAbort ? undefined : reason };
           }
         }
@@ -197,6 +194,32 @@ export class Scheduler {
     for (const deps of remaining.values()) {
       deps.delete(completedId);
     }
+  }
+
+  /**
+   * Mark a failed node complete (so the while-loop can terminate) and cascade
+   * the failure to all nodes that directly or transitively depend on it.
+   * Dependents are added to completedResults with a sentinel Error so that
+   * resolveRefs never accidentally substitutes undefined into their args.
+   */
+  *#cascadeNodeFailure(
+    failedId: string,
+    ir: ActionIR,
+    completedResults: Map<string, unknown>,
+    remaining: Map<string, Set<string>>,
+    rootError: unknown
+  ): Generator<SchedulerEvent> {
+    completedResults.set(failedId, undefined);
+    // Find nodes that directly depend on failedId and cascade.
+    for (const node of ir.nodes) {
+      if (completedResults.has(node.id)) continue;
+      if (node.dependsOn.includes(failedId)) {
+        yield* this.#cascadeNodeFailure(node.id, ir, completedResults, remaining, rootError);
+        yield { type: "node_error", nodeId: node.id, error: undefined };
+      }
+    }
+    // Now unblock any nodes that had failedId as a dep (they may have other deps too).
+    this.#unblockDependents(failedId, remaining);
   }
 }
 

@@ -87,6 +87,7 @@ export class QwenModel extends OpenAICompatModel {
    * thinking_budget is a token limit (not a tier name); default budget by effort.
    */
   protected override mapThinkingParams(opts: GenerateOptions): Record<string, unknown> {
+    if (!this.#defaultEnableThinking) return {};
     const enabled = this.thinkingEnabled(opts, this.#defaultEnableThinking);
     const result: Record<string, unknown> = { enable_thinking: enabled };
 
