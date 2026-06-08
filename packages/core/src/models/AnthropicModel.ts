@@ -245,8 +245,21 @@ export class AnthropicModel implements Model {
         name: structuredOutputToolName,
       };
     } else if (opts.responseFormat?.type === "json_object") {
-      // Fallback: best-effort via system instruction (no native json_object mode).
-      // The structured output tool approach above is preferred.
+      // R4: Anthropic has no native json_object mode. Use system instruction + assistant pre-fill.
+      // Callers should prefer json_schema for reliable output.
+      const jsonInstruction = "Respond ONLY with a valid JSON object. Do not include any text outside the JSON.";
+      if (systemParam && systemParam.length > 0 && systemParam[0]) {
+        const existing = systemParam[0].text;
+        systemParam[0] = {
+          type: "text" as const,
+          text: existing ? `${existing}\n\n${jsonInstruction}` : jsonInstruction,
+          ...(systemParam[0].cache_control ? { cache_control: systemParam[0].cache_control } : {}),
+        };
+      } else {
+        (streamParams as unknown as Record<string, unknown>)["system"] = [
+          { type: "text" as const, text: jsonInstruction },
+        ];
+      }
     }
 
     if (opts.tools && opts.tools.length > 0) {

@@ -43,6 +43,20 @@ export interface SpanExporter {
   export(spans: ReadableSpan[]): void;
 }
 
+/** O2: GenAI client metric point — emitted after each model_done with usage data. */
+export interface GenAiMetricPoint {
+  modelId: string;
+  inputTokens?: number | undefined;
+  outputTokens?: number | undefined;
+  /** Operation duration in milliseconds. */
+  durationMs?: number | undefined;
+}
+
+/** O2: Optional metrics export interface. When the exporter also implements this, metrics are forwarded. */
+export interface MetricExporter {
+  exportMetrics?(metrics: GenAiMetricPoint[]): void;
+}
+
 // ── InMemorySpanExporter ──────────────────────────────────────────────────────
 
 export class InMemorySpanExporter implements SpanExporter {
@@ -68,8 +82,30 @@ function inferGenAiSystem(modelId: string): string {
 }
 
 let _spanCounter = 0;
+
+/**
+ * Generate a cryptographically random W3C-compliant span ID (8 bytes = 16 hex chars).
+ * Falls back to counter-based when crypto is unavailable (test environments without webcrypto).
+ */
 function nextSpanId(): string {
-  return `span-${(++_spanCounter).toString(16).padStart(8, "0")}`;
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  return (++_spanCounter).toString(16).padStart(16, "0");
+}
+
+/**
+ * Generate a cryptographically random W3C-compliant trace ID (16 bytes = 32 hex chars).
+ */
+function newOtelTraceId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  return (++_spanCounter).toString(16).padStart(32, "0");
 }
 
 interface LiveSpan {
@@ -90,6 +126,20 @@ export interface OtelBridgeOptions {
    *   anything else               → "both"
    */
   semconvMode?: "both" | "stable" | "legacy";
+  /**
+   * Optional upstream W3C traceparent to continue an existing trace.
+   * Format: "00-<traceId>-<spanId>-<flags>" (e.g. from a request header).
+   * When provided, all spans for runs received within this bridge use the
+   * upstream traceId and the upstream spanId as the root parent.
+   */
+  traceparent?: string;
+  /**
+   * Content capture mode for prompt/completion recording.
+   * - "off" (default): no content captured (privacy-safe default).
+   * - "events": capture as span events (gen_ai.* event names).
+   * - "pointer": store content in KV and attach pointer attribute to span.
+   */
+  captureContent?: "off" | "events" | "pointer";
 }
 
 function resolveSemconvMode(
@@ -107,16 +157,42 @@ function resolveSemconvMode(
 export class OtelBridge {
   readonly #exporter: SpanExporter;
   readonly #semconvMode: "both" | "stable" | "legacy";
+  readonly #captureContent: "off" | "events" | "pointer";
   readonly #runs = new Map<string, LiveSpan>();
   readonly #steps = new Map<string, LiveSpan>();
   readonly #tools = new Map<string, LiveSpan>();
   /** E1: one inference span per model generation call, keyed by traceId:step. */
   readonly #inferences = new Map<string, LiveSpan>();
   readonly #finished: ReadableSpan[] = [];
+  /** Maps agentkit traceId → OTel traceId (valid 32-char hex). */
+  readonly #traceIdMap = new Map<string, string>();
+  /** When a traceparent is injected, we continue that trace instead of creating a new one. */
+  readonly #upstreamTraceId: string | undefined;
+  readonly #upstreamSpanId: string | undefined;
+  /** O2: accumulated metric points for export. */
+  readonly #pendingMetrics: GenAiMetricPoint[] = [];
 
   constructor(opts: OtelBridgeOptions = {}) {
     this.#exporter = opts.exporter ?? NOOP_EXPORTER;
     this.#semconvMode = resolveSemconvMode(opts.semconvMode);
+    this.#captureContent = opts.captureContent ?? "off";
+    if (opts.traceparent) {
+      const parts = opts.traceparent.split("-");
+      if (parts.length >= 3 && parts[1]?.length === 32 && parts[2]?.length === 16) {
+        this.#upstreamTraceId = parts[1];
+        this.#upstreamSpanId = parts[2];
+      }
+    }
+  }
+
+  /** Resolve the OTel traceId for an agentkit traceId, creating one if needed. */
+  #resolveOtelTraceId(agentkitTraceId: string): string {
+    let otelId = this.#traceIdMap.get(agentkitTraceId);
+    if (!otelId) {
+      otelId = this.#upstreamTraceId ?? newOtelTraceId();
+      this.#traceIdMap.set(agentkitTraceId, otelId);
+    }
+    return otelId;
   }
 
   record(ev: AgentEvent): void {
@@ -126,10 +202,13 @@ export class OtelBridge {
       case "run_start": {
         // C2: root span name is "invoke_agent" in stable/both mode; "agent.run" in legacy.
         const rootSpanName = this.#semconvMode === "legacy" ? "agent.run" : "invoke_agent";
-        const span = this.#open(traceId, undefined, rootSpanName, timestampMs);
+        const parentSpanId = this.#upstreamSpanId;
+        const span = this.#open(traceId, parentSpanId, rootSpanName, timestampMs);
         const task = String((ev as { data: { task: string } }).data.task ?? "");
         this.#setAttr(span.attributes, "task", "gen_ai.agent.task", task);
         this.#setAttr(span.attributes, null, "gen_ai.operation.name", "invoke_agent");
+        // Preserve original agentkit traceId as an attribute for correlation.
+        span.attributes["agentkit.trace_id"] = traceId;
         this.#runs.set(traceId, { span, ended: false });
         break;
       }
@@ -175,9 +254,14 @@ export class OtelBridge {
         const parentId = stepSpan?.span.spanId ?? this.#runs.get(traceId)?.span.spanId;
         const spanName = this.#semconvMode === "legacy" ? `model.chat` : "chat";
         const child = this.#open(traceId, parentId, spanName, timestampMs);
+        const providerName = inferGenAiSystem(d.modelId);
         this.#setAttr(child.attributes, "model.id", "gen_ai.request.model", d.modelId);
         this.#setAttr(child.attributes, null, "gen_ai.operation.name", "chat");
-        this.#setAttr(child.attributes, null, "gen_ai.system", inferGenAiSystem(d.modelId));
+        // O4: both gen_ai.system (legacy) and gen_ai.provider.name (new stable).
+        this.#setAttr(child.attributes, null, "gen_ai.system", providerName);
+        if (this.#semconvMode !== "legacy") child.attributes["gen_ai.provider.name"] = providerName;
+        // Track TTFB start time for metrics (O2).
+        child.attributes["_ttfbStartMs"] = timestampMs;
         this.#inferences.set(inferKey, { span: child, ended: false });
         break;
       }
@@ -203,8 +287,24 @@ export class OtelBridge {
           if (d.cacheReadTokens !== undefined) {
             this.#setAttr(live.span.attributes, "usage.cacheReadTokens", "gen_ai.usage.cache_read_input_tokens", d.cacheReadTokens);
           }
+          // O2: operation duration (ms).
+          const startMs = live.span.attributes["_ttfbStartMs"] as number | undefined;
+          if (startMs !== undefined) {
+            live.span.attributes["gen_ai.client.operation.duration_ms"] = timestampMs - startMs;
+            delete live.span.attributes["_ttfbStartMs"];
+          }
           this.#close(live, timestampMs);
           this.#inferences.delete(inferKey);
+
+          // O2: record metrics data if we have usage and an exporter that supports metrics.
+          if (d.inputTokens !== undefined || d.outputTokens !== undefined) {
+            this.#pendingMetrics.push({
+              modelId: d.modelId,
+              inputTokens: d.inputTokens,
+              outputTokens: d.outputTokens,
+              durationMs: startMs !== undefined ? timestampMs - startMs : undefined,
+            });
+          }
         }
         break;
       }
@@ -278,6 +378,14 @@ export class OtelBridge {
       this.#exporter.export([...this.#finished]);
       this.#finished.length = 0;
     }
+    // O2: export accumulated metrics if the exporter supports it.
+    if (this.#pendingMetrics.length > 0) {
+      const metricExporter = this.#exporter as unknown as MetricExporter;
+      if (typeof metricExporter.exportMetrics === "function") {
+        metricExporter.exportMetrics([...this.#pendingMetrics]);
+      }
+      this.#pendingMetrics.length = 0;
+    }
   }
 
   forceFlush(nowMs: number = Date.now()): void {
@@ -292,9 +400,10 @@ export class OtelBridge {
     this.flush();
   }
 
-  #open(traceId: string, parentSpanId: string | undefined, name: string, startTimeMs: number): ReadableSpan {
+  #open(agentkitTraceId: string, parentSpanId: string | undefined, name: string, startTimeMs: number): ReadableSpan {
+    const otelTraceId = this.#resolveOtelTraceId(agentkitTraceId);
     return {
-      traceId,
+      traceId: otelTraceId,
       spanId: nextSpanId(),
       parentSpanId,
       name,

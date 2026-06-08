@@ -12,6 +12,8 @@ import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
 import { ParallelForkJoinRunner } from "../enhancement/ParallelForkJoinRunner.js";
 import type { AgentEvent, ActionStep, FinalAnswerStep } from "../types/events.js";
 import { runPlanningStep, extractTagContent } from "./prompts.js";
+import type { InputGuardrail, OutputGuardrail } from "../guardrails/index.js";
+import { runInputGuardrails, runOutputGuardrails } from "../guardrails/index.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant who can solve any task using code.
 To solve the task, you must plan forward to proceed in a series of steps.
@@ -39,6 +41,20 @@ export interface CodeAgentOptions {
   enhancementPolicy?: EnhancementPolicy;
   /** Inject a pre-configured MessageAssembler (e.g. for compaction tests or custom chunking). */
   assembler?: MessageAssembler;
+  /**
+   * S3: Input guardrails run before the agent accepts the task.
+   * Also used for code scanning — add codeGuardrail() to scan generated code pre-execution.
+   */
+  inputGuardrails?: InputGuardrail[];
+  /**
+   * S3: Output guardrails run before the final_answer event is emitted.
+   */
+  outputGuardrails?: OutputGuardrail[];
+  /**
+   * S3: Input guardrails that are applied specifically to generated code before kernel execution.
+   * Use codeGuardrail() here to block dangerous patterns.
+   */
+  codeGuardrails?: InputGuardrail[];
 }
 
 /**
@@ -62,6 +78,9 @@ export class CodeAgent {
   readonly #kernelPromise: Promise<WasmKernel>;
   readonly #assembler: MessageAssembler;
   readonly #policy: EnhancementPolicy | undefined;
+  readonly #inputGuardrails: InputGuardrail[];
+  readonly #outputGuardrails: OutputGuardrail[];
+  readonly #codeGuardrails: InputGuardrail[];
 
   constructor(opts: CodeAgentOptions) {
     this.#tools = new ToolRegistry();
@@ -72,6 +91,9 @@ export class CodeAgent {
     this.#maxSteps = opts.maxSteps ?? opts.enhancementPolicy?.budget?.maxSteps ?? 20;
     this.#planningInterval = opts.planningInterval;
     this.#policy = opts.enhancementPolicy;
+    this.#inputGuardrails = opts.inputGuardrails ?? [];
+    this.#outputGuardrails = opts.outputGuardrails ?? [];
+    this.#codeGuardrails = opts.codeGuardrails ?? [];
     // D1: use provided kernel or create one via factory.
     this.#kernelPromise = opts.kernel
       ? Promise.resolve(opts.kernel)
@@ -117,6 +139,24 @@ export class CodeAgent {
       code: "",
       observations: "",
     });
+
+    // S3: input guardrail check on the task before any model call.
+    if (this.#inputGuardrails.length > 0) {
+      const inputTripwire = await runInputGuardrails(this.#inputGuardrails, task, this.#assembler.build());
+      if (inputTripwire) {
+        yield {
+          traceId, parentTraceId, channel: "status", event: "guardrail_tripwire",
+          data: { guardrailName: inputTripwire.guardrailName, layer: "input" as const, ...(inputTripwire.result.metadata ? { metadata: inputTripwire.result.metadata } : {}) },
+          timestampMs: Date.now(),
+        };
+        yield {
+          traceId, parentTraceId, channel: "text", event: "error",
+          data: { error: `Input guardrail "${inputTripwire.guardrailName}" triggered` },
+          timestampMs: Date.now(),
+        };
+        return;
+      }
+    }
 
     const budget = new TokenBudget();
     const budgetMaxTokens = this.#policy?.budget?.maxTokens;
@@ -251,6 +291,25 @@ export class CodeAgent {
 
       // Execute code in the kernel (A1 stateful execution).
       const codeToRun = extractCode(fullResponse)!;
+
+      // S3: code guardrail scan before kernel execution.
+      if (this.#codeGuardrails.length > 0) {
+        const codeTripwire = await runInputGuardrails(this.#codeGuardrails, codeToRun, []);
+        if (codeTripwire) {
+          yield {
+            traceId, parentTraceId, channel: "status", event: "guardrail_tripwire",
+            data: { guardrailName: codeTripwire.guardrailName, layer: "tool" as const, ...(codeTripwire.result.metadata ? { metadata: codeTripwire.result.metadata } : {}) },
+            timestampMs: Date.now(),
+          };
+          yield {
+            traceId, parentTraceId, channel: "text", event: "error",
+            data: { error: `Code guardrail "${codeTripwire.guardrailName}" blocked code execution at step ${step}` },
+            timestampMs: Date.now(),
+          };
+          return;
+        }
+      }
+
       let kernelResult;
       try {
         kernelResult = await kernel.run(codeToRun);
@@ -340,6 +399,25 @@ export class CodeAgent {
 
     const finalStep: FinalAnswerStep = { type: "final_answer", answer: refined };
     this.#assembler.addStep(finalStep);
+
+    // S3: output guardrail check before emitting final_answer.
+    if (this.#outputGuardrails.length > 0) {
+      const outputTripwire = await runOutputGuardrails(this.#outputGuardrails, refined);
+      if (outputTripwire) {
+        yield {
+          traceId, parentTraceId, channel: "status", event: "guardrail_tripwire",
+          data: { guardrailName: outputTripwire.guardrailName, layer: "output" as const, ...(outputTripwire.result.metadata ? { metadata: outputTripwire.result.metadata } : {}) },
+          timestampMs: Date.now(),
+        };
+        yield {
+          traceId, parentTraceId, channel: "text", event: "error",
+          data: { error: `Output guardrail "${outputTripwire.guardrailName}" triggered` },
+          timestampMs: Date.now(),
+        };
+        return;
+      }
+    }
+
     yield {
       traceId,
       parentTraceId,

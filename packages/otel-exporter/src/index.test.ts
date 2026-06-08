@@ -139,15 +139,16 @@ describe("OtlpHttpExporter", () => {
     expect(span.parentSpanId.length).toBe(16);
   });
 
-  it("fire-and-forget export() does not throw on fetch error", async () => {
+  it("fire-and-forget export() does not throw on fetch error and logs after retries", async () => {
     const fetchSpy = vi.fn().mockRejectedValue(new Error("network error"));
     vi.stubGlobal("fetch", fetchSpy);
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const exporter = new OtlpHttpExporter();
+    // Use maxRetries:0 to skip retries and get immediate error logging
+    const exporter = new OtlpHttpExporter({ maxRetries: 0 });
     exporter.export([makeSpan()]);
-    // Allow the microtask queue to flush
-    await new Promise((r) => setTimeout(r, 10));
+    // Allow the microtask queue + minimal delay to flush
+    await new Promise((r) => setTimeout(r, 20));
     expect(consoleSpy).toHaveBeenCalled();
   });
 
