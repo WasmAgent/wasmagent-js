@@ -185,16 +185,16 @@ export class McpToolCollection {
       ...(!isAllowed ? { needsApproval: true as const } : {}),
       forward: async (input: Record<string, unknown>): Promise<string> => {
         const result = await client.callTool({ name: schema.name, arguments: input });
-        // C1: prefer structured content when the server returns outputSchema-typed results.
-        if (result.structuredContent !== undefined) {
-          return JSON.stringify(result.structuredContent);
-        }
         const text = result.content
           .filter((c): c is McpTextContent => c.type === "text")
           .map((c) => c.text)
           .join("\n");
         if (result.isError) {
           throw new Error(text || "MCP tool returned an error");
+        }
+        // C1: prefer structured content when the server returns outputSchema-typed results.
+        if (result.structuredContent !== undefined) {
+          return JSON.stringify(result.structuredContent);
         }
         return text;
       },

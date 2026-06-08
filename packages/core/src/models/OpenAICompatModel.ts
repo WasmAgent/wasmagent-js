@@ -240,9 +240,10 @@ export abstract class OpenAICompatModel implements Model {
       }
 
       // Legacy OpenAI function_call delta format (single function, no index).
+      // Only accumulate if tool_calls was NOT also present (avoid collision at index 0).
       const fc = (choice?.delta as unknown as Record<string, unknown>)?.["function_call"] as
         | { name?: string; arguments?: string } | undefined;
-      if (fc) {
+      if (fc && !choice?.delta.tool_calls) {
         if (!toolCallAccum.has(0)) {
           toolCallAccum.set(0, { id: "fn-0", name: fc.name ?? "", arguments: "" });
         }
