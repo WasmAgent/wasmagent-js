@@ -530,15 +530,13 @@ function convertMessages(messages: ModelMessage[], shouldCache: boolean, cacheMi
         .filter((b): b is AnthropicBlock => b !== null);
 
       if (m.cacheBreakpoint && shouldCache && blocks.length > 0) {
-        const textContent = blocks
-          .filter((b): b is AnthropicTextBlock => b.type === "text")
-          .map((b) => b.text)
-          .join("");
-        if (estimateTokens(textContent) >= cacheMinTokens) {
-          const lastBlock = blocks[blocks.length - 1]!;
+        const textBlocks = blocks.filter((b): b is AnthropicTextBlock => b.type === "text");
+        const textContent = textBlocks.map((b) => b.text).join("");
+        if (textBlocks.length > 0 && estimateTokens(textContent) >= cacheMinTokens) {
+          const lastTextBlock = textBlocks[textBlocks.length - 1]!;
           const cc: AnthropicCacheControl = { type: "ephemeral" };
           if (m.cacheBreakpoint.ttl) cc.ttl = m.cacheBreakpoint.ttl;
-          (lastBlock as AnthropicTextBlock).cache_control = cc;
+          lastTextBlock.cache_control = cc;
         }
       }
 

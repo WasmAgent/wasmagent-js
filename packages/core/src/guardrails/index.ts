@@ -328,7 +328,7 @@ const DEFAULT_CODE_PATTERNS: RegExp[] = [
   /process\s*\.\s*exit/,
   /\bfs\.write/,
   /\bfs\.unlink/,
-  /\brmdir|rmSync|rm\s*\(/,
+  /\brmdir\b|\brmSync\b|\brm\s*\(/,
 ];
 
 /**
