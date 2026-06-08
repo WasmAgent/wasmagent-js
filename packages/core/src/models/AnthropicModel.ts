@@ -335,14 +335,6 @@ export class AnthropicModel implements Model {
       ) {
         const thinkingDelta = (event.delta as unknown as Record<string, unknown>)["thinking"] as string | undefined;
         if (thinkingDelta) yield { type: "thinking_delta", delta: thinkingDelta };
-      } else if (event.type === "message_delta" && event.usage) {
-        yield {
-          type: "usage",
-          usage: {
-            inputTokens: 0,
-            outputTokens: event.usage.output_tokens,
-          },
-        };
       } else if (event.type === "message_stop") {
         yield { type: "stop", stopReason: "end_turn" };
       }
