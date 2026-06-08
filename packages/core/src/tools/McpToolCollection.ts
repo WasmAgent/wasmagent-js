@@ -189,10 +189,14 @@ export class McpToolCollection {
         if (result.structuredContent !== undefined) {
           return JSON.stringify(result.structuredContent);
         }
-        return result.content
+        const text = result.content
           .filter((c): c is McpTextContent => c.type === "text")
           .map((c) => c.text)
           .join("\n");
+        if (result.isError) {
+          throw new Error(text || "MCP tool returned an error");
+        }
+        return text;
       },
     };
   }
@@ -267,6 +271,7 @@ interface McpClientInterface {
   callTool(params: { name: string; arguments?: Record<string, unknown> }): Promise<{
     content: McpContent[];
     structuredContent?: unknown;
+    isError?: boolean;
   }>;
   close(): Promise<void>;
 }

@@ -183,6 +183,9 @@ export class MessageAssembler {
   /** Current history length (number of steps recorded). */
   get historyLength(): number { return this.#history.length; }
 
+  /** Returns a shallow copy of the recorded step history (for checkpointing). */
+  get steps(): Step[] { return [...this.#history]; }
+
   /**
    * D2 working memory scratchpad.
    */
