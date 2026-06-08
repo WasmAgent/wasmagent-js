@@ -500,7 +500,7 @@ function extractThoughts(response: string): string {
 function extractCode(response: string): string | null {
   const match =
     /<code>([\s\S]*?)<\/code>/.exec(response) ??
-    /```(?:js|javascript)?\n([\s\S]*?)```/.exec(response);
+    /```(?:js|javascript|python|py|ts|typescript)?\n([\s\S]*?)```/.exec(response);
   if (!match) {
     // Log a truncated snippet to aid debugging without flooding output with large responses.
     const snippet = response.length > 200 ? `${response.slice(0, 200)}…` : response;
