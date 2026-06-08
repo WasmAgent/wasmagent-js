@@ -387,7 +387,7 @@ export class AnthropicModel implements Model {
       const cache5mRead = uAny["ephemeral_5m_input_tokens"];
       const cache1hRead = uAny["ephemeral_1h_input_tokens"];
       const cacheCreation = uAny["cache_creation"] as Record<string, unknown> | undefined;
-      if (typeof cache5mRead === "number") usage.cacheReadTokens = cache5mRead;
+      if (typeof cache5mRead === "number") usage.cacheReadTokens = (usage.cacheReadTokens ?? 0) + cache5mRead;
       if (typeof cache1hRead === "number") usage.cacheReadTokens1h = cache1hRead;
       if (typeof cacheCreation?.["ephemeral_1h_input_tokens"] === "number") {
         usage.cacheWriteTokens1h = cacheCreation["ephemeral_1h_input_tokens"] as number;

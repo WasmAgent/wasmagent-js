@@ -39,6 +39,7 @@ export interface QwenModelOptions extends OpenAICompatModelOptions {
  */
 export class QwenModel extends OpenAICompatModel {
   readonly #defaultEnableThinking: boolean;
+  readonly #isThinkingModel: boolean;
 
   /** Effort → thinking_budget token mapping. */
   static readonly EFFORT_BUDGET: Record<string, number> = {
@@ -65,6 +66,7 @@ export class QwenModel extends OpenAICompatModel {
       reasoningContentField: "reasoning_content",
     });
     this.#defaultEnableThinking = opts.enableThinking ?? isThinkingModel;
+    this.#isThinkingModel = isThinkingModel;
   }
 
   protected override extraCapabilities(): Partial<ModelCapabilities> {
@@ -87,7 +89,7 @@ export class QwenModel extends OpenAICompatModel {
    * thinking_budget is a token limit (not a tier name); default budget by effort.
    */
   protected override mapThinkingParams(opts: GenerateOptions): Record<string, unknown> {
-    if (!this.#defaultEnableThinking) return {};
+    if (!this.#isThinkingModel) return {};
     const enabled = this.thinkingEnabled(opts, this.#defaultEnableThinking);
     const result: Record<string, unknown> = { enable_thinking: enabled };
 
