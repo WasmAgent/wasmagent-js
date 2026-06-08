@@ -149,7 +149,7 @@ export interface StreamEvent {
   type: "text_delta" | "thinking_delta" | "tool_call" | "stop" | "usage";
   delta?: string;
   toolCall?: ToolUseBlock;
-  stopReason?: "end_turn" | "tool_use" | "max_tokens";
+  stopReason?: "end_turn" | "tool_use" | "max_tokens" | "stop_sequence";
   usage?: TokenUsage;
 }
 
