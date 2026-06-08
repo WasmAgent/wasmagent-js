@@ -262,14 +262,16 @@ async function handleRun(request: Request, env: Env, ctx: ExecutionContext, cors
     ctx.waitUntil((async () => {
       const allEvents: AgentEvent[] = [];
       let ranSuccessfully = false;
-      // Tee the events: one stream for AG-UI SSE output, one for KV caching.
-      const teedEvents: AgentEvent[] = [];
       try {
         const agUiStream = toAgUiSseStream(
           (async function*() {
             for await (const ev of agentRun) {
-              teedEvents.push(ev);
-              if (kvKey && env.AGENTKIT_SESSIONS && allEvents.length < MAX_KV_EVENTS) allEvents.push(ev);
+              // Always record final_answer; cap earlier events to MAX_KV_EVENTS.
+              if (kvKey && env.AGENTKIT_SESSIONS) {
+                if (ev.event === "final_answer" || allEvents.length < MAX_KV_EVENTS) {
+                  allEvents.push(ev);
+                }
+              }
               if (ev.event === "final_answer") ranSuccessfully = true;
               yield ev;
             }

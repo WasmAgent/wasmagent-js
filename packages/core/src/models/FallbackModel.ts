@@ -100,25 +100,29 @@ export class FallbackModel implements Model {
   ): AsyncGenerator<StreamEvent> {
     let lastError: unknown;
 
-    for (const model of this.#models) {
+    for (let i = 0; i < this.#models.length; i++) {
+      const model = this.#models[i]!;
       try {
-        const events: StreamEvent[] = [];
-        // Buffer all events to detect late-stream failures before yielding.
-        // This ensures partial streams don't cause downstream desync.
-        for await (const ev of model.generate(messages, opts)) {
-          events.push(ev);
+        if (i === 0) {
+          // Primary model: stream directly for minimal first-token latency.
+          // If it throws mid-stream the caller already received partial events,
+          // so a clean fallover is impossible regardless — just propagate.
+          yield* model.generate(messages, opts);
+        } else {
+          // Fallback models: buffer to avoid yielding a partial stream that then fails.
+          const events: StreamEvent[] = [];
+          for await (const ev of model.generate(messages, opts)) {
+            events.push(ev);
+          }
+          yield* events;
         }
-        // All events collected successfully — yield them and record the winner.
         this.#lastProviderId = model.providerId;
-        yield* events;
         return;
       } catch (err) {
         lastError = err;
-        if (isNonRetryable(err)) {
-          // Non-retryable (bad auth, missing model) — skip to next provider.
+        if (i === 0 || isNonRetryable(err)) {
           continue;
         }
-        // Retryable / unknown — try next provider (the current model's retries are exhausted).
         continue;
       }
     }
