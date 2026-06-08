@@ -397,11 +397,6 @@ export class ToolCallingAgent {
             const repaired = repairJson(raw);
             try { return JSON.parse(repaired); } catch { return raw; }
           };
-          // Add the step now so the assembler has context for fix-prompt retries.
-          // NOTE: if validation ultimately fails, we return before emitting final_answer
-          // but the step remains in assembler history — that is intentional so the model
-          // sees its own bad answer when asked to fix it.
-          this.#assembler.addStep({ type: "final_answer", answer });
           let parseResult = this.#outputSchema.safeParse(
             typeof answer === "string" ? parseCandidate(answer) : answer
           );
@@ -457,11 +452,8 @@ export class ToolCallingAgent {
           return;
         }
 
-        // Only record the final step in history after all checks pass.
-        // When outputSchema is present the step was added earlier for retry context.
-        if (!this.#outputSchema) {
-          this.#assembler.addStep({ type: "final_answer", answer: parsedAnswer });
-        }
+        // Record the final step after all checks pass, using the coerced/validated value.
+        this.#assembler.addStep({ type: "final_answer", answer: parsedAnswer });
 
         yield {
           traceId,
@@ -503,19 +495,16 @@ export class ToolCallingAgent {
       }
 
       // A1: tool guardrail check — runs before any tool is dispatched.
-      // All calls are checked in parallel to match runInputGuardrails/runOutputGuardrails pattern.
+      // Calls are checked sequentially so we stop as soon as one trips,
+      // avoiding unnecessary LLM-based guardrail work for later calls.
       if (this.#toolGuardrails.length > 0) {
-        const guardrailResults = await Promise.all(
-          pendingCalls.map((call) =>
-            runToolGuardrails(
-              this.#toolGuardrails,
-              call.name,
-              call.input,
-              { originalTask: task, proposedAction: `Call tool "${call.name}" with args: ${JSON.stringify(call.input)}` }
-            ).then((tripwire) => ({ call, tripwire }))
-          )
-        );
-        for (const { call, tripwire: toolTripwire } of guardrailResults) {
+        for (const call of pendingCalls) {
+          const toolTripwire = await runToolGuardrails(
+            this.#toolGuardrails,
+            call.name,
+            call.input,
+            { originalTask: task, proposedAction: `Call tool "${call.name}" with args: ${JSON.stringify(call.input)}` }
+          );
           if (toolTripwire) {
             yield {
               traceId, parentTraceId, channel: "status", event: "guardrail_tripwire",
