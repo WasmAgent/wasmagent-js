@@ -40,7 +40,9 @@ describe("McpToolCollection (D4)", () => {
     ]);
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?t=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?t=" + Date.now() + ""
+    );
     const collection = await MTC.fromStdio("echo", []);
 
     expect(collection.size).toBe(2);
@@ -54,7 +56,9 @@ describe("McpToolCollection (D4)", () => {
     const mockClient = makeMockMcpClient([{ name: "side-effect-tool" }]);
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?t=" + Date.now() + "2");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?t=" + Date.now() + "2"
+    );
     const collection = await MTC.fromStdio("echo", []);
 
     const tool = collection.list()[0]!;
@@ -69,7 +73,9 @@ describe("McpToolCollection (D4)", () => {
     });
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?t=" + Date.now() + "3");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?t=" + Date.now() + "3"
+    );
     const collection = await MTC.fromStdio("echo", []);
 
     const tool = collection.list()[0]!;
@@ -85,7 +91,9 @@ describe("McpToolCollection (D4)", () => {
     const mockClient = makeMockMcpClient([]);
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?t=" + Date.now() + "4");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?t=" + Date.now() + "4"
+    );
     const collection = await MTC.fromStdio("echo", []);
     await collection.close();
 
@@ -102,7 +110,9 @@ describe("McpToolCollection (D4)", () => {
     });
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?t=" + Date.now() + "5");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?t=" + Date.now() + "5"
+    );
     const collection = await MTC.fromStdio("echo", []);
     const tool = collection.list()[0]!;
     const result = await tool.forward({} as never);
@@ -113,7 +123,9 @@ describe("McpToolCollection (D4)", () => {
     const mockClient = makeMockMcpClient([{ name: "unnamed" }]);
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?t=" + Date.now() + "6");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?t=" + Date.now() + "6"
+    );
     const collection = await MTC.fromStdio("echo", []);
     const tool = collection.list()[0]!;
     expect(tool.description).toBe("");
@@ -123,7 +135,9 @@ describe("McpToolCollection (D4)", () => {
     const mockClient = makeMockMcpClient([{ name: "sse-tool", description: "From SSE server" }]);
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?t=" + Date.now() + "7");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?t=" + Date.now() + "7"
+    );
     const collection = await MTC.fromSse("https://example.com/mcp/sse");
 
     expect(collection.size).toBe(1);
@@ -150,7 +164,9 @@ describe("B3 — MCP supply chain integrity", () => {
     ]);
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t1=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?b3t1=" + Date.now() + ""
+    );
     const collection = await MTC.fromStdio("echo", [], undefined, {
       allowedToolNames: ["allowed_tool"],
     });
@@ -168,7 +184,9 @@ describe("B3 — MCP supply chain integrity", () => {
     const mockClient = makeMockMcpClient([{ name: "tool_a" }, { name: "tool_b" }]);
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t2=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?b3t2=" + Date.now() + ""
+    );
     const collection = await MTC.fromStdio("echo", [], undefined, {
       allowedToolNames: [],
     });
@@ -183,7 +201,9 @@ describe("B3 — MCP supply chain integrity", () => {
     const mockClient = makeMockMcpClient([{ name: "t1" }, { name: "t2" }]);
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t3=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?b3t3=" + Date.now() + ""
+    );
     const collection = await MTC.fromStdio("echo", []);
 
     for (const tool of collection.list()) {
@@ -197,7 +217,9 @@ describe("B3 — MCP supply chain integrity", () => {
     const mockClient = makeMockMcpClient([{ name: "tool_x" }]);
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t4=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?b3t4=" + Date.now() + ""
+    );
     await expect(
       MTC.fromStdio("echo", [], undefined, {
         serverFingerprint: "000000000000000000000000000000000000000000000000000000000000dead",
@@ -207,7 +229,9 @@ describe("B3 — MCP supply chain integrity", () => {
   });
 
   it("computeFingerprint produces consistent SHA-256", async () => {
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t5=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?b3t5=" + Date.now() + ""
+    );
     const tools = [
       { name: "b_tool", description: "B" },
       { name: "a_tool", description: "A" },
@@ -278,7 +302,9 @@ describe("McpToolCollection — B3: resources and prompts", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3r1=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?b3r1=" + Date.now() + ""
+    );
     const collection = await MTC.fromStdio("echo", []);
     const resources = await collection.listResources();
 
@@ -297,7 +323,9 @@ describe("McpToolCollection — B3: resources and prompts", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3r2=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?b3r2=" + Date.now() + ""
+    );
     const collection = await MTC.fromStdio("echo", []);
     const contents = await collection.readResource("file:///data.json");
 
@@ -315,7 +343,9 @@ describe("McpToolCollection — B3: resources and prompts", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3p1=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?b3p1=" + Date.now() + ""
+    );
     const collection = await MTC.fromStdio("echo", []);
     const prompts = await collection.listPrompts();
 
@@ -332,7 +362,9 @@ describe("McpToolCollection — B3: resources and prompts", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3p2=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?b3p2=" + Date.now() + ""
+    );
     const collection = await MTC.fromStdio("echo", []);
     const result = await collection.getPrompt("system_prompt");
 
@@ -349,7 +381,9 @@ describe("McpToolCollection — B3: resources and prompts", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3p3=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?b3p3=" + Date.now() + ""
+    );
     const collection = await MTC.fromStdio("echo", []);
     const prefix = await collection.getPromptAsSystemPrefix("system_prompt");
 
@@ -372,7 +406,9 @@ describe("McpToolCollection — B3: resources and prompts", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3r3=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?b3r3=" + Date.now() + ""
+    );
     const collection = await MTC.fromStdio("echo", []);
 
     await expect(collection.listResources()).rejects.toThrow(/resources capability/);
@@ -417,7 +453,9 @@ describe("A1 — McpAuthOptions / McpAuthError", () => {
       tokenProvider: async () => "test-token",
       resourceIndicator: "https://api.example.com/mcp",
     };
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a1t1=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?a1t1=" + Date.now() + ""
+    );
     await MTC.fromHttp("https://api.example.com/mcp", undefined, undefined, auth);
 
     expect(capturedOpts.authProvider).toBeDefined();
@@ -451,7 +489,9 @@ describe("A1 — McpAuthOptions / McpAuthError", () => {
 
     const tokenProvider = vi.fn().mockResolvedValue("my-access-token");
     const auth = { tokenProvider };
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a1t2=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?a1t2=" + Date.now() + ""
+    );
     await MTC.fromHttp("https://api.example.com/mcp", undefined, undefined, auth);
 
     expect(capturedProviders.length).toBeGreaterThan(0);
@@ -482,7 +522,9 @@ describe("A1 — McpAuthOptions / McpAuthError", () => {
         }),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a1t3=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?a1t3=" + Date.now() + ""
+    );
     await MTC.fromHttp("https://api.example.com/mcp");
     expect(capturedOpts.authProvider).toBeUndefined();
   });
@@ -530,7 +572,9 @@ describe("A2 — URL-mode elicitation", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a2t1=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?a2t1=" + Date.now() + ""
+    );
     await MTC.fromStdio("echo", [], undefined, undefined, elicitation);
 
     // trigger form-mode elicitation
@@ -561,7 +605,9 @@ describe("A2 — URL-mode elicitation", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a2t2=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?a2t2=" + Date.now() + ""
+    );
     await MTC.fromStdio("echo", [], undefined, undefined, elicitation);
 
     // trigger URL-mode elicitation with requestType:"url" and authorizationUrl
@@ -616,7 +662,9 @@ describe("A3 — Sampling/createMessage registration", () => {
     }));
 
     const samplingCallback = vi.fn().mockResolvedValue("LLM response text");
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a3t1=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?a3t1=" + Date.now() + ""
+    );
     await MTC.fromStdio("echo", [], undefined, undefined, undefined, samplingCallback);
 
     // sampling handler should be registered
@@ -650,7 +698,9 @@ describe("A3 — Sampling/createMessage registration", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a3t2=" + Date.now() + "");
+    const { McpToolCollection: MTC } = await import(
+      "../tools/McpToolCollection.js?a3t2=" + Date.now() + ""
+    );
     await MTC.fromStdio("echo", []);
 
     await expect(

@@ -188,13 +188,14 @@ function lcsLength(a: string[], b: string[]): number {
   const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
+      // biome-ignore lint/style/noNonNullAssertion: dp is fully initialized, indices always valid
       dp[i]![j] =
         a[i - 1] === b[j - 1]
-          ? dp[i - 1]?.[j - 1]! + 1
-          : Math.max(dp[i - 1]?.[j]!, dp[i]?.[j - 1]!);
+          ? (dp[i - 1]?.[j - 1] ?? 0) + 1
+          : Math.max(dp[i - 1]?.[j] ?? 0, dp[i]?.[j - 1] ?? 0);
     }
   }
-  return dp[m]?.[n]!;
+  return dp[m]?.[n] ?? 0;
 }
 
 // ── C2: llmJudge and guardrailCompliance scorers ───────────────────────────────
