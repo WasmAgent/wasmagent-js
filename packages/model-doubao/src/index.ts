@@ -111,7 +111,7 @@ export class DoubaoModel extends OpenAICompatModel {
     const budgetTokens = opts.thinking?.budgetTokens;
 
     // Only reasoning-capable models accept the thinking parameter.
-    if (!REASONING_MODELS.has(this.modelId) && mode === undefined) return {};
+    if (!REASONING_MODELS.has(this.modelId)) return {};
 
     if (mode === "off") {
       return { extra_body: { thinking: { type: "disabled" } } };
