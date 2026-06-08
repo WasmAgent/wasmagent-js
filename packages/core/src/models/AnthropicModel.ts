@@ -368,6 +368,7 @@ export class AnthropicModel implements Model {
     // Emit stop after tool_call events, using the real stop_reason from finalMessage.
     const stopReason = finalMessage.stop_reason === "tool_use" ? "tool_use"
       : finalMessage.stop_reason === "max_tokens" ? "max_tokens"
+      : finalMessage.stop_reason === "stop_sequence" ? "stop_sequence"
       : "end_turn";
     yield { type: "stop", stopReason };
 

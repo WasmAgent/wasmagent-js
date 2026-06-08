@@ -243,7 +243,7 @@ export abstract class OpenAICompatModel implements Model {
         yield { type: "stop", stopReason: "end_turn" };
       } else if (choice?.finish_reason === "length") {
         yield { type: "stop", stopReason: "max_tokens" };
-      } else if (choice?.finish_reason === "tool_calls") {
+      } else if (choice?.finish_reason === "tool_calls" || choice?.finish_reason === "function_call") {
         for (const [, tc] of [...toolCallAccum.entries()].sort(([a], [b]) => a - b)) {
           let input: Record<string, unknown> = {};
           try {

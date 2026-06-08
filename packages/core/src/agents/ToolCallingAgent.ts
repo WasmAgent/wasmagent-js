@@ -446,11 +446,13 @@ export class ToolCallingAgent {
         // "parallel" mode: original Promise.all path.
         const handles = pendingCalls.map((call) => {
           let callIsError = false;
+          let callIsUntrusted = false;
           const signal = this.#toolTimeoutMs ? AbortSignal.timeout(this.#toolTimeoutMs) : undefined;
           const settled = this.#tools
             .call({ toolName: call.name, args: call.input, callId: call.id, ...(signal ? { signal } : {}) })
             .then(
               (r) => {
+                if (r.trust === "untrusted") callIsUntrusted = true;
                 if (r.error !== undefined) {
                   callIsError = true;
                   return r.error.message || "Tool execution failed with no output.";
@@ -468,14 +470,15 @@ export class ToolCallingAgent {
               }
             );
           const handle = LazyObservationHandle.fromToolResult(settled);
-          return { call, handle, getIsError: () => callIsError };
+          return { call, handle, getIsError: () => callIsError, getIsUntrusted: () => callIsUntrusted };
         });
 
         const outputs = await Promise.all(handles.map((h) => h.handle.resolve()));
         for (let i = 0; i < handles.length; i++) {
-          const { call, getIsError } = handles[i]!;
+          const { call, getIsError, getIsUntrusted } = handles[i]!;
           const toolOutput = outputs[i]!;
           const isError = getIsError();
+          const isUntrusted = getIsUntrusted();
           yield {
             traceId,
             parentTraceId,
@@ -486,7 +489,7 @@ export class ToolCallingAgent {
               : { callId: call.id, toolName: call.name, output: (() => { try { return JSON.parse(toolOutput); } catch { return toolOutput; } })(), batchId, batchSize, stepIndex: step },
             timestampMs: Date.now(),
           };
-          resolvedCalls.push({ toolCallId: call.id, toolName: call.name, toolInput: call.input, toolOutput, isError });
+          resolvedCalls.push({ toolCallId: call.id, toolName: call.name, toolInput: call.input, toolOutput, isError, ...(isUntrusted ? { isUntrusted: true } : {}) });
         }
       }
 
