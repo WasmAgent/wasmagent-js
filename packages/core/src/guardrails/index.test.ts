@@ -3,6 +3,7 @@ import {
   maxInputLength,
   forbiddenPhrases,
   denyTools,
+  classifierGuardrail,
   runInputGuardrails,
   runOutputGuardrails,
   runToolGuardrails,
@@ -184,5 +185,46 @@ describe("ToolCallingAgent integration with guardrails", () => {
     await runToolGuardrails([spy], "my_tool", { key: "value" });
     expect(capturedToolName).toBe("my_tool");
     expect(capturedInput).toEqual({ key: "value" });
+  });
+});
+
+describe("B1 — classifierGuardrail onError behavior", () => {
+  function makeThrowingModel(): { generate: () => AsyncGenerator<never> } {
+    return {
+      async *generate() {
+        throw new Error("classifier is down");
+      },
+    };
+  }
+
+  it("onError='open' (default): classifier error does NOT trigger tripwire", async () => {
+    const g = classifierGuardrail({ model: makeThrowingModel() });
+    const result = await g.check("some content");
+    expect(result.tripwireTriggered).toBe(false);
+    expect(result.metadata?.classifierError).toMatch(/classifier is down/);
+  });
+
+  it("onError='closed': classifier error triggers tripwire", async () => {
+    const g = classifierGuardrail({ model: makeThrowingModel(), onError: "closed" });
+    const result = await g.check("some content");
+    expect(result.tripwireTriggered).toBe(true);
+    expect(result.metadata?.classifierError).toMatch(/classifier is down/);
+  });
+
+  it("onError='open' explicit: same as default, does not block", async () => {
+    const g = classifierGuardrail({ model: makeThrowingModel(), onError: "open" });
+    const result = await g.check("some content");
+    expect(result.tripwireTriggered).toBe(false);
+  });
+
+  it("non-error case: safe classifier response passes through regardless of onError", async () => {
+    const safeModel = {
+      async *generate(): AsyncGenerator<{ type: string; delta?: string }> {
+        yield { type: "text_delta", delta: '{"safe": true}' };
+      },
+    };
+    const g = classifierGuardrail({ model: safeModel, onError: "closed" });
+    const result = await g.check("safe content");
+    expect(result.tripwireTriggered).toBe(false);
   });
 });

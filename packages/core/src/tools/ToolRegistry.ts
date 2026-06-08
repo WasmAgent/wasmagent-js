@@ -1,5 +1,5 @@
 import { zodToJsonSchema as zodToJsonSchemaLib } from "zod-to-json-schema";
-import type { ToolCall, ToolDefinition, ToolResult } from "./types.js";
+import type { AgentPrincipal, ToolCall, ToolDefinition, ToolResult } from "./types.js";
 
 /** Converts a Zod schema to a JSON Schema object (OpenAPI 3.0 compatible). */
 export function zodToJsonSchema(schema: import("zod").ZodSchema): object {
@@ -190,7 +190,7 @@ export class ToolRegistry {
     return [...this.#tools.values()].some((t) => t.allowedCallers && t.allowedCallers.length > 0);
   }
 
-  async call(toolCall: ToolCall, grantedCapabilities?: string[]): Promise<ToolResult> {
+  async call(toolCall: ToolCall, grantedCapabilities?: string[], principal?: AgentPrincipal): Promise<ToolResult> {
     const tool = this.#tools.get(toolCall.toolName);
     if (!tool) {
       return {
@@ -222,6 +222,24 @@ export class ToolRegistry {
       }
     }
 
+    // B2: least-agency write gate — !readOnly tools with writeScope require principal authorization.
+    if (!tool.readOnly && tool.writeScope && tool.writeScope.length > 0) {
+      const principalScopes = principal?.grantedScopes ?? [];
+      const missing = tool.writeScope.filter((s) => !principalScopes.includes(s));
+      if (missing.length > 0) {
+        return {
+          callId: toolCall.callId,
+          toolName: toolCall.toolName,
+          output: null,
+          error: {
+            code: "capability_denied",
+            message: `Tool "${tool.name}" requires write scopes [${missing.join(", ")}] not granted to principal "${principal?.id ?? "(anonymous)"}"`,
+            retryHint: `Grant scopes [${missing.join(", ")}] to the AgentPrincipal or add needsApproval to request human approval`,
+          },
+        };
+      }
+    }
+
     // Validate input with zod (D2 — replaces AgentParsingError retry loop).
     const parsed = tool.inputSchema.safeParse(toolCall.args);
     if (!parsed.success) {
@@ -247,6 +265,10 @@ export class ToolRegistry {
           callId: toolCall.callId,
           input: parsed.data,
         });
+      }
+      // C3: apply toModelOutput compression hook if provided.
+      if (tool.toModelOutput) {
+        output = tool.toModelOutput(rawOutput as never);
       }
       return {
         callId: toolCall.callId,

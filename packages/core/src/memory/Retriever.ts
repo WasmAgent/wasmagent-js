@@ -1,14 +1,17 @@
 /**
  * Minimal RAG / working memory primitives.
  *
- * - Retriever interface: embed + search
- * - InMemoryVectorStore: cosine-similarity based, no external deps
- * - RetrievalTool: wraps a Retriever as a readOnly, idempotent ToolDefinition
- *   (ready for DAG speculative pre-fetch as a readOnly node)
+ * - Embedder interface: pluggable embedding backend (default: zero-dep TF-IDF)
+ * - Retriever interface: add + search
+ * - InMemoryVectorStore: cosine-similarity, no external deps (default TF-IDF embedder)
+ * - KvBackendVectorStore: persists vectors to any KvBackend (checkpoint or memory store)
+ * - makeRetrievalTool: wraps a Retriever as a readOnly, idempotent ToolDefinition;
+ *   results are marked untrusted to prevent RAG poisoning (arXiv:2604.00387 RAGShield 2026).
  */
 
 import { z } from "zod";
 import type { ToolDefinition } from "../tools/types.js";
+import type { KvBackend } from "../checkpoint/index.js";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -33,7 +36,18 @@ export interface Retriever {
   search(query: string, topK?: number): Promise<SearchResult[]>;
 }
 
-// ── InMemoryVectorStore ───────────────────────────────────────────────────────
+/**
+ * D3: Pluggable embedding backend.
+ *
+ * - Default: TfidfEmbedder (zero external deps, good for prototypes)
+ * - Production: use ModelEmbedder with any agentkit Model adapter
+ */
+export interface Embedder {
+  /** Embed a text into a dense vector. */
+  embed(text: string): Promise<number[]>;
+}
+
+// ── TF-IDF (default, zero deps) ───────────────────────────────────────────────
 
 function cosineSimilarity(a: number[], b: number[]): number {
   let dot = 0, normA = 0, normB = 0;
@@ -57,33 +71,68 @@ function tfidfEmbed(text: string, vocab: Map<string, number>): number[] {
   return vec;
 }
 
+/**
+ * Default embedder: sparse bag-of-words TF-IDF.
+ * Maintains a shared vocabulary — must be passed the same instance as the vector store
+ * to stay in sync. Suitable for in-memory stores; not appropriate for cross-session KV use.
+ */
+export class TfidfEmbedder implements Embedder {
+  readonly #vocab: Map<string, number>;
+
+  constructor(vocab: Map<string, number>) {
+    this.#vocab = vocab;
+  }
+
+  updateVocab(text: string): void {
+    const tokens = text.toLowerCase().match(/\b\w+\b/g) ?? [];
+    for (const tok of tokens) {
+      if (!this.#vocab.has(tok)) this.#vocab.set(tok, this.#vocab.size);
+    }
+  }
+
+  async embed(text: string): Promise<number[]> {
+    return tfidfEmbed(text, this.#vocab);
+  }
+}
+
+// ── InMemoryVectorStore ───────────────────────────────────────────────────────
+
 export class InMemoryVectorStore implements Retriever {
   readonly #entries: EmbedResult[] = [];
   readonly #vocab = new Map<string, number>();
+  readonly #embedder: Embedder;
+
+  /**
+   * @param embedder Custom embedder. Defaults to TF-IDF with a shared internal vocab.
+   *   When using an external embedder (ModelEmbedder), the vocab is not used for queries —
+   *   the embedder is called directly for both adds and queries.
+   */
+  constructor(embedder?: Embedder) {
+    this.#embedder = embedder ?? new TfidfEmbedder(this.#vocab);
+  }
 
   async add(id: string, text: string, metadata?: Record<string, unknown>): Promise<void> {
-    // Update vocab with new tokens.
-    const tokens = text.toLowerCase().match(/\b\w+\b/g) ?? [];
-    for (const tok of tokens) {
-      if (!this.#vocab.has(tok)) {
-        this.#vocab.set(tok, this.#vocab.size);
+    if (this.#embedder instanceof TfidfEmbedder) {
+      this.#embedder.updateVocab(text);
+      // Re-embed all existing entries with updated vocab for TF-IDF consistency.
+      for (const entry of this.#entries) {
+        entry.vector = tfidfEmbed(entry.text, this.#vocab);
       }
-    }
-    // Re-embed all existing entries with updated vocab.
-    for (const entry of this.#entries) {
-      entry.vector = tfidfEmbed(entry.text, this.#vocab);
     }
     this.#entries.push({
       id,
       text,
-      vector: tfidfEmbed(text, this.#vocab),
+      vector: await this.#embedder.embed(text),
       ...(metadata !== undefined ? { metadata } : {}),
     });
   }
 
   async search(query: string, topK = 3): Promise<SearchResult[]> {
     if (this.#entries.length === 0) return [];
-    const qVec = tfidfEmbed(query, this.#vocab);
+    if (this.#embedder instanceof TfidfEmbedder) {
+      this.#embedder.updateVocab(query);
+    }
+    const qVec = await this.#embedder.embed(query);
     const scored: SearchResult[] = this.#entries.map((e) => ({
       id: e.id,
       text: e.text,
@@ -97,11 +146,77 @@ export class InMemoryVectorStore implements Retriever {
   get size(): number { return this.#entries.length; }
 }
 
+// ── KvBackendVectorStore ──────────────────────────────────────────────────────
+
+/**
+ * D3: Persistent vector store backed by any KvBackend (checkpoint store, Redis, etc.).
+ *
+ * Vectors and metadata are stored as JSON under a key prefix. The store loads lazily
+ * on first access and can persist across sessions.
+ *
+ * Requires an external embedder (ModelEmbedder or any Embedder) since TF-IDF vocabulary
+ * cannot be reliably persisted and restored across sessions.
+ */
+export class KvBackendVectorStore implements Retriever {
+  readonly #kv: KvBackend;
+  readonly #prefix: string;
+  readonly #embedder: Embedder;
+  #index: Map<string, EmbedResult> | null = null;
+
+  constructor(kv: KvBackend, embedder: Embedder, prefix = "rag:") {
+    this.#kv = kv;
+    this.#embedder = embedder;
+    this.#prefix = prefix;
+  }
+
+  async #loadIndex(): Promise<Map<string, EmbedResult>> {
+    if (this.#index !== null) return this.#index;
+    const raw = await this.#kv.get(`${this.#prefix}__index__`);
+    if (!raw) {
+      this.#index = new Map();
+    } else {
+      const entries = JSON.parse(raw) as EmbedResult[];
+      this.#index = new Map(entries.map((e) => [e.id, e]));
+    }
+    return this.#index;
+  }
+
+  async #saveIndex(): Promise<void> {
+    const idx = await this.#loadIndex();
+    await this.#kv.put(`${this.#prefix}__index__`, JSON.stringify([...idx.values()]));
+  }
+
+  async add(id: string, text: string, metadata?: Record<string, unknown>): Promise<void> {
+    const idx = await this.#loadIndex();
+    const vector = await this.#embedder.embed(text);
+    idx.set(id, { id, text, vector, ...(metadata !== undefined ? { metadata } : {}) });
+    await this.#saveIndex();
+  }
+
+  async search(query: string, topK = 3): Promise<SearchResult[]> {
+    const idx = await this.#loadIndex();
+    if (idx.size === 0) return [];
+    const qVec = await this.#embedder.embed(query);
+    const scored: SearchResult[] = [...idx.values()].map((e) => ({
+      id: e.id,
+      text: e.text,
+      score: cosineSimilarity(qVec, e.vector),
+      ...(e.metadata !== undefined ? { metadata: e.metadata } : {}),
+    }));
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, topK);
+  }
+}
+
 // ── RetrievalTool ─────────────────────────────────────────────────────────────
 
 /**
  * Wraps a Retriever as a readOnly, idempotent ToolDefinition.
  * The DAG scheduler will launch this speculatively alongside write nodes.
+ *
+ * D3: Results are marked trust:"untrusted" — retrieval content is external data
+ * that may have been poisoned (RAGShield 2026). MessageAssembler wraps untrusted
+ * outputs in <untrusted_tool_output> delimiters to prevent injection.
  */
 export function makeRetrievalTool(
   retriever: Retriever,
@@ -125,6 +240,7 @@ export function makeRetrievalTool(
     }),
     readOnly: true,
     idempotent: true,
+    trust: "untrusted" as const,
     async forward(input) {
       const results = await retriever.search(input.query, input.topK ?? opts.defaultTopK ?? 3);
       return { results };

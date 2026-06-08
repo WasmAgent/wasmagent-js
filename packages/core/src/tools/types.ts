@@ -1,6 +1,23 @@
 import type { ZodSchema } from "zod";
 
 /**
+ * B2: Agent identity and granted write scopes for least-agency enforcement.
+ *
+ * Pass a principal to ToolRegistry.call or agent.run() to restrict which
+ * write-scoped tools the agent can execute without human approval.
+ */
+export interface AgentPrincipal {
+  /** Stable identifier for this agent/session. Used in OTel span metadata. */
+  id: string;
+  /**
+   * Scopes explicitly granted to this principal for write operations.
+   * A !readOnly tool whose writeScope is not satisfied will be denied
+   * (returns capability_denied) unless RunPolicy.allowWrites=true overrides it.
+   */
+  grantedScopes: string[];
+}
+
+/**
  * Typed tool interface — replaces smolagents' runtime-only tool_validation.py.
  *
  * Every tool MUST declare:
@@ -89,6 +106,26 @@ export interface ToolDefinition<TInput = unknown, TOutput = unknown> {
    * @returns     Sanitized string (may be the same as input).
    */
   sanitizeToolResult?: (text: string, ctx: { toolName: string; callId: string; input: unknown }) => string | Promise<string>;
+  /**
+   * B2: Required write scopes for this tool (OWASP least-agency principle).
+   * Only relevant when readOnly=false. If set, the calling principal must have
+   * all listed scopes in grantedScopes, otherwise the call returns capability_denied.
+   * Leave undefined to allow any caller (no scope restriction beyond readOnly).
+   *
+   * Example: writeScope: ["files:write"] to require an explicit files write grant.
+   */
+  writeScope?: string[];
+  /**
+   * C3: Optional hook to compress large tool results before they enter the context window.
+   * Called on the raw output before stringification. Return a concise string representation.
+   * Useful for tools returning large objects (e.g. search results with many fields).
+   *
+   * When set, the compressed string is used as the tool result in the message context.
+   * The original output is still available in ToolResult.output for downstream processing.
+   *
+   * Receives result typed as `never` to allow assignment to any ToolDefinition<T, U>.
+   */
+  toModelOutput?: (result: never) => string;
   forward(input: TInput, signal?: AbortSignal): Promise<TOutput>;
   /**
    * A4: Optional resource key for conflict serialization.
