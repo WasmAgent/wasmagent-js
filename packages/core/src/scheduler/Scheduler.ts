@@ -107,6 +107,7 @@ export class Scheduler {
           if (settled.status === "fulfilled") {
             const { node, result, _id } = settled.value;
             speculative.delete(_id);
+            if (completedResults.has(node.id)) continue;
             completedResults.set(node.id, result);
             yield { type: "node_done", nodeId: node.id, result };
             this.#unblockDependents(node.id, remaining);
@@ -171,6 +172,7 @@ export class Scheduler {
           if (settled.status === "fulfilled") {
             const { node, result, _id } = settled.value;
             speculative.delete(_id);
+            if (completedResults.has(node.id)) continue;
             completedResults.set(node.id, result);
             yield { type: "node_done", nodeId: node.id, result };
             this.#unblockDependents(node.id, remaining);
