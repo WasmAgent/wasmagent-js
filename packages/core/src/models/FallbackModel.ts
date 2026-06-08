@@ -102,12 +102,17 @@ export class FallbackModel implements Model {
 
     for (let i = 0; i < this.#models.length; i++) {
       const model = this.#models[i]!;
+      let yieldedAny = false;
       try {
         if (i === 0) {
           // Primary model: stream directly for minimal first-token latency.
-          // If it throws mid-stream the caller already received partial events,
-          // so a clean fallover is impossible regardless — just propagate.
-          yield* model.generate(messages, opts);
+          // If it throws AFTER yielding events, the caller has partial state and
+          // falling over would corrupt their accumulation — propagate immediately.
+          // If it throws before yielding anything, fall through to the next model.
+          for await (const ev of model.generate(messages, opts)) {
+            yieldedAny = true;
+            yield ev;
+          }
         } else {
           // Fallback models: buffer to avoid yielding a partial stream that then fails.
           const events: StreamEvent[] = [];
@@ -119,11 +124,8 @@ export class FallbackModel implements Model {
         this.#lastProviderId = model.providerId;
         return;
       } catch (err) {
+        if (yieldedAny) throw err;
         lastError = err;
-        if (i === 0 || isNonRetryable(err)) {
-          continue;
-        }
-        continue;
       }
     }
 

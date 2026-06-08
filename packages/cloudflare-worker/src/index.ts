@@ -319,8 +319,10 @@ async function handleRun(request: Request, env: Env, ctx: ExecutionContext, cors
       for await (const event of agentRun) {
         const line = `data: ${JSON.stringify(event)}\n\n`;
         await writer.write(encoder.encode(line));
-        if (kvKey && env.AGENTKIT_SESSIONS && allEvents.length < MAX_KV_EVENTS) {
-          allEvents.push(event);
+        if (kvKey && env.AGENTKIT_SESSIONS) {
+          if (event.event === "final_answer" || allEvents.length < MAX_KV_EVENTS) {
+            allEvents.push(event);
+          }
         }
         if (event.event === "final_answer") ranSuccessfully = true;
       }
