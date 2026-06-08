@@ -26,8 +26,12 @@
     "@jitl/quickjs-wasmfile-release-sync": ">=0.29.0"
   },
   "peerDependenciesMeta": {
-    "quickjs-emscripten-core": { "optional": true },
-    "@jitl/quickjs-wasmfile-release-sync": { "optional": true }
+    "quickjs-emscripten-core": {
+      "optional": true
+    },
+    "@jitl/quickjs-wasmfile-release-sync": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@jitl/quickjs-wasmfile-release-sync": "0.32.0",

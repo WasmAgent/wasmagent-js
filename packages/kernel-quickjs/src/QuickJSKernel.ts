@@ -1,4 +1,9 @@
-import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from "@agentkit-js/core/executor";
+import type {
+  CapabilityManifest,
+  KernelOptions,
+  KernelResult,
+  WasmKernel,
+} from "@agentkit-js/core/executor";
 
 // We import Scope for RAII handle management (Q5).
 // QuickJS handle types are opaque objects — we use 'object' throughout.
@@ -6,9 +11,14 @@ type QHandle = object;
 
 interface QuickJSContext {
   evalCode(code: string, filename?: string): { value: unknown; tag?: number; dispose?(): void };
-  unwrapResult(result: unknown): { consume<T>(fn: (h: QHandle) => T): T; dispose(): void } & QHandle;
+  unwrapResult(
+    result: unknown
+  ): { consume<T>(fn: (h: QHandle) => T): T; dispose(): void } & QHandle;
   callFunction(fn: unknown, thisVal: unknown, ...args: unknown[]): { value: unknown; tag?: number };
-  getProp(obj: unknown, key: string): { consume<T>(fn: (h: QHandle) => T): T; dispose(): void } & QHandle;
+  getProp(
+    obj: unknown,
+    key: string
+  ): { consume<T>(fn: (h: QHandle) => T): T; dispose(): void } & QHandle;
   setProp(obj: unknown, key: string, value: unknown): void;
   dump(handle: unknown): unknown;
   typeof(handle: unknown): string;
@@ -126,7 +136,9 @@ export class QuickJSKernel implements WasmKernel {
       this.#ctx = this.#runtime.newContext();
 
       this.#jsonObj = this.#ctx.getProp(this.#ctx.global, "JSON") as QHandle & { dispose(): void };
-      this.#stringify = this.#ctx.getProp(this.#jsonObj, "stringify") as QHandle & { dispose(): void };
+      this.#stringify = this.#ctx.getProp(this.#jsonObj, "stringify") as QHandle & {
+        dispose(): void;
+      };
 
       this.#injectConsole(this.#ctx);
       return this.#ctx;
@@ -199,16 +211,15 @@ export class QuickJSKernel implements WasmKernel {
     }
   }
 
-  async run(
-    code: string,
-    capabilities?: Partial<CapabilityManifest>
-  ): Promise<KernelResult> {
+  async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
     const ctx = await this.#ensureContext();
     const { Scope } = await import("quickjs-emscripten");
     const ScopeStatic = Scope as unknown as ScopeStatic;
     this.#logs = [];
 
-    ctx.evalCode("__logs__ = []; var __finalAnswer__ = undefined; var __final_answer__ = undefined;")?.dispose?.();
+    ctx
+      .evalCode("__logs__ = []; var __finalAnswer__ = undefined; var __final_answer__ = undefined;")
+      ?.dispose?.();
 
     if (capabilities?.allowedHosts?.length) {
       this.#injectFetchWrapper(ctx, capabilities.allowedHosts);
@@ -218,8 +229,11 @@ export class QuickJSKernel implements WasmKernel {
     // The interrupt handler sets #timedOut = true before the QuickJS error propagates.
     this.#timedOut = false;
     const deadline = Date.now() + this.#timeoutMs;
-    this.#runtime!.setInterruptHandler(() => {
-      if (Date.now() > deadline) { this.#timedOut = true; return true; }
+    this.#runtime?.setInterruptHandler(() => {
+      if (Date.now() > deadline) {
+        this.#timedOut = true;
+        return true;
+      }
       return false;
     });
 
@@ -270,7 +284,8 @@ export class QuickJSKernel implements WasmKernel {
 
   #injectFetchWrapper(ctx: QuickJSContext, allowedHosts: string[]): void {
     const hostsJson = JSON.stringify(allowedHosts);
-    ctx.evalCode(`
+    ctx
+      .evalCode(`
       var __allowed_hosts__ = ${hostsJson};
       function __check_host__(host) {
         var ok = __allowed_hosts__.some(function(h) {
@@ -279,18 +294,30 @@ export class QuickJSKernel implements WasmKernel {
         });
         if (!ok) throw new Error("CapabilityDenied: fetch to \\"" + host + "\\" not in allowedHosts");
       }
-    `)?.dispose?.();
+    `)
+      ?.dispose?.();
   }
 
   async reset(): Promise<void> {
     this.#disposeContextHandles();
     this.#drainPendingJobs();
-    if (this.#ctx) { try { this.#ctx.dispose(); } catch { /* ignore */ } this.#ctx = null; }
+    if (this.#ctx) {
+      try {
+        this.#ctx.dispose();
+      } catch {
+        /* ignore */
+      }
+      this.#ctx = null;
+    }
     // After an interrupt/timeout, the QuickJS runtime may have live GC objects
     // that cause a native assertion if we call runtime.dispose(). Skip dispose
     // in that case and let the WASM module clean up when the process exits.
     if (this.#runtime && !this.#timedOut) {
-      try { this.#runtime.dispose(); } catch { /* ignore */ }
+      try {
+        this.#runtime.dispose();
+      } catch {
+        /* ignore */
+      }
     }
     this.#runtime = null;
     // Q4: clear initPromise so #ensureContext rebuilds cleanly after dispose.
@@ -301,8 +328,22 @@ export class QuickJSKernel implements WasmKernel {
   }
 
   #disposeContextHandles(): void {
-    if (this.#stringify) { try { this.#stringify.dispose(); } catch { /* ignore */ } this.#stringify = null; }
-    if (this.#jsonObj) { try { this.#jsonObj.dispose(); } catch { /* ignore */ } this.#jsonObj = null; }
+    if (this.#stringify) {
+      try {
+        this.#stringify.dispose();
+      } catch {
+        /* ignore */
+      }
+      this.#stringify = null;
+    }
+    if (this.#jsonObj) {
+      try {
+        this.#jsonObj.dispose();
+      } catch {
+        /* ignore */
+      }
+      this.#jsonObj = null;
+    }
   }
 
   /** Drain any pending QuickJS microjobs before disposing runtime to prevent GC assertion failures. */
@@ -312,15 +353,28 @@ export class QuickJSKernel implements WasmKernel {
       while (this.#runtime.hasPendingJob()) {
         this.#runtime.executePendingJobs(1);
       }
-    } catch { /* ignore errors from aborted/interrupted scripts */ }
+    } catch {
+      /* ignore errors from aborted/interrupted scripts */
+    }
   }
 
   async [Symbol.asyncDispose](): Promise<void> {
     this.#disposeContextHandles();
     this.#drainPendingJobs();
-    if (this.#ctx) { try { this.#ctx.dispose(); } catch { /* ignore */ } this.#ctx = null; }
+    if (this.#ctx) {
+      try {
+        this.#ctx.dispose();
+      } catch {
+        /* ignore */
+      }
+      this.#ctx = null;
+    }
     if (this.#runtime && !this.#timedOut) {
-      try { this.#runtime.dispose(); } catch { /* ignore */ }
+      try {
+        this.#runtime.dispose();
+      } catch {
+        /* ignore */
+      }
     }
     this.#runtime = null;
     this.#initPromise = null;

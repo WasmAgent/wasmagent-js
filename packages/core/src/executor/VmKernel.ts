@@ -1,6 +1,6 @@
 import { createContext, Script } from "node:vm";
-import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from "./types.js";
 import { buildCapabilityGlobals } from "./capabilities.js";
+import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from "./types.js";
 
 /**
  * VmKernel — pure-JS in-process kernel using Node's vm module.
@@ -61,17 +61,14 @@ export class VmKernel implements WasmKernel {
     });
   }
 
-  async run(
-    code: string,
-    capabilities?: Partial<CapabilityManifest>
-  ): Promise<KernelResult> {
+  async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
     this.#logs = [];
-    this.#context["__finalAnswer__"] = undefined;
+    this.#context.__finalAnswer__ = undefined;
 
     // Always clear capability globals first, then re-inject only what's granted.
     // This prevents capability leakage across successive run() calls.
-    this.#context["fetch"] = undefined;
-    this.#context["__fs__"] = undefined;
+    this.#context.fetch = undefined;
+    this.#context.__fs__ = undefined;
 
     if (capabilities) {
       const capGlobals = buildCapabilityGlobals(capabilities);
@@ -86,20 +83,19 @@ export class VmKernel implements WasmKernel {
       const runOpts = this.#timeoutMs ? { timeout: this.#timeoutMs } : {};
       output = script.runInContext(this.#context, runOpts);
     } catch (err) {
-      throw new Error(
-        `KernelError: ${err instanceof Error ? err.message : String(err)}`
-      );
+      throw new Error(`KernelError: ${err instanceof Error ? err.message : String(err)}`);
     }
 
     if (
       output instanceof Promise ||
-      (output !== null && typeof output === "object" &&
+      (output !== null &&
+        typeof output === "object" &&
         typeof (output as { then?: unknown }).then === "function")
     ) {
       output = await (output as Promise<unknown>);
     }
 
-    const finalAnswer = this.#context["__finalAnswer__"] as unknown;
+    const finalAnswer = this.#context.__finalAnswer__ as unknown;
     const isFinalAnswer = finalAnswer !== undefined;
 
     return {

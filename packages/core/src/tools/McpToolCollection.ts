@@ -48,7 +48,10 @@ export interface McpAuthOptions {
  * could be obtained via the tokenProvider.
  */
 export class McpAuthError extends Error {
-  constructor(message: string, public readonly serverUrl: string) {
+  constructor(
+    message: string,
+    public readonly serverUrl: string
+  ) {
     super(message);
     this.name = "McpAuthError";
   }
@@ -143,10 +146,13 @@ export class McpToolCollection {
     const { StdioClientTransport } = await import("@modelcontextprotocol/sdk/client/stdio.js");
 
     const clientCaps: Record<string, unknown> = {};
-    if (elicitation) clientCaps["elicitation"] = {};
-    if (sampling) clientCaps["sampling"] = {};
+    if (elicitation) clientCaps.elicitation = {};
+    if (sampling) clientCaps.sampling = {};
 
-    const transportOpts: { command: string; args: string[]; env?: Record<string, string> } = { command, args };
+    const transportOpts: { command: string; args: string[]; env?: Record<string, string> } = {
+      command,
+      args,
+    };
     if (env) transportOpts.env = env;
     const transport = new StdioClientTransport(transportOpts);
     const client = new Client(
@@ -194,8 +200,8 @@ export class McpToolCollection {
     const baseUrl = new URL(url);
 
     const clientCaps: Record<string, unknown> = {};
-    if (elicitation) clientCaps["elicitation"] = {};
-    if (sampling) clientCaps["sampling"] = {};
+    if (elicitation) clientCaps.elicitation = {};
+    if (sampling) clientCaps.sampling = {};
 
     const client = new Client(
       { name: "agentkit-js", version: "0.1.0" },
@@ -203,24 +209,30 @@ export class McpToolCollection {
     );
 
     try {
-      const { StreamableHTTPClientTransport } =
-        await import("@modelcontextprotocol/sdk/client/streamableHttp.js");
+      const { StreamableHTTPClientTransport } = await import(
+        "@modelcontextprotocol/sdk/client/streamableHttp.js"
+      );
       const transportOpts: Record<string, unknown> = {};
       if (auth) {
-        transportOpts["authProvider"] = buildOAuthProvider(auth, url, elicitation);
+        transportOpts.authProvider = buildOAuthProvider(auth, url, elicitation);
       }
-      const transport = new (StreamableHTTPClientTransport as StreamableHTTPConstructor)(baseUrl, transportOpts);
+      const transport = new (StreamableHTTPClientTransport as StreamableHTTPConstructor)(
+        baseUrl,
+        transportOpts
+      );
       await client.connect(transport as unknown as Parameters<typeof client.connect>[0]);
     } catch (err) {
       const isModuleNotFound =
         (err instanceof Error && (err as NodeJS.ErrnoException).code === "ERR_MODULE_NOT_FOUND") ||
-        (err instanceof Error && (err.message.includes("ERR_MODULE_NOT_FOUND") || err.message.includes("Cannot find module")));
+        (err instanceof Error &&
+          (err.message.includes("ERR_MODULE_NOT_FOUND") ||
+            err.message.includes("Cannot find module")));
       if (isModuleNotFound) {
         const msg = err instanceof Error ? err.message : String(err);
         throw new Error(
           `McpToolCollection.fromHttp: StreamableHTTPClientTransport not available. ` +
-          `Use fromSse() or upgrade @modelcontextprotocol/sdk (≥ 1.7.0). ` +
-          `Original error: ${msg}`
+            `Use fromSse() or upgrade @modelcontextprotocol/sdk (≥ 1.7.0). ` +
+            `Original error: ${msg}`
         );
       }
       const connMsg = err instanceof Error ? err.message : String(err);
@@ -250,16 +262,15 @@ export class McpToolCollection {
         await client.close();
         throw new Error(
           `MCP server fingerprint mismatch.\n` +
-          `  Expected: ${integrity.serverFingerprint}\n` +
-          `  Actual:   ${actual}\n` +
-          `The server's tool manifest has changed since the fingerprint was recorded.`
+            `  Expected: ${integrity.serverFingerprint}\n` +
+            `  Actual:   ${actual}\n` +
+            `The server's tool manifest has changed since the fingerprint was recorded.`
         );
       }
     }
 
-    const allowedSet = integrity?.allowedToolNames !== undefined
-      ? new Set(integrity.allowedToolNames)
-      : null;
+    const allowedSet =
+      integrity?.allowedToolNames !== undefined ? new Set(integrity.allowedToolNames) : null;
 
     const tools = mcpTools.map((t) => McpToolCollection.#wrapTool(t, client, allowedSet));
     return new McpToolCollection(client, tools);
@@ -308,11 +319,13 @@ export class McpToolCollection {
    */
   static async computeFingerprint(tools: McpToolSchema[]): Promise<string> {
     const sorted = [...tools].sort((a, b) => a.name.localeCompare(b.name));
-    const manifest = JSON.stringify(sorted.map((t) => ({
-      name: t.name,
-      description: t.description ?? "",
-      inputSchema: t.inputSchema ?? null,
-    })));
+    const manifest = JSON.stringify(
+      sorted.map((t) => ({
+        name: t.name,
+        description: t.description ?? "",
+        inputSchema: t.inputSchema ?? null,
+      }))
+    );
     const { createHash } = await import("node:crypto");
     return createHash("sha256").update(manifest).digest("hex");
   }
@@ -327,12 +340,14 @@ export class McpToolCollection {
    */
   deferAll(): this {
     for (const tool of this.#tools) {
-      (tool as unknown as Record<string, unknown>)["deferLoading"] = true;
+      (tool as unknown as Record<string, unknown>).deferLoading = true;
     }
     return this;
   }
 
-  get size(): number { return this.#tools.length; }
+  get size(): number {
+    return this.#tools.length;
+  }
 
   /**
    * B3: List all resources available on the MCP server.
@@ -418,7 +433,9 @@ function buildOAuthProvider(
   let storedToken: string | undefined;
 
   return {
-    get redirectUrl() { return undefined; },
+    get redirectUrl() {
+      return undefined;
+    },
     get clientMetadata() {
       return {
         client_name: "agentkit-js MCP client",
@@ -426,7 +443,9 @@ function buildOAuthProvider(
         grant_types: ["client_credentials"],
       };
     },
-    clientInformation() { return undefined; },
+    clientInformation() {
+      return undefined;
+    },
     async tokens() {
       const token = await auth.tokenProvider();
       if (!token) return undefined;
@@ -451,13 +470,19 @@ function buildOAuthProvider(
         );
       }
     },
-    saveCodeVerifier(_v: string) { /* not needed for pre-authorized flow */ },
-    codeVerifier() { return storedToken ?? ""; },
-    ...(auth.resourceIndicator ? {
-      async validateResourceURL(_serverUrl: string | URL, _resource?: string) {
-        return new URL(auth.resourceIndicator!);
-      },
-    } : {}),
+    saveCodeVerifier(_v: string) {
+      /* not needed for pre-authorized flow */
+    },
+    codeVerifier() {
+      return storedToken ?? "";
+    },
+    ...(auth.resourceIndicator
+      ? {
+          async validateResourceURL(_serverUrl: string | URL, _resource?: string) {
+            return new URL(auth.resourceIndicator!);
+          },
+        }
+      : {}),
   };
 }
 
@@ -465,42 +490,44 @@ function buildOAuthProvider(
 
 function registerElicitation(client: McpClientInterface, callback: ElicitationCallback): void {
   const c = client as unknown as Record<string, unknown>;
-  if (typeof c["setRequestHandler"] !== "function") return;
+  if (typeof c.setRequestHandler !== "function") return;
   try {
-    (c["setRequestHandler"] as (method: string, handler: (req: Record<string, unknown>) => Promise<unknown>) => void)(
-      "elicitation/create",
-      async (req: Record<string, unknown>) => {
-        const message = (req["message"] as string | undefined) ?? "";
-        const schema = req["schema"] as object | undefined;
-        // A2: detect URL-mode elicitation. The spec requires servers to use URL-mode
-        // for sensitive credentials (passwords, API keys, tokens, payment info).
-        // In URL-mode we pass the authorizationUrl to the callback and do NOT collect
-        // plaintext — the credential must flow through an external authorization page.
-        const requestType = (req["requestType"] ?? req["type"]) as string | undefined;
-        const authorizationUrl = req["authorizationUrl"] as string | undefined;
-        const isUrlMode = requestType === "url" || !!authorizationUrl;
+    (
+      c.setRequestHandler as (
+        method: string,
+        handler: (req: Record<string, unknown>) => Promise<unknown>
+      ) => void
+    )("elicitation/create", async (req: Record<string, unknown>) => {
+      const message = (req.message as string | undefined) ?? "";
+      const schema = req.schema as object | undefined;
+      // A2: detect URL-mode elicitation. The spec requires servers to use URL-mode
+      // for sensitive credentials (passwords, API keys, tokens, payment info).
+      // In URL-mode we pass the authorizationUrl to the callback and do NOT collect
+      // plaintext — the credential must flow through an external authorization page.
+      const requestType = (req.requestType ?? req.type) as string | undefined;
+      const authorizationUrl = req.authorizationUrl as string | undefined;
+      const isUrlMode = requestType === "url" || !!authorizationUrl;
 
-        const elicitRequest: McpElicitationRequest = {
-          message,
-          schema,
-          mode: isUrlMode ? "url" : "form",
-          ...(authorizationUrl ? { authorizationUrl } : {}),
-        };
+      const elicitRequest: McpElicitationRequest = {
+        message,
+        schema,
+        mode: isUrlMode ? "url" : "form",
+        ...(authorizationUrl ? { authorizationUrl } : {}),
+      };
 
-        if (isUrlMode) {
-          // For URL-mode: invoke callback so the host can open the URL, but do not
-          // return any credential back to the server through this channel.
-          await callback(elicitRequest).catch(() => undefined);
-      return { action: "cancel" };
-    }
-
-    const response = await callback(elicitRequest);
-    if (response === undefined) {
-      return { action: "cancel" };
-    }
-    return { action: "accept", content: [{ type: "text", text: response }] };
+      if (isUrlMode) {
+        // For URL-mode: invoke callback so the host can open the URL, but do not
+        // return any credential back to the server through this channel.
+        await callback(elicitRequest).catch(() => undefined);
+        return { action: "cancel" };
       }
-    );
+
+      const response = await callback(elicitRequest);
+      if (response === undefined) {
+        return { action: "cancel" };
+      }
+      return { action: "accept", content: [{ type: "text", text: response }] };
+    });
   } catch {
     // SDK version may not support setRequestHandler — elicitation gracefully degraded.
   }
@@ -510,30 +537,37 @@ function registerElicitation(client: McpClientInterface, callback: ElicitationCa
 
 function registerSampling(client: McpClientInterface, callback: SamplingCallback): void {
   const c = client as unknown as Record<string, unknown>;
-  if (typeof c["setRequestHandler"] !== "function") return;
+  if (typeof c.setRequestHandler !== "function") return;
   try {
-    (c["setRequestHandler"] as (method: string, handler: (req: Record<string, unknown>) => Promise<unknown>) => void)(
-      "sampling/createMessage",
-      async (req: Record<string, unknown>) => {
-        const rawMessages = (req["messages"] as Array<{ role: string; content: Record<string, unknown> | string }> | undefined) ?? [];
-        const messages = rawMessages.map((m) => ({
-          role: (m.role === "assistant" ? "assistant" : "user") as "user" | "assistant",
-          content: typeof m.content === "string"
+    (
+      c.setRequestHandler as (
+        method: string,
+        handler: (req: Record<string, unknown>) => Promise<unknown>
+      ) => void
+    )("sampling/createMessage", async (req: Record<string, unknown>) => {
+      const rawMessages =
+        (req.messages as
+          | Array<{ role: string; content: Record<string, unknown> | string }>
+          | undefined) ?? [];
+      const messages = rawMessages.map((m) => ({
+        role: (m.role === "assistant" ? "assistant" : "user") as "user" | "assistant",
+        content:
+          typeof m.content === "string"
             ? m.content
-            : ((m.content as Record<string, unknown>)["text"] as string | undefined) ?? JSON.stringify(m.content),
-        }));
-        const systemPrompt = (req["systemPrompt"] as string | undefined) ?? undefined;
-        const maxTokens = (req["maxTokens"] as number | undefined) ?? undefined;
+            : (((m.content as Record<string, unknown>).text as string | undefined) ??
+              JSON.stringify(m.content)),
+      }));
+      const systemPrompt = (req.systemPrompt as string | undefined) ?? undefined;
+      const maxTokens = (req.maxTokens as number | undefined) ?? undefined;
 
-        const responseText = await callback({ messages, systemPrompt, maxTokens });
-        return {
-          role: "assistant",
-          content: { type: "text", text: responseText },
-          model: "agentkit-js",
-          stopReason: "endTurn",
-        };
-      }
-    );
+      const responseText = await callback({ messages, systemPrompt, maxTokens });
+      return {
+        role: "assistant",
+        content: { type: "text", text: responseText },
+        model: "agentkit-js",
+        stopReason: "endTurn",
+      };
+    });
   } catch {
     // SDK version may not support setRequestHandler — sampling gracefully degraded.
   }
@@ -545,7 +579,10 @@ function registerSampling(client: McpClientInterface, callback: SamplingCallback
 // assertMcpClient() verifies the real client satisfies this interface.
 
 interface StreamableHTTPConstructor {
-  new(url: URL, opts?: Record<string, unknown>): { start(): Promise<void>; close(): Promise<void> };
+  new (
+    url: URL,
+    opts?: Record<string, unknown>
+  ): { start(): Promise<void>; close(): Promise<void> };
 }
 
 interface McpClientInterface {
@@ -560,7 +597,10 @@ interface McpClientInterface {
   /** B3: read the contents of an MCP resource by URI. */
   readResource(params: { uri: string }): Promise<{ contents: McpResourceContent[] }>;
   /** B3: get a prompt by name with optional arguments. */
-  getPrompt(params: { name: string; arguments?: Record<string, string> }): Promise<McpGetPromptResult>;
+  getPrompt(params: {
+    name: string;
+    arguments?: Record<string, string>;
+  }): Promise<McpGetPromptResult>;
   /** B3: list available prompts on the MCP server. */
   listPrompts(): Promise<{ prompts: McpPromptSchema[] }>;
   close(): Promise<void>;
@@ -569,9 +609,9 @@ interface McpClientInterface {
 function assertMcpClient(client: unknown): asserts client is McpClientInterface {
   if (!client || typeof client !== "object") throw new Error("Invalid MCP client: expected object");
   const c = client as Record<string, unknown>;
-  if (typeof c["listTools"] !== "function") throw new Error("Invalid MCP client: missing listTools()");
-  if (typeof c["callTool"] !== "function") throw new Error("Invalid MCP client: missing callTool()");
-  if (typeof c["close"] !== "function") throw new Error("Invalid MCP client: missing close()");
+  if (typeof c.listTools !== "function") throw new Error("Invalid MCP client: missing listTools()");
+  if (typeof c.callTool !== "function") throw new Error("Invalid MCP client: missing callTool()");
+  if (typeof c.close !== "function") throw new Error("Invalid MCP client: missing close()");
   // resources/prompts are optional capabilities — don't assert here, check at call time.
 }
 

@@ -1,6 +1,12 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { SubagentRunnable } from "@agentkit-js/core";
-import type { A2AAgentCard, A2AServer, A2AServerOptions, A2ATaskRequest, A2ATaskResponse } from "./types.js";
+import type {
+  A2AAgentCard,
+  A2AServer,
+  A2AServerOptions,
+  A2ATaskRequest,
+  A2ATaskResponse,
+} from "./types.js";
 
 /**
  * A2A HTTP server — exposes a SubagentRunnable as an A2A v1.0 compliant agent.
@@ -20,10 +26,7 @@ import type { A2AAgentCard, A2AServer, A2AServerOptions, A2ATaskRequest, A2ATask
  *   const url = await server.start();
  *   console.log(`A2A agent running at ${url}`);
  */
-export function createA2AServer(
-  agent: SubagentRunnable,
-  opts: A2AServerOptions
-): A2AServer {
+export function createA2AServer(agent: SubagentRunnable, opts: A2AServerOptions): A2AServer {
   const port = opts.port ?? 3000;
   const baseUrl = `http://localhost:${port}`;
 
@@ -75,7 +78,7 @@ export function createA2AServer(
         return;
       }
 
-      const acceptsStreaming = req.headers["accept"]?.includes("application/x-ndjson");
+      const acceptsStreaming = req.headers.accept?.includes("application/x-ndjson");
 
       if (acceptsStreaming) {
         res.writeHead(200, {
@@ -99,7 +102,7 @@ export function createA2AServer(
             } else if (event.event === "step_start") {
               delta.delta = `[step ${(event.data as { step: number }).step}]`;
             }
-            res.write(JSON.stringify(delta) + "\n");
+            res.write(`${JSON.stringify(delta)}\n`);
             if (delta.status === "completed" || delta.status === "failed") break;
           }
         } catch (err) {
@@ -108,7 +111,7 @@ export function createA2AServer(
             status: "failed",
             error: err instanceof Error ? err.message : String(err),
           };
-          res.write(JSON.stringify(errResp) + "\n");
+          res.write(`${JSON.stringify(errResp)}\n`);
         }
         res.end();
       } else {
@@ -125,9 +128,10 @@ export function createA2AServer(
           errorMsg = err instanceof Error ? err.message : String(err);
         }
 
-        const resp: A2ATaskResponse = errorMsg !== null
-          ? { taskId: taskReq.id, status: "failed", error: errorMsg }
-          : { taskId: taskReq.id, status: "completed", result: finalResult };
+        const resp: A2ATaskResponse =
+          errorMsg !== null
+            ? { taskId: taskReq.id, status: "failed", error: errorMsg }
+            : { taskId: taskReq.id, status: "completed", result: finalResult };
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify(resp));
@@ -140,7 +144,9 @@ export function createA2AServer(
   });
 
   return {
-    agentCard(): A2AAgentCard { return card; },
+    agentCard(): A2AAgentCard {
+      return card;
+    },
 
     start(): Promise<string> {
       return new Promise((resolve, reject) => {
@@ -151,7 +157,7 @@ export function createA2AServer(
 
     stop(): Promise<void> {
       return new Promise((resolve, reject) => {
-        server.close((err) => err ? reject(err) : resolve());
+        server.close((err) => (err ? reject(err) : resolve()));
       });
     },
   };

@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { InMemoryCheckpointer, KvCheckpointer, CheckpointableRun } from "../checkpoint/index.js";
+import { describe, expect, it } from "vitest";
+import { CheckpointableRun, InMemoryCheckpointer, KvCheckpointer } from "../checkpoint/index.js";
 import { MessageAssembler } from "../memory/MessageAssembler.js";
 import type { AgentEvent } from "../types/events.js";
 
@@ -35,7 +35,11 @@ describe("InMemoryCheckpointer (B4)", () => {
   it("respond sets humanResponse on the snapshot", async () => {
     const cp = new InMemoryCheckpointer();
     await cp.save("t1", {
-      traceId: "t1", task: "x", history: [], stepIndex: 1, savedAtMs: 0,
+      traceId: "t1",
+      task: "x",
+      history: [],
+      stepIndex: 1,
+      savedAtMs: 0,
       pendingHumanInput: { promptId: "p1", prompt: "Are you sure?" },
     });
     await cp.respond("t1", "p1", "yes");
@@ -46,7 +50,11 @@ describe("InMemoryCheckpointer (B4)", () => {
   it("respond throws when promptId does not match", async () => {
     const cp = new InMemoryCheckpointer();
     await cp.save("t1", {
-      traceId: "t1", task: "x", history: [], stepIndex: 1, savedAtMs: 0,
+      traceId: "t1",
+      task: "x",
+      history: [],
+      stepIndex: 1,
+      savedAtMs: 0,
       pendingHumanInput: { promptId: "p1", prompt: "?" },
     });
     await expect(cp.respond("t1", "wrong-id", "yes")).rejects.toThrow(/promptId mismatch/);
@@ -59,8 +67,12 @@ describe("KvCheckpointer (C3)", () => {
     return {
       backend: {
         get: async (k: string) => store.get(k) ?? null,
-        put: async (k: string, v: string) => { store.set(k, v); },
-        delete: async (k: string) => { store.delete(k); },
+        put: async (k: string, v: string) => {
+          store.set(k, v);
+        },
+        delete: async (k: string) => {
+          store.delete(k);
+        },
       },
       store,
     };
@@ -93,7 +105,11 @@ describe("KvCheckpointer (C3)", () => {
     const { backend } = makeKv();
     const cp = new KvCheckpointer(backend);
     await cp.save("kv1", {
-      traceId: "kv1", task: "x", history: [], stepIndex: 1, savedAtMs: 0,
+      traceId: "kv1",
+      task: "x",
+      history: [],
+      stepIndex: 1,
+      savedAtMs: 0,
       pendingHumanInput: { promptId: "p1", prompt: "OK?" },
     });
     await cp.respond("kv1", "p1", "approve");
@@ -122,9 +138,30 @@ describe("CheckpointableRun (B4)", () => {
     const wrapper = new CheckpointableRun({ checkpointer: cp }, assembler);
 
     const events: AgentEvent[] = [
-      { traceId: "t1", parentTraceId: null, channel: "text", event: "run_start", data: { task: "do x" }, timestampMs: 0 },
-      { traceId: "t1", parentTraceId: null, channel: "thinking", event: "step_start", data: { step: 1 }, timestampMs: 10 },
-      { traceId: "t1", parentTraceId: null, channel: "text", event: "final_answer", data: { answer: "done" }, timestampMs: 20 },
+      {
+        traceId: "t1",
+        parentTraceId: null,
+        channel: "text",
+        event: "run_start",
+        data: { task: "do x" },
+        timestampMs: 0,
+      },
+      {
+        traceId: "t1",
+        parentTraceId: null,
+        channel: "thinking",
+        event: "step_start",
+        data: { step: 1 },
+        timestampMs: 10,
+      },
+      {
+        traceId: "t1",
+        parentTraceId: null,
+        channel: "text",
+        event: "final_answer",
+        data: { answer: "done" },
+        timestampMs: 20,
+      },
     ];
 
     const collected: AgentEvent[] = [];
@@ -144,8 +181,22 @@ describe("CheckpointableRun (B4)", () => {
     const wrapper = new CheckpointableRun({ checkpointer: cp }, assembler);
 
     const events: AgentEvent[] = [
-      { traceId: "t2", parentTraceId: null, channel: "text", event: "run_start", data: { task: "task" }, timestampMs: 0 },
-      { traceId: "t2", parentTraceId: null, channel: "thinking", event: "step_start", data: { step: 1 }, timestampMs: 10 },
+      {
+        traceId: "t2",
+        parentTraceId: null,
+        channel: "text",
+        event: "run_start",
+        data: { task: "task" },
+        timestampMs: 0,
+      },
+      {
+        traceId: "t2",
+        parentTraceId: null,
+        channel: "thinking",
+        event: "step_start",
+        data: { step: 1 },
+        timestampMs: 10,
+      },
       // Simulate interruption — no final_answer
     ];
 
@@ -173,5 +224,3 @@ describe("CheckpointableRun (B4)", () => {
     expect(ev.data.promptId).toBe("p1");
   });
 });
-
-

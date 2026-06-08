@@ -1,20 +1,20 @@
-import { OpenAICompatModel, type OpenAICompatModelOptions } from "@agentkit-js/core/models";
 import type { GenerateOptions, ModelCapabilities } from "@agentkit-js/core/models";
+import { OpenAICompatModel, type OpenAICompatModelOptions } from "@agentkit-js/core/models";
 
 export const QWEN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 export const QWEN_INTL_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
 
 /** Canonical Qwen (Alibaba) model IDs. */
 export const QwenModels = {
-  QWEN3_MAX:    "qwen3-max",
-  QWEN3_PLUS:   "qwen3-plus",
-  QWEN3_TURBO:  "qwen3-turbo",
-  QWEN2_5_72B:  "qwen2.5-72b-instruct",
+  QWEN3_MAX: "qwen3-max",
+  QWEN3_PLUS: "qwen3-plus",
+  QWEN3_TURBO: "qwen3-turbo",
+  QWEN2_5_72B: "qwen2.5-72b-instruct",
   /** Always points to the latest recommended model. */
-  LATEST:       "qwen3-max",
+  LATEST: "qwen3-max",
 } as const;
 
-export type QwenModelId = typeof QwenModels[keyof typeof QwenModels] | (string & {});
+export type QwenModelId = (typeof QwenModels)[keyof typeof QwenModels] | (string & {});
 
 export interface QwenModelOptions extends OpenAICompatModelOptions {
   /** Enable thinking mode for Qwen3 models. Default: true for qwen3-* models. */
@@ -43,22 +43,18 @@ export class QwenModel extends OpenAICompatModel {
 
   /** Effort → thinking_budget token mapping. */
   static readonly EFFORT_BUDGET: Record<string, number> = {
-    minimal:  2_000,
-    low:      4_000,
+    minimal: 2_000,
+    low: 4_000,
     standard: 8_000,
-    medium:   8_000,
-    high:     16_000,
-    xhigh:    24_000,
-    max:      38_000,
+    medium: 8_000,
+    high: 16_000,
+    xhigh: 24_000,
+    max: 38_000,
   };
 
-  constructor(
-    modelId: QwenModelId,
-    apiKeyOrOpts?: string | QwenModelOptions
-  ) {
-    const opts: QwenModelOptions = typeof apiKeyOrOpts === "string"
-      ? { apiKey: apiKeyOrOpts }
-      : (apiKeyOrOpts ?? {});
+  constructor(modelId: QwenModelId, apiKeyOrOpts?: string | QwenModelOptions) {
+    const opts: QwenModelOptions =
+      typeof apiKeyOrOpts === "string" ? { apiKey: apiKeyOrOpts } : (apiKeyOrOpts ?? {});
     const isThinkingModel = modelId.startsWith("qwen3");
     const baseUrl = opts.region === "intl" ? QWEN_INTL_BASE_URL : QWEN_BASE_URL;
     super(modelId, baseUrl, {
@@ -73,11 +69,14 @@ export class QwenModel extends OpenAICompatModel {
     return { reasoningContentField: "reasoning_content" };
   }
 
-  protected override mapReasoningField(chunk: Record<string, unknown>, opts: GenerateOptions): string | undefined {
+  protected override mapReasoningField(
+    chunk: Record<string, unknown>,
+    opts: GenerateOptions
+  ): string | undefined {
     if (!this.thinkingEnabled(opts, this.#defaultEnableThinking)) return undefined;
-    const choices = chunk["choices"] as Array<Record<string, unknown>> | undefined;
-    const delta = choices?.[0]?.["delta"] as Record<string, unknown> | undefined;
-    const reasoning = delta?.["reasoning_content"];
+    const choices = chunk.choices as Array<Record<string, unknown>> | undefined;
+    const delta = choices?.[0]?.delta as Record<string, unknown> | undefined;
+    const reasoning = delta?.reasoning_content;
     if (typeof reasoning === "string" && reasoning.length > 0) return reasoning;
     return undefined;
   }
@@ -94,10 +93,13 @@ export class QwenModel extends OpenAICompatModel {
     const result: Record<string, unknown> = { enable_thinking: enabled };
 
     if (enabled) {
-      const budget = opts.thinking?.budgetTokens
-        ?? (opts.thinking?.effort !== undefined ? QwenModel.EFFORT_BUDGET[opts.thinking.effort] : undefined);
+      const budget =
+        opts.thinking?.budgetTokens ??
+        (opts.thinking?.effort !== undefined
+          ? QwenModel.EFFORT_BUDGET[opts.thinking.effort]
+          : undefined);
       if (budget !== undefined) {
-        result["thinking_budget"] = budget;
+        result.thinking_budget = budget;
       }
     }
 

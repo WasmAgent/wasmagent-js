@@ -1,8 +1,8 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../tools/types.js";
 import type { KvBackend } from "../checkpoint/index.js";
 import type { OutputGuardrail } from "../guardrails/index.js";
 import { runOutputGuardrails } from "../guardrails/index.js";
+import type { ToolDefinition } from "../tools/types.js";
 
 /**
  * L2-2: File-backed Memory Tool for cross-session learning.

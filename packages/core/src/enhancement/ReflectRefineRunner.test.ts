@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { ReflectRefineRunner } from "./ReflectRefineRunner.js";
+import { describe, expect, it } from "vitest";
 import type { Model, ModelMessage, StreamEvent } from "../models/types.js";
+import { ReflectRefineRunner } from "./ReflectRefineRunner.js";
 
 /** Model that returns pre-defined answers per call index. */
 function sequentialModel(answers: string[]): Model {
@@ -204,8 +204,12 @@ describe("ReflectRefineRunner — C1: outputGuardrails as quality signal", () =>
     const jsonGuardrail: OutputGuardrail = {
       name: "jsonCheck",
       check(answer) {
-        try { JSON.parse(typeof answer === "string" ? answer : JSON.stringify(answer)); return { tripwireTriggered: false }; }
-        catch { return { tripwireTriggered: true }; }
+        try {
+          JSON.parse(typeof answer === "string" ? answer : JSON.stringify(answer));
+          return { tripwireTriggered: false };
+        } catch {
+          return { tripwireTriggered: true };
+        }
       },
     };
     const runner = new ReflectRefineRunner({

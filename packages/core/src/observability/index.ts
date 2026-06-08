@@ -61,8 +61,12 @@ export interface MetricExporter {
 
 export class InMemorySpanExporter implements SpanExporter {
   readonly spans: ReadableSpan[] = [];
-  export(spans: ReadableSpan[]): void { this.spans.push(...spans); }
-  reset(): void { this.spans.length = 0; }
+  export(spans: ReadableSpan[]): void {
+    this.spans.push(...spans);
+  }
+  reset(): void {
+    this.spans.length = 0;
+  }
 }
 
 // ── OtelBridge ────────────────────────────────────────────────────────────────
@@ -71,7 +75,13 @@ const NOOP_EXPORTER: SpanExporter = { export() {} };
 
 function inferGenAiSystem(modelId: string): string {
   if (modelId.startsWith("claude-")) return "anthropic";
-  if (modelId.startsWith("gpt-") || modelId.startsWith("o1") || modelId.startsWith("o3") || modelId.startsWith("o4")) return "openai";
+  if (
+    modelId.startsWith("gpt-") ||
+    modelId.startsWith("o1") ||
+    modelId.startsWith("o3") ||
+    modelId.startsWith("o4")
+  )
+    return "openai";
   if (modelId.startsWith("deepseek-")) return "deepseek";
   if (modelId.startsWith("doubao-") || modelId.startsWith("ep-")) return "volcengine";
   if (modelId.startsWith("moonshot-") || modelId.startsWith("kimi-")) return "moonshot";
@@ -147,9 +157,8 @@ function resolveSemconvMode(
 ): "both" | "stable" | "legacy" {
   if (explicit !== undefined) return explicit;
   // C2: standard env-based opt-in.
-  const envVal = typeof process !== "undefined"
-    ? process.env["OTEL_SEMCONV_STABILITY_OPT_IN"]
-    : undefined;
+  const envVal =
+    typeof process !== "undefined" ? process.env.OTEL_SEMCONV_STABILITY_OPT_IN : undefined;
   if (envVal === "gen_ai_latest_experimental") return "stable";
   return "both";
 }
@@ -261,37 +270,74 @@ export class OtelBridge {
         this.#setAttr(child.attributes, null, "gen_ai.system", providerName);
         if (this.#semconvMode !== "legacy") child.attributes["gen_ai.provider.name"] = providerName;
         // Track TTFB start time for metrics (O2).
-        child.attributes["_ttfbStartMs"] = timestampMs;
+        child.attributes._ttfbStartMs = timestampMs;
         this.#inferences.set(inferKey, { span: child, ended: false });
         break;
       }
 
       case "model_done": {
         // E1: close the inference span with finish reason + token usage.
-        const d = (ev as { data: { modelId: string; step: number; finishReason: string; inputTokens?: number; outputTokens?: number; thinkingTokens?: number; cacheReadTokens?: number } }).data;
+        const d = (
+          ev as {
+            data: {
+              modelId: string;
+              step: number;
+              finishReason: string;
+              inputTokens?: number;
+              outputTokens?: number;
+              thinkingTokens?: number;
+              cacheReadTokens?: number;
+            };
+          }
+        ).data;
         const inferKey = `${traceId}:${d.step}`;
         const live = this.#inferences.get(inferKey);
         if (live && !live.ended) {
           live.span.status = "ok";
           this.#setAttr(live.span.attributes, "model.id", "gen_ai.response.model", d.modelId);
-          this.#setAttr(live.span.attributes, "model.finishReason", "gen_ai.response.finish_reasons", d.finishReason);
+          this.#setAttr(
+            live.span.attributes,
+            "model.finishReason",
+            "gen_ai.response.finish_reasons",
+            d.finishReason
+          );
           if (d.inputTokens !== undefined) {
-            this.#setAttr(live.span.attributes, "usage.inputTokens", "gen_ai.usage.input_tokens", d.inputTokens);
+            this.#setAttr(
+              live.span.attributes,
+              "usage.inputTokens",
+              "gen_ai.usage.input_tokens",
+              d.inputTokens
+            );
           }
           if (d.outputTokens !== undefined) {
-            this.#setAttr(live.span.attributes, "usage.outputTokens", "gen_ai.usage.output_tokens", d.outputTokens);
+            this.#setAttr(
+              live.span.attributes,
+              "usage.outputTokens",
+              "gen_ai.usage.output_tokens",
+              d.outputTokens
+            );
           }
           if (d.thinkingTokens !== undefined) {
-            this.#setAttr(live.span.attributes, "usage.thinkingTokens", "gen_ai.usage.thinking_tokens", d.thinkingTokens);
+            this.#setAttr(
+              live.span.attributes,
+              "usage.thinkingTokens",
+              "gen_ai.usage.thinking_tokens",
+              d.thinkingTokens
+            );
           }
           if (d.cacheReadTokens !== undefined) {
-            this.#setAttr(live.span.attributes, "usage.cacheReadTokens", "gen_ai.usage.cache_read_input_tokens", d.cacheReadTokens);
+            this.#setAttr(
+              live.span.attributes,
+              "usage.cacheReadTokens",
+              "gen_ai.usage.cache_read_input_tokens",
+              d.cacheReadTokens
+            );
           }
           // O2: operation duration (ms).
-          const startMs = live.span.attributes["_ttfbStartMs"] as number | undefined;
+          const startMs = live.span.attributes._ttfbStartMs as number | undefined;
           if (startMs !== undefined) {
             live.span.attributes["gen_ai.client.operation.duration_ms"] = timestampMs - startMs;
-            delete live.span.attributes["_ttfbStartMs"];
+            delete live.span.attributes._ttfbStartMs;
           }
           this.#close(live, timestampMs);
           this.#inferences.delete(inferKey);
@@ -314,7 +360,12 @@ export class OtelBridge {
         const runLive = this.#runs.get(traceId);
         if (runLive && !runLive.ended) {
           runLive.span.status = "ok";
-          this.#setAttr(runLive.span.attributes, "final_answer", "gen_ai.agent.final_answer", String(d.answer ?? ""));
+          this.#setAttr(
+            runLive.span.attributes,
+            "final_answer",
+            "gen_ai.agent.final_answer",
+            String(d.answer ?? "")
+          );
           for (const [key, live] of this.#steps) {
             if (key.startsWith(`${traceId}:`) && !live.ended) {
               this.#close(live, timestampMs);
@@ -331,7 +382,12 @@ export class OtelBridge {
         const runLive = this.#runs.get(traceId);
         if (runLive && !runLive.ended) {
           runLive.span.status = "error";
-          this.#setAttr(runLive.span.attributes, "error", "gen_ai.error.message", String((ev as { data: { error: string } }).data.error ?? ""));
+          this.#setAttr(
+            runLive.span.attributes,
+            "error",
+            "gen_ai.error.message",
+            String((ev as { data: { error: string } }).data.error ?? "")
+          );
           this.#close(runLive, timestampMs);
           this.#runs.delete(traceId);
         }
@@ -340,7 +396,7 @@ export class OtelBridge {
 
       default: {
         const anyEv = ev as { data?: Record<string, unknown> };
-        if (anyEv.data && typeof anyEv.data["inputTokens"] === "number") {
+        if (anyEv.data && typeof anyEv.data.inputTokens === "number") {
           const d = anyEv.data as {
             inputTokens?: number;
             outputTokens?: number;
@@ -355,16 +411,36 @@ export class OtelBridge {
               this.#addAttr(attrs, "usage.inputTokens", "gen_ai.usage.input_tokens", d.inputTokens);
             }
             if (d.outputTokens !== undefined) {
-              this.#addAttr(attrs, "usage.outputTokens", "gen_ai.usage.output_tokens", d.outputTokens);
+              this.#addAttr(
+                attrs,
+                "usage.outputTokens",
+                "gen_ai.usage.output_tokens",
+                d.outputTokens
+              );
             }
             if (d.thinkingTokens !== undefined) {
-              this.#addAttr(attrs, "usage.thinkingTokens", "gen_ai.usage.thinking_tokens", d.thinkingTokens);
+              this.#addAttr(
+                attrs,
+                "usage.thinkingTokens",
+                "gen_ai.usage.thinking_tokens",
+                d.thinkingTokens
+              );
             }
             if (d.cacheReadTokens !== undefined) {
-              this.#addAttr(attrs, "usage.cacheReadTokens", "gen_ai.usage.cache_read_input_tokens", d.cacheReadTokens);
+              this.#addAttr(
+                attrs,
+                "usage.cacheReadTokens",
+                "gen_ai.usage.cache_read_input_tokens",
+                d.cacheReadTokens
+              );
             }
             if (d.cacheReadTokens1h !== undefined) {
-              this.#addAttr(attrs, "usage.cacheReadTokens1h", "gen_ai.usage.cache_read_input_tokens_1h", d.cacheReadTokens1h);
+              this.#addAttr(
+                attrs,
+                "usage.cacheReadTokens1h",
+                "gen_ai.usage.cache_read_input_tokens_1h",
+                d.cacheReadTokens1h
+              );
             }
           }
         }
@@ -400,7 +476,12 @@ export class OtelBridge {
     this.flush();
   }
 
-  #open(agentkitTraceId: string, parentSpanId: string | undefined, name: string, startTimeMs: number): ReadableSpan {
+  #open(
+    agentkitTraceId: string,
+    parentSpanId: string | undefined,
+    name: string,
+    startTimeMs: number
+  ): ReadableSpan {
     const otelTraceId = this.#resolveOtelTraceId(agentkitTraceId);
     return {
       traceId: otelTraceId,

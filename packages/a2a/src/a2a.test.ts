@@ -1,8 +1,7 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { createA2AServer } from "./A2AServer.js";
+import type { AgentEvent, SubagentRunnable } from "@agentkit-js/core";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { A2ARemoteAgent } from "./A2ARemoteAgent.js";
-import type { SubagentRunnable } from "@agentkit-js/core";
-import type { AgentEvent } from "@agentkit-js/core";
+import { createA2AServer } from "./A2AServer.js";
 
 function makeAgent(answer: string): SubagentRunnable {
   return {
@@ -73,9 +72,9 @@ describe("A2A Server integration", () => {
 
     const resp = await fetch(`${serverUrl}/.well-known/agent-card`);
     expect(resp.ok).toBe(true);
-    const card = await resp.json() as Record<string, unknown>;
-    expect(card["protocolVersion"]).toBe("1.0");
-    expect(card["name"]).toBe("Test");
+    const card = (await resp.json()) as Record<string, unknown>;
+    expect(card.protocolVersion).toBe("1.0");
+    expect(card.name).toBe("Test");
   });
 
   it("accepts POST /tasks and returns completed result", async () => {
@@ -95,10 +94,10 @@ describe("A2A Server integration", () => {
       body: JSON.stringify({ id: "task-001", message: "What is 6 times 7?" }),
     });
     expect(resp.ok).toBe(true);
-    const result = await resp.json() as Record<string, unknown>;
-    expect(result["status"]).toBe("completed");
-    expect(result["result"]).toBe("the answer is 42");
-    expect(result["taskId"]).toBe("task-001");
+    const result = (await resp.json()) as Record<string, unknown>;
+    expect(result.status).toBe("completed");
+    expect(result.result).toBe("the answer is 42");
+    expect(result.taskId).toBe("task-001");
   });
 
   it("returns 404 for unknown paths", async () => {

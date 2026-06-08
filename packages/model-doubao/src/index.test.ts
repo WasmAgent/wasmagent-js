@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { StreamEvent } from "@agentkit-js/core/models";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type OAIChunk = {
   choices: Array<{
@@ -50,7 +50,7 @@ async function collectEvents(
   }));
   vi.doMock("openai", () => ({ default: MockOpenAI }));
 
-  const { DoubaoModel } = await import("./index.js?t=" + Date.now());
+  const { DoubaoModel } = await import("./index.js?t=" + Date.now() + "");
   const model = new DoubaoModel(modelId, "test-key");
 
   const events: StreamEvent[] = [];
@@ -62,7 +62,9 @@ async function collectEvents(
 }
 
 describe("DoubaoModel", () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   // ── Basic stream events ─────────────────────────────────────────────────
 
@@ -89,7 +91,11 @@ describe("DoubaoModel", () => {
 
   it("reasoning_content does NOT appear in text_delta", async () => {
     const events = await collectEvents([
-      { choices: [{ delta: { reasoning_content: "reasoning", content: "answer" }, finish_reason: "stop" }] },
+      {
+        choices: [
+          { delta: { reasoning_content: "reasoning", content: "answer" }, finish_reason: "stop" },
+        ],
+      },
     ]);
     const textDeltas = events.filter((e) => e.type === "text_delta");
     expect(textDeltas.every((e) => !e.delta?.includes("reasoning"))).toBe(true);
@@ -105,8 +111,8 @@ describe("DoubaoModel", () => {
       {},
       captured
     );
-    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
-    expect(body?.["thinking"]).toMatchObject({ type: "enabled" });
+    const body = captured.ref?.extra_body as Record<string, unknown> | undefined;
+    expect(body?.thinking).toMatchObject({ type: "enabled" });
   });
 
   it("mode:off sends thinking:{type:disabled}", async () => {
@@ -117,8 +123,8 @@ describe("DoubaoModel", () => {
       { thinking: { mode: "off" } },
       captured
     );
-    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
-    expect(body?.["thinking"]).toMatchObject({ type: "disabled" });
+    const body = captured.ref?.extra_body as Record<string, unknown> | undefined;
+    expect(body?.thinking).toMatchObject({ type: "disabled" });
   });
 
   it("mode:off does NOT produce thinking_delta", async () => {
@@ -141,8 +147,8 @@ describe("DoubaoModel", () => {
       { thinking: { mode: "adaptive" } },
       captured
     );
-    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
-    expect(body?.["thinking"]).toMatchObject({ type: "auto" });
+    const body = captured.ref?.extra_body as Record<string, unknown> | undefined;
+    expect(body?.thinking).toMatchObject({ type: "auto" });
   });
 
   it("mode:adaptive on non-auto model downgrades to enabled", async () => {
@@ -153,8 +159,8 @@ describe("DoubaoModel", () => {
       { thinking: { mode: "adaptive" } },
       captured
     );
-    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
-    expect(body?.["thinking"]).toMatchObject({ type: "enabled" });
+    const body = captured.ref?.extra_body as Record<string, unknown> | undefined;
+    expect(body?.thinking).toMatchObject({ type: "enabled" });
   });
 
   // ── Effort → thinking level mapping ────────────────────────────────────
@@ -167,9 +173,9 @@ describe("DoubaoModel", () => {
       { thinking: { mode: "enabled", effort: "low" } },
       captured
     );
-    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
-    const thinking = body?.["thinking"] as Record<string, unknown> | undefined;
-    expect(thinking?.["level"]).toBe("low");
+    const body = captured.ref?.extra_body as Record<string, unknown> | undefined;
+    const thinking = body?.thinking as Record<string, unknown> | undefined;
+    expect(thinking?.level).toBe("low");
   });
 
   it("effort:medium maps to level:medium", async () => {
@@ -180,9 +186,9 @@ describe("DoubaoModel", () => {
       { thinking: { mode: "enabled", effort: "medium" } },
       captured
     );
-    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
-    const thinking = body?.["thinking"] as Record<string, unknown> | undefined;
-    expect(thinking?.["level"]).toBe("medium");
+    const body = captured.ref?.extra_body as Record<string, unknown> | undefined;
+    const thinking = body?.thinking as Record<string, unknown> | undefined;
+    expect(thinking?.level).toBe("medium");
   });
 
   it("effort:high maps to level:high", async () => {
@@ -193,9 +199,9 @@ describe("DoubaoModel", () => {
       { thinking: { mode: "enabled", effort: "high" } },
       captured
     );
-    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
-    const thinking = body?.["thinking"] as Record<string, unknown> | undefined;
-    expect(thinking?.["level"]).toBe("high");
+    const body = captured.ref?.extra_body as Record<string, unknown> | undefined;
+    const thinking = body?.thinking as Record<string, unknown> | undefined;
+    expect(thinking?.level).toBe("high");
   });
 
   it("effort:minimal maps to level:minimal", async () => {
@@ -206,9 +212,9 @@ describe("DoubaoModel", () => {
       { thinking: { mode: "enabled", effort: "minimal" } },
       captured
     );
-    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
-    const thinking = body?.["thinking"] as Record<string, unknown> | undefined;
-    expect(thinking?.["level"]).toBe("minimal");
+    const body = captured.ref?.extra_body as Record<string, unknown> | undefined;
+    const thinking = body?.thinking as Record<string, unknown> | undefined;
+    expect(thinking?.level).toBe("minimal");
   });
 
   // ── Cache / token usage ─────────────────────────────────────────────────
@@ -233,7 +239,10 @@ describe("DoubaoModel", () => {
 
   it("no error and no cacheReadTokens when prompt_tokens_details absent", async () => {
     const events = await collectEvents([
-      { choices: [{ delta: {}, finish_reason: "stop" }], usage: { prompt_tokens: 10, completion_tokens: 5 } },
+      {
+        choices: [{ delta: {}, finish_reason: "stop" }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      },
     ]);
     const usageEvent = events.find((e) => e.type === "usage");
     expect(usageEvent?.usage?.cacheReadTokens).toBeUndefined();
@@ -244,11 +253,15 @@ describe("DoubaoModel", () => {
   it("uses DOUBAO_BASE_URL as base URL", async () => {
     let capturedBaseURL: string | undefined;
     const MockOpenAI = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
-      capturedBaseURL = opts["baseURL"] as string;
+      capturedBaseURL = opts.baseURL as string;
       return {
         chat: {
           completions: {
-            create: vi.fn().mockResolvedValue(makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])),
+            create: vi
+              .fn()
+              .mockResolvedValue(
+                makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])
+              ),
           },
         },
       };
@@ -256,7 +269,9 @@ describe("DoubaoModel", () => {
     vi.doMock("openai", () => ({ default: MockOpenAI }));
     const { DoubaoModel, DOUBAO_BASE_URL } = await import("./index.js?t=" + Date.now() + "u");
     const model = new DoubaoModel("doubao-seed-1-6-251015", "key");
-    for await (const _ of model.generate([{ role: "user", content: "hi" }])) { /* consume */ }
+    for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
+      /* consume */
+    }
     expect(capturedBaseURL).toBe(DOUBAO_BASE_URL);
     vi.doUnmock("openai");
   });
@@ -288,8 +303,24 @@ describe("DoubaoModel", () => {
 
   it("accumulates tool_calls and emits tool_call + stop:tool_use", async () => {
     const events = await collectEvents([
-      { choices: [{ delta: { tool_calls: [{ index: 0, id: "call1", function: { name: "fn", arguments: '{"k"' } }] }, finish_reason: null }] },
-      { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: ':"v"}' } }] }, finish_reason: null }] },
+      {
+        choices: [
+          {
+            delta: {
+              tool_calls: [{ index: 0, id: "call1", function: { name: "fn", arguments: '{"k"' } }],
+            },
+            finish_reason: null,
+          },
+        ],
+      },
+      {
+        choices: [
+          {
+            delta: { tool_calls: [{ index: 0, function: { arguments: ':"v"}' } }] },
+            finish_reason: null,
+          },
+        ],
+      },
       { choices: [{ delta: {}, finish_reason: "tool_calls" }] },
     ]);
     const toolCall = events.find((e) => e.type === "tool_call");

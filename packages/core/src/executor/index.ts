@@ -1,19 +1,19 @@
-export type {
-  KernelResult,
-  CapabilityManifest,
-  WasmKernel,
-  KernelEngine,
-  ActionLanguage,
-  KernelOptions,
-} from "./types.js";
-export { JsKernel } from "./JsKernel.js";
-export { VmKernel } from "./VmKernel.js";
-export { createKernel } from "./factory.js";
 export {
+  assertPathAllowed,
   buildCapabilityGlobals,
   buildSandboxFetch,
-  assertPathAllowed,
   matchGlob,
 } from "./capabilities.js";
-export { ProgrammaticOrchestrator } from "./ProgrammaticOrchestrator.js";
+export { createKernel } from "./factory.js";
+export { JsKernel } from "./JsKernel.js";
 export type { ProgrammaticResult } from "./ProgrammaticOrchestrator.js";
+export { ProgrammaticOrchestrator } from "./ProgrammaticOrchestrator.js";
+export type {
+  ActionLanguage,
+  CapabilityManifest,
+  KernelEngine,
+  KernelOptions,
+  KernelResult,
+  WasmKernel,
+} from "./types.js";
+export { VmKernel } from "./VmKernel.js";

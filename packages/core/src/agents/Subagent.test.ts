@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { asTool } from "./Subagent.js";
+import { describe, expect, it, vi } from "vitest";
 import type { AgentEvent } from "../types/events.js";
+import { asTool } from "./Subagent.js";
 
 function makeMockAgent(events: AgentEvent[]) {
   return {
@@ -13,8 +13,22 @@ function makeMockAgent(events: AgentEvent[]) {
 describe("asTool", () => {
   it("returns the final answer from the sub-agent", async () => {
     const agent = makeMockAgent([
-      { traceId: "sub", parentTraceId: null, channel: "text", event: "run_start", data: { task: "do it" }, timestampMs: 0 },
-      { traceId: "sub", parentTraceId: null, channel: "text", event: "final_answer", data: { answer: "42" }, timestampMs: 1 },
+      {
+        traceId: "sub",
+        parentTraceId: null,
+        channel: "text",
+        event: "run_start",
+        data: { task: "do it" },
+        timestampMs: 0,
+      },
+      {
+        traceId: "sub",
+        parentTraceId: null,
+        channel: "text",
+        event: "final_answer",
+        data: { answer: "42" },
+        timestampMs: 1,
+      },
     ]);
     const tool = asTool(agent, { name: "sub_agent", description: "a sub" });
     const result = await tool.forward({ task: "do it" });
@@ -23,8 +37,22 @@ describe("asTool", () => {
 
   it("propagates error from the sub-agent as a thrown error", async () => {
     const agent = makeMockAgent([
-      { traceId: "sub", parentTraceId: null, channel: "text", event: "run_start", data: { task: "fail" }, timestampMs: 0 },
-      { traceId: "sub", parentTraceId: null, channel: "text", event: "error", data: { error: "something broke" }, timestampMs: 1 },
+      {
+        traceId: "sub",
+        parentTraceId: null,
+        channel: "text",
+        event: "run_start",
+        data: { task: "fail" },
+        timestampMs: 0,
+      },
+      {
+        traceId: "sub",
+        parentTraceId: null,
+        channel: "text",
+        event: "error",
+        data: { error: "something broke" },
+        timestampMs: 1,
+      },
     ]);
     const tool = asTool(agent, { name: "bad_agent", description: "broken" });
     await expect(tool.forward({ task: "fail" })).rejects.toThrow(/bad_agent.*something broke/);
@@ -32,8 +60,22 @@ describe("asTool", () => {
 
   it("calls onEvent for each sub-agent event", async () => {
     const events: AgentEvent[] = [
-      { traceId: "sub", parentTraceId: null, channel: "text", event: "run_start", data: { task: "x" }, timestampMs: 0 },
-      { traceId: "sub", parentTraceId: null, channel: "text", event: "final_answer", data: { answer: "ok" }, timestampMs: 1 },
+      {
+        traceId: "sub",
+        parentTraceId: null,
+        channel: "text",
+        event: "run_start",
+        data: { task: "x" },
+        timestampMs: 0,
+      },
+      {
+        traceId: "sub",
+        parentTraceId: null,
+        channel: "text",
+        event: "final_answer",
+        data: { answer: "ok" },
+        timestampMs: 1,
+      },
     ];
     const agent = makeMockAgent(events);
     const onEvent = vi.fn();
@@ -57,7 +99,14 @@ describe("asTool", () => {
 
   it("returns null answer when sub-agent exits without final_answer", async () => {
     const agent = makeMockAgent([
-      { traceId: "sub", parentTraceId: null, channel: "text", event: "run_start", data: { task: "x" }, timestampMs: 0 },
+      {
+        traceId: "sub",
+        parentTraceId: null,
+        channel: "text",
+        event: "run_start",
+        data: { task: "x" },
+        timestampMs: 0,
+      },
     ]);
     const tool = asTool(agent, { name: "silent", description: "" });
     const result = await tool.forward({ task: "x" });

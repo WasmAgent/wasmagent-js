@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { QuickJSKernel } from "./QuickJSKernel.js";
 
 // One shared kernel for the file — avoids multiple QuickJS runtime init/dispose
@@ -68,9 +68,9 @@ describe("QuickJSKernel (edge-safe, no node:vm)", () => {
   it("throws KernelSerializationError for circular reference output (matches JsKernel DataCloneError behaviour)", async () => {
     // QuickJS ctx.dump() would silently turn a circular ref into "[object Object]".
     // The serialisation guard detects this and throws explicitly.
-    await expect(
-      kernel.run("var o = {}; o.self = o; o")
-    ).rejects.toThrow(/KernelSerializationError/);
+    await expect(kernel.run("var o = {}; o.self = o; o")).rejects.toThrow(
+      /KernelSerializationError/
+    );
   });
 
   it("returns JSON-serialisable objects cleanly", async () => {

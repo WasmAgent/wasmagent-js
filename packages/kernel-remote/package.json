@@ -24,7 +24,9 @@
     "e2b": ">=1.0.0"
   },
   "peerDependenciesMeta": {
-    "e2b": { "optional": true }
+    "e2b": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -34,6 +36,12 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "keywords": ["microvm", "e2b", "sandbox", "remote", "agentkit"],
+  "keywords": [
+    "microvm",
+    "e2b",
+    "sandbox",
+    "remote",
+    "agentkit"
+  ],
   "license": "Apache-2.0"
 }

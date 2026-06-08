@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { convertCompatMessages } from "./OpenAICompatModel.js";
 import type { ModelMessage } from "./types.js";
 
@@ -32,8 +32,8 @@ describe("convertCompatMessages", () => {
     const result = convertCompatMessages(messages) as Array<Record<string, unknown>>;
     expect(result).toHaveLength(1);
     const msg = result[0]!;
-    expect(msg["reasoning_content"]).toBeUndefined();
-    expect(msg["content"]).toBe("answer");
+    expect(msg.reasoning_content).toBeUndefined();
+    expect(msg.content).toBe("answer");
   });
 
   it("echoes reasoning_content in assistant message when roundTripReasoning=true", () => {
@@ -49,16 +49,14 @@ describe("convertCompatMessages", () => {
     const result = convertCompatMessages(messages, true) as Array<Record<string, unknown>>;
     expect(result).toHaveLength(1);
     const msg = result[0]!;
-    expect(msg["reasoning_content"]).toBe("deep thought");
-    expect(msg["content"]).toBe("answer");
+    expect(msg.reasoning_content).toBe("deep thought");
+    expect(msg.content).toBe("answer");
   });
 
   it("does NOT add reasoning_content to user messages", () => {
-    const messages: ModelMessage[] = [
-      { role: "user", content: [{ type: "text", text: "hi" }] },
-    ];
+    const messages: ModelMessage[] = [{ role: "user", content: [{ type: "text", text: "hi" }] }];
     const result = convertCompatMessages(messages, true) as Array<Record<string, unknown>>;
-    expect(result[0]!["reasoning_content"]).toBeUndefined();
+    expect(result[0]?.reasoning_content).toBeUndefined();
   });
 
   it("handles tool_use + thinking in assistant message correctly", () => {
@@ -77,15 +75,17 @@ describe("convertCompatMessages", () => {
     ];
     const result = convertCompatMessages(messages, true) as Array<Record<string, unknown>>;
     // assistant message with tool_calls
-    const assistantMsg = result.find((m) => m["role"] === "assistant") as Record<string, unknown> | undefined;
+    const assistantMsg = result.find((m) => m.role === "assistant") as
+      | Record<string, unknown>
+      | undefined;
     expect(assistantMsg).toBeDefined();
-    expect(assistantMsg!["reasoning_content"]).toBe("reasoning about tools");
-    const toolCalls = assistantMsg!["tool_calls"] as Array<Record<string, unknown>>;
-    expect(toolCalls[0]!["id"]).toBe("call1");
+    expect(assistantMsg?.reasoning_content).toBe("reasoning about tools");
+    const toolCalls = assistantMsg?.tool_calls as Array<Record<string, unknown>>;
+    expect(toolCalls[0]?.id).toBe("call1");
     // tool result message
-    const toolMsg = result.find((m) => m["role"] === "tool") as Record<string, unknown> | undefined;
-    expect(toolMsg!["tool_call_id"]).toBe("call1");
-    expect(toolMsg!["content"]).toBe("result text");
+    const toolMsg = result.find((m) => m.role === "tool") as Record<string, unknown> | undefined;
+    expect(toolMsg?.tool_call_id).toBe("call1");
+    expect(toolMsg?.content).toBe("result text");
   });
 
   it("does not emit reasoning_content on roundTrip=false even with tool_use + thinking", () => {
@@ -99,7 +99,9 @@ describe("convertCompatMessages", () => {
       },
     ];
     const result = convertCompatMessages(messages, false) as Array<Record<string, unknown>>;
-    const assistantMsg = result.find((m) => m["role"] === "assistant") as Record<string, unknown> | undefined;
-    expect(assistantMsg!["reasoning_content"]).toBeUndefined();
+    const assistantMsg = result.find((m) => m.role === "assistant") as
+      | Record<string, unknown>
+      | undefined;
+    expect(assistantMsg?.reasoning_content).toBeUndefined();
   });
 });

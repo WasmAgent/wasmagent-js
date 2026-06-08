@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { withRetry, withRetryGenerator } from "../models/retry.js";
 
 // ── withRetry ────────────────────────────────────────────────────────────────
@@ -122,7 +122,11 @@ describe("withRetry", () => {
 
 describe("withRetryGenerator", () => {
   it("yields all values on first success", async () => {
-    async function* gen() { yield 1; yield 2; yield 3; }
+    async function* gen() {
+      yield 1;
+      yield 2;
+      yield 3;
+    }
     const results: number[] = [];
     for await (const v of withRetryGenerator(gen, { maxRetries: 3, baseDelayMs: 0 })) {
       results.push(v);

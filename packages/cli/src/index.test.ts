@@ -6,9 +6,16 @@
  * - runCommand is tested with vi.mock for @agentkit-js/core to avoid real API calls.
  * - stdout/stderr/console are spied on to verify output.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { parseEventsFilter, camelCase, generateToolTemplate, generateTestTemplate, runCommand } from "./index.js";
+
 import type { AgentEvent } from "@agentkit-js/core";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  camelCase,
+  generateTestTemplate,
+  generateToolTemplate,
+  parseEventsFilter,
+  runCommand,
+} from "./index.js";
 
 // ── Mock @agentkit-js/core ────────────────────────────────────────────────────
 
@@ -16,20 +23,17 @@ let mockAgentEvents: AgentEvent[] = [];
 
 vi.mock("@agentkit-js/core", () => ({
   CodeAgent: class {
-    constructor(_opts: unknown) {}
     run(_task: string) {
       return (async function* () {
         for (const e of mockAgentEvents) yield e;
       })();
     }
   },
-  AnthropicModel: class {
-    constructor(_modelId: string, _apiKey?: string) {}
-  },
+  AnthropicModel: class {},
   AnthropicModels: {
-    OPUS_LATEST:   "claude-opus-4-8",
+    OPUS_LATEST: "claude-opus-4-8",
     SONNET_LATEST: "claude-sonnet-4-6",
-    HAIKU_LATEST:  "claude-haiku-4-5-20251001",
+    HAIKU_LATEST: "claude-haiku-4-5-20251001",
   },
 }));
 
@@ -151,13 +155,13 @@ describe("generateTestTemplate", () => {
 // ── runCommand ────────────────────────────────────────────────────────────────
 
 describe("runCommand", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: intentional
   let stdoutSpy: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: intentional
   let stderrSpy: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: intentional
   let consoleLogSpy: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: intentional
   let consoleErrorSpy: any;
 
   beforeEach(() => {
@@ -181,19 +185,25 @@ describe("runCommand", () => {
   it("prints error when no API key provided", async () => {
     const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as never);
     // No ANTHROPIC_API_KEY in env, no --api-key flag
-    const savedKey = process.env["ANTHROPIC_API_KEY"];
-    delete process.env["ANTHROPIC_API_KEY"];
+    const savedKey = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
     await runCommand("test task", {});
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("ANTHROPIC_API_KEY"));
-    process.env["ANTHROPIC_API_KEY"] = savedKey;
+    process.env.ANTHROPIC_API_KEY = savedKey;
     exitSpy.mockRestore();
   });
 
   it("outputs Final answer for final_answer event", async () => {
-    mockAgentEvents = [{
-      traceId: "t1", parentTraceId: null, channel: "text", event: "final_answer",
-      data: { answer: "The answer is 42" }, timestampMs: 0,
-    }];
+    mockAgentEvents = [
+      {
+        traceId: "t1",
+        parentTraceId: null,
+        channel: "text",
+        event: "final_answer",
+        data: { answer: "The answer is 42" },
+        timestampMs: 0,
+      },
+    ];
     await runCommand("What is 6*7?", { "api-key": "sk-test" });
     expect(consoleLogSpy).toHaveBeenCalledWith(
       expect.stringContaining("Final answer:"),
@@ -202,10 +212,16 @@ describe("runCommand", () => {
   });
 
   it("outputs error for error event", async () => {
-    mockAgentEvents = [{
-      traceId: "t1", parentTraceId: null, channel: "text", event: "error",
-      data: { error: "something broke" }, timestampMs: 0,
-    }];
+    mockAgentEvents = [
+      {
+        traceId: "t1",
+        parentTraceId: null,
+        channel: "text",
+        event: "error",
+        data: { error: "something broke" },
+        timestampMs: 0,
+      },
+    ];
     await runCommand("fail", { "api-key": "sk-test" });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining("Error:"),
@@ -216,12 +232,20 @@ describe("runCommand", () => {
   it("writes thinking_delta to stdout", async () => {
     mockAgentEvents = [
       {
-        traceId: "t1", parentTraceId: null, channel: "thinking", event: "thinking_delta",
-        data: { delta: "thinking...", step: 1 }, timestampMs: 0,
+        traceId: "t1",
+        parentTraceId: null,
+        channel: "thinking",
+        event: "thinking_delta",
+        data: { delta: "thinking...", step: 1 },
+        timestampMs: 0,
       },
       {
-        traceId: "t1", parentTraceId: null, channel: "text", event: "final_answer",
-        data: { answer: "done" }, timestampMs: 0,
+        traceId: "t1",
+        parentTraceId: null,
+        channel: "text",
+        event: "final_answer",
+        data: { answer: "done" },
+        timestampMs: 0,
       },
     ];
     await runCommand("test", { "api-key": "sk-test" });
@@ -231,12 +255,20 @@ describe("runCommand", () => {
   it("writes step_start to stderr", async () => {
     mockAgentEvents = [
       {
-        traceId: "t1", parentTraceId: null, channel: "thinking", event: "step_start",
-        data: { step: 1 }, timestampMs: 0,
+        traceId: "t1",
+        parentTraceId: null,
+        channel: "thinking",
+        event: "step_start",
+        data: { step: 1 },
+        timestampMs: 0,
       },
       {
-        traceId: "t1", parentTraceId: null, channel: "text", event: "final_answer",
-        data: { answer: "done" }, timestampMs: 0,
+        traceId: "t1",
+        parentTraceId: null,
+        channel: "text",
+        event: "final_answer",
+        data: { answer: "done" },
+        timestampMs: 0,
       },
     ];
     await runCommand("test", { "api-key": "sk-test" });
@@ -244,14 +276,25 @@ describe("runCommand", () => {
   });
 
   it("stream mode outputs raw NDJSON to stdout", async () => {
-    mockAgentEvents = [{
-      traceId: "t1", parentTraceId: null, channel: "text", event: "final_answer",
-      data: { answer: "42" }, timestampMs: 0,
-    }];
+    mockAgentEvents = [
+      {
+        traceId: "t1",
+        parentTraceId: null,
+        channel: "text",
+        event: "final_answer",
+        data: { answer: "42" },
+        timestampMs: 0,
+      },
+    ];
     await runCommand("test", { "api-key": "sk-test", stream: true });
     const calls = (stdoutSpy.mock.calls as unknown[][]).map((c) => c[0] as string);
     const hasJson = calls.some((c: string) => {
-      try { JSON.parse(c); return true; } catch { return false; }
+      try {
+        JSON.parse(c);
+        return true;
+      } catch {
+        return false;
+      }
     });
     expect(hasJson).toBe(true);
   });
@@ -259,18 +302,30 @@ describe("runCommand", () => {
   it("tool_call event logs tool name and args", async () => {
     mockAgentEvents = [
       {
-        traceId: "t1", parentTraceId: null, channel: "tool", event: "tool_call",
-        data: { toolName: "calculator", args: { expression: "2+2" }, callId: "c1", batchId: "b1", batchSize: 1, stepIndex: 1 },
+        traceId: "t1",
+        parentTraceId: null,
+        channel: "tool",
+        event: "tool_call",
+        data: {
+          toolName: "calculator",
+          args: { expression: "2+2" },
+          callId: "c1",
+          batchId: "b1",
+          batchSize: 1,
+          stepIndex: 1,
+        },
         timestampMs: 0,
       },
       {
-        traceId: "t1", parentTraceId: null, channel: "text", event: "final_answer",
-        data: { answer: "4" }, timestampMs: 0,
+        traceId: "t1",
+        parentTraceId: null,
+        channel: "text",
+        event: "final_answer",
+        data: { answer: "4" },
+        timestampMs: 0,
       },
     ];
     await runCommand("test", { "api-key": "sk-test" });
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      expect.stringContaining("calculator")
-    );
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("calculator"));
   });
 });

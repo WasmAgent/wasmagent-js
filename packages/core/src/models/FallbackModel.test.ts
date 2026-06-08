@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { FallbackModel } from "./FallbackModel.js";
 import type { Model, StreamEvent } from "./types.js";
 
@@ -21,7 +21,7 @@ const answer = (text: string): StreamEvent[] => [textEvent(text), stopEvent];
 
 function serverError(status: number): Error {
   const err = new Error(`HTTP ${status}`);
-  (err as unknown as Record<string, unknown>)["status"] = status;
+  (err as unknown as Record<string, unknown>).status = status;
   return err;
 }
 
@@ -45,7 +45,10 @@ describe("FallbackModel (C3)", () => {
     for await (const ev of fallback.generate([{ role: "user", content: "q" }])) {
       events.push(ev);
     }
-    const text = events.filter((e) => e.type === "text_delta").map((e) => e.delta).join("");
+    const text = events
+      .filter((e) => e.type === "text_delta")
+      .map((e) => e.delta)
+      .join("");
     expect(text).toBe("primary answer");
   });
 
@@ -58,7 +61,10 @@ describe("FallbackModel (C3)", () => {
     for await (const ev of fallback.generate([{ role: "user", content: "q" }])) {
       events.push(ev);
     }
-    const text = events.filter((e) => e.type === "text_delta").map((e) => e.delta).join("");
+    const text = events
+      .filter((e) => e.type === "text_delta")
+      .map((e) => e.delta)
+      .join("");
     expect(text).toBe("secondary answer");
     expect(fallback.lastActiveProviderId).toBe(secondary.providerId);
   });
@@ -72,7 +78,10 @@ describe("FallbackModel (C3)", () => {
     for await (const ev of fallback.generate([{ role: "user", content: "q" }])) {
       events.push(ev);
     }
-    const text = events.filter((e) => e.type === "text_delta").map((e) => e.delta).join("");
+    const text = events
+      .filter((e) => e.type === "text_delta")
+      .map((e) => e.delta)
+      .join("");
     expect(text).toBe("from secondary");
   });
 
@@ -86,7 +95,10 @@ describe("FallbackModel (C3)", () => {
     for await (const ev of fallback.generate([{ role: "user", content: "q" }])) {
       events.push(ev);
     }
-    const text = events.filter((e) => e.type === "text_delta").map((e) => e.delta).join("");
+    const text = events
+      .filter((e) => e.type === "text_delta")
+      .map((e) => e.delta)
+      .join("");
     expect(text).toBe("third wins");
     expect(fallback.lastActiveProviderId).toBe(m3.providerId);
   });
@@ -97,7 +109,9 @@ describe("FallbackModel (C3)", () => {
     const fallback = new FallbackModel([m1, m2]);
 
     await expect(async () => {
-      for await (const _ of fallback.generate([{ role: "user", content: "q" }])) { /* consume */ }
+      for await (const _ of fallback.generate([{ role: "user", content: "q" }])) {
+        /* consume */
+      }
     }).rejects.toThrow();
   });
 
@@ -109,7 +123,12 @@ describe("FallbackModel (C3)", () => {
     for await (const ev of fallback.generate([{ role: "user", content: "q" }])) {
       events.push(ev);
     }
-    expect(events.filter((e) => e.type === "text_delta").map((e) => e.delta).join("")).toBe("direct");
+    expect(
+      events
+        .filter((e) => e.type === "text_delta")
+        .map((e) => e.delta)
+        .join("")
+    ).toBe("direct");
   });
 
   it("merges capabilities from all models (most permissive)", () => {
@@ -136,7 +155,9 @@ describe("FallbackModel (C3)", () => {
     };
     const fallback = new FallbackModel([capturingModel, primary]);
     const opts = { temperature: 0.5, maxTokens: 100 };
-    for await (const _ of fallback.generate([{ role: "user", content: "q" }], opts)) { /* consume */ }
+    for await (const _ of fallback.generate([{ role: "user", content: "q" }], opts)) {
+      /* consume */
+    }
     expect(capturedOpts?.temperature).toBe(0.5);
     expect(capturedOpts?.maxTokens).toBe(100);
   });

@@ -60,24 +60,54 @@ export interface AgUiBaseEvent {
 }
 
 export type AgUiEvent =
-  | AgUiBaseEvent & { type: "RUN_STARTED"; data: { task: string } }
-  | AgUiBaseEvent & { type: "RUN_FINISHED"; data: { answer: unknown } }
-  | AgUiBaseEvent & { type: "RUN_ERROR"; data: { message: string; code?: string; layer?: "input" | "output" | "tool"; guardrailName?: string } }
-  | AgUiBaseEvent & { type: "STEP_STARTED"; data: { step: number } }
-  | AgUiBaseEvent & { type: "STEP_FINISHED"; data: { step: number } }
-  | AgUiBaseEvent & { type: "TEXT_MESSAGE_START"; data: { messageId: string; role: "assistant" } }
-  | AgUiBaseEvent & { type: "TEXT_MESSAGE_CONTENT"; data: { messageId: string; delta: string } }
-  | AgUiBaseEvent & { type: "TEXT_MESSAGE_CHUNK"; data: { messageId: string; delta: string; channel?: string } }
-  | AgUiBaseEvent & { type: "TEXT_MESSAGE_END"; data: { messageId: string } }
-  | AgUiBaseEvent & { type: "TOOL_CALL_START"; data: { toolCallId: string; toolName: string; args: Record<string, unknown>; batchId: string; batchSize: number; stepIndex: number } }
-  | AgUiBaseEvent & { type: "TOOL_CALL_ARGS"; data: { toolCallId: string; delta: string } }
-  | AgUiBaseEvent & { type: "TOOL_CALL_RESULT"; data: { toolCallId: string; toolName: string; output: unknown; isError: boolean } }
-  | AgUiBaseEvent & { type: "TOOL_CALL_END"; data: { toolCallId: string; toolName: string; output: unknown; isError: boolean } }
-  | AgUiBaseEvent & { type: "STATE_SNAPSHOT"; data: { snapshot: unknown } }
-  | AgUiBaseEvent & { type: "STATE_DELTA"; data: { delta: unknown } }
-  | AgUiBaseEvent & { type: "MESSAGES_SNAPSHOT"; data: { messages: unknown[] } }
-  | AgUiBaseEvent & { type: "INTERRUPT"; data: { promptId: string; prompt: string; step: number } }
-  | AgUiBaseEvent & { type: "RAW"; data: { event: AgentEvent } };
+  | (AgUiBaseEvent & { type: "RUN_STARTED"; data: { task: string } })
+  | (AgUiBaseEvent & { type: "RUN_FINISHED"; data: { answer: unknown } })
+  | (AgUiBaseEvent & {
+      type: "RUN_ERROR";
+      data: {
+        message: string;
+        code?: string;
+        layer?: "input" | "output" | "tool";
+        guardrailName?: string;
+      };
+    })
+  | (AgUiBaseEvent & { type: "STEP_STARTED"; data: { step: number } })
+  | (AgUiBaseEvent & { type: "STEP_FINISHED"; data: { step: number } })
+  | (AgUiBaseEvent & { type: "TEXT_MESSAGE_START"; data: { messageId: string; role: "assistant" } })
+  | (AgUiBaseEvent & { type: "TEXT_MESSAGE_CONTENT"; data: { messageId: string; delta: string } })
+  | (AgUiBaseEvent & {
+      type: "TEXT_MESSAGE_CHUNK";
+      data: { messageId: string; delta: string; channel?: string };
+    })
+  | (AgUiBaseEvent & { type: "TEXT_MESSAGE_END"; data: { messageId: string } })
+  | (AgUiBaseEvent & {
+      type: "TOOL_CALL_START";
+      data: {
+        toolCallId: string;
+        toolName: string;
+        args: Record<string, unknown>;
+        batchId: string;
+        batchSize: number;
+        stepIndex: number;
+      };
+    })
+  | (AgUiBaseEvent & { type: "TOOL_CALL_ARGS"; data: { toolCallId: string; delta: string } })
+  | (AgUiBaseEvent & {
+      type: "TOOL_CALL_RESULT";
+      data: { toolCallId: string; toolName: string; output: unknown; isError: boolean };
+    })
+  | (AgUiBaseEvent & {
+      type: "TOOL_CALL_END";
+      data: { toolCallId: string; toolName: string; output: unknown; isError: boolean };
+    })
+  | (AgUiBaseEvent & { type: "STATE_SNAPSHOT"; data: { snapshot: unknown } })
+  | (AgUiBaseEvent & { type: "STATE_DELTA"; data: { delta: unknown } })
+  | (AgUiBaseEvent & { type: "MESSAGES_SNAPSHOT"; data: { messages: unknown[] } })
+  | (AgUiBaseEvent & {
+      type: "INTERRUPT";
+      data: { promptId: string; prompt: string; step: number };
+    })
+  | (AgUiBaseEvent & { type: "RAW"; data: { event: AgentEvent } });
 
 // ── RunAgentInput (AG2 — bidirectional protocol) ───────────────────────────────
 
@@ -177,11 +207,21 @@ export async function* toAgUiEvents(
 
     switch (ev.event) {
       case "run_start":
-        yield { type: "RUN_STARTED", runId: effectiveRunId, timestamp: ts, data: { task: ev.data.task } };
+        yield {
+          type: "RUN_STARTED",
+          runId: effectiveRunId,
+          timestamp: ts,
+          data: { task: ev.data.task },
+        };
         break;
 
       case "step_start":
-        yield { type: "STEP_STARTED", runId: effectiveRunId, timestamp: ts, data: { step: ev.data.step } };
+        yield {
+          type: "STEP_STARTED",
+          runId: effectiveRunId,
+          timestamp: ts,
+          data: { step: ev.data.step },
+        };
         break;
 
       case "thinking_delta":
@@ -189,7 +229,11 @@ export async function* toAgUiEvents(
           type: "TEXT_MESSAGE_CHUNK",
           runId: effectiveRunId,
           timestamp: ts,
-          data: { messageId: `thinking-${effectiveRunId}-${ev.data.step}`, delta: ev.data.delta, channel: "thinking" },
+          data: {
+            messageId: `thinking-${effectiveRunId}-${ev.data.step}`,
+            delta: ev.data.delta,
+            channel: "thinking",
+          },
         };
         break;
 
@@ -198,7 +242,11 @@ export async function* toAgUiEvents(
           type: "TEXT_MESSAGE_CHUNK",
           runId: effectiveRunId,
           timestamp: ts,
-          data: { messageId: `planning-${effectiveRunId}-${ev.data.step}`, delta: ev.data.plan, channel: "planning" },
+          data: {
+            messageId: `planning-${effectiveRunId}-${ev.data.step}`,
+            delta: ev.data.plan,
+            channel: "planning",
+          },
         };
         break;
 
@@ -258,14 +306,35 @@ export async function* toAgUiEvents(
       }
 
       case "final_answer": {
-        const answerStr = typeof ev.data.answer === "string"
-          ? ev.data.answer
-          : JSON.stringify(ev.data.answer ?? null);
+        const answerStr =
+          typeof ev.data.answer === "string"
+            ? ev.data.answer
+            : JSON.stringify(ev.data.answer ?? null);
         const msgId = `answer-${effectiveRunId}`;
-        yield { type: "TEXT_MESSAGE_START", runId: effectiveRunId, timestamp: ts, data: { messageId: msgId, role: "assistant" } };
-        yield { type: "TEXT_MESSAGE_CONTENT", runId: effectiveRunId, timestamp: ts, data: { messageId: msgId, delta: answerStr } };
-        yield { type: "TEXT_MESSAGE_END", runId: effectiveRunId, timestamp: ts, data: { messageId: msgId } };
-        yield { type: "RUN_FINISHED", runId: effectiveRunId, timestamp: ts, data: { answer: ev.data.answer } };
+        yield {
+          type: "TEXT_MESSAGE_START",
+          runId: effectiveRunId,
+          timestamp: ts,
+          data: { messageId: msgId, role: "assistant" },
+        };
+        yield {
+          type: "TEXT_MESSAGE_CONTENT",
+          runId: effectiveRunId,
+          timestamp: ts,
+          data: { messageId: msgId, delta: answerStr },
+        };
+        yield {
+          type: "TEXT_MESSAGE_END",
+          runId: effectiveRunId,
+          timestamp: ts,
+          data: { messageId: msgId },
+        };
+        yield {
+          type: "RUN_FINISHED",
+          runId: effectiveRunId,
+          timestamp: ts,
+          data: { answer: ev.data.answer },
+        };
         break;
       }
 
@@ -291,7 +360,9 @@ export async function* toAgUiEvents(
           type: "STATE_DELTA",
           runId: effectiveRunId,
           timestamp: ts,
-          data: { delta: { pendingApproval: { promptId: ev.data.promptId, prompt: ev.data.prompt } } },
+          data: {
+            delta: { pendingApproval: { promptId: ev.data.promptId, prompt: ev.data.prompt } },
+          },
         };
         yield {
           type: "STEP_FINISHED",
@@ -302,7 +373,12 @@ export async function* toAgUiEvents(
         break;
 
       case "guardrail_tripwire": {
-        const d = ev.data as { guardrailName: string; layer: "input" | "output" | "tool"; toolName?: string; metadata?: Record<string, unknown> };
+        const d = ev.data as {
+          guardrailName: string;
+          layer: "input" | "output" | "tool";
+          toolName?: string;
+          metadata?: Record<string, unknown>;
+        };
         yield {
           type: "RUN_ERROR",
           runId: effectiveRunId,

@@ -1,10 +1,15 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { WASI } from "node:wasi";
-import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from "@agentkit-js/core/executor";
+import type {
+  CapabilityManifest,
+  KernelOptions,
+  KernelResult,
+  WasmKernel,
+} from "@agentkit-js/core/executor";
 
 const execFileAsync = promisify(execFile);
 
@@ -351,10 +356,10 @@ export async function runWasm(
 
   // Merge WASI imports, then override fd_read/fd_write to capture I/O.
   const baseImports = wasi.getImportObject() as Record<string, Record<string, unknown>>;
-  const wasiSnapshotPreview1 = { ...baseImports["wasi_snapshot_preview1"] };
+  const wasiSnapshotPreview1 = { ...baseImports.wasi_snapshot_preview1 };
 
   // fd_read(fd, iovs_ptr, iovs_len, nread_ptr) → errno
-  wasiSnapshotPreview1["fd_read"] = (
+  wasiSnapshotPreview1.fd_read = (
     fd: number,
     iovs_ptr: number,
     iovs_len: number,
@@ -381,7 +386,7 @@ export async function runWasm(
   };
 
   // fd_write(fd, iovs_ptr, iovs_len, nwritten_ptr) → errno
-  wasiSnapshotPreview1["fd_write"] = (
+  wasiSnapshotPreview1.fd_write = (
     fd: number,
     iovs_ptr: number,
     iovs_len: number,
@@ -404,10 +409,10 @@ export async function runWasm(
   // Declare `instance` before the closures above so fd_read/fd_write can reference it
   // at call time. wasi.start() fires during WebAssembly._start, after instantiation.
   let instance!: WasmInstance;
-  instance = await WA.instantiate(
-    wasmModule,
-    { ...baseImports, wasi_snapshot_preview1: wasiSnapshotPreview1 } as Record<string, Record<string, WasmImportValue>>
-  );
+  instance = await WA.instantiate(wasmModule, {
+    ...baseImports,
+    wasi_snapshot_preview1: wasiSnapshotPreview1,
+  } as Record<string, Record<string, WasmImportValue>>);
 
   try {
     wasi.start(instance as WasmInstance);
@@ -465,7 +470,7 @@ interface WasmAPI {
 }
 
 function getMemoryBuffer(instance: WasmInstance): ArrayBuffer {
-  const mem = instance.exports["memory"];
+  const mem = instance.exports.memory;
   if (!mem || typeof (mem as { buffer?: ArrayBuffer }).buffer === "undefined") {
     throw new Error("WasmtimeKernel: WASM module does not export 'memory'");
   }

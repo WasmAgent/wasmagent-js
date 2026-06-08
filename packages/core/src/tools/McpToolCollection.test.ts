@@ -1,5 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
-import { McpToolCollection } from "../tools/McpToolCollection.js";
+import { describe, expect, it, vi } from "vitest";
 
 /**
  * McpToolCollection tests — mock the @modelcontextprotocol/sdk dynamic imports.
@@ -41,7 +40,7 @@ describe("McpToolCollection (D4)", () => {
     ]);
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?t=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?t=" + Date.now() + "");
     const collection = await MTC.fromStdio("echo", []);
 
     expect(collection.size).toBe(2);
@@ -121,9 +120,7 @@ describe("McpToolCollection (D4)", () => {
   });
 
   it("fromSse: connects via SSE transport and returns same ToolDefinition shape", async () => {
-    const mockClient = makeMockMcpClient([
-      { name: "sse-tool", description: "From SSE server" },
-    ]);
+    const mockClient = makeMockMcpClient([{ name: "sse-tool", description: "From SSE server" }]);
     mockMcpSdk(mockClient);
 
     const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?t=" + Date.now() + "7");
@@ -153,7 +150,7 @@ describe("B3 — MCP supply chain integrity", () => {
     ]);
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t1=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t1=" + Date.now() + "");
     const collection = await MTC.fromStdio("echo", [], undefined, {
       allowedToolNames: ["allowed_tool"],
     });
@@ -168,13 +165,10 @@ describe("B3 — MCP supply chain integrity", () => {
   });
 
   it("empty allowedToolNames marks ALL tools as untrusted", async () => {
-    const mockClient = makeMockMcpClient([
-      { name: "tool_a" },
-      { name: "tool_b" },
-    ]);
+    const mockClient = makeMockMcpClient([{ name: "tool_a" }, { name: "tool_b" }]);
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t2=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t2=" + Date.now() + "");
     const collection = await MTC.fromStdio("echo", [], undefined, {
       allowedToolNames: [],
     });
@@ -189,7 +183,7 @@ describe("B3 — MCP supply chain integrity", () => {
     const mockClient = makeMockMcpClient([{ name: "t1" }, { name: "t2" }]);
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t3=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t3=" + Date.now() + "");
     const collection = await MTC.fromStdio("echo", []);
 
     for (const tool of collection.list()) {
@@ -203,7 +197,7 @@ describe("B3 — MCP supply chain integrity", () => {
     const mockClient = makeMockMcpClient([{ name: "tool_x" }]);
     mockMcpSdk(mockClient);
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t4=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t4=" + Date.now() + "");
     await expect(
       MTC.fromStdio("echo", [], undefined, {
         serverFingerprint: "000000000000000000000000000000000000000000000000000000000000dead",
@@ -213,7 +207,7 @@ describe("B3 — MCP supply chain integrity", () => {
   });
 
   it("computeFingerprint produces consistent SHA-256", async () => {
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t5=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3t5=" + Date.now() + "");
     const tools = [
       { name: "b_tool", description: "B" },
       { name: "a_tool", description: "A" },
@@ -241,7 +235,12 @@ describe("McpToolCollection — B3: resources and prompts", () => {
       close: vi.fn().mockResolvedValue(undefined),
       listResources: vi.fn().mockResolvedValue({
         resources: [
-          { uri: "file:///data.json", name: "data", description: "Main dataset", mimeType: "application/json" },
+          {
+            uri: "file:///data.json",
+            name: "data",
+            description: "Main dataset",
+            mimeType: "application/json",
+          },
           { uri: "file:///config.yaml", name: "config", mimeType: "text/yaml" },
         ],
       }),
@@ -260,7 +259,10 @@ describe("McpToolCollection — B3: resources and prompts", () => {
         Promise.resolve({
           description: `${name} description`,
           messages: [
-            { role: "user", content: { type: "text", text: `You are a helpful assistant. (${name})` } },
+            {
+              role: "user",
+              content: { type: "text", text: `You are a helpful assistant. (${name})` },
+            },
           ],
         })
       ),
@@ -276,7 +278,7 @@ describe("McpToolCollection — B3: resources and prompts", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3r1=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3r1=" + Date.now() + "");
     const collection = await MTC.fromStdio("echo", []);
     const resources = await collection.listResources();
 
@@ -295,7 +297,7 @@ describe("McpToolCollection — B3: resources and prompts", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3r2=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3r2=" + Date.now() + "");
     const collection = await MTC.fromStdio("echo", []);
     const contents = await collection.readResource("file:///data.json");
 
@@ -313,7 +315,7 @@ describe("McpToolCollection — B3: resources and prompts", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3p1=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3p1=" + Date.now() + "");
     const collection = await MTC.fromStdio("echo", []);
     const prompts = await collection.listPrompts();
 
@@ -330,7 +332,7 @@ describe("McpToolCollection — B3: resources and prompts", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3p2=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3p2=" + Date.now() + "");
     const collection = await MTC.fromStdio("echo", []);
     const result = await collection.getPrompt("system_prompt");
 
@@ -347,7 +349,7 @@ describe("McpToolCollection — B3: resources and prompts", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3p3=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3p3=" + Date.now() + "");
     const collection = await MTC.fromStdio("echo", []);
     const prefix = await collection.getPromptAsSystemPrefix("system_prompt");
 
@@ -370,7 +372,7 @@ describe("McpToolCollection — B3: resources and prompts", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3r3=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3r3=" + Date.now() + "");
     const collection = await MTC.fromStdio("echo", []);
 
     await expect(collection.listResources()).rejects.toThrow(/resources capability/);
@@ -403,21 +405,26 @@ describe("A1 — McpAuthOptions / McpAuthError", () => {
       Client: vi.fn().mockImplementation(() => mockClient),
     }));
     vi.doMock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
-      StreamableHTTPClientTransport: vi.fn().mockImplementation((_url: URL, opts: Record<string, unknown> = {}) => {
-        capturedOpts = opts;
-        return mockTransport;
-      }),
+      StreamableHTTPClientTransport: vi
+        .fn()
+        .mockImplementation((_url: URL, opts: Record<string, unknown> = {}) => {
+          capturedOpts = opts;
+          return mockTransport;
+        }),
     }));
 
-    const auth = { tokenProvider: async () => "test-token", resourceIndicator: "https://api.example.com/mcp" };
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a1t1=" + Date.now());
+    const auth = {
+      tokenProvider: async () => "test-token",
+      resourceIndicator: "https://api.example.com/mcp",
+    };
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a1t1=" + Date.now() + "");
     await MTC.fromHttp("https://api.example.com/mcp", undefined, undefined, auth);
 
-    expect(capturedOpts["authProvider"]).toBeDefined();
-    const provider = capturedOpts["authProvider"] as Record<string, unknown>;
-    expect(typeof provider["tokens"]).toBe("function");
-    expect(typeof provider["redirectToAuthorization"]).toBe("function");
-    expect(typeof provider["validateResourceURL"]).toBe("function");
+    expect(capturedOpts.authProvider).toBeDefined();
+    const provider = capturedOpts.authProvider as Record<string, unknown>;
+    expect(typeof provider.tokens).toBe("function");
+    expect(typeof provider.redirectToAuthorization).toBe("function");
+    expect(typeof provider.validateResourceURL).toBe("function");
   });
 
   it("buildOAuthProvider tokens() calls tokenProvider and returns Bearer token", async () => {
@@ -433,20 +440,23 @@ describe("A1 — McpAuthOptions / McpAuthError", () => {
       Client: vi.fn().mockImplementation(() => mockClient),
     }));
     vi.doMock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
-      StreamableHTTPClientTransport: vi.fn().mockImplementation((_url: URL, opts: Record<string, unknown> = {}) => {
-        if (opts["authProvider"]) capturedProviders.push(opts["authProvider"] as Record<string, unknown>);
-        return { start: vi.fn(), close: vi.fn(), send: vi.fn() };
-      }),
+      StreamableHTTPClientTransport: vi
+        .fn()
+        .mockImplementation((_url: URL, opts: Record<string, unknown> = {}) => {
+          if (opts.authProvider)
+            capturedProviders.push(opts.authProvider as Record<string, unknown>);
+          return { start: vi.fn(), close: vi.fn(), send: vi.fn() };
+        }),
     }));
 
     const tokenProvider = vi.fn().mockResolvedValue("my-access-token");
     const auth = { tokenProvider };
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a1t2=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a1t2=" + Date.now() + "");
     await MTC.fromHttp("https://api.example.com/mcp", undefined, undefined, auth);
 
     expect(capturedProviders.length).toBeGreaterThan(0);
     const provider = capturedProviders[0]!;
-    const tokens = await (provider["tokens"] as () => Promise<{ access_token: string } | undefined>)();
+    const tokens = await (provider.tokens as () => Promise<{ access_token: string } | undefined>)();
     expect(tokens?.access_token).toBe("my-access-token");
     expect(tokenProvider).toHaveBeenCalled();
   });
@@ -464,31 +474,39 @@ describe("A1 — McpAuthOptions / McpAuthError", () => {
       Client: vi.fn().mockImplementation(() => mockClient),
     }));
     vi.doMock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
-      StreamableHTTPClientTransport: vi.fn().mockImplementation((_url: URL, opts: Record<string, unknown> = {}) => {
-        capturedOpts = opts;
-        return { start: vi.fn(), close: vi.fn(), send: vi.fn() };
-      }),
+      StreamableHTTPClientTransport: vi
+        .fn()
+        .mockImplementation((_url: URL, opts: Record<string, unknown> = {}) => {
+          capturedOpts = opts;
+          return { start: vi.fn(), close: vi.fn(), send: vi.fn() };
+        }),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a1t3=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a1t3=" + Date.now() + "");
     await MTC.fromHttp("https://api.example.com/mcp");
-    expect(capturedOpts["authProvider"]).toBeUndefined();
+    expect(capturedOpts.authProvider).toBeUndefined();
   });
 });
 
 // ── A2: URL-mode elicitation ──────────────────────────────────────────────────
 
 describe("A2 — URL-mode elicitation", () => {
-  function makeMockClientWithElicitation(elicitRequestHandler: (req: Record<string, unknown>) => Promise<unknown>) {
+  function makeMockClientWithElicitation(
+    _elicitRequestHandler: (req: Record<string, unknown>) => Promise<unknown>
+  ) {
     const handlers: Record<string, (req: Record<string, unknown>) => Promise<unknown>> = {};
     return {
       connect: vi.fn().mockResolvedValue(undefined),
       listTools: vi.fn().mockResolvedValue({ tools: [{ name: "t", description: "d" }] }),
       callTool: vi.fn(),
       close: vi.fn().mockResolvedValue(undefined),
-      setRequestHandler: vi.fn().mockImplementation((method: string, handler: (req: Record<string, unknown>) => Promise<unknown>) => {
-        handlers[method] = handler;
-      }),
+      setRequestHandler: vi
+        .fn()
+        .mockImplementation(
+          (method: string, handler: (req: Record<string, unknown>) => Promise<unknown>) => {
+            handlers[method] = handler;
+          }
+        ),
       async triggerElicitation(req: Record<string, unknown>) {
         const handler = handlers["elicitation/create"];
         if (!handler) throw new Error("no handler");
@@ -512,24 +530,28 @@ describe("A2 — URL-mode elicitation", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a2t1=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a2t1=" + Date.now() + "");
     await MTC.fromStdio("echo", [], undefined, undefined, elicitation);
 
     // trigger form-mode elicitation
-    const result = await (mockClient as ReturnType<typeof makeMockClientWithElicitation>).triggerElicitation({
+    const result = await (
+      mockClient as ReturnType<typeof makeMockClientWithElicitation>
+    ).triggerElicitation({
       message: "Enter your name",
       schema: {},
     });
     expect(receivedMode).toBe("form");
-    expect((result as Record<string, string>)["action"]).toBe("accept");
+    expect((result as Record<string, string>).action).toBe("accept");
   });
 
   it("URL-mode elicitation receives mode='url' and returns cancel (no plaintext)", async () => {
     const elicitedRequests: Array<{ mode: string; authorizationUrl?: string }> = [];
-    const elicitation = vi.fn().mockImplementation(async (req: { mode: string; authorizationUrl?: string }) => {
-      elicitedRequests.push(req);
-      return undefined; // URL-mode should not return a value
-    });
+    const elicitation = vi
+      .fn()
+      .mockImplementation(async (req: { mode: string; authorizationUrl?: string }) => {
+        elicitedRequests.push(req);
+        return undefined; // URL-mode should not return a value
+      });
 
     const mockClient = makeMockClientWithElicitation(async () => ({}));
     vi.doMock("@modelcontextprotocol/sdk/client/index.js", () => ({
@@ -539,19 +561,23 @@ describe("A2 — URL-mode elicitation", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a2t2=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a2t2=" + Date.now() + "");
     await MTC.fromStdio("echo", [], undefined, undefined, elicitation);
 
     // trigger URL-mode elicitation with requestType:"url" and authorizationUrl
-    const result = await (mockClient as ReturnType<typeof makeMockClientWithElicitation>).triggerElicitation({
+    const result = await (
+      mockClient as ReturnType<typeof makeMockClientWithElicitation>
+    ).triggerElicitation({
       message: "Please authorize",
       requestType: "url",
       authorizationUrl: "https://auth.example.com/oauth/authorize?code=xxx",
     });
     expect(elicitedRequests[0]?.mode).toBe("url");
-    expect(elicitedRequests[0]?.authorizationUrl).toBe("https://auth.example.com/oauth/authorize?code=xxx");
+    expect(elicitedRequests[0]?.authorizationUrl).toBe(
+      "https://auth.example.com/oauth/authorize?code=xxx"
+    );
     // Even if callback returns a string for URL-mode, framework MUST return cancel
-    expect((result as Record<string, string>)["action"]).toBe("cancel");
+    expect((result as Record<string, string>).action).toBe("cancel");
   });
 });
 
@@ -565,9 +591,13 @@ describe("A3 — Sampling/createMessage registration", () => {
       listTools: vi.fn().mockResolvedValue({ tools: [{ name: "t", description: "d" }] }),
       callTool: vi.fn(),
       close: vi.fn().mockResolvedValue(undefined),
-      setRequestHandler: vi.fn().mockImplementation((method: string, handler: (req: Record<string, unknown>) => Promise<unknown>) => {
-        handlers[method] = handler;
-      }),
+      setRequestHandler: vi
+        .fn()
+        .mockImplementation(
+          (method: string, handler: (req: Record<string, unknown>) => Promise<unknown>) => {
+            handlers[method] = handler;
+          }
+        ),
       async triggerSampling(req: Record<string, unknown>) {
         const handler = handlers["sampling/createMessage"];
         if (!handler) throw new Error("no sampling handler registered");
@@ -586,11 +616,13 @@ describe("A3 — Sampling/createMessage registration", () => {
     }));
 
     const samplingCallback = vi.fn().mockResolvedValue("LLM response text");
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a3t1=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a3t1=" + Date.now() + "");
     await MTC.fromStdio("echo", [], undefined, undefined, undefined, samplingCallback);
 
     // sampling handler should be registered
-    const result = await (mockClient as ReturnType<typeof makeMockClientWithSampling>).triggerSampling({
+    const result = await (
+      mockClient as ReturnType<typeof makeMockClientWithSampling>
+    ).triggerSampling({
       messages: [{ role: "user", content: { type: "text", text: "hello" } }],
       systemPrompt: "You are a helper",
       maxTokens: 100,
@@ -598,15 +630,15 @@ describe("A3 — Sampling/createMessage registration", () => {
 
     expect(samplingCallback).toHaveBeenCalledWith(
       expect.objectContaining({
-        messages: expect.arrayContaining([
-          expect.objectContaining({ role: "user" }),
-        ]),
+        messages: expect.arrayContaining([expect.objectContaining({ role: "user" })]),
         systemPrompt: "You are a helper",
         maxTokens: 100,
       })
     );
-    expect((result as Record<string, unknown>)["role"]).toBe("assistant");
-    expect(((result as Record<string, unknown>)["content"] as Record<string, unknown>)["text"]).toBe("LLM response text");
+    expect((result as Record<string, unknown>).role).toBe("assistant");
+    expect(((result as Record<string, unknown>).content as Record<string, unknown>).text).toBe(
+      "LLM response text"
+    );
   });
 
   it("does not register sampling handler when no callback provided", async () => {
@@ -618,11 +650,13 @@ describe("A3 — Sampling/createMessage registration", () => {
       StdioClientTransport: vi.fn().mockImplementation(() => ({})),
     }));
 
-    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a3t2=" + Date.now());
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?a3t2=" + Date.now() + "");
     await MTC.fromStdio("echo", []);
 
     await expect(
-      (mockClient as ReturnType<typeof makeMockClientWithSampling>).triggerSampling({ messages: [] })
+      (mockClient as ReturnType<typeof makeMockClientWithSampling>).triggerSampling({
+        messages: [],
+      })
     ).rejects.toThrow(/no sampling handler/);
   });
 });

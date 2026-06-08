@@ -36,8 +36,16 @@ export class LazyObservationHandle {
   constructor(source: Promise<string> | (() => Promise<string>)) {
     const p = typeof source === "function" ? source() : source;
     this.#promise = p.then(
-      (v) => { this.#resolved = true; this.#value = v; return v; },
-      (e) => { this.#resolved = true; this.#error = e; throw e; }
+      (v) => {
+        this.#resolved = true;
+        this.#value = v;
+        return v;
+      },
+      (e) => {
+        this.#resolved = true;
+        this.#error = e;
+        throw e;
+      }
     );
   }
 

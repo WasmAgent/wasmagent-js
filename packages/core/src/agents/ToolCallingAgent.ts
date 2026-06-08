@@ -1,28 +1,33 @@
 import { randomUUID } from "node:crypto";
-import { MessageAssembler } from "../memory/MessageAssembler.js";
-import { LazyObservationHandle } from "../memory/LazyObservationHandle.js";
-import { ToolRegistry } from "../tools/ToolRegistry.js";
-import type { ToolDefinition } from "../tools/types.js";
-import type { Model, EnhancementPolicy } from "../models/types.js";
-import { TokenBudget } from "../models/types.js";
-import { SelfConsistencyRunner } from "../enhancement/SelfConsistencyRunner.js";
-import { ReflectRefineRunner } from "../enhancement/ReflectRefineRunner.js";
+import type { ZodSchema } from "zod";
+import type { Checkpointer } from "../checkpoint/index.js";
 import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
 import { ParallelForkJoinRunner } from "../enhancement/ParallelForkJoinRunner.js";
-import type { AgentEvent, FinalAnswerStep, ParallelToolUseCall, ParallelToolUseStep, ToolUseStep, UserMessageStep } from "../types/events.js";
-import { runPlanningStep, TOOL_DEP_INSTRUCTIONS } from "./prompts.js";
-import { Scheduler } from "../scheduler/Scheduler.js";
-import { SimpleIR } from "../scheduler/ir.js";
-import type { IRNode } from "../scheduler/ir.js";
-import { deriveDependencies } from "../scheduler/deriveDeps.js";
-import type { StopCondition } from "./stopConditions.js";
-import { callFingerprint } from "./stopConditions.js";
-import type { Checkpointer } from "../checkpoint/index.js";
+import { ReflectRefineRunner } from "../enhancement/ReflectRefineRunner.js";
+import { SelfConsistencyRunner } from "../enhancement/SelfConsistencyRunner.js";
 import type { InputGuardrail, OutputGuardrail, ToolGuardrail } from "../guardrails/index.js";
 import { runInputGuardrails, runOutputGuardrails, runToolGuardrails } from "../guardrails/index.js";
-import type { ZodSchema } from "zod";
-import { zodToJsonSchema, toStrictJsonSchema } from "../tools/ToolRegistry.js";
+import { LazyObservationHandle } from "../memory/LazyObservationHandle.js";
+import { MessageAssembler } from "../memory/MessageAssembler.js";
 import { repairJson } from "../models/OpenAIModel.js";
+import type { EnhancementPolicy, Model } from "../models/types.js";
+import { TokenBudget } from "../models/types.js";
+import { deriveDependencies } from "../scheduler/deriveDeps.js";
+import type { IRNode } from "../scheduler/ir.js";
+import { SimpleIR } from "../scheduler/ir.js";
+import { Scheduler } from "../scheduler/Scheduler.js";
+import { ToolRegistry, toStrictJsonSchema, zodToJsonSchema } from "../tools/ToolRegistry.js";
+import type { ToolDefinition } from "../tools/types.js";
+import type {
+  AgentEvent,
+  ParallelToolUseCall,
+  ParallelToolUseStep,
+  ToolUseStep,
+  UserMessageStep,
+} from "../types/events.js";
+import { runPlanningStep, TOOL_DEP_INSTRUCTIONS } from "./prompts.js";
+import type { StopCondition } from "./stopConditions.js";
+import { callFingerprint } from "./stopConditions.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant. Use the provided tools to answer questions.
 When you have a final answer, respond with plain text (no tool call).
@@ -79,7 +84,7 @@ export interface ToolCallingAgentOptions {
    * When provided, the answer is validated after each candidate and
    * retried (with a fix prompt) up to outputSchemaRetries times on failure.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: intentional
   outputSchema?: ZodSchema<any>;
   /**
    * A2: Maximum number of fix-prompt retries when outputSchema validation fails.
@@ -113,7 +118,7 @@ export class ToolCallingAgent {
   readonly #inputGuardrails: InputGuardrail[];
   readonly #outputGuardrails: OutputGuardrail[];
   readonly #toolGuardrails: ToolGuardrail[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: intentional
   readonly #outputSchema: ZodSchema<any> | undefined;
   readonly #outputSchemaRetries: number;
 
@@ -136,10 +141,12 @@ export class ToolCallingAgent {
     this.#outputSchema = opts.outputSchema;
     this.#outputSchemaRetries = opts.outputSchemaRetries ?? 2;
     this.#toolsSchema = this.#tools.toJsonSchema();
-    this.#assembler = opts.assembler ?? new MessageAssembler({
-      systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
-      toolsSchema: this.#toolsSchema,
-    });
+    this.#assembler =
+      opts.assembler ??
+      new MessageAssembler({
+        systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
+        toolsSchema: this.#toolsSchema,
+      });
   }
 
   /** Read-only access to the underlying MessageAssembler for compaction. */
@@ -176,19 +183,20 @@ export class ToolCallingAgent {
     const callHistory: string[][] = [];
 
     // A2: Build responseFormat for outputSchema if the model supports constrained decoding.
-    const outputResponseFormat = this.#outputSchema && this.#model.capabilities?.supportsGrammar
-      ? (() => {
-          try {
-            const isAnthropic = this.#model.providerId?.startsWith("anthropic/");
-            const schema = isAnthropic
-              ? zodToJsonSchema(this.#outputSchema)
-              : toStrictJsonSchema(this.#outputSchema);
-            return { type: "json_schema" as const, schema, name: "output", strict: true };
-          } catch {
-            return undefined;
-          }
-        })()
-      : undefined;
+    const outputResponseFormat =
+      this.#outputSchema && this.#model.capabilities?.supportsGrammar
+        ? (() => {
+            try {
+              const isAnthropic = this.#model.providerId?.startsWith("anthropic/");
+              const schema = isAnthropic
+                ? zodToJsonSchema(this.#outputSchema)
+                : toStrictJsonSchema(this.#outputSchema);
+              return { type: "json_schema" as const, schema, name: "output", strict: true };
+            } catch {
+              return undefined;
+            }
+          })()
+        : undefined;
 
     // A1: input guardrail check — runs concurrently with step 1's model invocation.
     // We kick it off here before the loop so it overlaps with the first model call.
@@ -205,11 +213,18 @@ export class ToolCallingAgent {
       if (signal?.aborted) {
         if (this.#checkpointer) {
           await this.#checkpointer.save(traceId, {
-            traceId, task, history: [], stepIndex: step, savedAtMs: Date.now(),
+            traceId,
+            task,
+            history: [],
+            stepIndex: step,
+            savedAtMs: Date.now(),
           });
         }
         yield {
-          traceId, parentTraceId, channel: "text", event: "error",
+          traceId,
+          parentTraceId,
+          channel: "text",
+          event: "error",
           data: { error: "Agent aborted by external signal", step },
           timestampMs: Date.now(),
         };
@@ -258,7 +273,9 @@ export class ToolCallingAgent {
           parentTraceId,
           channel: "text",
           event: "error",
-          data: { error: `Time budget exhausted (${Date.now() - runStartMs}ms >= ${budgetMaxDurationMs}ms)` },
+          data: {
+            error: `Time budget exhausted (${Date.now() - runStartMs}ms >= ${budgetMaxDurationMs}ms)`,
+          },
           timestampMs: Date.now(),
         };
         return;
@@ -336,13 +353,28 @@ export class ToolCallingAgent {
       // A1: check if input guardrail triggered (checked after generation to preserve concurrency).
       if (inputGuardrailTripwire) {
         yield {
-          traceId, parentTraceId, channel: "status", event: "guardrail_tripwire",
-          data: { guardrailName: inputGuardrailTripwire.guardrailName, layer: "input" as const, ...(inputGuardrailTripwire.result.metadata ? { metadata: inputGuardrailTripwire.result.metadata } : {}) },
+          traceId,
+          parentTraceId,
+          channel: "status",
+          event: "guardrail_tripwire",
+          data: {
+            guardrailName: inputGuardrailTripwire.guardrailName,
+            layer: "input" as const,
+            ...(inputGuardrailTripwire.result.metadata
+              ? { metadata: inputGuardrailTripwire.result.metadata }
+              : {}),
+          },
           timestampMs: Date.now(),
         };
         yield {
-          traceId, parentTraceId, channel: "text", event: "error",
-          data: { error: `Input guardrail "${inputGuardrailTripwire.guardrailName}" triggered`, step },
+          traceId,
+          parentTraceId,
+          channel: "text",
+          event: "error",
+          data: {
+            error: `Input guardrail "${inputGuardrailTripwire.guardrailName}" triggered`,
+            step,
+          },
           timestampMs: Date.now(),
         };
         return;
@@ -361,41 +393,61 @@ export class ToolCallingAgent {
         // then self-consistency. Runners run in isolated contexts — they do not mutate
         // the assembler history or the main token budget tracking here.
         const messages = this.#assembler.build();
-        if (this.#policy?.budgetForcing?.enabled && this.#model.capabilities?.supportsBudgetForcing) {
+        if (
+          this.#policy?.budgetForcing?.enabled &&
+          this.#model.capabilities?.supportsBudgetForcing
+        ) {
           const result = await new BudgetForcingRunner().run(this.#model, messages);
           answer = result.answer || answer;
         } else if (this.#policy?.reflectRefine?.enabled) {
-          const reflectOpts = this.#policy.reflectRefine.maxCycles !== undefined
-            ? { maxCycles: this.#policy.reflectRefine.maxCycles }
-            : {};
+          const reflectOpts =
+            this.#policy.reflectRefine.maxCycles !== undefined
+              ? { maxCycles: this.#policy.reflectRefine.maxCycles }
+              : {};
           const result = await new ReflectRefineRunner(reflectOpts).run(this.#model, messages);
           answer = result.answer || answer;
         } else if (this.#policy?.selfConsistency?.enabled) {
           const scOpts: { n?: number; earlyStopThreshold?: number } = {};
-          if (this.#policy.selfConsistency.n !== undefined) scOpts.n = this.#policy.selfConsistency.n;
+          if (this.#policy.selfConsistency.n !== undefined)
+            scOpts.n = this.#policy.selfConsistency.n;
           if (this.#policy.selfConsistency.earlyStopThreshold !== undefined) {
             scOpts.earlyStopThreshold = this.#policy.selfConsistency.earlyStopThreshold;
           }
           const result = await new SelfConsistencyRunner(scOpts).run(this.#model, messages);
           answer = result.answer || answer;
         } else if (this.#policy?.parallelForkJoin?.enabled) {
-          const fjOpts: { branches?: number; concurrency?: number; aggregation?: "summary" | "first" } = {};
-          if (this.#policy.parallelForkJoin.branches !== undefined) fjOpts.branches = this.#policy.parallelForkJoin.branches;
-          if (this.#policy.parallelForkJoin.concurrency !== undefined) fjOpts.concurrency = this.#policy.parallelForkJoin.concurrency;
-          if (this.#policy.parallelForkJoin.aggregation !== undefined) fjOpts.aggregation = this.#policy.parallelForkJoin.aggregation;
+          const fjOpts: {
+            branches?: number;
+            concurrency?: number;
+            aggregation?: "summary" | "first";
+          } = {};
+          if (this.#policy.parallelForkJoin.branches !== undefined)
+            fjOpts.branches = this.#policy.parallelForkJoin.branches;
+          if (this.#policy.parallelForkJoin.concurrency !== undefined)
+            fjOpts.concurrency = this.#policy.parallelForkJoin.concurrency;
+          if (this.#policy.parallelForkJoin.aggregation !== undefined)
+            fjOpts.aggregation = this.#policy.parallelForkJoin.aggregation;
           const result = await new ParallelForkJoinRunner(fjOpts).run(this.#model, messages);
           answer = result.answer || answer;
         }
 
         // A2: validate answer against outputSchema, retry on failure.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: intentional
         let parsedAnswer: any = answer;
         if (this.#outputSchema) {
           // R3: first try deterministic JSON repair before going to model retries.
           const parseCandidate = (raw: string): unknown => {
-            try { return JSON.parse(raw); } catch { /* fallthrough */ }
+            try {
+              return JSON.parse(raw);
+            } catch {
+              /* fallthrough */
+            }
             const repaired = repairJson(raw);
-            try { return JSON.parse(repaired); } catch { return raw; }
+            try {
+              return JSON.parse(repaired);
+            } catch {
+              return raw;
+            }
           };
           let parseResult = this.#outputSchema.safeParse(
             typeof answer === "string" ? parseCandidate(answer) : answer
@@ -427,8 +479,14 @@ export class ToolCallingAgent {
           }
           if (!parseResult.success) {
             yield {
-              traceId, parentTraceId, channel: "text", event: "error",
-              data: { error: `Output schema validation failed after ${this.#outputSchemaRetries} retries: ${parseResult.error.message}`, step },
+              traceId,
+              parentTraceId,
+              channel: "text",
+              event: "error",
+              data: {
+                error: `Output schema validation failed after ${this.#outputSchemaRetries} retries: ${parseResult.error.message}`,
+                step,
+              },
               timestampMs: Date.now(),
             };
             return;
@@ -440,12 +498,24 @@ export class ToolCallingAgent {
         const outputTripwire = await runOutputGuardrails(this.#outputGuardrails, parsedAnswer);
         if (outputTripwire) {
           yield {
-            traceId, parentTraceId, channel: "status", event: "guardrail_tripwire",
-            data: { guardrailName: outputTripwire.guardrailName, layer: "output" as const, ...(outputTripwire.result.metadata ? { metadata: outputTripwire.result.metadata } : {}) },
+            traceId,
+            parentTraceId,
+            channel: "status",
+            event: "guardrail_tripwire",
+            data: {
+              guardrailName: outputTripwire.guardrailName,
+              layer: "output" as const,
+              ...(outputTripwire.result.metadata
+                ? { metadata: outputTripwire.result.metadata }
+                : {}),
+            },
             timestampMs: Date.now(),
           };
           yield {
-            traceId, parentTraceId, channel: "text", event: "error",
+            traceId,
+            parentTraceId,
+            channel: "text",
+            event: "error",
             data: { error: `Output guardrail "${outputTripwire.guardrailName}" triggered`, step },
             timestampMs: Date.now(),
           };
@@ -477,7 +547,14 @@ export class ToolCallingAgent {
           parentTraceId,
           channel: "tool",
           event: "tool_call",
-          data: { toolName: call.name, args: call.input, callId: call.id, batchId, batchSize, stepIndex: step },
+          data: {
+            toolName: call.name,
+            args: call.input,
+            callId: call.id,
+            batchId,
+            batchSize,
+            stepIndex: step,
+          },
           timestampMs: Date.now(),
         };
       }
@@ -503,17 +580,34 @@ export class ToolCallingAgent {
             this.#toolGuardrails,
             call.name,
             call.input,
-            { originalTask: task, proposedAction: `Call tool "${call.name}" with args: ${JSON.stringify(call.input)}` }
+            {
+              originalTask: task,
+              proposedAction: `Call tool "${call.name}" with args: ${JSON.stringify(call.input)}`,
+            }
           );
           if (toolTripwire) {
             yield {
-              traceId, parentTraceId, channel: "status", event: "guardrail_tripwire",
-              data: { guardrailName: toolTripwire.guardrailName, layer: "tool" as const, toolName: call.name, ...(toolTripwire.result.metadata ? { metadata: toolTripwire.result.metadata } : {}) },
+              traceId,
+              parentTraceId,
+              channel: "status",
+              event: "guardrail_tripwire",
+              data: {
+                guardrailName: toolTripwire.guardrailName,
+                layer: "tool" as const,
+                toolName: call.name,
+                ...(toolTripwire.result.metadata ? { metadata: toolTripwire.result.metadata } : {}),
+              },
               timestampMs: Date.now(),
             };
             yield {
-              traceId, parentTraceId, channel: "text", event: "error",
-              data: { error: `Tool guardrail "${toolTripwire.guardrailName}" blocked tool "${call.name}"`, step },
+              traceId,
+              parentTraceId,
+              channel: "text",
+              event: "error",
+              data: {
+                error: `Tool guardrail "${toolTripwire.guardrailName}" blocked tool "${call.name}"`,
+                step,
+              },
               timestampMs: Date.now(),
             };
             return;
@@ -527,9 +621,10 @@ export class ToolCallingAgent {
         for (const call of pendingCalls) {
           const toolDef = this.#tools.get(call.name);
           if (!toolDef?.needsApproval) continue;
-          const needs = typeof toolDef.needsApproval === "function"
-            ? await toolDef.needsApproval(call.input as never)
-            : toolDef.needsApproval;
+          const needs =
+            typeof toolDef.needsApproval === "function"
+              ? await toolDef.needsApproval(call.input as never)
+              : toolDef.needsApproval;
           if (!needs) continue;
 
           const promptId = `approval-${call.id}`;
@@ -561,7 +656,8 @@ export class ToolCallingAgent {
             const snapshot = await this.#checkpointer.load(traceId);
             if (snapshot?.humanResponse?.promptId === promptId) {
               const resp = snapshot.humanResponse.response.trim().toLowerCase();
-              approved = resp === "yes" || resp === "y" || resp === "approve" || resp === "approved";
+              approved =
+                resp === "yes" || resp === "y" || resp === "approve" || resp === "approved";
               await this.#checkpointer.delete(traceId);
               break;
             }
@@ -594,9 +690,10 @@ export class ToolCallingAgent {
           // A4: resolve resourceKey (may be a function of input).
           let resourceKey: string | undefined;
           if (toolDef?.resourceKey) {
-            resourceKey = typeof toolDef.resourceKey === "function"
-              ? toolDef.resourceKey(call.input as never)
-              : toolDef.resourceKey;
+            resourceKey =
+              typeof toolDef.resourceKey === "function"
+                ? toolDef.resourceKey(call.input as never)
+                : toolDef.resourceKey;
           }
           return {
             id: call.id,
@@ -613,7 +710,10 @@ export class ToolCallingAgent {
 
         // Collect results from scheduler events, mapping node_done/node_error back
         // to resolvedCalls in the same order as pendingCalls.
-        const resultMap = new Map<string, { output: string; isError: boolean; isUntrusted: boolean }>();
+        const resultMap = new Map<
+          string,
+          { output: string; isError: boolean; isUntrusted: boolean }
+        >();
         for await (const evt of scheduler.execute(ir)) {
           if (evt.type === "node_done") {
             const toolResult = evt.result as import("../tools/types.js").ToolResult;
@@ -625,7 +725,8 @@ export class ToolCallingAgent {
               output = toolResult.error.message || "Tool execution failed with no output.";
             } else {
               try {
-                output = toolResult?.output === undefined ? "null" : JSON.stringify(toolResult.output);
+                output =
+                  toolResult?.output === undefined ? "null" : JSON.stringify(toolResult.output);
               } catch (e) {
                 isError = true;
                 output = `Tool output could not be serialised: ${e instanceof Error ? e.message : String(e)}`;
@@ -643,18 +744,50 @@ export class ToolCallingAgent {
         }
 
         for (const call of pendingCalls) {
-          const res = resultMap.get(call.id) ?? { output: "Tool execution failed with no output.", isError: true, isUntrusted: false };
+          const res = resultMap.get(call.id) ?? {
+            output: "Tool execution failed with no output.",
+            isError: true,
+            isUntrusted: false,
+          };
           yield {
             traceId,
             parentTraceId,
             channel: "tool",
             event: "tool_result",
             data: res.isError
-              ? { callId: call.id, toolName: call.name, output: null as unknown, error: { code: "execution_error" as const, message: res.output }, batchId, batchSize, stepIndex: step }
-              : { callId: call.id, toolName: call.name, output: (() => { try { return JSON.parse(res.output); } catch { return res.output; } })(), batchId, batchSize, stepIndex: step },
+              ? {
+                  callId: call.id,
+                  toolName: call.name,
+                  output: null as unknown,
+                  error: { code: "execution_error" as const, message: res.output },
+                  batchId,
+                  batchSize,
+                  stepIndex: step,
+                }
+              : {
+                  callId: call.id,
+                  toolName: call.name,
+                  output: (() => {
+                    try {
+                      return JSON.parse(res.output);
+                    } catch {
+                      return res.output;
+                    }
+                  })(),
+                  batchId,
+                  batchSize,
+                  stepIndex: step,
+                },
             timestampMs: Date.now(),
           };
-          resolvedCalls.push({ toolCallId: call.id, toolName: call.name, toolInput: call.input, toolOutput: res.output, isError: res.isError, ...(res.isUntrusted ? { isUntrusted: true } : {}) });
+          resolvedCalls.push({
+            toolCallId: call.id,
+            toolName: call.name,
+            toolInput: call.input,
+            toolOutput: res.output,
+            isError: res.isError,
+            ...(res.isUntrusted ? { isUntrusted: true } : {}),
+          });
         }
       } else {
         // "parallel" mode: original Promise.all path.
@@ -663,7 +796,12 @@ export class ToolCallingAgent {
           let callIsUntrusted = false;
           const signal = this.#toolTimeoutMs ? AbortSignal.timeout(this.#toolTimeoutMs) : undefined;
           const settled = this.#tools
-            .call({ toolName: call.name, args: call.input, callId: call.id, ...(signal ? { signal } : {}) })
+            .call({
+              toolName: call.name,
+              args: call.input,
+              callId: call.id,
+              ...(signal ? { signal } : {}),
+            })
             .then(
               (r) => {
                 if (r.trust === "untrusted") callIsUntrusted = true;
@@ -684,7 +822,12 @@ export class ToolCallingAgent {
               }
             );
           const handle = LazyObservationHandle.fromToolResult(settled);
-          return { call, handle, getIsError: () => callIsError, getIsUntrusted: () => callIsUntrusted };
+          return {
+            call,
+            handle,
+            getIsError: () => callIsError,
+            getIsUntrusted: () => callIsUntrusted,
+          };
         });
 
         const outputs = await Promise.all(handles.map((h) => h.handle.resolve()));
@@ -699,11 +842,39 @@ export class ToolCallingAgent {
             channel: "tool",
             event: "tool_result",
             data: isError
-              ? { callId: call.id, toolName: call.name, output: null as unknown, error: { code: "execution_error" as const, message: toolOutput }, batchId, batchSize, stepIndex: step }
-              : { callId: call.id, toolName: call.name, output: (() => { try { return JSON.parse(toolOutput); } catch { return toolOutput; } })(), batchId, batchSize, stepIndex: step },
+              ? {
+                  callId: call.id,
+                  toolName: call.name,
+                  output: null as unknown,
+                  error: { code: "execution_error" as const, message: toolOutput },
+                  batchId,
+                  batchSize,
+                  stepIndex: step,
+                }
+              : {
+                  callId: call.id,
+                  toolName: call.name,
+                  output: (() => {
+                    try {
+                      return JSON.parse(toolOutput);
+                    } catch {
+                      return toolOutput;
+                    }
+                  })(),
+                  batchId,
+                  batchSize,
+                  stepIndex: step,
+                },
             timestampMs: Date.now(),
           };
-          resolvedCalls.push({ toolCallId: call.id, toolName: call.name, toolInput: call.input, toolOutput, isError, ...(isUntrusted ? { isUntrusted: true } : {}) });
+          resolvedCalls.push({
+            toolCallId: call.id,
+            toolName: call.name,
+            toolInput: call.input,
+            toolOutput,
+            isError,
+            ...(isUntrusted ? { isUntrusted: true } : {}),
+          });
         }
       }
 

@@ -1,11 +1,6 @@
-import { Worker } from "node:worker_threads";
 import { fileURLToPath } from "node:url";
-import type {
-  CapabilityManifest,
-  KernelOptions,
-  KernelResult,
-  WasmKernel,
-} from "./types.js";
+import { Worker } from "node:worker_threads";
+import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from "./types.js";
 
 // Q10: use new URL() for robust sibling resolution — cross-platform, no string hacks.
 // In production (after tsc builds), import.meta.url points to dist/executor/JsKernel.js
@@ -52,7 +47,8 @@ export class JsKernel implements WasmKernel {
   }
 
   #getOrSpawnWorker(): Worker {
-    return (this.#worker ??= this.#spawnWorker());
+    this.#worker ??= this.#spawnWorker();
+    return this.#worker;
   }
 
   #spawnWorker(): Worker {
@@ -62,10 +58,7 @@ export class JsKernel implements WasmKernel {
     return w;
   }
 
-  async run(
-    code: string,
-    capabilities?: Partial<CapabilityManifest>
-  ): Promise<KernelResult> {
+  async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
     // Lazy init: spawn worker on first run(), not at construction time.
     const worker = this.#getOrSpawnWorker();
 
@@ -107,7 +100,13 @@ export class JsKernel implements WasmKernel {
       }, this.#timeoutMs);
 
       worker.on("message", handler);
-      worker.postMessage({ type: "run", code, capabilities: capPayload, serial, timeoutMs: this.#timeoutMs });
+      worker.postMessage({
+        type: "run",
+        code,
+        capabilities: capPayload,
+        serial,
+        timeoutMs: this.#timeoutMs,
+      });
     });
   }
 

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { deriveDependencies } from "./deriveDeps.js";
 
 describe("deriveDependencies", () => {
@@ -53,17 +53,13 @@ describe("deriveDependencies", () => {
   });
 
   it("ignores refs to unknown call ids", () => {
-    const calls = [
-      { id: "a", input: { ref: "$unknown" } },
-    ];
+    const calls = [{ id: "a", input: { ref: "$unknown" } }];
     const deps = deriveDependencies(calls);
     expect(deps.get("a")).toEqual([]);
   });
 
   it("ignores self-references", () => {
-    const calls = [
-      { id: "a", input: { self: "$a" } },
-    ];
+    const calls = [{ id: "a", input: { self: "$a" } }];
     const deps = deriveDependencies(calls);
     expect(deps.get("a")).toEqual([]);
   });

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { JsKernel } from "../executor/JsKernel.js";
 
 describe("JsKernel (worker_threads isolation)", () => {

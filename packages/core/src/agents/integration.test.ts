@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { CodeAgent } from "../agents/CodeAgent.js";
 import { ToolCallingAgent } from "../agents/ToolCallingAgent.js";
@@ -65,10 +65,7 @@ const addTool: ToolDefinition<{ a: number; b: number }, number> = {
 
 describe("CodeAgent integration", () => {
   it("multi-step: variable set in step 1 is readable in step 2", async () => {
-    const model = scriptModel([
-      "```js\nvar x = 21;\n```",
-      "```js\n__finalAnswer__ = x * 2;\n```",
-    ]);
+    const model = scriptModel(["```js\nvar x = 21;\n```", "```js\n__finalAnswer__ = x * 2;\n```"]);
     const agent = new CodeAgent({ tools: [], model, maxSteps: 5 });
     const events = [];
     for await (const e of agent.run("double 21")) events.push(e);
@@ -133,10 +130,7 @@ describe("CodeAgent integration", () => {
 
 describe("ToolCallingAgent integration", () => {
   it("single tool call: add(3, 4) → answer '7'", async () => {
-    const model = toolCallModel([
-      { toolName: "add", input: { a: 3, b: 4 } },
-      "The sum is 7",
-    ]);
+    const model = toolCallModel([{ toolName: "add", input: { a: 3, b: 4 } }, "The sum is 7"]);
     const agent = new ToolCallingAgent({ tools: [addTool], model, maxSteps: 5 });
     const events = [];
     for await (const e of agent.run("What is 3+4?")) events.push(e);
@@ -177,7 +171,9 @@ describe("ToolCallingAgent integration", () => {
       },
     };
     const agent = new ToolCallingAgent({ tools: [], model, maxSteps: 1 });
-    for await (const _ of agent.run("my task")) { /* consume */ }
+    for await (const _ of agent.run("my task")) {
+      /* consume */
+    }
 
     const msgs = capturedMessages[0] ?? [];
     // system + user("my task") — no assistant turn before the first user message

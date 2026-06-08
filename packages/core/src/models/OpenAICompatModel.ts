@@ -1,3 +1,5 @@
+import type { RetryPolicy } from "./retry.js";
+import { withRetryGenerator } from "./retry.js";
 import type {
   GenerateOptions,
   Model,
@@ -6,8 +8,6 @@ import type {
   StreamEvent,
 } from "./types.js";
 import { getModelMeta } from "./types.js";
-import type { RetryPolicy } from "./retry.js";
-import { withRetryGenerator } from "./retry.js";
 
 /**
  * Base class for OpenAI Chat Completions-compatible endpoints (B1).
@@ -50,7 +50,7 @@ export abstract class OpenAICompatModel implements Model {
       caps.reasoningContentField = opts.reasoningContentField;
     }
     this.capabilities = caps;
-    (this.#opts as Record<string, unknown>)["_baseURL"] = baseUrl;
+    (this.#opts as Record<string, unknown>)._baseURL = baseUrl;
   }
 
   /** Subclasses can override to add extra capability flags. */
@@ -137,7 +137,7 @@ export abstract class OpenAICompatModel implements Model {
       const { default: OpenAI } = await import("openai");
       this.#client = new OpenAI({
         apiKey: this.#opts.apiKey,
-        baseURL: (this.#opts as Record<string, unknown>)["_baseURL"] as string,
+        baseURL: (this.#opts as Record<string, unknown>)._baseURL as string,
         ...(this.#opts.defaultHeaders ? { defaultHeaders: this.#opts.defaultHeaders } : {}),
       });
     }
@@ -148,7 +148,7 @@ export abstract class OpenAICompatModel implements Model {
     messages: ModelMessage[],
     opts: GenerateOptions = {}
   ): AsyncGenerator<StreamEvent> {
-    const client = await this.#ensureClient() as InstanceType<typeof import("openai").default>;
+    const client = (await this.#ensureClient()) as InstanceType<typeof import("openai").default>;
 
     const openAiMessages = convertCompatMessages(
       messages,
@@ -168,14 +168,14 @@ export abstract class OpenAICompatModel implements Model {
     };
 
     if (!meta.isReasoning) {
-      if (opts.temperature !== undefined) params["temperature"] = opts.temperature;
+      if (opts.temperature !== undefined) params.temperature = opts.temperature;
     }
-    if (opts.topP !== undefined) params["top_p"] = opts.topP;
-    if (opts.stopSequences && opts.stopSequences.length > 0) params["stop"] = opts.stopSequences;
+    if (opts.topP !== undefined) params.top_p = opts.topP;
+    if (opts.stopSequences && opts.stopSequences.length > 0) params.stop = opts.stopSequences;
 
     if (opts.responseFormat && this.capabilities.supportsGrammar) {
       if (opts.responseFormat.type === "json_schema") {
-        params["response_format"] = {
+        params.response_format = {
           type: "json_schema",
           json_schema: {
             name: opts.responseFormat.name ?? "response",
@@ -184,13 +184,13 @@ export abstract class OpenAICompatModel implements Model {
           },
         };
       } else {
-        params["response_format"] = { type: "json_object" };
+        params.response_format = { type: "json_object" };
       }
     }
 
     if (opts.tools && opts.tools.length > 0) {
-      params["tools"] = opts.tools.map((t) => ({ type: "function", function: t }));
-      params["tool_choice"] = "auto";
+      params.tools = opts.tools.map((t) => ({ type: "function", function: t }));
+      params.tool_choice = "auto";
     }
 
     // Non-thinking provider overrides.
@@ -206,7 +206,9 @@ export abstract class OpenAICompatModel implements Model {
     }
 
     type OAIChunk = import("openai/resources/index.js").ChatCompletionChunk;
-    const stream = (await client.chat.completions.create(params as unknown as Parameters<typeof client.chat.completions.create>[0])) as unknown as AsyncIterable<OAIChunk>;
+    const stream = (await client.chat.completions.create(
+      params as unknown as Parameters<typeof client.chat.completions.create>[0]
+    )) as unknown as AsyncIterable<OAIChunk>;
 
     const toolCallAccum = new Map<number, { id: string; name: string; arguments: string }>();
     let inputTokens = 0;
@@ -230,7 +232,11 @@ export abstract class OpenAICompatModel implements Model {
         for (const tc of choice.delta.tool_calls) {
           const idx = tc.index;
           if (!toolCallAccum.has(idx)) {
-            toolCallAccum.set(idx, { id: tc.id ?? "", name: tc.function?.name ?? "", arguments: "" });
+            toolCallAccum.set(idx, {
+              id: tc.id ?? "",
+              name: tc.function?.name ?? "",
+              arguments: "",
+            });
           }
           const accum = toolCallAccum.get(idx)!;
           if (tc.id) accum.id = tc.id;
@@ -241,8 +247,9 @@ export abstract class OpenAICompatModel implements Model {
 
       // Legacy OpenAI function_call delta format (single function, no index).
       // Only accumulate if tool_calls was NOT also present (avoid collision at index 0).
-      const fc = (choice?.delta as unknown as Record<string, unknown>)?.["function_call"] as
-        | { name?: string; arguments?: string } | undefined;
+      const fc = (choice?.delta as unknown as Record<string, unknown>)?.function_call as
+        | { name?: string; arguments?: string }
+        | undefined;
       if (fc && !choice?.delta.tool_calls) {
         if (!toolCallAccum.has(0)) {
           toolCallAccum.set(0, { id: "fn-0", name: fc.name ?? "", arguments: "" });
@@ -256,7 +263,10 @@ export abstract class OpenAICompatModel implements Model {
         yield { type: "stop", stopReason: "end_turn" };
       } else if (choice?.finish_reason === "length") {
         yield { type: "stop", stopReason: "max_tokens" };
-      } else if (choice?.finish_reason === "tool_calls" || choice?.finish_reason === "function_call") {
+      } else if (
+        choice?.finish_reason === "tool_calls" ||
+        choice?.finish_reason === "function_call"
+      ) {
         for (const [, tc] of [...toolCallAccum.entries()].sort(([a], [b]) => a - b)) {
           let input: Record<string, unknown> = {};
           try {
@@ -264,7 +274,10 @@ export abstract class OpenAICompatModel implements Model {
           } catch {
             input = { _raw: tc.arguments };
           }
-          yield { type: "tool_call", toolCall: { type: "tool_use", id: tc.id, name: tc.name, input } };
+          yield {
+            type: "tool_call",
+            toolCall: { type: "tool_use", id: tc.id, name: tc.name, input },
+          };
         }
         yield { type: "stop", stopReason: "tool_use" };
       } else if (choice?.finish_reason != null) {
@@ -274,8 +287,10 @@ export abstract class OpenAICompatModel implements Model {
       if (chunk.usage) {
         inputTokens = chunk.usage.prompt_tokens;
         outputTokens = chunk.usage.completion_tokens;
-        const details = (chunk.usage as unknown as Record<string, unknown>)["prompt_tokens_details"] as Record<string, unknown> | undefined;
-        const cached = details?.["cached_tokens"];
+        const details = (chunk.usage as unknown as Record<string, unknown>).prompt_tokens_details as
+          | Record<string, unknown>
+          | undefined;
+        const cached = details?.cached_tokens;
         if (typeof cached === "number") cacheReadTokens = cached;
       }
     }
@@ -322,9 +337,7 @@ export function convertCompatMessages(
 ): unknown[] {
   // Accept legacy boolean for backward compatibility.
   const resolvedPolicy: "never" | "tool-turns-only" | "always" =
-    typeof policy === "boolean"
-      ? (policy ? "always" : "never")
-      : policy;
+    typeof policy === "boolean" ? (policy ? "always" : "never") : policy;
 
   const result: unknown[] = [];
   for (const m of messages) {
@@ -338,7 +351,11 @@ export function convertCompatMessages(
       }
       continue;
     }
-    const toolCalls: Array<{ id: string; type: "function"; function: { name: string; arguments: string } }> = [];
+    const toolCalls: Array<{
+      id: string;
+      type: "function";
+      function: { name: string; arguments: string };
+    }> = [];
     const textParts: string[] = [];
     let reasoningContent: string | undefined;
     for (const block of m.content) {
@@ -366,15 +383,18 @@ export function convertCompatMessages(
         tool_calls: toolCalls,
       };
       // "tool-turns-only": echo reasoning_content only when there are tool calls.
-      if (reasoningContent !== undefined && (resolvedPolicy === "always" || resolvedPolicy === "tool-turns-only")) {
-        msg["reasoning_content"] = reasoningContent;
+      if (
+        reasoningContent !== undefined &&
+        (resolvedPolicy === "always" || resolvedPolicy === "tool-turns-only")
+      ) {
+        msg.reasoning_content = reasoningContent;
       }
       result.push(msg);
     } else if (textParts.length > 0 && (m.role === "user" || m.role === "assistant")) {
       const msg: Record<string, unknown> = { role: m.role, content: textParts.join("\n") };
       // "tool-turns-only": do NOT echo reasoning_content on non-tool assistant turns (DeepSeek 400).
       if (reasoningContent !== undefined && resolvedPolicy === "always" && m.role === "assistant") {
-        msg["reasoning_content"] = reasoningContent;
+        msg.reasoning_content = reasoningContent;
       }
       result.push(msg);
     }

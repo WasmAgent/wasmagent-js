@@ -47,7 +47,7 @@ export interface SubagentRunnable {
 export function asTool(
   agent: SubagentRunnable,
   opts: AsToolOptions
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: intentional
 ): ToolDefinition<{ task: string }, any> {
   return {
     name: opts.name,

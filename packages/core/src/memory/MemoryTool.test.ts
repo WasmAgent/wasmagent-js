@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createMemoryTool, MapKvBackend } from "../memory/MemoryTool.js";
 
 describe("MemoryTool (L2-2)", () => {
@@ -6,7 +6,11 @@ describe("MemoryTool (L2-2)", () => {
     const backend = new MapKvBackend();
     const tool = createMemoryTool({ backend });
 
-    const writeResult = await tool.forward({ op: "write", key: "fact1", value: "Paris is the capital of France" });
+    const writeResult = await tool.forward({
+      op: "write",
+      key: "fact1",
+      value: "Paris is the capital of France",
+    });
     expect(writeResult).toBe("Stored: fact1");
 
     const readResult = await tool.forward({ op: "read", key: "fact1" });

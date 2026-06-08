@@ -1,8 +1,14 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { MessageAssembler } from "../memory/MessageAssembler.js";
 
 function makeAction(stepIndex: number) {
-  return { type: "action" as const, stepIndex, thoughts: `t${stepIndex}`, code: `c${stepIndex}`, observations: `o${stepIndex}` };
+  return {
+    type: "action" as const,
+    stepIndex,
+    thoughts: `t${stepIndex}`,
+    code: `c${stepIndex}`,
+    observations: `o${stepIndex}`,
+  };
 }
 
 function makeToolUse(stepIndex: number, output = "result") {
@@ -63,10 +69,14 @@ describe("MessageAssembler", () => {
     expect(messages).toHaveLength(3);
     const assistant = messages[1];
     expect(assistant?.role).toBe("assistant");
-    expect(typeof assistant?.content === "string" && assistant.content).toContain("<thoughts>I should compute</thoughts>");
+    expect(typeof assistant?.content === "string" && assistant.content).toContain(
+      "<thoughts>I should compute</thoughts>"
+    );
     const user = messages[2];
     expect(user?.role).toBe("user");
-    expect(typeof user?.content === "string" && user.content).toContain("<observation>2</observation>");
+    expect(typeof user?.content === "string" && user.content).toContain(
+      "<observation>2</observation>"
+    );
   });
 
   it("addStep: planning step produces only assistant message", () => {
@@ -100,8 +110,20 @@ describe("MessageAssembler", () => {
   });
 
   it("multiple steps accumulate in order", () => {
-    assembler.addStep({ type: "action", stepIndex: 1, thoughts: "a", code: "a", observations: "oa" });
-    assembler.addStep({ type: "action", stepIndex: 2, thoughts: "b", code: "b", observations: "ob" });
+    assembler.addStep({
+      type: "action",
+      stepIndex: 1,
+      thoughts: "a",
+      code: "a",
+      observations: "oa",
+    });
+    assembler.addStep({
+      type: "action",
+      stepIndex: 2,
+      thoughts: "b",
+      code: "b",
+      observations: "ob",
+    });
     const messages = assembler.build();
     // system + (assistant + user) * 2 = 5
     expect(messages).toHaveLength(5);
@@ -248,13 +270,13 @@ describe("MessageAssembler", () => {
       });
       const messages = assembler.build();
       const assistantBlocks = messages[1]?.content as unknown as Array<Record<string, unknown>>;
-      const toolUseBlock = assistantBlocks.find((b) => b["type"] === "tool_use");
-      expect(toolUseBlock?.["id"]).toBe("tc-abc");
-      expect(toolUseBlock?.["name"]).toBe("search");
+      const toolUseBlock = assistantBlocks.find((b) => b.type === "tool_use");
+      expect(toolUseBlock?.id).toBe("tc-abc");
+      expect(toolUseBlock?.name).toBe("search");
 
       const userBlocks = messages[2]?.content as unknown as Array<Record<string, unknown>>;
-      expect(userBlocks[0]?.["toolUseId"]).toBe("tc-abc");
-      expect(userBlocks[0]?.["content"]).toBe("results");
+      expect(userBlocks[0]?.toolUseId).toBe("tc-abc");
+      expect(userBlocks[0]?.content).toBe("results");
     });
   });
 
@@ -306,8 +328,20 @@ describe("MessageAssembler", () => {
         stepIndex: 1,
         thoughts: "calling two tools",
         calls: [
-          { toolCallId: "t1", toolName: "search", toolInput: { q: "AI" }, toolOutput: "result1", isError: false },
-          { toolCallId: "t2", toolName: "calc", toolInput: { expr: "2+2" }, toolOutput: "4", isError: false },
+          {
+            toolCallId: "t1",
+            toolName: "search",
+            toolInput: { q: "AI" },
+            toolOutput: "result1",
+            isError: false,
+          },
+          {
+            toolCallId: "t2",
+            toolName: "calc",
+            toolInput: { expr: "2+2" },
+            toolOutput: "4",
+            isError: false,
+          },
         ],
       });
       const messages = assembler.build();
@@ -317,19 +351,19 @@ describe("MessageAssembler", () => {
       const assistant = messages[1];
       expect(assistant?.role).toBe("assistant");
       const aBlocks = assistant?.content as unknown as Array<Record<string, unknown>>;
-      expect(aBlocks.some((b) => b["type"] === "text" && b["text"] === "calling two tools")).toBe(true);
-      const toolUseBlocks = aBlocks.filter((b) => b["type"] === "tool_use");
+      expect(aBlocks.some((b) => b.type === "text" && b.text === "calling two tools")).toBe(true);
+      const toolUseBlocks = aBlocks.filter((b) => b.type === "tool_use");
       expect(toolUseBlocks).toHaveLength(2);
-      expect(toolUseBlocks[0]?.["id"]).toBe("t1");
-      expect(toolUseBlocks[1]?.["id"]).toBe("t2");
+      expect(toolUseBlocks[0]?.id).toBe("t1");
+      expect(toolUseBlocks[1]?.id).toBe("t2");
 
       const user = messages[2];
       expect(user?.role).toBe("user");
       const uBlocks = user?.content as unknown as Array<Record<string, unknown>>;
-      const resultBlocks = uBlocks.filter((b) => b["type"] === "tool_result");
+      const resultBlocks = uBlocks.filter((b) => b.type === "tool_result");
       expect(resultBlocks).toHaveLength(2);
-      expect(resultBlocks[0]?.["toolUseId"]).toBe("t1");
-      expect(resultBlocks[1]?.["toolUseId"]).toBe("t2");
+      expect(resultBlocks[0]?.toolUseId).toBe("t1");
+      expect(resultBlocks[1]?.toolUseId).toBe("t2");
     });
 
     it("omits text block when thoughts is empty", () => {
@@ -343,7 +377,7 @@ describe("MessageAssembler", () => {
       });
       const messages = assembler.build();
       const aBlocks = messages[1]?.content as unknown as Array<Record<string, unknown>>;
-      expect(aBlocks.every((b) => b["type"] !== "text")).toBe(true);
+      expect(aBlocks.every((b) => b.type !== "text")).toBe(true);
     });
   });
 
@@ -425,7 +459,9 @@ describe("MessageAssembler", () => {
       const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
       a.setScratchpad("remember: user prefers concise answers");
       const msgs = a.build();
-      const scratchpadMsg = msgs.find((m) => typeof m.content === "string" && m.content.includes("<scratchpad>"));
+      const scratchpadMsg = msgs.find(
+        (m) => typeof m.content === "string" && m.content.includes("<scratchpad>")
+      );
       expect(scratchpadMsg).toBeDefined();
       expect(scratchpadMsg?.content as string).toContain("remember: user prefers concise answers");
     });
@@ -433,7 +469,9 @@ describe("MessageAssembler", () => {
     it("scratchpad is absent when not set", () => {
       const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
       const msgs = a.build();
-      const hasScrachpad = msgs.some((m) => typeof m.content === "string" && m.content.includes("<scratchpad>"));
+      const hasScrachpad = msgs.some(
+        (m) => typeof m.content === "string" && m.content.includes("<scratchpad>")
+      );
       expect(hasScrachpad).toBe(false);
     });
 
@@ -442,7 +480,9 @@ describe("MessageAssembler", () => {
       a.setScratchpad("some notes");
       a.setScratchpad(null);
       const msgs = a.build();
-      const hasScrachpad = msgs.some((m) => typeof m.content === "string" && m.content.includes("<scratchpad>"));
+      const hasScrachpad = msgs.some(
+        (m) => typeof m.content === "string" && m.content.includes("<scratchpad>")
+      );
       expect(hasScrachpad).toBe(false);
     });
 
@@ -451,12 +491,14 @@ describe("MessageAssembler", () => {
       a.setScratchpad("step-1 note");
       const msgs1 = a.build();
       const sysMsg = msgs1.find((m) => m.role === "system");
-      expect((sysMsg?.content as string)).toContain("my-system-prompt");
-      expect((sysMsg?.content as string)).not.toContain("step-1 note"); // not in system
+      expect(sysMsg?.content as string).toContain("my-system-prompt");
+      expect(sysMsg?.content as string).not.toContain("step-1 note"); // not in system
 
       a.setScratchpad("step-2 updated note");
       const msgs2 = a.build();
-      const scratchpadMsg = msgs2.find((m) => typeof m.content === "string" && m.content.includes("<scratchpad>"));
+      const scratchpadMsg = msgs2.find(
+        (m) => typeof m.content === "string" && m.content.includes("<scratchpad>")
+      );
       expect(scratchpadMsg?.content as string).toContain("step-2 updated note");
     });
 
@@ -540,15 +582,18 @@ describe("MessageAssembler", () => {
       const msgs = a.build();
       // The last 2 tool steps should be untouched.
       const toolResults = msgs.filter(
-        (m) => Array.isArray(m.content) &&
-          (m.content as unknown as Array<Record<string, unknown>>).some((b) => b["type"] === "tool_result")
+        (m) =>
+          Array.isArray(m.content) &&
+          (m.content as unknown as Array<Record<string, unknown>>).some(
+            (b) => b.type === "tool_result"
+          )
       );
       // Last 2 should have original output.
       const lastTwo = toolResults.slice(-2);
       for (const msg of lastTwo) {
         const blocks = msg.content as unknown as Array<Record<string, unknown>>;
-        const result = blocks.find((b) => b["type"] === "tool_result");
-        expect((result?.["content"] as string)).not.toContain("truncated");
+        const result = blocks.find((b) => b.type === "tool_result");
+        expect(result?.content as string).not.toContain("truncated");
       }
     });
 
@@ -561,14 +606,20 @@ describe("MessageAssembler", () => {
       const msgs = a.build();
       // Find all assistant messages with tool_use blocks.
       const assistantMsgs = msgs.filter(
-        (m) => m.role === "assistant" &&
+        (m) =>
+          m.role === "assistant" &&
           Array.isArray(m.content) &&
-          (m.content as unknown as Array<Record<string, unknown>>).some((b) => b["type"] === "tool_use")
+          (m.content as unknown as Array<Record<string, unknown>>).some(
+            (b) => b.type === "tool_use"
+          )
       );
       const userMsgs = msgs.filter(
-        (m) => m.role === "user" &&
+        (m) =>
+          m.role === "user" &&
           Array.isArray(m.content) &&
-          (m.content as unknown as Array<Record<string, unknown>>).some((b) => b["type"] === "tool_result")
+          (m.content as unknown as Array<Record<string, unknown>>).some(
+            (b) => b.type === "tool_result"
+          )
       );
       // Pairs must match.
       expect(assistantMsgs.length).toBe(userMsgs.length);
@@ -612,7 +663,9 @@ describe("MessageAssembler", () => {
       const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
       // Simulate a LazyObservationHandle as toolOutput.
       let resolveHandle!: (v: string) => void;
-      const pending = new Promise<string>((r) => { resolveHandle = r; });
+      const pending = new Promise<string>((r) => {
+        resolveHandle = r;
+      });
       const lazyHandle = { resolve: () => pending };
 
       a.addStep({
@@ -630,8 +683,8 @@ describe("MessageAssembler", () => {
       const msgs = await a.buildAsync();
       const userMsg = msgs.find((m) => m.role === "user");
       const blocks = userMsg?.content as unknown as Array<Record<string, unknown>>;
-      const result = blocks?.find((b) => b["type"] === "tool_result");
-      expect(result?.["content"]).toBe("lazy_result_value");
+      const result = blocks?.find((b) => b.type === "tool_result");
+      expect(result?.content).toBe("lazy_result_value");
     });
 
     it("preserves B1 cache breakpoint on system message after buildAsync()", async () => {
@@ -668,15 +721,26 @@ describe("B1 — Untrusted tool output wrapping", () => {
     const userMsg = messages.find((m) => m.role === "user");
     const content = userMsg?.content;
     if (Array.isArray(content)) {
-      const toolResult = content.find((b): b is import("../models/types.js").ContentBlock =>
-        typeof b === "object" && b !== null && "type" in b && b.type === "tool_result"
+      const toolResult = content.find(
+        (b): b is import("../models/types.js").ContentBlock =>
+          typeof b === "object" && b !== null && "type" in b && b.type === "tool_result"
       );
-      expect(typeof toolResult === "object" && toolResult !== null && "content" in toolResult && typeof toolResult.content === "string"
-        ? toolResult.content
-        : "").toContain("<untrusted_tool_output>");
-      expect(typeof toolResult === "object" && toolResult !== null && "content" in toolResult && typeof toolResult.content === "string"
-        ? toolResult.content
-        : "").toContain("</untrusted_tool_output>");
+      expect(
+        typeof toolResult === "object" &&
+          toolResult !== null &&
+          "content" in toolResult &&
+          typeof toolResult.content === "string"
+          ? toolResult.content
+          : ""
+      ).toContain("<untrusted_tool_output>");
+      expect(
+        typeof toolResult === "object" &&
+          toolResult !== null &&
+          "content" in toolResult &&
+          typeof toolResult.content === "string"
+          ? toolResult.content
+          : ""
+      ).toContain("</untrusted_tool_output>");
     }
   });
 
@@ -697,12 +761,17 @@ describe("B1 — Untrusted tool output wrapping", () => {
     const userMsg = messages.find((m) => m.role === "user");
     const content = userMsg?.content;
     if (Array.isArray(content)) {
-      const toolResult = content.find((b): b is import("../models/types.js").ContentBlock =>
-        typeof b === "object" && b !== null && "type" in b && b.type === "tool_result"
+      const toolResult = content.find(
+        (b): b is import("../models/types.js").ContentBlock =>
+          typeof b === "object" && b !== null && "type" in b && b.type === "tool_result"
       );
-      const text = typeof toolResult === "object" && toolResult !== null && "content" in toolResult && typeof toolResult.content === "string"
-        ? toolResult.content
-        : "";
+      const text =
+        typeof toolResult === "object" &&
+        toolResult !== null &&
+        "content" in toolResult &&
+        typeof toolResult.content === "string"
+          ? toolResult.content
+          : "";
       expect(text).not.toContain("<untrusted_tool_output>");
       expect(text).toBe("safe result");
     }

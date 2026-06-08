@@ -31,11 +31,7 @@ export function deriveDependencies(calls: CallDescriptor[]): Map<string, string[
 }
 
 /** Recursively scan a value for $<callId> references. */
-function collectRefs(
-  value: unknown,
-  callIds: Set<string>,
-  selfId: string
-): string[] {
+function collectRefs(value: unknown, callIds: Set<string>, selfId: string): string[] {
   const found = new Set<string>();
 
   function walk(v: unknown): void {
@@ -62,10 +58,7 @@ function collectRefs(
  *
  * Pure-ordering uses (no $ref strings) pass through unchanged.
  */
-export function resolveRefs(
-  value: unknown,
-  completed: Map<string, unknown>
-): unknown {
+export function resolveRefs(value: unknown, completed: Map<string, unknown>): unknown {
   if (typeof value === "string") {
     const m = /^\$(.+)$/.exec(value);
     if (m && completed.has(m[1]!)) {
@@ -90,7 +83,7 @@ function detectCycles(deps: Map<string, string[]>): void {
   for (const id of deps.keys()) inDegree.set(id, 0);
   for (const edges of deps.values()) {
     for (const dep of edges) {
-      inDegree.set(dep, (inDegree.get(dep) ?? 0)); // dep must exist as node
+      inDegree.set(dep, inDegree.get(dep) ?? 0); // dep must exist as node
     }
   }
   // Build reverse: dep -> nodes that depend on it
@@ -121,9 +114,7 @@ function detectCycles(deps: Map<string, string[]>): void {
   }
 
   if (processed < deps.size) {
-    const cycle = [...inDegree.entries()]
-      .filter(([, d]) => d > 0)
-      .map(([id]) => id);
+    const cycle = [...inDegree.entries()].filter(([, d]) => d > 0).map(([id]) => id);
     throw new Error(`Circular dependency detected among tool calls: [${cycle.join(", ")}]`);
   }
 }

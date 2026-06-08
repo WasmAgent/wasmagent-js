@@ -21,8 +21,7 @@
  * directly rather than through the tool-calling loop.
  */
 
-import type { AgentEvent } from "../types/events.js";
-import type { Step } from "../types/events.js";
+import type { AgentEvent, Step } from "../types/events.js";
 
 export interface HandoffOptions {
   /**

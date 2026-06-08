@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ModelMessage, StreamEvent } from "../models/types.js";
 
 // ── Mock helpers ──────────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ async function collectEvents(
   const { MockAnthropic, mockStream } = makeAnthropicMock(events, finalMsg);
   vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
 
-  const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now());
+  const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "");
   const model = new AnthropicModel(modelId, "test-key");
 
   const streamEvents: StreamEvent[] = [];
@@ -146,9 +146,7 @@ describe("AnthropicModel generate()", () => {
 
   it("emits tool_call events from finalMessage.content tool_use blocks", async () => {
     const finalMsg: FinalMessage = {
-      content: [
-        { type: "tool_use", id: "tu-1", name: "search", input: { query: "TypeScript" } },
-      ],
+      content: [{ type: "tool_use", id: "tu-1", name: "search", input: { query: "TypeScript" } }],
       usage: { input_tokens: 10, output_tokens: 5 },
     };
     const { streamEvents } = await collectEvents([], finalMsg);
@@ -166,7 +164,10 @@ describe("AnthropicModel generate()", () => {
     const { mockStream } = await collectEvents(
       [],
       EMPTY_FINAL,
-      [{ role: "system", content: longPrompt }, { role: "user", content: "hi" }],
+      [
+        { role: "system", content: longPrompt },
+        { role: "user", content: "hi" },
+      ],
       "claude-sonnet-4-6" // threshold 4096 tokens → 16384 chars; won't cache a 5000-char prompt
     );
     // Use a model with a lower threshold to trigger caching
@@ -178,12 +179,14 @@ describe("AnthropicModel generate()", () => {
     for await (const _ of model.generate([
       { role: "system", content: longPrompt },
       { role: "user", content: "hi" },
-    ])) { /* consume */ }
+    ])) {
+      /* consume */
+    }
     const call = mockStream2.mock.calls[0]?.[0] as Record<string, unknown>;
-    const systemParam = call?.["system"] as Array<Record<string, unknown>>;
+    const systemParam = call?.system as Array<Record<string, unknown>>;
     // Whether cache_control is injected depends on threshold; just verify system was passed.
     expect(Array.isArray(systemParam)).toBe(true);
-    expect(systemParam[0]?.["text"]).toBe(longPrompt);
+    expect(systemParam[0]?.text).toBe(longPrompt);
     vi.doUnmock("@anthropic-ai/sdk");
     void mockStream; // suppress unused warning
   });
@@ -197,10 +200,12 @@ describe("AnthropicModel generate()", () => {
     for await (const _ of model.generate([
       { role: "system", content: shortPrompt },
       { role: "user", content: "hi" },
-    ])) { /* consume */ }
+    ])) {
+      /* consume */
+    }
     const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
-    const systemParam = call?.["system"] as Array<Record<string, unknown>>;
-    expect(systemParam[0]?.["cache_control"]).toBeUndefined();
+    const systemParam = call?.system as Array<Record<string, unknown>>;
+    expect(systemParam[0]?.cache_control).toBeUndefined();
     vi.doUnmock("@anthropic-ai/sdk");
   });
 });
@@ -236,7 +241,7 @@ describe("AnthropicModel — A2 cache breakpoint trimming", () => {
     for (const msg of params.messages ?? []) {
       if (Array.isArray(msg.content)) {
         for (const block of msg.content) {
-          if ((block as Record<string, unknown>)["cache_control"]) count++;
+          if ((block as Record<string, unknown>).cache_control) count++;
         }
       }
     }
@@ -250,7 +255,9 @@ describe("AnthropicModel — A2 cache breakpoint trimming", () => {
     vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
     const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "a2a");
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
-    for await (const _ of model.generate(messages)) { /* consume */ }
+    for await (const _ of model.generate(messages)) {
+      /* consume */
+    }
     const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
     const count = countCacheControlInMessages(call);
     // 2 slots for history (system + tools = 2 external slots not in messages array)
@@ -264,17 +271,21 @@ describe("AnthropicModel — A2 cache breakpoint trimming", () => {
     vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
     const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "a2b");
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
-    for await (const _ of model.generate(messages)) { /* consume */ }
+    for await (const _ of model.generate(messages)) {
+      /* consume */
+    }
     const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
     const params = call as { messages: Array<{ content: unknown }> };
     // The last assistant message with a breakpoint should still have cache_control.
     const assistantMsgs = (params.messages ?? []).filter(
-      (m: Record<string, unknown>) => m["role"] === "assistant" && Array.isArray(m["content"])
+      (m: Record<string, unknown>) => m.role === "assistant" && Array.isArray(m.content)
     );
-    const lastAssistant = assistantMsgs.at(-1) as { content: Array<Record<string, unknown>> } | undefined;
-    const lastBlock = lastAssistant?.content.find((b) => b["type"] === "text");
+    const lastAssistant = assistantMsgs.at(-1) as
+      | { content: Array<Record<string, unknown>> }
+      | undefined;
+    const lastBlock = lastAssistant?.content.find((b) => b.type === "text");
     // The newest chunk should have its breakpoint preserved.
-    expect(lastBlock?.["cache_control"]).toBeDefined();
+    expect(lastBlock?.cache_control).toBeDefined();
     vi.doUnmock("@anthropic-ai/sdk");
   });
 
@@ -289,7 +300,9 @@ describe("AnthropicModel — A2 cache breakpoint trimming", () => {
     vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
     const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "a2c");
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
-    for await (const _ of model.generate(messages)) { /* consume */ }
+    for await (const _ of model.generate(messages)) {
+      /* consume */
+    }
     const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
     const count = countCacheControlInMessages(call);
     // "short" is below 1024 token threshold → no breakpoint injected
@@ -301,26 +314,34 @@ describe("AnthropicModel — A2 cache breakpoint trimming", () => {
 // ── D1: 1h extended TTL cache tests ──────────────────────────────────────────
 
 describe("AnthropicModel D1 — 1h extended TTL cache", () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it("sends ttl:1h in cache_control when breakpoint has ttl='1h'", async () => {
     const bigContent = "x".repeat(5000);
     const messages: ModelMessage[] = [
       { role: "system", content: bigContent },
       // User content must also be large enough to pass the cacheMinTokens guard.
-      { role: "user", content: "u".repeat(5000), cacheBreakpoint: { type: "ephemeral", ttl: "1h" } },
+      {
+        role: "user",
+        content: "u".repeat(5000),
+        cacheBreakpoint: { type: "ephemeral", ttl: "1h" },
+      },
     ];
     const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
     vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
     const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "d1a");
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
-    for await (const _ of model.generate(messages)) { /* consume */ }
+    for await (const _ of model.generate(messages)) {
+      /* consume */
+    }
     const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
-    const msgs = call["messages"] as Array<Record<string, unknown>>;
-    const userMsg = msgs.find((m) => m["role"] === "user");
-    const content = userMsg?.["content"] as Array<Record<string, unknown>> | undefined;
-    const cc = content?.[0]?.["cache_control"] as Record<string, unknown> | undefined;
-    expect(cc?.["ttl"]).toBe("1h");
+    const msgs = call.messages as Array<Record<string, unknown>>;
+    const userMsg = msgs.find((m) => m.role === "user");
+    const content = userMsg?.content as Array<Record<string, unknown>> | undefined;
+    const cc = content?.[0]?.cache_control as Record<string, unknown> | undefined;
+    expect(cc?.ttl).toBe("1h");
     vi.doUnmock("@anthropic-ai/sdk");
   });
 
@@ -333,9 +354,11 @@ describe("AnthropicModel D1 — 1h extended TTL cache", () => {
     vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
     const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "d1b");
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
-    for await (const _ of model.generate(messages)) { /* consume */ }
+    for await (const _ of model.generate(messages)) {
+      /* consume */
+    }
     const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
-    const betas = call["betas"] as string[] | undefined;
+    const betas = call.betas as string[] | undefined;
     expect(betas).toContain("extended-cache-ttl-2025-04-11");
     vi.doUnmock("@anthropic-ai/sdk");
   });
@@ -349,9 +372,11 @@ describe("AnthropicModel D1 — 1h extended TTL cache", () => {
     vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
     const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "d1c");
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
-    for await (const _ of model.generate(messages)) { /* consume */ }
+    for await (const _ of model.generate(messages)) {
+      /* consume */
+    }
     const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
-    expect(call["betas"]).toBeUndefined();
+    expect(call.betas).toBeUndefined();
     vi.doUnmock("@anthropic-ai/sdk");
   });
 
@@ -393,7 +418,9 @@ describe("AnthropicModel D1 — 1h extended TTL cache", () => {
 // ── A1: Tool Search injection for deferred tools ──────────────────────────────
 
 describe("AnthropicModel A1 — Tool Search injection for deferred tools", () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   async function captureStreamParams(
     tools: Array<Record<string, unknown>>,
@@ -403,10 +430,11 @@ describe("AnthropicModel A1 — Tool Search injection for deferred tools", () =>
     vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
     const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "a1");
     const model = new AnthropicModel(modelId, "key");
-    for await (const _ of model.generate(
-      [{ role: "user", content: "hi" }],
-      { tools: tools as never }
-    )) { /* consume */ }
+    for await (const _ of model.generate([{ role: "user", content: "hi" }], {
+      tools: tools as never,
+    })) {
+      /* consume */
+    }
     vi.doUnmock("@anthropic-ai/sdk");
     return mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
   }
@@ -416,8 +444,8 @@ describe("AnthropicModel A1 — Tool Search injection for deferred tools", () =>
       { name: "eager", description: "eager", input_schema: {}, deferLoading: false },
       { name: "lazy", description: "lazy", input_schema: {}, deferLoading: true },
     ]);
-    const wireTools = params["tools"] as Array<Record<string, unknown>>;
-    const types = wireTools.map((t) => t["type"]);
+    const wireTools = params.tools as Array<Record<string, unknown>>;
+    const types = wireTools.map((t) => t.type);
     expect(types).toContain("tool_search_tool_regex_20251119");
   });
 
@@ -426,28 +454,28 @@ describe("AnthropicModel A1 — Tool Search injection for deferred tools", () =>
       { name: "eager", description: "eager", input_schema: {}, deferLoading: false },
       { name: "lazy", description: "lazy", input_schema: {}, deferLoading: true },
     ]);
-    const wireTools = params["tools"] as Array<Record<string, unknown>>;
-    const lazyWire = wireTools.find((t) => t["name"] === "lazy");
-    expect(lazyWire?.["defer_loading"]).toBe(true);
+    const wireTools = params.tools as Array<Record<string, unknown>>;
+    const lazyWire = wireTools.find((t) => t.name === "lazy");
+    expect(lazyWire?.defer_loading).toBe(true);
     // deferLoading (camelCase) must not appear in the wire payload
-    expect(lazyWire?.["deferLoading"]).toBeUndefined();
+    expect(lazyWire?.deferLoading).toBeUndefined();
   });
 
   it("eager tool does NOT get defer_loading:true", async () => {
     const params = await captureStreamParams([
       { name: "eager", description: "eager", input_schema: {} },
     ]);
-    const wireTools = params["tools"] as Array<Record<string, unknown>>;
-    const eagerWire = wireTools.find((t) => t["name"] === "eager");
-    expect(eagerWire?.["defer_loading"]).toBeUndefined();
+    const wireTools = params.tools as Array<Record<string, unknown>>;
+    const eagerWire = wireTools.find((t) => t.name === "eager");
+    expect(eagerWire?.defer_loading).toBeUndefined();
   });
 
   it("does NOT inject tool_search when no deferred tools", async () => {
     const params = await captureStreamParams([
       { name: "eager", description: "eager", input_schema: {} },
     ]);
-    const wireTools = params["tools"] as Array<Record<string, unknown>>;
-    const types = wireTools.map((t) => t["type"]);
+    const wireTools = params.tools as Array<Record<string, unknown>>;
+    const types = wireTools.map((t) => t.type);
     expect(types).not.toContain("tool_search_tool_regex_20251119");
     expect(types).not.toContain("tool_search_tool_bm25_20251119");
   });
@@ -456,7 +484,7 @@ describe("AnthropicModel A1 — Tool Search injection for deferred tools", () =>
     const params = await captureStreamParams([
       { name: "lazy", description: "lazy", input_schema: {}, deferLoading: true },
     ]);
-    const betas = params["betas"] as string[] | undefined;
+    const betas = params.betas as string[] | undefined;
     expect(betas).toContain("advanced-tool-use-2025-11-20");
   });
 });
@@ -464,7 +492,9 @@ describe("AnthropicModel A1 — Tool Search injection for deferred tools", () =>
 // ── B1: ANTHROPIC_BETAS constants correctness ─────────────────────────────────
 
 describe("AnthropicModel B1 — ANTHROPIC_BETAS constants", () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it("code_execution beta does not contain a future year (≥2026)", async () => {
     const { ANTHROPIC_BETAS } = await import("../models/AnthropicModel.js?t=" + Date.now() + "b1a");
@@ -483,16 +513,24 @@ describe("AnthropicModel B1 — ANTHROPIC_BETAS constants", () => {
   });
 
   it("all betas are assembled from ANTHROPIC_BETAS (no inline literals with dates)", async () => {
-    const { AnthropicModel, ANTHROPIC_BETAS } = await import("../models/AnthropicModel.js?t=" + Date.now() + "b1c");
+    const { AnthropicModel, ANTHROPIC_BETAS } = await import(
+      "../models/AnthropicModel.js?t=" + Date.now() + "b1c"
+    );
     const knownValues = new Set(Object.values(ANTHROPIC_BETAS));
     const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
     vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
-    for await (const _ of model.generate(
-      [{ role: "user", content: "u".repeat(5000), cacheBreakpoint: { type: "ephemeral", ttl: "1h" } }]
-    )) { /* consume */ }
+    for await (const _ of model.generate([
+      {
+        role: "user",
+        content: "u".repeat(5000),
+        cacheBreakpoint: { type: "ephemeral", ttl: "1h" },
+      },
+    ])) {
+      /* consume */
+    }
     const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
-    const betas = (call["betas"] ?? []) as string[];
+    const betas = (call.betas ?? []) as string[];
     for (const b of betas) {
       expect(knownValues.has(b)).toBe(true);
     }

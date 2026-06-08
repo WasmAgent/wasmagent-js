@@ -20,7 +20,7 @@ export function buildSandboxFetch(
 ): ((input: string | URL, init?: RequestInit) => Promise<Response>) | undefined {
   if (allowedHosts.length === 0) return undefined;
 
-  const checkHost = (hostname: string, input: string): void => {
+  const checkHost = (hostname: string, _input: string): void => {
     if (!allowedHosts.some((pattern) => matchGlob(pattern, hostname))) {
       throw new Error(
         `CapabilityDenied: fetch to "${hostname}" is not in allowedHosts [${allowedHosts.join(", ")}]`
@@ -40,9 +40,7 @@ export function buildSandboxFetch(
       const response = await fetch(url.href, { ...init, redirect: "manual" });
       if (response.status >= 300 && response.status < 400) {
         if (hops >= MAX_REDIRECT_HOPS) {
-          throw new Error(
-            `CapabilityDenied: fetch exceeded ${MAX_REDIRECT_HOPS} redirects`
-          );
+          throw new Error(`CapabilityDenied: fetch exceeded ${MAX_REDIRECT_HOPS} redirects`);
         }
         const location = response.headers.get("location");
         if (!location) return response;
@@ -114,13 +112,13 @@ export function buildCapabilityGlobals(
 
   const allowedHosts = capabilities?.allowedHosts ?? [];
   const sandboxFetch = buildSandboxFetch(allowedHosts);
-  if (sandboxFetch) globals["fetch"] = sandboxFetch;
+  if (sandboxFetch) globals.fetch = sandboxFetch;
 
   const readPaths = capabilities?.allowedReadPaths ?? [];
   const writePaths = capabilities?.allowedWritePaths ?? [];
 
   if (readPaths.length > 0 || writePaths.length > 0) {
-    globals["__fs__"] = {
+    globals.__fs__ = {
       /**
        * Read a file at `path` (string). Returns a Promise<string> (UTF-8).
        * Throws CapabilityDenied if `path` is not within allowedReadPaths.
@@ -156,7 +154,7 @@ export function buildCapabilityGlobals(
 export function matchGlob(pattern: string, value: string): boolean {
   const regexStr = pattern
     .replace(/[.+^${}()|[\]\\]/g, "\\$&") // escape regex specials except * and ?
-    .replace(/\*/g, "[^.]*")               // * matches one label (no dots)
-    .replace(/\?/g, "[^.]");               // ? matches one non-dot char
+    .replace(/\*/g, "[^.]*") // * matches one label (no dots)
+    .replace(/\?/g, "[^.]"); // ? matches one non-dot char
   return new RegExp(`^${regexStr}$`).test(value);
 }

@@ -1,17 +1,38 @@
-import { describe, it, expect } from "vitest";
-import { handoff, handoffGenerator } from "./Handoff.js";
-import type { HandoffAgent } from "./Handoff.js";
+import { describe, expect, it } from "vitest";
 import type { AgentEvent } from "../types/events.js";
+import type { HandoffAgent } from "./Handoff.js";
+import { handoff, handoffGenerator } from "./Handoff.js";
 
 function mockAgent(answer: string, shouldError = false): HandoffAgent {
   return {
     async *run(task: string, parentTraceId?: string | null): AsyncGenerator<AgentEvent> {
       const traceId = `agent-mock-${Math.random().toString(36).slice(2)}`;
-      yield { traceId, parentTraceId: parentTraceId ?? null, channel: "text", event: "run_start", data: { task }, timestampMs: Date.now() };
+      yield {
+        traceId,
+        parentTraceId: parentTraceId ?? null,
+        channel: "text",
+        event: "run_start",
+        data: { task },
+        timestampMs: Date.now(),
+      };
       if (shouldError) {
-        yield { traceId, parentTraceId: parentTraceId ?? null, channel: "text", event: "error", data: { error: "mock error" }, timestampMs: Date.now() };
+        yield {
+          traceId,
+          parentTraceId: parentTraceId ?? null,
+          channel: "text",
+          event: "error",
+          data: { error: "mock error" },
+          timestampMs: Date.now(),
+        };
       } else {
-        yield { traceId, parentTraceId: parentTraceId ?? null, channel: "text", event: "final_answer", data: { answer }, timestampMs: Date.now() };
+        yield {
+          traceId,
+          parentTraceId: parentTraceId ?? null,
+          channel: "text",
+          event: "final_answer",
+          data: { answer },
+          timestampMs: Date.now(),
+        };
       }
     },
   };
@@ -47,7 +68,14 @@ describe("handoff", () => {
     const spyAgent: HandoffAgent = {
       async *run(task): AsyncGenerator<AgentEvent> {
         receivedTask = task;
-        yield { traceId: "t", parentTraceId: null, channel: "text", event: "final_answer", data: { answer: "ok" }, timestampMs: Date.now() };
+        yield {
+          traceId: "t",
+          parentTraceId: null,
+          channel: "text",
+          event: "final_answer",
+          data: { answer: "ok" },
+          timestampMs: Date.now(),
+        };
       },
     };
     await handoff(spyAgent, "original task", null, {
@@ -71,7 +99,14 @@ describe("handoffGenerator", () => {
   it("emits handoff status event first", async () => {
     const target = mockAgent("result");
     const events: AgentEvent[] = [];
-    for await (const ev of handoffGenerator(target, "task", "parent-trace", null, 2, "target-agent")) {
+    for await (const ev of handoffGenerator(
+      target,
+      "task",
+      "parent-trace",
+      null,
+      2,
+      "target-agent"
+    )) {
       events.push(ev);
     }
     expect(events[0]?.event).toBe("handoff");
@@ -95,14 +130,23 @@ describe("handoffGenerator", () => {
   });
 
   it("passes parent traceId as parentTraceId to target agent", async () => {
-    let capturedParentId: string | null | undefined = undefined;
+    let capturedParentId: string | null | undefined;
     const spyAgent: HandoffAgent = {
       async *run(_task, parentTraceId): AsyncGenerator<AgentEvent> {
         capturedParentId = parentTraceId;
-        yield { traceId: "child", parentTraceId: parentTraceId ?? null, channel: "text", event: "final_answer", data: { answer: "ok" }, timestampMs: Date.now() };
+        yield {
+          traceId: "child",
+          parentTraceId: parentTraceId ?? null,
+          channel: "text",
+          event: "final_answer",
+          data: { answer: "ok" },
+          timestampMs: Date.now(),
+        };
       },
     };
-    for await (const _ of handoffGenerator(spyAgent, "task", "caller-trace", null, 1, "spy")) { /* consume */ }
+    for await (const _ of handoffGenerator(spyAgent, "task", "caller-trace", null, 1, "spy")) {
+      /* consume */
+    }
     expect(capturedParentId).toBe("caller-trace");
   });
 });

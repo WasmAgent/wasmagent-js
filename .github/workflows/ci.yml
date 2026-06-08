@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Lint (Biome)
+        run: bun run lint
+
       # A1 — Enforce that heavy optional deps are NEVER statically imported in core.
       # Any top-level "import ... from '@anthropic-ai/sdk'" (or the other three) in
       # packages/core/src must be "import type" only; actual value imports must use

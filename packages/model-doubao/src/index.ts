@@ -1,36 +1,34 @@
-import { OpenAICompatModel, type OpenAICompatModelOptions } from "@agentkit-js/core/models";
 import type { GenerateOptions, ModelCapabilities } from "@agentkit-js/core/models";
+import { OpenAICompatModel, type OpenAICompatModelOptions } from "@agentkit-js/core/models";
 
 export const DOUBAO_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
 
 /** Canonical Doubao (Volcengine Ark) model IDs. */
 export const DoubaoModels = {
-  SEED_1_6:           "doubao-seed-1-6-251015",
-  SEED_1_6_THINKING:  "doubao-seed-1-6-thinking",
-  THINKING_PRO_1_5:   "doubao-1-5-thinking-pro",
-  SEED_2_0_PRO:       "doubao-seed-2-0-pro",
+  SEED_1_6: "doubao-seed-1-6-251015",
+  SEED_1_6_THINKING: "doubao-seed-1-6-thinking",
+  THINKING_PRO_1_5: "doubao-1-5-thinking-pro",
+  SEED_2_0_PRO: "doubao-seed-2-0-pro",
   /** Always points to the latest recommended model. */
-  LATEST:             "doubao-seed-1-6-251015",
+  LATEST: "doubao-seed-1-6-251015",
 } as const;
 
-export type DoubaoModelId = typeof DoubaoModels[keyof typeof DoubaoModels] | (string & {});
+export type DoubaoModelId = (typeof DoubaoModels)[keyof typeof DoubaoModels] | (string & {});
 
 /** Doubao Seed-1.6 thinking length tiers (Minimal/Low/Medium/High). */
 const EFFORT_TO_THINKING_LEVEL: Record<string, string> = {
-  none:     "minimal",
-  minimal:  "minimal",
-  low:      "low",
+  none: "minimal",
+  minimal: "minimal",
+  low: "low",
   standard: "medium",
-  medium:   "medium",
-  high:     "high",
-  xhigh:    "high",
-  max:      "high",
+  medium: "medium",
+  high: "high",
+  xhigh: "high",
+  max: "high",
 };
 
 /** Model IDs that support adaptive ("auto") thinking type. */
-const AUTO_CAPABLE_MODELS = new Set<string>([
-  "doubao-seed-2-0-pro",
-]);
+const AUTO_CAPABLE_MODELS = new Set<string>(["doubao-seed-2-0-pro"]);
 
 /** Model IDs that support thinking/reasoning. */
 const REASONING_MODELS = new Set<string>([
@@ -62,13 +60,9 @@ export interface DoubaoModelOptions extends OpenAICompatModelOptions {
  *   Context API (ark-context) available via useContextApi option.
  */
 export class DoubaoModel extends OpenAICompatModel {
-  constructor(
-    modelId: DoubaoModelId,
-    apiKeyOrOpts?: string | DoubaoModelOptions
-  ) {
-    const opts: DoubaoModelOptions = typeof apiKeyOrOpts === "string"
-      ? { apiKey: apiKeyOrOpts }
-      : (apiKeyOrOpts ?? {});
+  constructor(modelId: DoubaoModelId, apiKeyOrOpts?: string | DoubaoModelOptions) {
+    const opts: DoubaoModelOptions =
+      typeof apiKeyOrOpts === "string" ? { apiKey: apiKeyOrOpts } : (apiKeyOrOpts ?? {});
     super(modelId, DOUBAO_BASE_URL, {
       ...opts,
       reasoningContentField: "reasoning_content",
@@ -89,11 +83,14 @@ export class DoubaoModel extends OpenAICompatModel {
    * Extract Doubao's reasoning_content from the delta.
    * Suppressed when mode is "off".
    */
-  protected override mapReasoningField(chunk: Record<string, unknown>, opts: GenerateOptions): string | undefined {
+  protected override mapReasoningField(
+    chunk: Record<string, unknown>,
+    opts: GenerateOptions
+  ): string | undefined {
     if (opts.thinking?.mode === "off") return undefined;
-    const choices = chunk["choices"] as Array<Record<string, unknown>> | undefined;
-    const delta = choices?.[0]?.["delta"] as Record<string, unknown> | undefined;
-    const reasoning = delta?.["reasoning_content"];
+    const choices = chunk.choices as Array<Record<string, unknown>> | undefined;
+    const delta = choices?.[0]?.delta as Record<string, unknown> | undefined;
+    const reasoning = delta?.reasoning_content;
     if (typeof reasoning === "string" && reasoning.length > 0) return reasoning;
     return undefined;
   }
@@ -127,10 +124,10 @@ export class DoubaoModel extends OpenAICompatModel {
     const thinkingObj: Record<string, unknown> = { type };
 
     if (effort !== undefined) {
-      thinkingObj["level"] = EFFORT_TO_THINKING_LEVEL[effort] ?? "medium";
+      thinkingObj.level = EFFORT_TO_THINKING_LEVEL[effort] ?? "medium";
     }
     if (budgetTokens !== undefined) {
-      thinkingObj["budget_tokens"] = budgetTokens;
+      thinkingObj.budget_tokens = budgetTokens;
     }
 
     return { extra_body: { thinking: thinkingObj } };

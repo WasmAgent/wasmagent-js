@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { Scheduler, SimpleIR } from "../scheduler/index.js";
 import { ToolRegistry } from "../tools/ToolRegistry.js";
@@ -24,7 +24,14 @@ describe("Scheduler", () => {
   it("executes single node and emits node_start + node_done", async () => {
     const scheduler = new Scheduler(makeRegistry(doubleTool));
     const ir = new SimpleIR([
-      { id: "n1", toolName: "double", args: { value: 5 }, dependsOn: [], readOnly: true, idempotent: true },
+      {
+        id: "n1",
+        toolName: "double",
+        args: { value: 5 },
+        dependsOn: [],
+        readOnly: true,
+        idempotent: true,
+      },
     ]);
 
     const events = [];
@@ -34,15 +41,31 @@ describe("Scheduler", () => {
     expect(types).toContain("node_start");
     expect(types).toContain("node_done");
     const doneEvent = events.find((e) => e.type === "node_done");
-    const result = (doneEvent?.type === "node_done" ? doneEvent.result : undefined) as { output: unknown };
+    const result = (doneEvent?.type === "node_done" ? doneEvent.result : undefined) as {
+      output: unknown;
+    };
     expect(result.output).toBe(10);
   });
 
   it("independent nodes run in parallel (both node_start before any node_done)", async () => {
     const scheduler = new Scheduler(makeRegistry(doubleTool));
     const ir = new SimpleIR([
-      { id: "a", toolName: "double", args: { value: 1 }, dependsOn: [], readOnly: true, idempotent: true },
-      { id: "b", toolName: "double", args: { value: 2 }, dependsOn: [], readOnly: true, idempotent: true },
+      {
+        id: "a",
+        toolName: "double",
+        args: { value: 1 },
+        dependsOn: [],
+        readOnly: true,
+        idempotent: true,
+      },
+      {
+        id: "b",
+        toolName: "double",
+        args: { value: 2 },
+        dependsOn: [],
+        readOnly: true,
+        idempotent: true,
+      },
     ]);
 
     const events = [];
@@ -56,8 +79,14 @@ describe("Scheduler", () => {
     expect(types).toEqual(["node_start", "node_start", "node_done", "node_done"]);
 
     // Both node IDs appear in starts and dones.
-    const starts = events.filter((e) => e.type === "node_start").map((e) => e.nodeId).sort();
-    const dones = events.filter((e) => e.type === "node_done").map((e) => e.nodeId).sort();
+    const starts = events
+      .filter((e) => e.type === "node_start")
+      .map((e) => e.nodeId)
+      .sort();
+    const dones = events
+      .filter((e) => e.type === "node_done")
+      .map((e) => e.nodeId)
+      .sort();
     expect(starts).toEqual(["a", "b"]);
     expect(dones).toEqual(["a", "b"]);
   });
@@ -66,8 +95,22 @@ describe("Scheduler", () => {
     const scheduler = new Scheduler(makeRegistry(doubleTool));
     // b depends on a — b must not start until a is done.
     const ir = new SimpleIR([
-      { id: "a", toolName: "double", args: { value: 3 }, dependsOn: [], readOnly: true, idempotent: true },
-      { id: "b", toolName: "double", args: { value: 4 }, dependsOn: ["a"], readOnly: true, idempotent: true },
+      {
+        id: "a",
+        toolName: "double",
+        args: { value: 3 },
+        dependsOn: [],
+        readOnly: true,
+        idempotent: true,
+      },
+      {
+        id: "b",
+        toolName: "double",
+        args: { value: 4 },
+        dependsOn: ["a"],
+        readOnly: true,
+        idempotent: true,
+      },
     ]);
 
     const events = [];
@@ -84,7 +127,14 @@ describe("Scheduler", () => {
   it("produces correct output values", async () => {
     const scheduler = new Scheduler(makeRegistry(doubleTool));
     const ir = new SimpleIR([
-      { id: "x", toolName: "double", args: { value: 7 }, dependsOn: [], readOnly: true, idempotent: true },
+      {
+        id: "x",
+        toolName: "double",
+        args: { value: 7 },
+        dependsOn: [],
+        readOnly: true,
+        idempotent: true,
+      },
     ]);
 
     const events = [];
@@ -97,30 +147,53 @@ describe("Scheduler", () => {
     const scheduler = new Scheduler(makeRegistry(doubleTool));
     // a depends on b, b depends on a — cycle
     const ir = new SimpleIR([
-      { id: "a", toolName: "double", args: { value: 1 }, dependsOn: ["b"], readOnly: true, idempotent: true },
-      { id: "b", toolName: "double", args: { value: 2 }, dependsOn: ["a"], readOnly: true, idempotent: true },
+      {
+        id: "a",
+        toolName: "double",
+        args: { value: 1 },
+        dependsOn: ["b"],
+        readOnly: true,
+        idempotent: true,
+      },
+      {
+        id: "b",
+        toolName: "double",
+        args: { value: 2 },
+        dependsOn: ["a"],
+        readOnly: true,
+        idempotent: true,
+      },
     ]);
 
     const gen = scheduler.execute(ir);
     await expect(async () => {
-      for await (const _ of gen) { /* consume */ }
+      for await (const _ of gen) {
+        /* consume */
+      }
     }).rejects.toThrow("deadlock");
   });
 
   it("SimpleIR.toJSON / fromJSON round-trip", () => {
     const ir = new SimpleIR([
-      { id: "x", toolName: "double", args: { value: 3 }, dependsOn: [], readOnly: true, idempotent: true },
+      {
+        id: "x",
+        toolName: "double",
+        args: { value: 3 },
+        dependsOn: [],
+        readOnly: true,
+        idempotent: true,
+      },
     ]);
     const json = ir.toJSON() as { nodes: typeof ir.nodes };
     const restored = SimpleIR.fromJSON(json);
     expect(restored.nodes[0]?.id).toBe("x");
-    expect(restored.nodes[0]?.args["value"]).toBe(3);
+    expect(restored.nodes[0]?.args.value).toBe(3);
   });
 
   it("C3: readOnly node is launched speculatively before non-readOnly barrier clears", async () => {
     // slow-write: non-readOnly, takes "time" (but we can't add real delay without flakiness —
     // instead verify event ordering: readOnly nodes' start appears before the write node's start).
-    let callOrder: string[] = [];
+    const callOrder: string[] = [];
     const registry = new ToolRegistry();
     registry.register({
       name: "read_op",
@@ -129,7 +202,10 @@ describe("Scheduler", () => {
       outputSchema: z.number(),
       readOnly: true,
       idempotent: true,
-      forward: async ({ v }) => { callOrder.push("read_op"); return v; },
+      forward: async ({ v }) => {
+        callOrder.push("read_op");
+        return v;
+      },
     });
     registry.register({
       name: "write_op",
@@ -138,14 +214,31 @@ describe("Scheduler", () => {
       outputSchema: z.number(),
       readOnly: false,
       idempotent: false,
-      forward: async ({ v }) => { callOrder.push("write_op"); return v; },
+      forward: async ({ v }) => {
+        callOrder.push("write_op");
+        return v;
+      },
     });
 
     const scheduler = new Scheduler(registry);
     // read_op has no deps (readOnly — speculative), write_op has no deps but is !readOnly — barrier.
     const ir = new SimpleIR([
-      { id: "r", toolName: "read_op", args: { v: 1 }, dependsOn: [], readOnly: true, idempotent: true },
-      { id: "w", toolName: "write_op", args: { v: 2 }, dependsOn: [], readOnly: false, idempotent: false },
+      {
+        id: "r",
+        toolName: "read_op",
+        args: { v: 1 },
+        dependsOn: [],
+        readOnly: true,
+        idempotent: true,
+      },
+      {
+        id: "w",
+        toolName: "write_op",
+        args: { v: 2 },
+        dependsOn: [],
+        readOnly: false,
+        idempotent: false,
+      },
     ]);
 
     const events: string[] = [];
@@ -275,18 +368,36 @@ describe("Scheduler — C1 $ref value substitution", () => {
 
     const scheduler = new Scheduler(registry);
     const ir = new SimpleIR([
-      { id: "call-A", toolName: "produce", args: { seed: 4 }, dependsOn: [], readOnly: true, idempotent: true },
-      { id: "call-B", toolName: "consume", args: { src: "$call-A" }, dependsOn: ["call-A"], readOnly: true, idempotent: true },
+      {
+        id: "call-A",
+        toolName: "produce",
+        args: { seed: 4 },
+        dependsOn: [],
+        readOnly: true,
+        idempotent: true,
+      },
+      {
+        id: "call-B",
+        toolName: "consume",
+        args: { src: "$call-A" },
+        dependsOn: ["call-A"],
+        readOnly: true,
+        idempotent: true,
+      },
     ]);
 
     const events = [];
     for await (const e of scheduler.execute(ir)) events.push(e);
 
     // call-B should receive the actual result of call-A, not the literal "$call-A"
-    expect(capturedInput?.["src"]).not.toBe("$call-A");
+    expect(capturedInput?.src).not.toBe("$call-A");
     // call-A output is { callId, toolName, output: 40 }
-    const callAResult = (events.find((e) => e.type === "node_done" && e.nodeId === "call-A") as { type: "node_done"; nodeId: string; result: unknown } | undefined)?.result;
-    expect(capturedInput?.["src"]).toEqual(callAResult);
+    const callAResult = (
+      events.find((e) => e.type === "node_done" && e.nodeId === "call-A") as
+        | { type: "node_done"; nodeId: string; result: unknown }
+        | undefined
+    )?.result;
+    expect(capturedInput?.src).toEqual(callAResult);
   });
 
   it("does not substitute when no $ref is present (pure-ordering case)", async () => {
@@ -299,28 +410,56 @@ describe("Scheduler — C1 $ref value substitution", () => {
       outputSchema: z.string(),
       readOnly: true,
       idempotent: true,
-      forward: async (input) => { capturedArgs = input as Record<string, unknown>; return "ok"; },
+      forward: async (input) => {
+        capturedArgs = input as Record<string, unknown>;
+        return "ok";
+      },
     });
 
     const scheduler = new Scheduler(registry);
     const ir = new SimpleIR([
-      { id: "n1", toolName: "passthrough", args: { val: "literal" }, dependsOn: [], readOnly: true, idempotent: true },
+      {
+        id: "n1",
+        toolName: "passthrough",
+        args: { val: "literal" },
+        dependsOn: [],
+        readOnly: true,
+        idempotent: true,
+      },
     ]);
 
-    for await (const _ of scheduler.execute(ir)) { /* consume */ }
+    for await (const _ of scheduler.execute(ir)) {
+      /* consume */
+    }
 
     // No substitution should have happened
-    expect(capturedArgs?.["val"]).toBe("literal");
+    expect(capturedArgs?.val).toBe("literal");
   });
 
   it("C1: circular dependencies still throw (not affected by ref substitution)", async () => {
     const scheduler = new Scheduler(makeRegistry(doubleTool));
     const ir = new SimpleIR([
-      { id: "a", toolName: "double", args: { value: "$b" }, dependsOn: ["b"], readOnly: true, idempotent: true },
-      { id: "b", toolName: "double", args: { value: "$a" }, dependsOn: ["a"], readOnly: true, idempotent: true },
+      {
+        id: "a",
+        toolName: "double",
+        args: { value: "$b" },
+        dependsOn: ["b"],
+        readOnly: true,
+        idempotent: true,
+      },
+      {
+        id: "b",
+        toolName: "double",
+        args: { value: "$a" },
+        dependsOn: ["a"],
+        readOnly: true,
+        idempotent: true,
+      },
     ]);
     await expect(async () => {
-      for await (const _ of scheduler.execute(ir)) { /* consume */ }
+      for await (const _ of scheduler.execute(ir)) {
+        /* consume */
+      }
     }).rejects.toThrow("deadlock");
   });
 });
@@ -330,7 +469,7 @@ describe("Scheduler — C1 $ref value substitution", () => {
 describe("Scheduler — A4: resourceKey serialization", () => {
   it("two !readOnly nodes with same resourceKey execute serially (event order)", async () => {
     const executionOrder: string[] = [];
-    let n1Started = false;
+    let _n1Started = false;
 
     const slowWriteTool: ToolDefinition<{ id: string }, string> = {
       name: "slowWrite",
@@ -342,7 +481,7 @@ describe("Scheduler — A4: resourceKey serialization", () => {
       async forward({ id }) {
         executionOrder.push(`start:${id}`);
         if (id === "a") {
-          n1Started = true;
+          _n1Started = true;
           await new Promise((r) => setTimeout(r, 10));
         }
         executionOrder.push(`end:${id}`);
@@ -353,11 +492,29 @@ describe("Scheduler — A4: resourceKey serialization", () => {
     const registry = makeRegistry(slowWriteTool);
     const scheduler = new Scheduler(registry);
     const ir = new SimpleIR([
-      { id: "n1", toolName: "slowWrite", args: { id: "a" }, dependsOn: [], readOnly: false, idempotent: false, resourceKey: "shared-resource" },
-      { id: "n2", toolName: "slowWrite", args: { id: "b" }, dependsOn: [], readOnly: false, idempotent: false, resourceKey: "shared-resource" },
+      {
+        id: "n1",
+        toolName: "slowWrite",
+        args: { id: "a" },
+        dependsOn: [],
+        readOnly: false,
+        idempotent: false,
+        resourceKey: "shared-resource",
+      },
+      {
+        id: "n2",
+        toolName: "slowWrite",
+        args: { id: "b" },
+        dependsOn: [],
+        readOnly: false,
+        idempotent: false,
+        resourceKey: "shared-resource",
+      },
     ]);
 
-    for await (const _ of scheduler.execute(ir)) { /* consume */ }
+    for await (const _ of scheduler.execute(ir)) {
+      /* consume */
+    }
 
     // n1 must fully complete before n2 starts
     expect(executionOrder.indexOf("end:a")).toBeLessThan(executionOrder.indexOf("start:b"));
@@ -386,11 +543,29 @@ describe("Scheduler — A4: resourceKey serialization", () => {
     const registry = makeRegistry(parallelWriteTool);
     const scheduler = new Scheduler(registry);
     const ir = new SimpleIR([
-      { id: "n1", toolName: "parallelWrite", args: { id: "a" }, dependsOn: [], readOnly: false, idempotent: false, resourceKey: "resource-A" },
-      { id: "n2", toolName: "parallelWrite", args: { id: "b" }, dependsOn: [], readOnly: false, idempotent: false, resourceKey: "resource-B" },
+      {
+        id: "n1",
+        toolName: "parallelWrite",
+        args: { id: "a" },
+        dependsOn: [],
+        readOnly: false,
+        idempotent: false,
+        resourceKey: "resource-A",
+      },
+      {
+        id: "n2",
+        toolName: "parallelWrite",
+        args: { id: "b" },
+        dependsOn: [],
+        readOnly: false,
+        idempotent: false,
+        resourceKey: "resource-B",
+      },
     ]);
 
-    for await (const _ of scheduler.execute(ir)) { /* consume */ }
+    for await (const _ of scheduler.execute(ir)) {
+      /* consume */
+    }
 
     // Different resourceKeys → parallel execution → max concurrent should be > 1
     expect(concurrentCount.max).toBeGreaterThan(1);
@@ -414,12 +589,37 @@ describe("Scheduler — A4: resourceKey serialization", () => {
     const registry = makeRegistry(writeTool);
     const scheduler = new Scheduler(registry);
     const ir = new SimpleIR([
-      { id: "n1", toolName: "write", args: { id: "a" }, dependsOn: [], readOnly: false, idempotent: false, resourceKey: "shared" },
-      { id: "n2", toolName: "write", args: { id: "b" }, dependsOn: [], readOnly: false, idempotent: false }, // no resourceKey
-      { id: "n3", toolName: "write", args: { id: "c" }, dependsOn: [], readOnly: false, idempotent: false, resourceKey: "shared" },
+      {
+        id: "n1",
+        toolName: "write",
+        args: { id: "a" },
+        dependsOn: [],
+        readOnly: false,
+        idempotent: false,
+        resourceKey: "shared",
+      },
+      {
+        id: "n2",
+        toolName: "write",
+        args: { id: "b" },
+        dependsOn: [],
+        readOnly: false,
+        idempotent: false,
+      }, // no resourceKey
+      {
+        id: "n3",
+        toolName: "write",
+        args: { id: "c" },
+        dependsOn: [],
+        readOnly: false,
+        idempotent: false,
+        resourceKey: "shared",
+      },
     ]);
 
-    for await (const _ of scheduler.execute(ir)) { /* consume */ }
+    for await (const _ of scheduler.execute(ir)) {
+      /* consume */
+    }
 
     // n1 and n3 must be serial (via implicit resourceKey dep); n2 is independent
     expect(callOrder).toContain("a");

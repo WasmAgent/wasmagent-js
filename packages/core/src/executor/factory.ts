@@ -13,8 +13,9 @@
  * Edge runtime detection: if worker_threads is unavailable (Cloudflare Workers,
  * browser), "js" throws with guidance to use "quickjs".
  */
-import type { KernelOptions, WasmKernel } from "./types.js";
+
 import { JsKernel } from "./JsKernel.js";
+import type { KernelOptions, WasmKernel } from "./types.js";
 
 /** True when the current runtime does not support Node's worker_threads module. */
 async function isEdgeRuntime(): Promise<boolean> {
@@ -31,27 +32,27 @@ async function isEdgeRuntime(): Promise<boolean> {
 
 function kernelNotInstalled(pkg: string, extra?: string): Error {
   const err = new Error(
-    `${pkg} is not installed.\n` +
-    `  Install: pnpm add ${pkg}\n` +
-    (extra ? `  ${extra}\n` : "")
+    `${pkg} is not installed.\n  Install: pnpm add ${pkg}\n${extra ? `  ${extra}\n` : ""}`
   ) as Error & { code: string };
   err.code = "KERNEL_NOT_INSTALLED";
   return err;
 }
 
-export async function createKernel(
-  opts: KernelOptions = {}
-): Promise<WasmKernel> {
+export async function createKernel(opts: KernelOptions = {}): Promise<WasmKernel> {
   const { engine = "js", actionLanguage } = opts;
 
   // actionLanguage="pyodide" always routes to kernel-pyodide regardless of engine.
   if (actionLanguage === "pyodide") {
     const PYODIDE_PKG = "@agentkit-js/kernel-pyodide";
     try {
-      const mod = await import(PYODIDE_PKG) as { PyodideKernel: new (opts?: KernelOptions) => WasmKernel };
+      const mod = (await import(PYODIDE_PKG)) as {
+        PyodideKernel: new (opts?: KernelOptions) => WasmKernel;
+      };
       return new mod.PyodideKernel(opts);
     } catch (cause) {
-      const err = kernelNotInstalled(PYODIDE_PKG, "Docs: https://pyodide.org") as Error & { cause: unknown };
+      const err = kernelNotInstalled(PYODIDE_PKG, "Docs: https://pyodide.org") as Error & {
+        cause: unknown;
+      };
       err.cause = cause;
       throw err;
     }
@@ -62,10 +63,10 @@ export async function createKernel(
       if (await isEdgeRuntime()) {
         throw new Error(
           "[agentkit] Non-Node runtime detected (Cloudflare Workers / browser / Deno).\n" +
-          "The default JsKernel and VmKernel both require node:vm, which is unavailable.\n" +
-          "Use the edge-safe QuickJS kernel instead:\n" +
-          "  import { QuickJSKernel } from \"@agentkit-js/kernel-quickjs\";\n" +
-          "  const kernel = new QuickJSKernel();"
+            "The default JsKernel and VmKernel both require node:vm, which is unavailable.\n" +
+            "Use the edge-safe QuickJS kernel instead:\n" +
+            '  import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";\n' +
+            "  const kernel = new QuickJSKernel();"
         );
       }
       return new JsKernel();
@@ -73,7 +74,9 @@ export async function createKernel(
     case "quickjs": {
       const QUICKJS_PKG = "@agentkit-js/kernel-quickjs";
       try {
-        const mod = await import(QUICKJS_PKG) as { QuickJSKernel: new (opts?: KernelOptions) => WasmKernel };
+        const mod = (await import(QUICKJS_PKG)) as {
+          QuickJSKernel: new (opts?: KernelOptions) => WasmKernel;
+        };
         return new mod.QuickJSKernel(opts);
       } catch (cause) {
         const err = kernelNotInstalled(QUICKJS_PKG) as Error & { cause: unknown };
@@ -85,7 +88,9 @@ export async function createKernel(
     case "wasmtime": {
       const WASMTIME_PKG = "@agentkit-js/kernel-wasmtime";
       try {
-        const mod = await import(WASMTIME_PKG) as { WasmtimeKernel: new (opts?: KernelOptions) => WasmKernel };
+        const mod = (await import(WASMTIME_PKG)) as {
+          WasmtimeKernel: new (opts?: KernelOptions) => WasmKernel;
+        };
         return new mod.WasmtimeKernel(opts);
       } catch (cause) {
         const err = kernelNotInstalled(
@@ -105,7 +110,9 @@ export async function createKernel(
     case "remote": {
       const REMOTE_PKG = "@agentkit-js/kernel-remote";
       try {
-        const mod = await import(REMOTE_PKG) as { RemoteSandboxKernel: new (opts?: KernelOptions) => WasmKernel };
+        const mod = (await import(REMOTE_PKG)) as {
+          RemoteSandboxKernel: new (opts?: KernelOptions) => WasmKernel;
+        };
         return new mod.RemoteSandboxKernel(opts);
       } catch (cause) {
         const err = kernelNotInstalled(

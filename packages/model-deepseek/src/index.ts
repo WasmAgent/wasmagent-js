@@ -1,5 +1,5 @@
-import { OpenAICompatModel, type OpenAICompatModelOptions } from "@agentkit-js/core/models";
 import type { GenerateOptions, ModelCapabilities } from "@agentkit-js/core/models";
+import { OpenAICompatModel, type OpenAICompatModelOptions } from "@agentkit-js/core/models";
 
 export const DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1";
 
@@ -8,18 +8,18 @@ export const DeepSeekModels = {
   /**
    * @deprecated Will be retired 2026-07-24 15:59 UTC. Migrate to DeepSeekModels.V4_FLASH or V4_PRO.
    */
-  CHAT:      "deepseek-chat",
+  CHAT: "deepseek-chat",
   /**
    * @deprecated Will be retired 2026-07-24 15:59 UTC. Migrate to DeepSeekModels.V4_PRO.
    */
-  REASONER:  "deepseek-reasoner",
-  V4_PRO:    "deepseek-v4-pro",
-  V4_FLASH:  "deepseek-v4-flash",
+  REASONER: "deepseek-reasoner",
+  V4_PRO: "deepseek-v4-pro",
+  V4_FLASH: "deepseek-v4-flash",
   /** Always points to the latest recommended model. */
-  LATEST:    "deepseek-v4-pro",
+  LATEST: "deepseek-v4-pro",
 } as const;
 
-export type DeepSeekModelId = typeof DeepSeekModels[keyof typeof DeepSeekModels] | (string & {});
+export type DeepSeekModelId = (typeof DeepSeekModels)[keyof typeof DeepSeekModels] | (string & {});
 
 export interface DeepSeekModelOptions extends OpenAICompatModelOptions {
   /**
@@ -42,13 +42,9 @@ export interface DeepSeekModelOptions extends OpenAICompatModelOptions {
 export class DeepSeekModel extends OpenAICompatModel {
   readonly #preserveThinking: boolean;
 
-  constructor(
-    modelId: DeepSeekModelId,
-    apiKeyOrOpts?: string | DeepSeekModelOptions
-  ) {
-    const opts: DeepSeekModelOptions = typeof apiKeyOrOpts === "string"
-      ? { apiKey: apiKeyOrOpts }
-      : (apiKeyOrOpts ?? {});
+  constructor(modelId: DeepSeekModelId, apiKeyOrOpts?: string | DeepSeekModelOptions) {
+    const opts: DeepSeekModelOptions =
+      typeof apiKeyOrOpts === "string" ? { apiKey: apiKeyOrOpts } : (apiKeyOrOpts ?? {});
     super(modelId, DEEPSEEK_BASE_URL, {
       ...opts,
       reasoningContentField: "reasoning_content",
@@ -68,12 +64,15 @@ export class DeepSeekModel extends OpenAICompatModel {
    * Extract DeepSeek's reasoning_content from the delta.
    * Suppressed when mode is "off" or preserveThinking is false.
    */
-  protected override mapReasoningField(chunk: Record<string, unknown>, opts: GenerateOptions): string | undefined {
+  protected override mapReasoningField(
+    chunk: Record<string, unknown>,
+    opts: GenerateOptions
+  ): string | undefined {
     if (!this.#preserveThinking) return undefined;
     if (opts.thinking?.mode === "off") return undefined;
-    const choices = chunk["choices"] as Array<Record<string, unknown>> | undefined;
-    const delta = choices?.[0]?.["delta"] as Record<string, unknown> | undefined;
-    const reasoning = delta?.["reasoning_content"];
+    const choices = chunk.choices as Array<Record<string, unknown>> | undefined;
+    const delta = choices?.[0]?.delta as Record<string, unknown> | undefined;
+    const reasoning = delta?.reasoning_content;
     if (typeof reasoning === "string" && reasoning.length > 0) return reasoning;
     return undefined;
   }
@@ -97,13 +96,18 @@ export class DeepSeekModel extends OpenAICompatModel {
 
     if (effort !== undefined) {
       const effortMap: Record<string, string> = {
-        minimal: "high", low: "high", standard: "high", medium: "high",
-        high: "high", xhigh: "max", max: "max",
+        minimal: "high",
+        low: "high",
+        standard: "high",
+        medium: "high",
+        high: "high",
+        xhigh: "max",
+        max: "max",
       };
-      thinkingObj["effort"] = effortMap[effort] ?? "high";
+      thinkingObj.effort = effortMap[effort] ?? "high";
     }
     if (budgetTokens !== undefined) {
-      thinkingObj["budget_tokens"] = budgetTokens;
+      thinkingObj.budget_tokens = budgetTokens;
     }
 
     return { extra_body: { thinking: thinkingObj } };

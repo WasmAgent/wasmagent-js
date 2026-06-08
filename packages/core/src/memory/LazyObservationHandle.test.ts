@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { LazyObservationHandle } from "../memory/LazyObservationHandle.js";
 
 describe("LazyObservationHandle (B3)", () => {
@@ -9,7 +9,9 @@ describe("LazyObservationHandle (B3)", () => {
 
   it("isResolved is false before the promise settles", () => {
     let resolveOuter!: (v: string) => void;
-    const p = new Promise<string>((res) => { resolveOuter = res; });
+    const p = new Promise<string>((res) => {
+      resolveOuter = res;
+    });
     const handle = new LazyObservationHandle(p);
     expect(handle.isResolved).toBe(false);
     resolveOuter("done");
@@ -29,7 +31,11 @@ describe("LazyObservationHandle (B3)", () => {
 
   it("peek() throws before resolution", () => {
     let _resolve!: (v: string) => void;
-    const handle = new LazyObservationHandle(new Promise<string>((r) => { _resolve = r; }));
+    const handle = new LazyObservationHandle(
+      new Promise<string>((r) => {
+        _resolve = r;
+      })
+    );
     expect(() => handle.peek()).toThrow("not yet resolved");
     _resolve("x");
   });

@@ -1,79 +1,217 @@
 // Agents
-export { CodeAgent, ToolCallingAgent, stepCountIs, noProgress, costBudget, callFingerprint, asTool, handoff, handoffGenerator } from "./agents/index.js";
-export type { CodeAgentOptions, ToolCallingAgentOptions, StopCondition, StopConditionContext, AsToolOptions, SubagentRunnable, HandoffOptions, HandoffResult, HandoffAgent } from "./agents/index.js";
 
-// Guardrails (A1 / S1-S4)
-export { maxInputLength, forbiddenPhrases, denyTools, runInputGuardrails, runOutputGuardrails, runToolGuardrails, classifierGuardrail, llamaGuardAdapter, intentAlignmentGuardrail, codeGuardrail } from "./guardrails/index.js";
-export type { GuardrailResult, InputGuardrail, OutputGuardrail, ToolGuardrail, ToolGuardrailContext, ClassifierGuardrailOptions, IntentAlignmentGuardrailOptions, CodeGuardrailOptions } from "./guardrails/index.js";
-
-// Executor
-export { JsKernel, VmKernel, createKernel, buildCapabilityGlobals, buildSandboxFetch, assertPathAllowed, matchGlob, ProgrammaticOrchestrator } from "./executor/index.js";
 export type {
-  WasmKernel,
-  KernelResult,
-  CapabilityManifest,
-  KernelOptions,
-  ActionLanguage,
-  ProgrammaticResult,
-} from "./executor/index.js";
-
-// Memory
-export { MessageAssembler, LazyObservationHandle, InMemoryVectorStore, KvBackendVectorStore, TfidfEmbedder, makeRetrievalTool, createMemoryTool, MapKvBackend } from "./memory/index.js";
-export type { AssemblerConfig, EditToolResultsOptions, Retriever, Embedder, EmbedResult, SearchResult, MemoryToolOptions } from "./memory/index.js";
-
-// Models
-export { AnthropicModel, AnthropicModels, OpenAIModel, OpenAIModels, CACHE_MIN_TOKENS, estimateTokens, estimateMessagesTokens, TokenBudget, FallbackModel, repairJson } from "./models/index.js";
+  AsToolOptions,
+  CodeAgentOptions,
+  HandoffAgent,
+  HandoffOptions,
+  HandoffResult,
+  StopCondition,
+  StopConditionContext,
+  SubagentRunnable,
+  ToolCallingAgentOptions,
+} from "./agents/index.js";
+export {
+  asTool,
+  CodeAgent,
+  callFingerprint,
+  costBudget,
+  handoff,
+  handoffGenerator,
+  noProgress,
+  stepCountIs,
+  ToolCallingAgent,
+} from "./agents/index.js";
 export type {
-  Model,
-  ModelCapabilities,
-  ModelMessage,
-  ContentBlock,
-  GenerateOptions,
-  ResponseFormat,
-  StreamEvent,
-  TokenUsage,
-  ResourceBudget,
-  EnhancementPolicy,
-  AnthropicModelOptions,
-  AnthropicModelId,
-  OpenAIModelOptions,
-  OpenAIModelId,
-  RetryPolicy,
-  FallbackModelOptions,
-} from "./models/index.js";
-
-// Enhancement runners
-export { SelfConsistencyRunner, ReflectRefineRunner, BudgetForcingRunner, ParallelForkJoinRunner } from "./enhancement/index.js";
+  AgentSnapshot,
+  CheckpointableAgentOptions,
+  Checkpointer,
+  KvBackend,
+} from "./checkpoint/index.js";
+// Checkpoint / durable workflows
+export {
+  CheckpointableRun,
+  InMemoryCheckpointer,
+  KvCheckpointer,
+  restoreFromSnapshot,
+} from "./checkpoint/index.js";
 export type {
-  SelfConsistencyOptions,
-  SelfConsistencyResult,
-  ReflectRefineOptions,
-  ReflectRefineResult,
   BudgetForcingOptions,
   BudgetForcingResult,
   ParallelForkJoinOptions,
   ParallelForkJoinResult,
+  ReflectRefineOptions,
+  ReflectRefineResult,
+  SelfConsistencyOptions,
+  SelfConsistencyResult,
 } from "./enhancement/index.js";
-
-// Tools
-export { ToolRegistry, zodToJsonSchema, toStrictJsonSchema, McpToolCollection, McpAuthError } from "./tools/index.js";
-export type { AgentPrincipal, ToolDefinition, ToolCall, ToolResult, McpAuthOptions, McpIntegrityOptions, McpToolSchema, McpResource, McpResourceContent, McpPromptSchema, McpPromptMessage, McpGetPromptResult } from "./tools/index.js";
-
-// Scheduler
-export { Scheduler, SimpleIR, deriveDependencies } from "./scheduler/index.js";
-export type { ActionIR, IRNode, SchedulerEvent, CallDescriptor } from "./scheduler/index.js";
-
+// Enhancement runners
+export {
+  BudgetForcingRunner,
+  ParallelForkJoinRunner,
+  ReflectRefineRunner,
+  SelfConsistencyRunner,
+} from "./enhancement/index.js";
+export type {
+  AgentRunner,
+  AgentTrace,
+  EvalRunResult,
+  EvalSample,
+  LlmJudgeScorerResult,
+  Scorer,
+  ScorerResult,
+} from "./evals/index.js";
 // Evals
-export { exactMatch, toolCallAccuracy, trajectoryValidity, finalAnswerLength, collectTrace, runEval, llmJudge, llmJudgeAsync, guardrailCompliance, guardrailComplianceAsync } from "./evals/index.js";
-export type { Scorer, ScorerResult, AgentTrace, EvalSample, EvalRunResult, AgentRunner, LlmJudgeScorerResult } from "./evals/index.js";
-
+export {
+  collectTrace,
+  exactMatch,
+  finalAnswerLength,
+  guardrailCompliance,
+  guardrailComplianceAsync,
+  llmJudge,
+  llmJudgeAsync,
+  runEval,
+  toolCallAccuracy,
+  trajectoryValidity,
+} from "./evals/index.js";
+export type {
+  ActionLanguage,
+  CapabilityManifest,
+  KernelOptions,
+  KernelResult,
+  ProgrammaticResult,
+  WasmKernel,
+} from "./executor/index.js";
+// Executor
+export {
+  assertPathAllowed,
+  buildCapabilityGlobals,
+  buildSandboxFetch,
+  createKernel,
+  JsKernel,
+  matchGlob,
+  ProgrammaticOrchestrator,
+  VmKernel,
+} from "./executor/index.js";
+export type {
+  ClassifierGuardrailOptions,
+  CodeGuardrailOptions,
+  GuardrailResult,
+  InputGuardrail,
+  IntentAlignmentGuardrailOptions,
+  OutputGuardrail,
+  ToolGuardrail,
+  ToolGuardrailContext,
+} from "./guardrails/index.js";
+// Guardrails (A1 / S1-S4)
+export {
+  classifierGuardrail,
+  codeGuardrail,
+  denyTools,
+  forbiddenPhrases,
+  intentAlignmentGuardrail,
+  llamaGuardAdapter,
+  maxInputLength,
+  runInputGuardrails,
+  runOutputGuardrails,
+  runToolGuardrails,
+} from "./guardrails/index.js";
+export type {
+  AssemblerConfig,
+  EditToolResultsOptions,
+  Embedder,
+  EmbedResult,
+  MemoryToolOptions,
+  Retriever,
+  SearchResult,
+} from "./memory/index.js";
+// Memory
+export {
+  createMemoryTool,
+  InMemoryVectorStore,
+  KvBackendVectorStore,
+  LazyObservationHandle,
+  MapKvBackend,
+  MessageAssembler,
+  makeRetrievalTool,
+  TfidfEmbedder,
+} from "./memory/index.js";
+export type {
+  AnthropicModelId,
+  AnthropicModelOptions,
+  ContentBlock,
+  EnhancementPolicy,
+  FallbackModelOptions,
+  GenerateOptions,
+  Model,
+  ModelCapabilities,
+  ModelMessage,
+  OpenAIModelId,
+  OpenAIModelOptions,
+  ResourceBudget,
+  ResponseFormat,
+  RetryPolicy,
+  StreamEvent,
+  TokenUsage,
+} from "./models/index.js";
+// Models
+export {
+  AnthropicModel,
+  AnthropicModels,
+  CACHE_MIN_TOKENS,
+  estimateMessagesTokens,
+  estimateTokens,
+  FallbackModel,
+  OpenAIModel,
+  OpenAIModels,
+  repairJson,
+  TokenBudget,
+} from "./models/index.js";
+export type {
+  GenAiMetricPoint,
+  MetricExporter,
+  OtelBridgeOptions,
+  ReadableSpan,
+  SpanAttributes,
+  SpanExporter,
+} from "./observability/index.js";
 // Observability
-export { OtelBridge, InMemorySpanExporter, withOtel } from "./observability/index.js";
-export type { SpanExporter, ReadableSpan, SpanAttributes, OtelBridgeOptions, GenAiMetricPoint, MetricExporter } from "./observability/index.js";
-
-// Checkpoint / durable workflows
-export { InMemoryCheckpointer, KvCheckpointer, CheckpointableRun, restoreFromSnapshot } from "./checkpoint/index.js";
-export type { Checkpointer, AgentSnapshot, CheckpointableAgentOptions, KvBackend } from "./checkpoint/index.js";
+export { InMemorySpanExporter, OtelBridge, withOtel } from "./observability/index.js";
+export type { ActionIR, CallDescriptor, IRNode, SchedulerEvent } from "./scheduler/index.js";
+// Scheduler
+export { deriveDependencies, Scheduler, SimpleIR } from "./scheduler/index.js";
+export type {
+  AgentPrincipal,
+  McpAuthOptions,
+  McpGetPromptResult,
+  McpIntegrityOptions,
+  McpPromptMessage,
+  McpPromptSchema,
+  McpResource,
+  McpResourceContent,
+  McpToolSchema,
+  ToolCall,
+  ToolDefinition,
+  ToolResult,
+} from "./tools/index.js";
+// Tools
+export {
+  McpAuthError,
+  McpToolCollection,
+  ToolRegistry,
+  toStrictJsonSchema,
+  zodToJsonSchema,
+} from "./tools/index.js";
 
 // Types
-export type { AgentEvent, Step, ActionStep, PlanningStep, FinalAnswerStep, ToolUseStep, ParallelToolUseStep, ParallelToolUseCall, UserMessageStep } from "./types/index.js";
+export type {
+  ActionStep,
+  AgentEvent,
+  FinalAnswerStep,
+  ParallelToolUseCall,
+  ParallelToolUseStep,
+  PlanningStep,
+  Step,
+  ToolUseStep,
+  UserMessageStep,
+} from "./types/index.js";

@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { InMemoryVectorStore, KvBackendVectorStore, makeRetrievalTool } from "./Retriever.js";
+import { describe, expect, it } from "vitest";
 import type { Embedder } from "./Retriever.js";
+import { InMemoryVectorStore, KvBackendVectorStore, makeRetrievalTool } from "./Retriever.js";
 
 describe("InMemoryVectorStore", () => {
   it("stores and retrieves documents", async () => {
@@ -38,15 +38,15 @@ describe("InMemoryVectorStore", () => {
     await store.add("z", "unrelated content here");
 
     const results = await store.search("hello world foo bar", 3);
-    expect(results[0]!.score).toBeGreaterThanOrEqual(results[1]!.score);
-    expect(results[1]!.score).toBeGreaterThanOrEqual(results[2]!.score);
+    expect(results[0]?.score).toBeGreaterThanOrEqual(results[1]?.score);
+    expect(results[1]?.score).toBeGreaterThanOrEqual(results[2]?.score);
   });
 
   it("stores metadata and returns it with results", async () => {
     const store = new InMemoryVectorStore();
     await store.add("doc1", "important document", { source: "wiki" });
     const results = await store.search("important", 1);
-    expect(results[0]!.metadata?.["source"]).toBe("wiki");
+    expect(results[0]?.metadata?.source).toBe("wiki");
   });
 
   it("size tracks number of entries", async () => {
@@ -79,7 +79,7 @@ describe("makeRetrievalTool", () => {
     const tool = makeRetrievalTool(store);
     const result = await tool.forward({ query: "climate warming" });
     expect(result.results.length).toBeGreaterThan(0);
-    expect(result.results[0]!.text).toBe("climate change global warming");
+    expect(result.results[0]?.text).toBe("climate change global warming");
   });
 
   it("respects topK passed in input", async () => {
@@ -136,7 +136,12 @@ describe("D3 — Pluggable Embedder", () => {
     function semanticEmbed(text: string): number[] {
       const t = text.toLowerCase();
       return [
-        t.includes("machine") || t.includes("neural") || t.includes("learning") || t.includes("gradient") ? 1 : 0,
+        t.includes("machine") ||
+        t.includes("neural") ||
+        t.includes("learning") ||
+        t.includes("gradient")
+          ? 1
+          : 0,
         t.includes("cooking") || t.includes("recipe") || t.includes("pasta") ? 1 : 0,
         t.includes("car") || t.includes("vehicle") || t.includes("engine") ? 1 : 0,
         0,
@@ -180,8 +185,12 @@ describe("D3 — KvBackendVectorStore", () => {
     const store = new Map<string, string>();
     return {
       get: async (k: string) => store.get(k) ?? null,
-      put: async (k: string, v: string) => { store.set(k, v); },
-      delete: async (k: string) => { store.delete(k); },
+      put: async (k: string, v: string) => {
+        store.set(k, v);
+      },
+      delete: async (k: string) => {
+        store.delete(k);
+      },
     };
   }
 

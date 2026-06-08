@@ -50,7 +50,11 @@ export interface ToolGuardrail {
    * @param input - tool input arguments
    * @param ctx - optional context for intent alignment (S2); ctx is optional for backward compat
    */
-  check(toolName: string, input: unknown, ctx?: ToolGuardrailContext): Promise<GuardrailResult> | GuardrailResult;
+  check(
+    toolName: string,
+    input: unknown,
+    ctx?: ToolGuardrailContext
+  ): Promise<GuardrailResult> | GuardrailResult;
 }
 
 // ── Built-in guardrails ────────────────────────────────────────────────────────
@@ -60,7 +64,10 @@ export function maxInputLength(chars: number): InputGuardrail {
   return {
     name: `maxInputLength(${chars})`,
     check(task) {
-      return { tripwireTriggered: task.length > chars, metadata: { length: task.length, max: chars } };
+      return {
+        tripwireTriggered: task.length > chars,
+        metadata: { length: task.length, max: chars },
+      };
     },
   };
 }
@@ -147,12 +154,15 @@ function defaultParseClassifierResult(response: string): boolean {
       const parsed = JSON.parse(match[0]) as { safe: boolean };
       return parsed.safe === true;
     }
-  } catch { /* fallthrough */ }
+  } catch {
+    /* fallthrough */
+  }
   // Keyword fallback
   const lower = trimmed.toLowerCase();
   if (lower.includes('"safe":true') || lower.includes('"safe": true')) return true;
   if (lower.includes('"safe":false') || lower.includes('"safe": false')) return false;
-  if (lower.includes("unsafe") || lower.includes("violation") || lower.includes("injection")) return false;
+  if (lower.includes("unsafe") || lower.includes("violation") || lower.includes("injection"))
+    return false;
   if (lower.includes("safe")) return true;
   // Default to safe=true on parse failure — prefer false positives over dropping all traffic
   return true;
@@ -169,7 +179,9 @@ function defaultParseClassifierResult(response: string): boolean {
  *
  * @param opts - Configuration options
  */
-export function classifierGuardrail(opts: ClassifierGuardrailOptions): InputGuardrail & OutputGuardrail {
+export function classifierGuardrail(
+  opts: ClassifierGuardrailOptions
+): InputGuardrail & OutputGuardrail {
   const name = opts.name ?? "classifierGuardrail";
   const policy = opts.policy ?? DEFAULT_CLASSIFIER_POLICY;
   const parseResult = opts.parseResult ?? defaultParseClassifierResult;
@@ -212,9 +224,8 @@ export function classifierGuardrail(opts: ClassifierGuardrailOptions): InputGuar
   return {
     name,
     async check(taskOrAnswer: string | unknown): Promise<GuardrailResult> {
-      const content = typeof taskOrAnswer === "string"
-        ? taskOrAnswer
-        : JSON.stringify(taskOrAnswer ?? "");
+      const content =
+        typeof taskOrAnswer === "string" ? taskOrAnswer : JSON.stringify(taskOrAnswer ?? "");
       return classify(content);
     },
   };
@@ -224,7 +235,9 @@ export function classifierGuardrail(opts: ClassifierGuardrailOptions): InputGuar
  * S1 convenience: Llama Guard compatible adapter.
  * For use with any OpenAI-compatible endpoint serving a Llama Guard / ShieldGemma model.
  */
-export function llamaGuardAdapter(opts: Omit<ClassifierGuardrailOptions, "policy" | "parseResult">): InputGuardrail & OutputGuardrail {
+export function llamaGuardAdapter(
+  opts: Omit<ClassifierGuardrailOptions, "policy" | "parseResult">
+): InputGuardrail & OutputGuardrail {
   return classifierGuardrail({
     ...opts,
     name: opts.name ?? "llamaGuard",
@@ -267,10 +280,14 @@ export function intentAlignmentGuardrail(opts: IntentAlignmentGuardrailOptions):
 
   return {
     name,
-    async check(toolName: string, input: unknown, ctx?: ToolGuardrailContext): Promise<GuardrailResult> {
+    async check(
+      toolName: string,
+      input: unknown,
+      ctx?: ToolGuardrailContext
+    ): Promise<GuardrailResult> {
       const originalTask = ctx?.originalTask ?? "(unknown task)";
-      const proposedAction = ctx?.proposedAction
-        ?? `Call tool "${toolName}" with arguments: ${JSON.stringify(input)}`;
+      const proposedAction =
+        ctx?.proposedAction ?? `Call tool "${toolName}" with arguments: ${JSON.stringify(input)}`;
 
       const messages: ModelMessage[] = [
         { role: "system", content: INTENT_ALIGNMENT_POLICY },
@@ -304,7 +321,9 @@ export function intentAlignmentGuardrail(opts: IntentAlignmentGuardrailOptions):
           aligned = parsed.aligned;
           reason = parsed.reason;
         }
-      } catch { /* fallthrough */ }
+      } catch {
+        /* fallthrough */
+      }
 
       return {
         tripwireTriggered: !aligned,
@@ -355,7 +374,7 @@ export function codeGuardrail(opts: CodeGuardrailOptions = {}): InputGuardrail {
   const name = opts.name ?? "codeGuardrail";
   const patterns = [
     ...DEFAULT_CODE_PATTERNS,
-    ...(opts.forbiddenPatterns ?? []).map((p) => typeof p === "string" ? new RegExp(p) : p),
+    ...(opts.forbiddenPatterns ?? []).map((p) => (typeof p === "string" ? new RegExp(p) : p)),
   ];
 
   return {
@@ -383,7 +402,9 @@ export function codeGuardrail(opts: CodeGuardrailOptions = {}): InputGuardrail {
                 metadata: { blockedHost: url.hostname, allowedHosts: opts.allowedHosts },
               };
             }
-          } catch { /* invalid URL — block it */ }
+          } catch {
+            /* invalid URL — block it */
+          }
         }
       }
 

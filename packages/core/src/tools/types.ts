@@ -105,7 +105,10 @@ export interface ToolDefinition<TInput = unknown, TOutput = unknown> {
    * @param ctx   Tool call context (toolName, callId, input args).
    * @returns     Sanitized string (may be the same as input).
    */
-  sanitizeToolResult?: (text: string, ctx: { toolName: string; callId: string; input: unknown }) => string | Promise<string>;
+  sanitizeToolResult?: (
+    text: string,
+    ctx: { toolName: string; callId: string; input: unknown }
+  ) => string | Promise<string>;
   /**
    * B2: Required write scopes for this tool (OWASP least-agency principle).
    * Only relevant when readOnly=false. If set, the calling principal must have

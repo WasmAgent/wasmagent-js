@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { OtlpHttpExporter } from "./index.js";
 import type { ReadableSpan } from "@agentkit-js/core";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { OtlpHttpExporter } from "./index.js";
 
 function makeSpan(overrides: Partial<ReadableSpan> = {}): ReadableSpan {
   return {
@@ -52,7 +52,10 @@ describe("OtlpHttpExporter", () => {
 
     const payload = JSON.parse(capturedBody);
     expect(payload.resourceSpans).toHaveLength(1);
-    const resourceAttrs = payload.resourceSpans[0].resource.attributes as Array<{ key: string; value: { stringValue: string } }>;
+    const resourceAttrs = payload.resourceSpans[0].resource.attributes as Array<{
+      key: string;
+      value: { stringValue: string };
+    }>;
     const serviceNameAttr = resourceAttrs.find((a) => a.key === "service.name");
     expect(serviceNameAttr?.value.stringValue).toBe("my-agent-service");
     const versionAttr = resourceAttrs.find((a) => a.key === "service.version");
@@ -101,17 +104,22 @@ describe("OtlpHttpExporter", () => {
     vi.stubGlobal("fetch", fetchSpy);
 
     const exporter = new OtlpHttpExporter();
-    await exporter.exportAsync([makeSpan({
-      attributes: {
-        "gen_ai.usage.input_tokens": 100,
-        "gen_ai.system": "anthropic",
-        "gen_ai.request.stream": true,
-        "gen_ai.usage.cost": 0.005,
-      },
-    })]);
+    await exporter.exportAsync([
+      makeSpan({
+        attributes: {
+          "gen_ai.usage.input_tokens": 100,
+          "gen_ai.system": "anthropic",
+          "gen_ai.request.stream": true,
+          "gen_ai.usage.cost": 0.005,
+        },
+      }),
+    ]);
 
     const payload = JSON.parse(capturedBody);
-    const attrs = payload.resourceSpans[0].scopeSpans[0].spans[0].attributes as Array<{ key: string; value: Record<string, unknown> }>;
+    const attrs = payload.resourceSpans[0].scopeSpans[0].spans[0].attributes as Array<{
+      key: string;
+      value: Record<string, unknown>;
+    }>;
     const intAttr = attrs.find((a) => a.key === "gen_ai.usage.input_tokens");
     expect(intAttr?.value.intValue).toBe("100");
     const strAttr = attrs.find((a) => a.key === "gen_ai.system");

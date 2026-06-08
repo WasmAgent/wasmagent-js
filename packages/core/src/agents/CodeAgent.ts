@@ -1,19 +1,19 @@
 import { randomUUID } from "node:crypto";
-import type { WasmKernel } from "../executor/types.js";
-import { createKernel } from "../executor/factory.js";
-import { MessageAssembler } from "../memory/MessageAssembler.js";
-import { ToolRegistry } from "../tools/ToolRegistry.js";
-import type { ToolDefinition } from "../tools/types.js";
-import type { Model, EnhancementPolicy } from "../models/types.js";
-import { TokenBudget } from "../models/types.js";
-import { SelfConsistencyRunner } from "../enhancement/SelfConsistencyRunner.js";
-import { ReflectRefineRunner } from "../enhancement/ReflectRefineRunner.js";
 import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
 import { ParallelForkJoinRunner } from "../enhancement/ParallelForkJoinRunner.js";
-import type { AgentEvent, ActionStep, FinalAnswerStep } from "../types/events.js";
-import { runPlanningStep, extractTagContent } from "./prompts.js";
+import { ReflectRefineRunner } from "../enhancement/ReflectRefineRunner.js";
+import { SelfConsistencyRunner } from "../enhancement/SelfConsistencyRunner.js";
+import { createKernel } from "../executor/factory.js";
+import type { KernelResult, WasmKernel } from "../executor/types.js";
 import type { InputGuardrail, OutputGuardrail } from "../guardrails/index.js";
 import { runInputGuardrails, runOutputGuardrails } from "../guardrails/index.js";
+import { MessageAssembler } from "../memory/MessageAssembler.js";
+import type { EnhancementPolicy, Model } from "../models/types.js";
+import { TokenBudget } from "../models/types.js";
+import { ToolRegistry } from "../tools/ToolRegistry.js";
+import type { ToolDefinition } from "../tools/types.js";
+import type { ActionStep, AgentEvent, FinalAnswerStep } from "../types/events.js";
+import { extractTagContent, runPlanningStep } from "./prompts.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant who can solve any task using code.
 To solve the task, you must plan forward to proceed in a series of steps.
@@ -98,10 +98,12 @@ export class CodeAgent {
     this.#kernelPromise = opts.kernel
       ? Promise.resolve(opts.kernel)
       : createKernel({ engine: "js", actionLanguage: opts.actionLanguage ?? "js" });
-    this.#assembler = opts.assembler ?? new MessageAssembler({
-      systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
-      toolsSchema: this.#tools.toJsonSchema(),
-    });
+    this.#assembler =
+      opts.assembler ??
+      new MessageAssembler({
+        systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
+        toolsSchema: this.#tools.toJsonSchema(),
+      });
   }
 
   /** Read-only access to the underlying MessageAssembler for compaction. */
@@ -115,10 +117,7 @@ export class CodeAgent {
    * Equivalent to smolagents' MultiStepAgent._run_stream (agents.py:540)
    * but async, streaming, and with per-event tracing metadata.
    */
-  async *run(
-    task: string,
-    parentTraceId: string | null = null
-  ): AsyncGenerator<AgentEvent> {
+  async *run(task: string, parentTraceId: string | null = null): AsyncGenerator<AgentEvent> {
     const traceId = `agent-${randomUUID()}`;
     const kernel = await this.#kernelPromise;
 
@@ -142,15 +141,29 @@ export class CodeAgent {
 
     // S3: input guardrail check on the task before any model call.
     if (this.#inputGuardrails.length > 0) {
-      const inputTripwire = await runInputGuardrails(this.#inputGuardrails, task, this.#assembler.build());
+      const inputTripwire = await runInputGuardrails(
+        this.#inputGuardrails,
+        task,
+        this.#assembler.build()
+      );
       if (inputTripwire) {
         yield {
-          traceId, parentTraceId, channel: "status", event: "guardrail_tripwire",
-          data: { guardrailName: inputTripwire.guardrailName, layer: "input" as const, ...(inputTripwire.result.metadata ? { metadata: inputTripwire.result.metadata } : {}) },
+          traceId,
+          parentTraceId,
+          channel: "status",
+          event: "guardrail_tripwire",
+          data: {
+            guardrailName: inputTripwire.guardrailName,
+            layer: "input" as const,
+            ...(inputTripwire.result.metadata ? { metadata: inputTripwire.result.metadata } : {}),
+          },
           timestampMs: Date.now(),
         };
         yield {
-          traceId, parentTraceId, channel: "text", event: "error",
+          traceId,
+          parentTraceId,
+          channel: "text",
+          event: "error",
           data: { error: `Input guardrail "${inputTripwire.guardrailName}" triggered` },
           timestampMs: Date.now(),
         };
@@ -170,7 +183,10 @@ export class CodeAgent {
       // not be interrupted — the check catches it at the START of the NEXT step.
       if (budgetMaxTokens && budget.total >= budgetMaxTokens) {
         yield {
-          traceId, parentTraceId, channel: "text", event: "error",
+          traceId,
+          parentTraceId,
+          channel: "text",
+          event: "error",
           data: { error: `Token budget exhausted (${budget.total} >= ${budgetMaxTokens})` },
           timestampMs: Date.now(),
         };
@@ -178,8 +194,13 @@ export class CodeAgent {
       }
       if (budgetMaxDurationMs && Date.now() - runStartMs >= budgetMaxDurationMs) {
         yield {
-          traceId, parentTraceId, channel: "text", event: "error",
-          data: { error: `Time budget exhausted (${Date.now() - runStartMs}ms >= ${budgetMaxDurationMs}ms)` },
+          traceId,
+          parentTraceId,
+          channel: "text",
+          event: "error",
+          data: {
+            error: `Time budget exhausted (${Date.now() - runStartMs}ms >= ${budgetMaxDurationMs}ms)`,
+          },
           timestampMs: Date.now(),
         };
         return;
@@ -213,7 +234,7 @@ export class CodeAgent {
               traceId,
               parentTraceId,
               channel: "thinking",
-              event: "thinking_delta",   // Q6: dedicated event for streaming token deltas
+              event: "thinking_delta", // Q6: dedicated event for streaming token deltas
               data: { delta: event.delta, step },
               timestampMs: Date.now(),
             };
@@ -224,8 +245,13 @@ export class CodeAgent {
         }
       } catch (err) {
         yield {
-          traceId, parentTraceId, channel: "text", event: "error",
-          data: { error: `Model generation failed: ${err instanceof Error ? err.message : String(err)}` },
+          traceId,
+          parentTraceId,
+          channel: "text",
+          event: "error",
+          data: {
+            error: `Model generation failed: ${err instanceof Error ? err.message : String(err)}`,
+          },
           timestampMs: Date.now(),
         };
         return;
@@ -248,7 +274,8 @@ export class CodeAgent {
         const retryMessages = this.#assembler.build();
         retryMessages.push({
           role: "user",
-          content: "Please provide your answer as executable JavaScript inside ```js ... ``` or set __finalAnswer__ = <value>.",
+          content:
+            "Please provide your answer as executable JavaScript inside ```js ... ``` or set __finalAnswer__ = <value>.",
         });
         let retryResponse = "";
         let retryReceivedUsage = false;
@@ -263,8 +290,13 @@ export class CodeAgent {
           }
         } catch (err) {
           yield {
-            traceId, parentTraceId, channel: "text", event: "error",
-            data: { error: `Model generation failed: ${err instanceof Error ? err.message : String(err)}` },
+            traceId,
+            parentTraceId,
+            channel: "text",
+            event: "error",
+            data: {
+              error: `Model generation failed: ${err instanceof Error ? err.message : String(err)}`,
+            },
             timestampMs: Date.now(),
           };
           return;
@@ -280,8 +312,13 @@ export class CodeAgent {
             yield* this.#emitFinalAnswer(traceId, parentTraceId, fallbackAnswer);
           } else {
             yield {
-              traceId, parentTraceId, channel: "text", event: "error",
-              data: { error: "Retry response contained neither executable code nor a final answer." },
+              traceId,
+              parentTraceId,
+              channel: "text",
+              event: "error",
+              data: {
+                error: "Retry response contained neither executable code nor a final answer.",
+              },
               timestampMs: Date.now(),
             };
           }
@@ -297,20 +334,32 @@ export class CodeAgent {
         const codeTripwire = await runInputGuardrails(this.#codeGuardrails, codeToRun, []);
         if (codeTripwire) {
           yield {
-            traceId, parentTraceId, channel: "status", event: "guardrail_tripwire",
-            data: { guardrailName: codeTripwire.guardrailName, layer: "tool" as const, ...(codeTripwire.result.metadata ? { metadata: codeTripwire.result.metadata } : {}) },
+            traceId,
+            parentTraceId,
+            channel: "status",
+            event: "guardrail_tripwire",
+            data: {
+              guardrailName: codeTripwire.guardrailName,
+              layer: "tool" as const,
+              ...(codeTripwire.result.metadata ? { metadata: codeTripwire.result.metadata } : {}),
+            },
             timestampMs: Date.now(),
           };
           yield {
-            traceId, parentTraceId, channel: "text", event: "error",
-            data: { error: `Code guardrail "${codeTripwire.guardrailName}" blocked code execution at step ${step}` },
+            traceId,
+            parentTraceId,
+            channel: "text",
+            event: "error",
+            data: {
+              error: `Code guardrail "${codeTripwire.guardrailName}" blocked code execution at step ${step}`,
+            },
             timestampMs: Date.now(),
           };
           return;
         }
       }
 
-      let kernelResult;
+      let kernelResult: KernelResult;
       try {
         kernelResult = await kernel.run(codeToRun);
       } catch (err) {
@@ -375,9 +424,10 @@ export class CodeAgent {
       const result = await new BudgetForcingRunner().run(this.#model, messages);
       refined = result.answer || answerStr;
     } else if (this.#policy?.reflectRefine?.enabled) {
-      const reflectOpts = this.#policy.reflectRefine.maxCycles !== undefined
-        ? { maxCycles: this.#policy.reflectRefine.maxCycles }
-        : {};
+      const reflectOpts =
+        this.#policy.reflectRefine.maxCycles !== undefined
+          ? { maxCycles: this.#policy.reflectRefine.maxCycles }
+          : {};
       const result = await new ReflectRefineRunner(reflectOpts).run(this.#model, messages);
       refined = result.answer || answerStr;
     } else if (this.#policy?.selfConsistency?.enabled) {
@@ -389,10 +439,14 @@ export class CodeAgent {
       const result = await new SelfConsistencyRunner(scOpts).run(this.#model, messages);
       refined = result.answer || answerStr;
     } else if (this.#policy?.parallelForkJoin?.enabled) {
-      const fjOpts: { branches?: number; concurrency?: number; aggregation?: "summary" | "first" } = {};
-      if (this.#policy.parallelForkJoin.branches !== undefined) fjOpts.branches = this.#policy.parallelForkJoin.branches;
-      if (this.#policy.parallelForkJoin.concurrency !== undefined) fjOpts.concurrency = this.#policy.parallelForkJoin.concurrency;
-      if (this.#policy.parallelForkJoin.aggregation !== undefined) fjOpts.aggregation = this.#policy.parallelForkJoin.aggregation;
+      const fjOpts: { branches?: number; concurrency?: number; aggregation?: "summary" | "first" } =
+        {};
+      if (this.#policy.parallelForkJoin.branches !== undefined)
+        fjOpts.branches = this.#policy.parallelForkJoin.branches;
+      if (this.#policy.parallelForkJoin.concurrency !== undefined)
+        fjOpts.concurrency = this.#policy.parallelForkJoin.concurrency;
+      if (this.#policy.parallelForkJoin.aggregation !== undefined)
+        fjOpts.aggregation = this.#policy.parallelForkJoin.aggregation;
       const result = await new ParallelForkJoinRunner(fjOpts).run(this.#model, messages);
       refined = result.answer || answerStr;
     }
@@ -405,12 +459,22 @@ export class CodeAgent {
       const outputTripwire = await runOutputGuardrails(this.#outputGuardrails, refined);
       if (outputTripwire) {
         yield {
-          traceId, parentTraceId, channel: "status", event: "guardrail_tripwire",
-          data: { guardrailName: outputTripwire.guardrailName, layer: "output" as const, ...(outputTripwire.result.metadata ? { metadata: outputTripwire.result.metadata } : {}) },
+          traceId,
+          parentTraceId,
+          channel: "status",
+          event: "guardrail_tripwire",
+          data: {
+            guardrailName: outputTripwire.guardrailName,
+            layer: "output" as const,
+            ...(outputTripwire.result.metadata ? { metadata: outputTripwire.result.metadata } : {}),
+          },
           timestampMs: Date.now(),
         };
         yield {
-          traceId, parentTraceId, channel: "text", event: "error",
+          traceId,
+          parentTraceId,
+          channel: "text",
+          event: "error",
           data: { error: `Output guardrail "${outputTripwire.guardrailName}" triggered` },
           timestampMs: Date.now(),
         };
@@ -434,7 +498,8 @@ function extractThoughts(response: string): string {
 }
 
 function extractCode(response: string): string | null {
-  const match = /<code>([\s\S]*?)<\/code>/.exec(response) ??
+  const match =
+    /<code>([\s\S]*?)<\/code>/.exec(response) ??
     /```(?:js|javascript)?\n([\s\S]*?)```/.exec(response);
   if (!match) {
     // Log a truncated snippet to aid debugging without flooding output with large responses.

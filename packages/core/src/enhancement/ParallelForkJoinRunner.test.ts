@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { ParallelForkJoinRunner } from "./ParallelForkJoinRunner.js";
+import { describe, expect, it, vi } from "vitest";
 import type { Model, ModelMessage, StreamEvent } from "../models/types.js";
+import { ParallelForkJoinRunner } from "./ParallelForkJoinRunner.js";
 
 function mockModel(answers: string[]): Model {
   let callIdx = 0;
@@ -58,7 +58,11 @@ describe("ParallelForkJoinRunner", () => {
       ...base,
       { role: "user", content: `Perspective ${i}` },
     ];
-    const runner = new ParallelForkJoinRunner({ branches: 2, aggregation: (r) => r[0]!, branchPrompt });
+    const runner = new ParallelForkJoinRunner({
+      branches: 2,
+      aggregation: (r) => r[0]!,
+      branchPrompt,
+    });
     await runner.run(model, Q);
     // First 2 calls are branches (3rd would be summary, but fn aggregation skips it)
     expect(capturedMessages[0]?.at(-1)?.content).toBe("Perspective 0");
@@ -89,7 +93,11 @@ describe("ParallelForkJoinRunner", () => {
       },
     };
     // branches=4, concurrency=2 — summary call is sequential so won't overlap branches
-    const runner = new ParallelForkJoinRunner({ branches: 4, concurrency: 2, aggregation: (r) => r[0]! });
+    const runner = new ParallelForkJoinRunner({
+      branches: 4,
+      concurrency: 2,
+      aggregation: (r) => r[0]!,
+    });
     await runner.run(model, Q);
     expect(maxConcurrent).toBeLessThanOrEqual(2);
   });
