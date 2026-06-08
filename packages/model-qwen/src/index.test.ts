@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { StreamEvent } from "@agentkit-js/core/models";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type OAIChunk = {
   choices: Array<{
@@ -13,7 +13,12 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
   return {
     [Symbol.asyncIterator]() {
       let i = 0;
-      return { async next() { if (i < chunks.length) return { value: chunks[i++]!, done: false }; return { value: undefined as unknown as OAIChunk, done: true }; } };
+      return {
+        async next() {
+          if (i < chunks.length) return { value: chunks[i++]!, done: false };
+          return { value: undefined as unknown as OAIChunk, done: true };
+        },
+      };
     },
   };
 }
@@ -28,8 +33,10 @@ async function collectEvents(
     if (captureParams) captureParams.ref = params;
     return Promise.resolve(makeChunkStream(chunks));
   });
-  vi.doMock("openai", () => ({ default: vi.fn().mockImplementation(() => ({ chat: { completions: { create: mockCreate } } })) }));
-  const { QwenModel } = await import("./index.js?t=" + Date.now());
+  vi.doMock("openai", () => ({
+    default: vi.fn().mockImplementation(() => ({ chat: { completions: { create: mockCreate } } })),
+  }));
+  const { QwenModel } = await import("./index.js?t=" + Date.now() + "");
   const model = new QwenModel(modelId, "key");
   const events: StreamEvent[] = [];
   for await (const e of model.generate([{ role: "user", content: "x" }], opts)) events.push(e);
@@ -38,7 +45,9 @@ async function collectEvents(
 }
 
 describe("QwenModel", () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it("emits text_delta for content", async () => {
     const events = await collectEvents([
@@ -48,17 +57,21 @@ describe("QwenModel", () => {
   });
 
   it("emits thinking_delta for qwen3-max", async () => {
-    const events = await collectEvents([
-      { choices: [{ delta: { reasoning_content: "reasoning" }, finish_reason: null }] },
-      { choices: [{ delta: {}, finish_reason: "stop" }] },
-    ], "qwen3-max");
+    const events = await collectEvents(
+      [
+        { choices: [{ delta: { reasoning_content: "reasoning" }, finish_reason: null }] },
+        { choices: [{ delta: {}, finish_reason: "stop" }] },
+      ],
+      "qwen3-max"
+    );
     expect(events.filter((e) => e.type === "thinking_delta")[0]?.delta).toBe("reasoning");
   });
 
   it("does NOT emit thinking_delta for qwen2.5-*", async () => {
-    const events = await collectEvents([
-      { choices: [{ delta: { reasoning_content: "skip" }, finish_reason: "stop" }] },
-    ], "qwen2.5-72b-instruct");
+    const events = await collectEvents(
+      [{ choices: [{ delta: { reasoning_content: "skip" }, finish_reason: "stop" }] }],
+      "qwen2.5-72b-instruct"
+    );
     expect(events.filter((e) => e.type === "thinking_delta")).toHaveLength(0);
   });
 
@@ -66,8 +79,13 @@ describe("QwenModel", () => {
 
   it("default qwen3: sends enable_thinking:true", async () => {
     const captured = { ref: null as Record<string, unknown> | null };
-    await collectEvents([{ choices: [{ delta: {}, finish_reason: "stop" }] }], "qwen3-max", {}, captured);
-    expect(captured.ref?.["enable_thinking"]).toBe(true);
+    await collectEvents(
+      [{ choices: [{ delta: {}, finish_reason: "stop" }] }],
+      "qwen3-max",
+      {},
+      captured
+    );
+    expect(captured.ref?.enable_thinking).toBe(true);
   });
 
   it("mode:off sends enable_thinking:false", async () => {
@@ -78,14 +96,18 @@ describe("QwenModel", () => {
       { thinking: { mode: "off" } },
       captured
     );
-    expect(captured.ref?.["enable_thinking"]).toBe(false);
+    expect(captured.ref?.enable_thinking).toBe(false);
   });
 
   it("mode:off suppresses thinking_delta", async () => {
-    const events = await collectEvents([
-      { choices: [{ delta: { reasoning_content: "hidden" }, finish_reason: null }] },
-      { choices: [{ delta: {}, finish_reason: "stop" }] },
-    ], "qwen3-max", { thinking: { mode: "off" } });
+    const events = await collectEvents(
+      [
+        { choices: [{ delta: { reasoning_content: "hidden" }, finish_reason: null }] },
+        { choices: [{ delta: {}, finish_reason: "stop" }] },
+      ],
+      "qwen3-max",
+      { thinking: { mode: "off" } }
+    );
     expect(events.filter((e) => e.type === "thinking_delta")).toHaveLength(0);
   });
 
@@ -97,8 +119,8 @@ describe("QwenModel", () => {
       { thinking: { mode: "enabled", effort: "high" } },
       captured
     );
-    expect(typeof captured.ref?.["thinking_budget"]).toBe("number");
-    expect((captured.ref?.["thinking_budget"] as number) > 0).toBe(true);
+    expect(typeof captured.ref?.thinking_budget).toBe("number");
+    expect((captured.ref?.thinking_budget as number) > 0).toBe(true);
   });
 
   it("explicit budgetTokens overrides effort budget", async () => {
@@ -109,7 +131,7 @@ describe("QwenModel", () => {
       { thinking: { mode: "enabled", budgetTokens: 8000 } },
       captured
     );
-    expect(captured.ref?.["thinking_budget"]).toBe(8000);
+    expect(captured.ref?.thinking_budget).toBe(8000);
   });
 
   // ── L9-2: Region ─────────────────────────────────────────────────────────
@@ -117,13 +139,25 @@ describe("QwenModel", () => {
   it("region:intl uses intl base URL", async () => {
     let capturedBase: string | undefined;
     const MockOpenAI = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
-      capturedBase = opts["baseURL"] as string;
-      return { chat: { completions: { create: vi.fn().mockResolvedValue(makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])) } } };
+      capturedBase = opts.baseURL as string;
+      return {
+        chat: {
+          completions: {
+            create: vi
+              .fn()
+              .mockResolvedValue(
+                makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])
+              ),
+          },
+        },
+      };
     });
     vi.doMock("openai", () => ({ default: MockOpenAI }));
     const { QwenModel, QWEN_INTL_BASE_URL } = await import("./index.js?t=" + Date.now() + "r");
     const model = new QwenModel("qwen3-max", { region: "intl" });
-    for await (const _ of model.generate([{ role: "user", content: "hi" }])) { /* consume */ }
+    for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
+      /* consume */
+    }
     expect(capturedBase).toBe(QWEN_INTL_BASE_URL);
     vi.doUnmock("openai");
   });
@@ -131,13 +165,25 @@ describe("QwenModel", () => {
   it("default region uses CN base URL", async () => {
     let capturedBase: string | undefined;
     const MockOpenAI = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
-      capturedBase = opts["baseURL"] as string;
-      return { chat: { completions: { create: vi.fn().mockResolvedValue(makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])) } } };
+      capturedBase = opts.baseURL as string;
+      return {
+        chat: {
+          completions: {
+            create: vi
+              .fn()
+              .mockResolvedValue(
+                makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])
+              ),
+          },
+        },
+      };
     });
     vi.doMock("openai", () => ({ default: MockOpenAI }));
     const { QwenModel, QWEN_BASE_URL } = await import("./index.js?t=" + Date.now() + "s");
     const model = new QwenModel("qwen3-max", "key");
-    for await (const _ of model.generate([{ role: "user", content: "hi" }])) { /* consume */ }
+    for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
+      /* consume */
+    }
     expect(capturedBase).toBe(QWEN_BASE_URL);
     vi.doUnmock("openai");
   });

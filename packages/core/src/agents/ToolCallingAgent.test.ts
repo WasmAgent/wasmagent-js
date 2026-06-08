@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { ToolCallingAgent } from "../agents/ToolCallingAgent.js";
 import { MessageAssembler } from "../memory/MessageAssembler.js";
-import type { Model, ModelMessage, StreamEvent } from "../models/types.js";
+import type { Model, StreamEvent } from "../models/types.js";
 import type { ToolDefinition } from "../tools/types.js";
 
 const addTool: ToolDefinition<{ a: number; b: number }, number> = {
@@ -142,7 +142,9 @@ describe("ToolCallingAgent", () => {
     for await (const e of agent.run("call unknown tool")) events.push(e);
     const toolResult = events.find((e) => e.event === "tool_result");
     expect(toolResult).toBeDefined();
-    expect(toolResult?.event === "tool_result" && toolResult.data.error?.message).toContain("Unknown tool");
+    expect(toolResult?.event === "tool_result" && toolResult.data.error?.message).toContain(
+      "Unknown tool"
+    );
   });
 
   it("all events carry traceId", async () => {
@@ -200,8 +202,14 @@ describe("ToolCallingAgent", () => {
         callCount++;
         if (callCount === 1) {
           // Step 1: two tool_calls in one pass.
-          yield { type: "tool_call", toolCall: { type: "tool_use", id: "c1", name: "add", input: { a: 1, b: 2 } } };
-          yield { type: "tool_call", toolCall: { type: "tool_use", id: "c2", name: "add", input: { a: 10, b: 20 } } };
+          yield {
+            type: "tool_call",
+            toolCall: { type: "tool_use", id: "c1", name: "add", input: { a: 1, b: 2 } },
+          };
+          yield {
+            type: "tool_call",
+            toolCall: { type: "tool_use", id: "c2", name: "add", input: { a: 10, b: 20 } },
+          };
           yield { type: "stop", stopReason: "tool_use" };
         } else {
           // Step 2: text final answer.
@@ -225,7 +233,9 @@ describe("ToolCallingAgent", () => {
     const toolResultEvents = events.filter((e) => e.event === "tool_result");
     expect(toolResultEvents).toHaveLength(2);
     expect(toolResultEvents[0]?.event === "tool_result" && toolResultEvents[0].data.output).toBe(3);
-    expect(toolResultEvents[1]?.event === "tool_result" && toolResultEvents[1].data.output).toBe(30);
+    expect(toolResultEvents[1]?.event === "tool_result" && toolResultEvents[1].data.output).toBe(
+      30
+    );
 
     // Final answer must arrive.
     expect(events.some((e) => e.event === "final_answer")).toBe(true);
@@ -256,7 +266,10 @@ describe("ToolCallingAgent — A3 assembler injection", () => {
         callCount++;
         if (callCount === 1) {
           // First call: one tool call
-          yield { type: "tool_call", toolCall: { type: "tool_use", id: "c1", name: "noop", input: {} } };
+          yield {
+            type: "tool_call",
+            toolCall: { type: "tool_use", id: "c1", name: "noop", input: {} },
+          };
           yield { type: "stop", stopReason: "tool_use" };
         } else {
           // Second call: final answer
@@ -285,7 +298,9 @@ describe("ToolCallingAgent — A3 assembler injection", () => {
 
     expect(agent.assembler).toBe(assembler);
     const initialLength = assembler.historyLength;
-    for await (const _ of agent.run("test task")) { /* consume */ }
+    for await (const _ of agent.run("test task")) {
+      /* consume */
+    }
     expect(assembler.historyLength).toBeGreaterThan(initialLength);
   });
 });
@@ -302,7 +317,10 @@ describe("ToolCallingAgent — A1 DAG scheduler", () => {
       outputSchema: z.number(),
       readOnly: true,
       idempotent: true,
-      forward: async ({ n }) => { callOrder.push(`double:${n}`); return n * 2; },
+      forward: async ({ n }) => {
+        callOrder.push(`double:${n}`);
+        return n * 2;
+      },
     };
 
     let call = 0;
@@ -312,8 +330,14 @@ describe("ToolCallingAgent — A1 DAG scheduler", () => {
         call++;
         if (call === 1) {
           // Two parallel readOnly tool calls with no dependencies.
-          yield { type: "tool_call", toolCall: { type: "tool_use", id: "c1", name: "double", input: { n: 3 } } };
-          yield { type: "tool_call", toolCall: { type: "tool_use", id: "c2", name: "double", input: { n: 5 } } };
+          yield {
+            type: "tool_call",
+            toolCall: { type: "tool_use", id: "c1", name: "double", input: { n: 3 } },
+          };
+          yield {
+            type: "tool_call",
+            toolCall: { type: "tool_use", id: "c2", name: "double", input: { n: 5 } },
+          };
           yield { type: "stop", stopReason: "tool_use" };
         } else {
           yield { type: "text_delta", delta: "6 and 10" };
@@ -322,7 +346,12 @@ describe("ToolCallingAgent — A1 DAG scheduler", () => {
       },
     };
 
-    const agent = new ToolCallingAgent({ tools: [readOnlyTool], model, maxSteps: 5, scheduler: "dag" });
+    const agent = new ToolCallingAgent({
+      tools: [readOnlyTool],
+      model,
+      maxSteps: 5,
+      scheduler: "dag",
+    });
     const events = [];
     for await (const e of agent.run("double 3 and 5")) events.push(e);
 
@@ -341,7 +370,10 @@ describe("ToolCallingAgent — A1 DAG scheduler", () => {
       async *generate() {
         call++;
         if (call === 1) {
-          yield { type: "tool_call", toolCall: { type: "tool_use", id: "t1", name: "add", input: { a: 1, b: 2 } } };
+          yield {
+            type: "tool_call",
+            toolCall: { type: "tool_use", id: "t1", name: "add", input: { a: 1, b: 2 } },
+          };
           yield { type: "stop", stopReason: "tool_use" };
         } else {
           yield { type: "text_delta", delta: "answer is 3" };
@@ -350,12 +382,22 @@ describe("ToolCallingAgent — A1 DAG scheduler", () => {
       },
     };
 
-    const agentDag = new ToolCallingAgent({ tools: [addTool], model, maxSteps: 5, scheduler: "dag" });
+    const agentDag = new ToolCallingAgent({
+      tools: [addTool],
+      model,
+      maxSteps: 5,
+      scheduler: "dag",
+    });
     const dagEvents = [];
     call = 0;
     for await (const e of agentDag.run("1+2")) dagEvents.push(e);
 
-    const agentParallel = new ToolCallingAgent({ tools: [addTool], model, maxSteps: 5, scheduler: "parallel" });
+    const agentParallel = new ToolCallingAgent({
+      tools: [addTool],
+      model,
+      maxSteps: 5,
+      scheduler: "parallel",
+    });
     const parallelEvents = [];
     call = 0;
     for await (const e of agentParallel.run("1+2")) parallelEvents.push(e);
@@ -396,7 +438,10 @@ describe("B2 — External kill-switch", () => {
         stepCount++;
         // Abort after step 1 is processed.
         if (stepCount === 2) controller.abort();
-        yield { type: "tool_call", toolCall: { type: "tool_use", id: `c${stepCount}`, name: "add", input: { a: 1, b: 2 } } };
+        yield {
+          type: "tool_call",
+          toolCall: { type: "tool_use", id: `c${stepCount}`, name: "add", input: { a: 1, b: 2 } },
+        };
         yield { type: "stop", stopReason: "tool_use" };
       },
     };
@@ -414,7 +459,7 @@ describe("B2 — External kill-switch", () => {
 
 // ── A1: Guardrail integration tests ──────────────────────────────────────────
 
-import { maxInputLength, forbiddenPhrases, denyTools } from "../guardrails/index.js";
+import { denyTools, forbiddenPhrases, maxInputLength } from "../guardrails/index.js";
 
 describe("ToolCallingAgent — guardrails (A1)", () => {
   it("input guardrail tripwire blocks run before final_answer", async () => {
@@ -450,7 +495,9 @@ describe("ToolCallingAgent — guardrails (A1)", () => {
       maxSteps: 1,
       inputGuardrails: [trackingGuardrail],
     });
-    for await (const _ of agent.run("task")) { /* consume */ }
+    for await (const _ of agent.run("task")) {
+      /* consume */
+    }
     expect(guardrailCallCount).toBe(1);
   });
 
@@ -546,7 +593,9 @@ describe("ToolCallingAgent — outputSchema (A2)", () => {
     const events = [];
     for await (const e of agent.run("task")) events.push(e);
     const finalAnswer = events.find((e) => e.event === "final_answer");
-    expect(finalAnswer?.event === "final_answer" && finalAnswer.data.answer).toEqual({ result: "fixed" });
+    expect(finalAnswer?.event === "final_answer" && finalAnswer.data.answer).toEqual({
+      result: "fixed",
+    });
     expect(callCount).toBeGreaterThan(1);
   });
 
@@ -576,7 +625,8 @@ describe("ToolCallingAgent — outputSchema (A2)", () => {
     const events = [];
     for await (const e of agent.run("task")) events.push(e);
     const finalAnswer = events.find((e) => e.event === "final_answer");
-    expect(finalAnswer?.event === "final_answer" && finalAnswer.data.answer).toBe("plain text answer");
+    expect(finalAnswer?.event === "final_answer" && finalAnswer.data.answer).toBe(
+      "plain text answer"
+    );
   });
 });
-

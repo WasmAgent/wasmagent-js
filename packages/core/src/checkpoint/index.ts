@@ -84,12 +84,16 @@ export class InMemoryCheckpointer implements Checkpointer {
     const snapshot = this.#store.get(traceId);
     if (!snapshot) throw new Error(`No checkpoint found for traceId: ${traceId}`);
     if (snapshot.pendingHumanInput?.promptId !== promptId) {
-      throw new Error(`promptId mismatch: expected ${snapshot.pendingHumanInput?.promptId}, got ${promptId}`);
+      throw new Error(
+        `promptId mismatch: expected ${snapshot.pendingHumanInput?.promptId}, got ${promptId}`
+      );
     }
     snapshot.humanResponse = { promptId, response };
   }
 
-  get size(): number { return this.#store.size; }
+  get size(): number {
+    return this.#store.size;
+  }
 }
 
 // ── KvCheckpointer ────────────────────────────────────────────────────────────
@@ -140,7 +144,9 @@ export class KvCheckpointer implements Checkpointer {
     const snapshot = await this.load(traceId);
     if (!snapshot) throw new Error(`No checkpoint found for traceId: ${traceId}`);
     if (snapshot.pendingHumanInput?.promptId !== promptId) {
-      throw new Error(`promptId mismatch: expected ${snapshot.pendingHumanInput?.promptId}, got ${promptId}`);
+      throw new Error(
+        `promptId mismatch: expected ${snapshot.pendingHumanInput?.promptId}, got ${promptId}`
+      );
     }
     snapshot.humanResponse = { promptId, response };
     await this.save(traceId, snapshot);
@@ -149,8 +155,8 @@ export class KvCheckpointer implements Checkpointer {
 
 // ── CheckpointableAgent wrapper ───────────────────────────────────────────────
 
-import type { AgentEvent, UserMessageStep } from "../types/events.js";
 import type { MessageAssembler } from "../memory/MessageAssembler.js";
+import type { AgentEvent, UserMessageStep } from "../types/events.js";
 
 export interface CheckpointableAgentOptions {
   checkpointer: Checkpointer;
@@ -223,10 +229,7 @@ export class CheckpointableRun {
  * Restore a MessageAssembler from a snapshot's history.
  * Call this before passing the agent to CheckpointableRun.resume().
  */
-export function restoreFromSnapshot(
-  snapshot: AgentSnapshot,
-  assembler: MessageAssembler
-): void {
+export function restoreFromSnapshot(snapshot: AgentSnapshot, assembler: MessageAssembler): void {
   assembler.reset();
   // Re-add seed user message first, then all subsequent history steps (including
   // any follow-up user_message steps from multi-turn human-in-the-loop runs).

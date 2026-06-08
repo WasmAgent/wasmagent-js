@@ -5,10 +5,10 @@
  * and runEval() for evaluating agent runs against a dataset.
  */
 
-import type { AgentEvent } from "../types/events.js";
-import type { Model, ModelMessage } from "../models/types.js";
 import type { GuardrailResult, OutputGuardrail } from "../guardrails/index.js";
 import { runOutputGuardrails } from "../guardrails/index.js";
+import type { Model, ModelMessage } from "../models/types.js";
+import type { AgentEvent } from "../types/events.js";
 
 // ── Scorer interface ──────────────────────────────────────────────────────────
 
@@ -46,10 +46,7 @@ export interface Scorer {
 
 // ── Trace collector ───────────────────────────────────────────────────────────
 
-export function collectTrace(
-  task: string,
-  events: AgentEvent[]
-): AgentTrace {
+export function collectTrace(task: string, events: AgentEvent[]): AgentTrace {
   const first = events[0];
   const traceId = first ? first.traceId : "unknown";
   let finalAnswer: string | null = null;
@@ -61,12 +58,21 @@ export function collectTrace(
       finalAnswer = String((ev as { data: { answer: unknown } }).data.answer ?? "");
     }
     if (ev.event === "tool_call" && ev.channel === "tool") {
-      const d = (ev as { data: { toolName: string; args: Record<string, unknown>; callId: string } }).data;
+      const d = (
+        ev as { data: { toolName: string; args: Record<string, unknown>; callId: string } }
+      ).data;
       toolCalls.push({ toolName: d.toolName, args: d.args, callId: d.callId });
     }
     if (ev.event === "tool_result" && ev.channel === "tool") {
-      const d = (ev as { data: { toolName: string; output: unknown; callId: string; error?: unknown } }).data;
-      toolResults.push({ toolName: d.toolName, output: d.output, callId: d.callId, isError: !!d.error });
+      const d = (
+        ev as { data: { toolName: string; output: unknown; callId: string; error?: unknown } }
+      ).data;
+      toolResults.push({
+        toolName: d.toolName,
+        output: d.output,
+        callId: d.callId,
+        isError: !!d.error,
+      });
     }
   }
 
@@ -122,7 +128,8 @@ export const trajectoryValidity: Scorer = {
   score(trace) {
     const callIds = new Set(trace.toolCalls.map((c) => c.callId));
     const resultIds = new Set(trace.toolResults.map((r) => r.callId));
-    if (callIds.size === 0) return { scorer: "trajectoryValidity", score: 1, detail: "no tool calls" };
+    if (callIds.size === 0)
+      return { scorer: "trajectoryValidity", score: 1, detail: "no tool calls" };
     let paired = 0;
     for (const id of callIds) {
       if (resultIds.has(id)) paired++;
@@ -176,14 +183,18 @@ export async function runEval(
 // ── LCS helper ────────────────────────────────────────────────────────────────
 
 function lcsLength(a: string[], b: string[]): number {
-  const m = a.length, n = b.length;
+  const m = a.length,
+    n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
-      dp[i]![j] = a[i - 1] === b[j - 1] ? dp[i - 1]![j - 1]! + 1 : Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
+      dp[i]![j] =
+        a[i - 1] === b[j - 1]
+          ? dp[i - 1]?.[j - 1]! + 1
+          : Math.max(dp[i - 1]?.[j]!, dp[i]?.[j - 1]!);
     }
   }
-  return dp[m]![n]!;
+  return dp[m]?.[n]!;
 }
 
 // ── C2: llmJudge and guardrailCompliance scorers ───────────────────────────────
@@ -212,7 +223,7 @@ export function llmJudge(
 ): Scorer {
   return {
     name: `llmJudge(${rubric.slice(0, 40).replace(/\s+/g, " ")}...)`,
-    score(trace, _sample): ScorerResult {
+    score(_trace, _sample): ScorerResult {
       // Note: Scorer.score() is sync, but we need async for LLM calls.
       // The async evaluation is deferred — use runEvalAsync() or manually await.
       // This returns 0 synchronously as a sentinel; use llmJudgeAsync for real scoring.
@@ -267,7 +278,7 @@ REASONING: <one sentence explanation>`;
   const scoreMatch = /SCORE:\s*(0\.0|0\.5|1\.0|0|1)/.exec(responseText);
   const reasoningMatch = /REASONING:\s*(.+)/.exec(responseText);
   const score = scoreMatch ? parseFloat(scoreMatch[1]!) : 0;
-  const reasoning = reasoningMatch ? reasoningMatch[1]!.trim() : responseText.trim().slice(0, 200);
+  const reasoning = reasoningMatch ? reasoningMatch[1]?.trim() : responseText.trim().slice(0, 200);
 
   return {
     scorer: "llmJudge",
@@ -313,7 +324,9 @@ export function guardrailCompliance(guardrails: OutputGuardrail[]): Scorer {
       return {
         scorer: "guardrailCompliance",
         score: tripwireTriggered ? 0 : 1,
-        detail: tripwireTriggered ? `Guardrail "${tripwireName}" triggered` : "All guardrails passed",
+        detail: tripwireTriggered
+          ? `Guardrail "${tripwireName}" triggered`
+          : "All guardrails passed",
       };
     },
   };
@@ -334,8 +347,9 @@ export async function guardrailComplianceAsync(
   return {
     scorer: "guardrailCompliance",
     score: tripwire === null ? 1 : 0,
-    detail: tripwire !== null
-      ? `Guardrail "${tripwire.guardrailName}" triggered`
-      : "All guardrails passed",
+    detail:
+      tripwire !== null
+        ? `Guardrail "${tripwire.guardrailName}" triggered`
+        : "All guardrails passed",
   };
 }

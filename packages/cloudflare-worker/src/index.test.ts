@@ -5,8 +5,9 @@
  * in Node.js without real API calls or WASM loading. Call the exported default
  * handler directly with synthetic Request / Env / ExecutionContext values.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+
 import type { AgentEvent } from "@agentkit-js/core";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
@@ -38,21 +39,17 @@ vi.mock("@agentkit-js/core", () => {
         })();
       }
     },
-    AnthropicModel: class {
-      constructor(_modelId: string, _apiKey: string) {}
-    },
+    AnthropicModel: class {},
     AnthropicModels: {
-      OPUS_LATEST:   "claude-opus-4-8",
+      OPUS_LATEST: "claude-opus-4-8",
       SONNET_LATEST: "claude-sonnet-4-6",
-      HAIKU_LATEST:  "claude-haiku-4-5-20251001",
+      HAIKU_LATEST: "claude-haiku-4-5-20251001",
     },
   };
 });
 
 vi.mock("@agentkit-js/kernel-quickjs", () => ({
-  QuickJSKernel: class {
-    constructor(_opts?: unknown) {}
-  },
+  QuickJSKernel: class {},
 }));
 
 vi.mock("quickjs-emscripten-core", () => ({
@@ -72,7 +69,11 @@ function makeEnv(overrides: Partial<Record<string, unknown>> = {}): Record<strin
   };
 }
 
-const mockCtx = { waitUntil: (p: Promise<unknown>) => { p.catch(() => {}); } };
+const mockCtx = {
+  waitUntil: (p: Promise<unknown>) => {
+    p.catch(() => {});
+  },
+};
 
 async function readSSELines(response: Response): Promise<string[]> {
   const text = await response.text();
@@ -123,7 +124,7 @@ describe("Cloudflare Worker routing", () => {
       mockCtx as never
     );
     expect(res.status).toBe(200);
-    const json = await res.json() as { status: string };
+    const json = (await res.json()) as { status: string };
     expect(json.status).toBe("ok");
   });
 
@@ -146,7 +147,7 @@ describe("POST /run — input validation", () => {
   it("missing ANTHROPIC_API_KEY → 500", async () => {
     const res = await runPost({ task: "test" }, makeEnv({ ANTHROPIC_API_KEY: "" }));
     expect(res.status).toBe(500);
-    const json = await res.json() as { error: string };
+    const json = (await res.json()) as { error: string };
     expect(json.error).toContain("ANTHROPIC_API_KEY");
   });
 
@@ -162,14 +163,14 @@ describe("POST /run — input validation", () => {
       mockCtx as never
     );
     expect(res.status).toBe(400);
-    const json = await res.json() as { error: string };
+    const json = (await res.json()) as { error: string };
     expect(json.error).toContain("Invalid JSON");
   });
 
   it("missing task field → 400", async () => {
     const res = await runPost({ agentType: "code" });
     expect(res.status).toBe(400);
-    const json = await res.json() as { error: string };
+    const json = (await res.json()) as { error: string };
     expect(json.error).toContain("task");
   });
 
@@ -177,14 +178,14 @@ describe("POST /run — input validation", () => {
     const bigTask = "x".repeat(11_000);
     const res = await runPost({ task: bigTask });
     expect(res.status).toBe(400);
-    const json = await res.json() as { error: string };
+    const json = (await res.json()) as { error: string };
     expect(json.error).toContain("task must be under");
   });
 
   it("invalid agentType → 400", async () => {
     const res = await runPost({ task: "hi", agentType: "bad-type" });
     expect(res.status).toBe(400);
-    const json = await res.json() as { error: string };
+    const json = (await res.json()) as { error: string };
     expect(json.error).toContain("agentType");
   });
 });
@@ -197,25 +198,21 @@ describe("POST /run — authentication", () => {
   it("Bearer token required but missing → 401", async () => {
     const res = await runPost({ task: "hi" }, makeEnv({ AGENTKIT_CLIENT_TOKEN: "secret" }));
     expect(res.status).toBe(401);
-    const json = await res.json() as { error: string };
+    const json = (await res.json()) as { error: string };
     expect(json.error).toContain("Unauthorized");
   });
 
   it("Bearer token wrong → 401", async () => {
-    const res = await runPost(
-      { task: "hi" },
-      makeEnv({ AGENTKIT_CLIENT_TOKEN: "secret" }),
-      { Authorization: "Bearer wrong" }
-    );
+    const res = await runPost({ task: "hi" }, makeEnv({ AGENTKIT_CLIENT_TOKEN: "secret" }), {
+      Authorization: "Bearer wrong",
+    });
     expect(res.status).toBe(401);
   });
 
   it("Bearer token correct → 200 SSE stream", async () => {
-    const res = await runPost(
-      { task: "hi" },
-      makeEnv({ AGENTKIT_CLIENT_TOKEN: "secret" }),
-      { Authorization: "Bearer secret" }
-    );
+    const res = await runPost({ task: "hi" }, makeEnv({ AGENTKIT_CLIENT_TOKEN: "secret" }), {
+      Authorization: "Bearer secret",
+    });
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/event-stream");
   });
@@ -245,10 +242,16 @@ describe("POST /run — SSE streaming", () => {
   });
 
   it("agent error event is streamed", async () => {
-    mockAgentEvents = [{
-      traceId: "t1", parentTraceId: null, channel: "text", event: "error",
-      data: { error: "something went wrong" }, timestampMs: 0,
-    }];
+    mockAgentEvents = [
+      {
+        traceId: "t1",
+        parentTraceId: null,
+        channel: "text",
+        event: "error",
+        data: { error: "something went wrong" },
+        timestampMs: 0,
+      },
+    ];
     const res = await runPost({ task: "fail" });
     expect(res.status).toBe(200);
     const lines = await readSSELines(res);
@@ -308,10 +311,7 @@ describe("POST /run — KV session caching", () => {
       get: vi.fn().mockResolvedValue(JSON.stringify(cachedEvents)),
       put: vi.fn().mockResolvedValue(undefined),
     };
-    const res = await runPost(
-      { task: "cached task" },
-      makeEnv({ AGENTKIT_SESSIONS: mockKV })
-    );
+    const res = await runPost({ task: "cached task" }, makeEnv({ AGENTKIT_SESSIONS: mockKV }));
     expect(res.status).toBe(200);
     expect(res.headers.get("X-Agentkit-Cache")).toBe("HIT");
     const lines = await readSSELines(res);
@@ -324,10 +324,7 @@ describe("POST /run — KV session caching", () => {
       get: vi.fn().mockResolvedValue(null),
       put: putMock,
     };
-    const res = await runPost(
-      { task: "new task" },
-      makeEnv({ AGENTKIT_SESSIONS: mockKV })
-    );
+    const res = await runPost({ task: "new task" }, makeEnv({ AGENTKIT_SESSIONS: mockKV }));
     expect(res.status).toBe(200);
     const lines = await readSSELines(res);
     expect(lines.at(-1)).toBe("data: [DONE]");
@@ -341,12 +338,9 @@ describe("POST /run — KV session caching", () => {
       get: vi.fn().mockResolvedValue("not valid json {{{"),
       put: vi.fn(),
     };
-    const res = await runPost(
-      { task: "cached" },
-      makeEnv({ AGENTKIT_SESSIONS: mockKV })
-    );
+    const res = await runPost({ task: "cached" }, makeEnv({ AGENTKIT_SESSIONS: mockKV }));
     expect(res.status).toBe(500);
-    const json = await res.json() as { error: string };
+    const json = (await res.json()) as { error: string };
     expect(json.error).toContain("corrupted");
   });
 });

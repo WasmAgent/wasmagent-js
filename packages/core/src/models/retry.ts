@@ -46,10 +46,7 @@ function retryAfterMs(err: unknown): number | null {
   return null;
 }
 
-export async function withRetry<T>(
-  fn: () => Promise<T>,
-  policy: RetryPolicy = {}
-): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>, policy: RetryPolicy = {}): Promise<T> {
   const { maxRetries, baseDelayMs, maxDelayMs } = { ...DEFAULT_POLICY, ...policy };
   let attempt = 0;
   while (true) {

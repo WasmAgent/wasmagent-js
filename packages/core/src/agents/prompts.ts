@@ -2,8 +2,8 @@
  * Shared prompt constants and planning utilities used by CodeAgent and ToolCallingAgent.
  */
 
-import type { Model, TokenBudget } from "../models/types.js";
 import type { MessageAssembler } from "../memory/MessageAssembler.js";
+import type { Model, TokenBudget } from "../models/types.js";
 import type { AgentEvent, PlanningStep } from "../types/events.js";
 
 /**

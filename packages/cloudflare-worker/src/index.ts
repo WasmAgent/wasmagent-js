@@ -30,14 +30,14 @@
  * variant/variantLoader options. No runtime WASM compilation is needed.
  */
 
-import { CodeAgent, ToolCallingAgent, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
-import type { QuickJSKernelOptions } from "@agentkit-js/kernel-quickjs";
-import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
-import cfVariant from "@jitl/quickjs-wasmfile-release-sync";
-import type { AgentEvent } from "@agentkit-js/core";
-import { toAgUiSseStream, fromRunAgentInput, wantsAgUiSse } from "@agentkit-js/ag-ui";
 import type { RunAgentInput } from "@agentkit-js/ag-ui";
+import { fromRunAgentInput, toAgUiSseStream, wantsAgUiSse } from "@agentkit-js/ag-ui";
+import type { AgentEvent } from "@agentkit-js/core";
+import { AnthropicModel, AnthropicModels, CodeAgent, ToolCallingAgent } from "@agentkit-js/core";
+import type { QuickJSKernelOptions } from "@agentkit-js/kernel-quickjs";
+import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import cfVariant from "@jitl/quickjs-wasmfile-release-sync";
+import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
@@ -59,9 +59,9 @@ export interface Env {
 }
 
 const SESSION_TTL_SECONDS = 3600; // 1 hour
-const MAX_TASK_BYTES = 10_240;    // 10 KB input cap
-const MAX_STEPS_CAP = 50;         // hard cap regardless of caller value
-const MAX_KV_EVENTS = 500;        // KV event accumulator cap (~5 MB safety margin)
+const MAX_TASK_BYTES = 10_240; // 10 KB input cap
+const MAX_STEPS_CAP = 50; // hard cap regardless of caller value
+const MAX_KV_EVENTS = 500; // KV event accumulator cap (~5 MB safety margin)
 
 function getCorsHeaders(env: Env, request: Request): Record<string, string> {
   const allowed = env.AGENTKIT_ALLOWED_ORIGIN ?? "*";
@@ -71,10 +71,10 @@ function getCorsHeaders(env: Env, request: Request): Record<string, string> {
     );
   }
   const origin = request.headers.get("Origin") ?? "";
-  const allowOrigin = allowed === "*" ? "*" : (origin === allowed ? origin : "null");
+  const allowOrigin = allowed === "*" ? "*" : origin === allowed ? origin : "null";
   return {
     "Access-Control-Allow-Origin": allowOrigin,
-    ...(allowed !== "*" ? { "Vary": "Origin" } : {}),
+    ...(allowed !== "*" ? { Vary: "Origin" } : {}),
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
@@ -96,10 +96,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/health" && request.method === "GET") {
-      return Response.json(
-        { status: "ok", version: "0.1.0" },
-        { headers: corsHeaders }
-      );
+      return Response.json({ status: "ok", version: "0.1.0" }, { headers: corsHeaders });
     }
 
     if (url.pathname === "/run" && request.method === "POST") {
@@ -127,10 +124,7 @@ interface RunBody {
 
 function isRunBody(v: unknown): v is RunBody {
   return (
-    typeof v === "object" &&
-    v !== null &&
-    "task" in v &&
-    typeof (v as RunBody).task === "string"
+    typeof v === "object" && v !== null && "task" in v && typeof (v as RunBody).task === "string"
   );
 }
 
@@ -157,7 +151,12 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-async function handleRun(request: Request, env: Env, ctx: ExecutionContext, corsHeaders: Record<string, string>): Promise<Response> {
+async function handleRun(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
   // Auth check: require Bearer token when AGENTKIT_CLIENT_TOKEN is configured.
   if (env.AGENTKIT_CLIENT_TOKEN) {
     const auth = request.headers.get("Authorization") ?? "";
@@ -193,7 +192,11 @@ async function handleRun(request: Request, env: Env, ctx: ExecutionContext, cors
     agentType = body.agentType ?? "code";
     maxSteps = body.maxSteps ?? 10;
   } else {
-    return jsonError('Body must include { "task": string } or a RunAgentInput object', 400, corsHeaders);
+    return jsonError(
+      'Body must include { "task": string } or a RunAgentInput object',
+      400,
+      corsHeaders
+    );
   }
 
   // Input size cap to prevent DoS via oversized prompts.
@@ -224,12 +227,24 @@ async function handleRun(request: Request, env: Env, ctx: ExecutionContext, cors
       if (useAgUiSse) {
         // Parse cached events and replay as AG-UI SSE.
         let events: AgentEvent[];
-        try { events = JSON.parse(cached) as AgentEvent[]; } catch {
+        try {
+          events = JSON.parse(cached) as AgentEvent[];
+        } catch {
           return jsonError("Cached session data is corrupted", 500, corsHeaders);
         }
-        const agUiStream = toAgUiSseStream((async function*() { yield* events; })(), agUiRunId);
+        const agUiStream = toAgUiSseStream(
+          (async function* () {
+            yield* events;
+          })(),
+          agUiRunId
+        );
         return new Response(agUiStream, {
-          headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "X-Agentkit-Cache": "HIT", ...corsHeaders },
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "X-Agentkit-Cache": "HIT",
+            ...corsHeaders,
+          },
         });
       }
       return replayCachedSession(cached, corsHeaders);
@@ -241,7 +256,9 @@ async function handleRun(request: Request, env: Env, ctx: ExecutionContext, cors
   const quickJSKernel = new QuickJSKernel({
     timeoutMs: 10_000,
     variant: cfVariant as unknown,
-    variantLoader: newQuickJSWASMModuleFromVariant as unknown as NonNullable<QuickJSKernelOptions["variantLoader"]>,
+    variantLoader: newQuickJSWASMModuleFromVariant as unknown as NonNullable<
+      QuickJSKernelOptions["variantLoader"]
+    >,
   } satisfies QuickJSKernelOptions);
 
   const agentRun: AsyncGenerator<AgentEvent> =
@@ -259,48 +276,65 @@ async function handleRun(request: Request, env: Env, ctx: ExecutionContext, cors
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
 
-    ctx.waitUntil((async () => {
-      const allEvents: AgentEvent[] = [];
-      let ranSuccessfully = false;
-      try {
-        const agUiStream = toAgUiSseStream(
-          (async function*() {
-            for await (const ev of agentRun) {
-              // Always record final_answer; cap earlier events to MAX_KV_EVENTS.
-              if (kvKey && env.AGENTKIT_SESSIONS) {
-                if (ev.event === "final_answer" || allEvents.length < MAX_KV_EVENTS) {
-                  allEvents.push(ev);
-                }
-              }
-              if (ev.event === "final_answer") ranSuccessfully = true;
-              yield ev;
-            }
-          })(),
-          agUiRunId
-        );
-        const reader = agUiStream.getReader();
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          await writer.write(value);
-        }
-        if (kvKey && env.AGENTKIT_SESSIONS && ranSuccessfully && allEvents.length > 0) {
-          try {
-            await env.AGENTKIT_SESSIONS.put(kvKey, JSON.stringify(allEvents), { expirationTtl: SESSION_TTL_SECONDS });
-          } catch (err) {
-            console.error("[agentkit-worker] KV session write failed:", err instanceof Error ? err.message : String(err));
-          }
-        }
-      } catch (err) {
+    ctx.waitUntil(
+      (async () => {
+        const allEvents: AgentEvent[] = [];
+        let ranSuccessfully = false;
         try {
-          const enc = new TextEncoder();
-          const errEvent = JSON.stringify({ type: "RUN_ERROR", runId: agUiRunId ?? "unknown", timestamp: Date.now(), data: { message: err instanceof Error ? err.message : String(err), code: "INTERNAL_ERROR" } });
-          await writer.write(enc.encode(`event: RUN_ERROR\ndata: ${errEvent}\n\n`));
-        } catch { /* consumer disconnected */ }
-      } finally {
-        await writer.close().catch(() => {});
-      }
-    })());
+          const agUiStream = toAgUiSseStream(
+            (async function* () {
+              for await (const ev of agentRun) {
+                // Always record final_answer; cap earlier events to MAX_KV_EVENTS.
+                if (kvKey && env.AGENTKIT_SESSIONS) {
+                  if (ev.event === "final_answer" || allEvents.length < MAX_KV_EVENTS) {
+                    allEvents.push(ev);
+                  }
+                }
+                if (ev.event === "final_answer") ranSuccessfully = true;
+                yield ev;
+              }
+            })(),
+            agUiRunId
+          );
+          const reader = agUiStream.getReader();
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            await writer.write(value);
+          }
+          if (kvKey && env.AGENTKIT_SESSIONS && ranSuccessfully && allEvents.length > 0) {
+            try {
+              await env.AGENTKIT_SESSIONS.put(kvKey, JSON.stringify(allEvents), {
+                expirationTtl: SESSION_TTL_SECONDS,
+              });
+            } catch (err) {
+              console.error(
+                "[agentkit-worker] KV session write failed:",
+                err instanceof Error ? err.message : String(err)
+              );
+            }
+          }
+        } catch (err) {
+          try {
+            const enc = new TextEncoder();
+            const errEvent = JSON.stringify({
+              type: "RUN_ERROR",
+              runId: agUiRunId ?? "unknown",
+              timestamp: Date.now(),
+              data: {
+                message: err instanceof Error ? err.message : String(err),
+                code: "INTERNAL_ERROR",
+              },
+            });
+            await writer.write(enc.encode(`event: RUN_ERROR\ndata: ${errEvent}\n\n`));
+          } catch {
+            /* consumer disconnected */
+          }
+        } finally {
+          await writer.close().catch(() => {});
+        }
+      })()
+    );
 
     return new Response(readable, {
       headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", ...corsHeaders },
@@ -312,45 +346,50 @@ async function handleRun(request: Request, env: Env, ctx: ExecutionContext, cors
   const writer = writable.getWriter();
   const encoder = new TextEncoder();
 
-  ctx.waitUntil((async () => {
-    const allEvents: AgentEvent[] = [];
-    let ranSuccessfully = false;
-    try {
-      for await (const event of agentRun) {
-        const line = `data: ${JSON.stringify(event)}\n\n`;
-        await writer.write(encoder.encode(line));
-        if (kvKey && env.AGENTKIT_SESSIONS) {
-          if (event.event === "final_answer" || allEvents.length < MAX_KV_EVENTS) {
-            allEvents.push(event);
+  ctx.waitUntil(
+    (async () => {
+      const allEvents: AgentEvent[] = [];
+      let ranSuccessfully = false;
+      try {
+        for await (const event of agentRun) {
+          const line = `data: ${JSON.stringify(event)}\n\n`;
+          await writer.write(encoder.encode(line));
+          if (kvKey && env.AGENTKIT_SESSIONS) {
+            if (event.event === "final_answer" || allEvents.length < MAX_KV_EVENTS) {
+              allEvents.push(event);
+            }
+          }
+          if (event.event === "final_answer") ranSuccessfully = true;
+        }
+        await writer.write(encoder.encode("data: [DONE]\n\n"));
+
+        if (kvKey && env.AGENTKIT_SESSIONS && ranSuccessfully && allEvents.length > 0) {
+          try {
+            await env.AGENTKIT_SESSIONS.put(kvKey, JSON.stringify(allEvents), {
+              expirationTtl: SESSION_TTL_SECONDS,
+            });
+          } catch (err) {
+            console.error(
+              "[agentkit-worker] KV session write failed:",
+              err instanceof Error ? err.message : String(err)
+            );
           }
         }
-        if (event.event === "final_answer") ranSuccessfully = true;
-      }
-      await writer.write(encoder.encode("data: [DONE]\n\n"));
-
-      if (kvKey && env.AGENTKIT_SESSIONS && ranSuccessfully && allEvents.length > 0) {
+      } catch (err) {
         try {
-          await env.AGENTKIT_SESSIONS.put(
-            kvKey,
-            JSON.stringify(allEvents),
-            { expirationTtl: SESSION_TTL_SECONDS }
-          );
-        } catch (err) {
-          console.error("[agentkit-worker] KV session write failed:", err instanceof Error ? err.message : String(err));
+          const errEvent = {
+            event: "error",
+            data: { error: err instanceof Error ? err.message : String(err) },
+          };
+          await writer.write(encoder.encode(`data: ${JSON.stringify(errEvent)}\n\n`));
+        } catch {
+          /* consumer disconnected */
         }
+      } finally {
+        await writer.close().catch(() => {});
       }
-    } catch (err) {
-      try {
-        const errEvent = {
-          event: "error",
-          data: { error: err instanceof Error ? err.message : String(err) },
-        };
-        await writer.write(encoder.encode(`data: ${JSON.stringify(errEvent)}\n\n`));
-      } catch { /* consumer disconnected */ }
-    } finally {
-      await writer.close().catch(() => {});
-    }
-  })());
+    })()
+  );
 
   return new Response(readable, {
     headers: {
@@ -384,7 +423,9 @@ function replayCachedSession(cachedJson: string, corsHeaders: Record<string, str
         await writer.write(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
       }
       await writer.write(encoder.encode("data: [DONE]\n\n"));
-    } catch { /* consumer disconnected */ } finally {
+    } catch {
+      /* consumer disconnected */
+    } finally {
       await writer.close().catch(() => {});
     }
   })();
@@ -413,11 +454,6 @@ async function contentHash(inputs: {
   model: string;
 }): Promise<string> {
   const material = JSON.stringify(inputs);
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(material)
-  );
-  return "run:" + [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(material));
+  return `run:${[...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
 }

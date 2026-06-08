@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { ProgrammaticOrchestrator } from "../executor/ProgrammaticOrchestrator.js";
-import { ToolRegistry } from "../tools/ToolRegistry.js";
 import { VmKernel } from "../executor/VmKernel.js";
+import { ToolRegistry } from "../tools/ToolRegistry.js";
 
 function makeTool(name: string, forward: (input: Record<string, unknown>) => Promise<string>) {
   return {
@@ -20,7 +20,7 @@ describe("ProgrammaticOrchestrator (L3-1)", () => {
   it("executes a script and returns a result", async () => {
     const kernel = new VmKernel();
     const registry = new ToolRegistry();
-    registry.register(makeTool("greet", async (input) => `Hello, ${input["name"] ?? "world"}!`));
+    registry.register(makeTool("greet", async (input) => `Hello, ${input.name ?? "world"}!`));
 
     const orchestrator = new ProgrammaticOrchestrator(kernel, registry);
     const result = await orchestrator.run(`"orchestration complete"`);
@@ -33,7 +33,7 @@ describe("ProgrammaticOrchestrator (L3-1)", () => {
   it("tracks toolCallCount correctly", async () => {
     const kernel = new VmKernel();
     const registry = new ToolRegistry();
-    registry.register(makeTool("add", async (input) => String(Number(input["a"]) + Number(input["b"]))));
+    registry.register(makeTool("add", async (input) => String(Number(input.a) + Number(input.b))));
 
     const orchestrator = new ProgrammaticOrchestrator(kernel, registry);
     const result = await orchestrator.run(`"done"`);

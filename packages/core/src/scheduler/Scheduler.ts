@@ -1,6 +1,6 @@
 import type { ToolRegistry } from "../tools/ToolRegistry.js";
-import type { ActionIR, IRNode } from "./ir.js";
 import { resolveRefs } from "./deriveDeps.js";
+import type { ActionIR, IRNode } from "./ir.js";
 
 /**
  * Scheduler (C2/C3).
@@ -66,7 +66,7 @@ export class Scheduler {
       if (!node.readOnly && node.resourceKey) {
         const prev = lastWriterByResource.get(node.resourceKey);
         if (prev) {
-          augmentedDeps.get(node.id)!.push(prev);
+          augmentedDeps.get(node.id)?.push(prev);
         }
         lastWriterByResource.set(node.resourceKey, node.id);
       }
@@ -84,7 +84,10 @@ export class Scheduler {
 
     while (completedResults.size < ir.nodes.length) {
       const ready = ir.nodes.filter(
-        (n) => !completedResults.has(n.id) && !speculative.has(n.id) && (remaining.get(n.id)?.size ?? 0) === 0
+        (n) =>
+          !completedResults.has(n.id) &&
+          !speculative.has(n.id) &&
+          (remaining.get(n.id)?.size ?? 0) === 0
       );
 
       const readyReadOnly = ready.filter((n) => n.readOnly);
@@ -120,9 +123,13 @@ export class Scheduler {
         yield { type: "node_barrier_wait", pendingSpeculative: [...speculative.keys()] };
         // Pre-capture [id, promise] pairs so the settled index maps to the correct node ID.
         const speculativeEntries = [...speculative.entries()];
-        for (const [i, settled] of (await Promise.allSettled(
-          speculativeEntries.map(([id, p]) => p.then((r) => ({ node: r.node, result: r.result, _id: id })))
-        )).entries()) {
+        for (const [i, settled] of (
+          await Promise.allSettled(
+            speculativeEntries.map(([id, p]) =>
+              p.then((r) => ({ node: r.node, result: r.result, _id: id }))
+            )
+          )
+        ).entries()) {
           if (settled.status === "fulfilled") {
             const { node, result, _id } = settled.value;
             speculative.delete(_id);
@@ -132,7 +139,7 @@ export class Scheduler {
             this.#unblockDependents(node.id, remaining);
           } else {
             // Use the pre-captured index to identify exactly which node rejected.
-            const failedId = speculativeEntries[i]![0];
+            const failedId = speculativeEntries[i]?.[0];
             const reason = settled.reason;
             const isAbort = reason instanceof Error && reason.name === "AbortError";
             if (!isAbort) {
@@ -150,18 +157,23 @@ export class Scheduler {
       // Run non-readOnly ready nodes in parallel (they're not speculative).
       if (readyWriting.length > 0) {
         for (const node of readyWriting) yield { type: "node_start", nodeId: node.id };
-        for (const [i, settled] of (await Promise.allSettled(
-          readyWriting.map(async (node) => {
-            const resolvedArgs = resolveRefs(node.args, completedResults) as Record<string, unknown>;
-            return {
-              node,
-              result: await this.tools.call(
-                { toolName: node.toolName, args: resolvedArgs, callId: node.id, signal },
-                node.extraCapabilities
-              ),
-            };
-          })
-        )).entries()) {
+        for (const [i, settled] of (
+          await Promise.allSettled(
+            readyWriting.map(async (node) => {
+              const resolvedArgs = resolveRefs(node.args, completedResults) as Record<
+                string,
+                unknown
+              >;
+              return {
+                node,
+                result: await this.tools.call(
+                  { toolName: node.toolName, args: resolvedArgs, callId: node.id, signal },
+                  node.extraCapabilities
+                ),
+              };
+            })
+          )
+        ).entries()) {
           if (settled.status === "fulfilled") {
             const { node, result } = settled.value;
             completedResults.set(node.id, result);
@@ -175,7 +187,11 @@ export class Scheduler {
               console.error("[scheduler] write node rejected:", reason);
             }
             yield* this.#cascadeNodeFailure(failedNode.id, ir, completedResults, remaining, reason);
-            yield { type: "node_error", nodeId: failedNode.id, error: isAbort ? undefined : reason };
+            yield {
+              type: "node_error",
+              nodeId: failedNode.id,
+              error: isAbort ? undefined : reason,
+            };
           }
         }
         continue;
@@ -185,9 +201,13 @@ export class Scheduler {
       if (speculative.size > 0) {
         // Pre-capture [id, promise] pairs so the settled index maps to the correct node ID.
         const speculativeEntries = [...speculative.entries()];
-        for (const [i, settled] of (await Promise.allSettled(
-          speculativeEntries.map(([id, p]) => p.then((r) => ({ node: r.node, result: r.result, _id: id })))
-        )).entries()) {
+        for (const [i, settled] of (
+          await Promise.allSettled(
+            speculativeEntries.map(([id, p]) =>
+              p.then((r) => ({ node: r.node, result: r.result, _id: id }))
+            )
+          )
+        ).entries()) {
           if (settled.status === "fulfilled") {
             const { node, result, _id } = settled.value;
             speculative.delete(_id);
@@ -196,7 +216,7 @@ export class Scheduler {
             yield { type: "node_done", nodeId: node.id, result };
             this.#unblockDependents(node.id, remaining);
           } else {
-            const failedId = speculativeEntries[i]![0];
+            const failedId = speculativeEntries[i]?.[0];
             const reason = settled.reason;
             const isAbort = reason instanceof Error && reason.name === "AbortError";
             if (!isAbort) {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { RemoteSandboxKernel } from "./RemoteSandboxKernel.js";
 
 describe("RemoteSandboxKernel", () => {
@@ -49,7 +49,7 @@ describe("RemoteSandboxKernel", () => {
 
     // We can't easily test the full integration without e2b installed,
     // but we verify the harness builder produces valid JS.
-    const code = "1 + 1";
+    const _code = "1 + 1";
     // Harness wraps the code in an async IIFE and serializes output.
     // Just verify the kernel is constructible and disposable.
     const kernel = new RemoteSandboxKernel({ apiKey: "test" });
@@ -66,9 +66,11 @@ describe("RemoteSandboxKernel", () => {
     class TestKernel extends RemoteSandboxKernel {
       override async run(_code: string): ReturnType<RemoteSandboxKernel["run"]> {
         // Simulate sandbox creation by injecting a fake.
-        (this as unknown as Record<string, unknown>)["_RemoteSandboxKernel__sandbox"] = {
+        (this as unknown as Record<string, unknown>)._RemoteSandboxKernel__sandbox = {
           runCode: async () => ({ logs: { stdout: [], stderr: [] } }),
-          kill: async () => { killCalled.push(true); },
+          kill: async () => {
+            killCalled.push(true);
+          },
         };
         return { output: undefined, logs: [], isFinalAnswer: false };
       }

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * agentkit CLI (D6)
  *
@@ -10,14 +11,15 @@
  * Mirrors smolagents' `smolagent` CLI (cli.py:294).
  */
 
-import { parseArgs } from "node:util";
-import { writeFile, mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { CodeAgent, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+import { parseArgs } from "node:util";
 import type { AgentEvent } from "@agentkit-js/core";
+import { AnthropicModel, AnthropicModels, CodeAgent } from "@agentkit-js/core";
 
 // Only run CLI dispatch when executed as the entry point, not when imported by tests.
-const isMain = process.argv[1] != null &&
+const isMain =
+  process.argv[1] != null &&
   new URL(import.meta.url).pathname.endsWith(
     process.argv[1].replace(/\\/g, "/").split("/").at(-1) ?? ""
   );
@@ -39,7 +41,7 @@ if (isMain) {
     allowPositionals: true,
   });
 
-  if (values["help"] || positionals.length === 0) {
+  if (values.help || positionals.length === 0) {
     printHelp();
     process.exit(0);
   }
@@ -67,34 +69,29 @@ export async function runCommand(
   opts: Record<string, string | boolean | undefined>
 ): Promise<void> {
   if (!task) {
-    console.error("Error: no task provided. Usage: agentkit run \"<task>\"");
+    console.error('Error: no task provided. Usage: agentkit run "<task>"');
     process.exit(1);
   }
 
   const apiKey =
-    typeof opts["api-key"] === "string"
-      ? opts["api-key"]
-      : process.env["ANTHROPIC_API_KEY"];
+    typeof opts["api-key"] === "string" ? opts["api-key"] : process.env.ANTHROPIC_API_KEY;
 
   if (!apiKey) {
     console.error("Error: ANTHROPIC_API_KEY env var or --api-key flag required");
     process.exit(1);
   }
 
-  const streamMode = opts["stream"] === true;
+  const streamMode = opts.stream === true;
   const eventsFilter = parseEventsFilter(
-    typeof opts["events"] === "string" ? opts["events"] : undefined,
+    typeof opts.events === "string" ? opts.events : undefined,
     streamMode
   );
 
   const model = new AnthropicModel(
-    typeof opts["model"] === "string" ? opts["model"] : AnthropicModels.SONNET_LATEST,
+    typeof opts.model === "string" ? opts.model : AnthropicModels.SONNET_LATEST,
     apiKey
   );
-  const maxSteps = parseInt(
-    typeof opts["max-steps"] === "string" ? opts["max-steps"] : "20",
-    10
-  );
+  const maxSteps = parseInt(typeof opts["max-steps"] === "string" ? opts["max-steps"] : "20", 10);
   if (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 1000) {
     console.error("Error: --max-steps must be a whole number between 1 and 1000");
     process.exit(1);
@@ -109,7 +106,7 @@ export async function runCommand(
     if (!eventsFilter.has(event.event)) continue;
 
     if (streamMode) {
-      process.stdout.write(JSON.stringify(event) + "\n");
+      process.stdout.write(`${JSON.stringify(event)}\n`);
       continue;
     }
 
@@ -138,7 +135,9 @@ export async function runCommand(
         if (event.data.error) {
           console.log(`[tool_result] ERROR: ${JSON.stringify(event.data.error)}`);
         } else {
-          console.log(`[tool_result] ${event.data.toolName} → ${JSON.stringify(event.data.output)}`);
+          console.log(
+            `[tool_result] ${event.data.toolName} → ${JSON.stringify(event.data.output)}`
+          );
         }
         break;
       case "final_answer":
@@ -153,17 +152,15 @@ export async function runCommand(
 
 // ── init-tool command ─────────────────────────────────────────────────────────
 
-async function initToolCommand(
-  opts: Record<string, string | boolean | undefined>
-): Promise<void> {
-  const rawName = typeof opts["name"] === "string" ? opts["name"].trim() : "";
+async function initToolCommand(opts: Record<string, string | boolean | undefined>): Promise<void> {
+  const rawName = typeof opts.name === "string" ? opts.name.trim() : "";
   if (!rawName) {
     console.error("Error: --name <tool-name> is required");
     console.error("  Example: agentkit init-tool --name web-search");
     process.exit(1);
   }
 
-  const lang = typeof opts["lang"] === "string" ? opts["lang"] : "ts";
+  const lang = typeof opts.lang === "string" ? opts.lang : "ts";
   if (lang !== "ts" && lang !== "rust") {
     console.error(`Error: --lang must be "ts" or "rust", got "${lang}"`);
     process.exit(1);
@@ -177,7 +174,7 @@ async function initToolCommand(
     .join("");
   const snakeName = kebabName.replace(/-/g, "_");
 
-  const outputDir = typeof opts["output"] === "string" ? opts["output"] : ".";
+  const outputDir = typeof opts.output === "string" ? opts.output : ".";
   await mkdir(outputDir, { recursive: true });
 
   if (lang === "rust") {
@@ -290,7 +287,7 @@ export function camelCase(pascal: string): string {
   return pascal.charAt(0).toLowerCase() + pascal.slice(1);
 }
 
-function generateCargoTemplate(kebabName: string, snakeName: string): string {
+function generateCargoTemplate(kebabName: string, _snakeName: string): string {
   return `[package]
 name = "${kebabName}"
 version = "0.1.0"
@@ -386,22 +383,38 @@ export const ${camelCase(pascalName)}Tool: ToolDefinition<
 `;
 }
 
-
 // ── shared helpers ────────────────────────────────────────────────────────────
 
 type EventType = AgentEvent["event"];
 
 const ALL_EVENT_TYPES: EventType[] = [
-  "run_start", "step_start", "thinking_delta", "tool_call", "tool_result", "planning", "final_answer", "error",
+  "run_start",
+  "step_start",
+  "thinking_delta",
+  "tool_call",
+  "tool_result",
+  "planning",
+  "final_answer",
+  "error",
 ];
 
 export function parseEventsFilter(raw: string | undefined, streamMode: boolean): Set<EventType> {
   if (raw) {
     const requested = raw.split(",").map((s) => s.trim()) as EventType[];
-    return new Set(requested.filter((e): e is EventType => (ALL_EVENT_TYPES as string[]).includes(e)));
+    return new Set(
+      requested.filter((e): e is EventType => (ALL_EVENT_TYPES as string[]).includes(e))
+    );
   }
   if (streamMode) return new Set(ALL_EVENT_TYPES);
-  return new Set<EventType>(["step_start", "thinking_delta", "planning", "tool_call", "tool_result", "final_answer", "error"]);
+  return new Set<EventType>([
+    "step_start",
+    "thinking_delta",
+    "planning",
+    "tool_call",
+    "tool_result",
+    "final_answer",
+    "error",
+  ]);
 }
 
 function printHelp(): void {

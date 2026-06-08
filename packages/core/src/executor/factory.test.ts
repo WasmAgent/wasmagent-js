@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createKernel } from "../executor/factory.js";
 import { JsKernel } from "../executor/JsKernel.js";
 import { VmKernel } from "../executor/VmKernel.js";
@@ -20,9 +20,9 @@ describe("createKernel factory", () => {
   });
 
   it("throws for unknown engine", async () => {
-    await expect(
-      createKernel({ engine: "unknown" as "js" })
-    ).rejects.toThrow(/Unknown kernel engine/);
+    await expect(createKernel({ engine: "unknown" as "js" })).rejects.toThrow(
+      /Unknown kernel engine/
+    );
   });
 
   it("routes actionLanguage='pyodide' to kernel-pyodide (throws KERNEL_NOT_INSTALLED when absent)", async () => {
@@ -70,9 +70,9 @@ describe("createKernel factory", () => {
   // A4: wasmtime throws KERNEL_NOT_INSTALLED when package is absent.
   it("wasmtime engine: throws KERNEL_NOT_INSTALLED error when package not installed (A4)", async () => {
     // The package @agentkit-js/kernel-wasmtime is not installed in the test environment.
-    await expect(
-      createKernel({ engine: "wasmtime" })
-    ).rejects.toMatchObject({ code: "KERNEL_NOT_INSTALLED" });
+    await expect(createKernel({ engine: "wasmtime" })).rejects.toMatchObject({
+      code: "KERNEL_NOT_INSTALLED",
+    });
   });
 
   it("wasmtime KERNEL_NOT_INSTALLED error message contains install instructions (A4)", async () => {

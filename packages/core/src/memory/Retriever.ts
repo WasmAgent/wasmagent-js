@@ -10,8 +10,8 @@
  */
 
 import { z } from "zod";
-import type { ToolDefinition } from "../tools/types.js";
 import type { KvBackend } from "../checkpoint/index.js";
+import type { ToolDefinition } from "../tools/types.js";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -50,7 +50,9 @@ export interface Embedder {
 // ── TF-IDF (default, zero deps) ───────────────────────────────────────────────
 
 function cosineSimilarity(a: number[], b: number[]): number {
-  let dot = 0, normA = 0, normB = 0;
+  let dot = 0,
+    normA = 0,
+    normB = 0;
   for (let i = 0; i < a.length; i++) {
     dot += (a[i] ?? 0) * (b[i] ?? 0);
     normA += (a[i] ?? 0) ** 2;
@@ -143,7 +145,9 @@ export class InMemoryVectorStore implements Retriever {
     return scored.slice(0, topK);
   }
 
-  get size(): number { return this.#entries.length; }
+  get size(): number {
+    return this.#entries.length;
+  }
 }
 
 // ── KvBackendVectorStore ──────────────────────────────────────────────────────
@@ -221,22 +225,30 @@ export class KvBackendVectorStore implements Retriever {
 export function makeRetrievalTool(
   retriever: Retriever,
   opts: { name?: string; description?: string; defaultTopK?: number } = {}
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: intentional
 ): ToolDefinition<any, any> {
   return {
     name: opts.name ?? "retrieve",
-    description: opts.description ?? "Search the knowledge base for relevant documents given a query.",
+    description:
+      opts.description ?? "Search the knowledge base for relevant documents given a query.",
     inputSchema: z.object({
       query: z.string().describe("The search query"),
-      topK: z.number().int().positive().optional().describe("Number of results to return (default 3)"),
+      topK: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Number of results to return (default 3)"),
     }),
     outputSchema: z.object({
-      results: z.array(z.object({
-        id: z.string(),
-        text: z.string(),
-        score: z.number(),
-        metadata: z.record(z.unknown()).optional(),
-      })),
+      results: z.array(
+        z.object({
+          id: z.string(),
+          text: z.string(),
+          score: z.number(),
+          metadata: z.record(z.unknown()).optional(),
+        })
+      ),
     }),
     readOnly: true,
     idempotent: true,

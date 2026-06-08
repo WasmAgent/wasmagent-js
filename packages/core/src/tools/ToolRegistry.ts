@@ -20,7 +20,10 @@ export function zodToJsonSchema(schema: import("zod").ZodSchema): object {
  * @throws Error when nesting depth exceeds 5
  */
 export function toStrictJsonSchema(schema: import("zod").ZodSchema): object {
-  const base = zodToJsonSchemaLib(schema, { target: "openApi3", $refStrategy: "none" }) as Record<string, unknown>;
+  const base = zodToJsonSchemaLib(schema, { target: "openApi3", $refStrategy: "none" }) as Record<
+    string,
+    unknown
+  >;
   return strictifySchema(base, 0);
 }
 
@@ -28,31 +31,37 @@ function strictifySchema(schema: Record<string, unknown>, depth: number): Record
   if (depth > 5) {
     throw new Error(
       `[toStrictJsonSchema] Schema nesting depth exceeds 5 levels, which OpenAI strict mode does not support. ` +
-      `Flatten your schema or remove optional wrappers.`
+        `Flatten your schema or remove optional wrappers.`
     );
   }
   const result: Record<string, unknown> = { ...schema };
 
   // Recurse into array items
-  if (result["type"] === "array" && result["items"] && typeof result["items"] === "object") {
-    result["items"] = strictifySchema(result["items"] as Record<string, unknown>, depth + 1);
+  if (result.type === "array" && result.items && typeof result.items === "object") {
+    result.items = strictifySchema(result.items as Record<string, unknown>, depth + 1);
   }
 
   // Recurse into allOf/anyOf/oneOf members
   for (const key of ["allOf", "anyOf", "oneOf"] as const) {
     if (Array.isArray(result[key])) {
-      result[key] = (result[key] as Record<string, unknown>[]).map((s) => strictifySchema(s, depth + 1));
+      result[key] = (result[key] as Record<string, unknown>[]).map((s) =>
+        strictifySchema(s, depth + 1)
+      );
     }
   }
 
-  if (result["type"] !== "object" || typeof result["properties"] !== "object" || result["properties"] === null) {
+  if (
+    result.type !== "object" ||
+    typeof result.properties !== "object" ||
+    result.properties === null
+  ) {
     // Remove defaults at every level
-    delete result["default"];
+    delete result.default;
     return result;
   }
 
-  const props = result["properties"] as Record<string, Record<string, unknown>>;
-  const existingRequired = Array.isArray(result["required"]) ? (result["required"] as string[]) : [];
+  const props = result.properties as Record<string, Record<string, unknown>>;
+  const existingRequired = Array.isArray(result.required) ? (result.required as string[]) : [];
   const existingRequiredSet = new Set(existingRequired);
 
   const newProps: Record<string, Record<string, unknown>> = {};
@@ -63,13 +72,14 @@ function strictifySchema(schema: Record<string, unknown>, depth: number): Record
     const isOptional = !existingRequiredSet.has(key);
 
     let strictProp = strictifySchema(propSchema, depth + 1);
-    delete (strictProp as Record<string, unknown>)["default"];
+    delete (strictProp as Record<string, unknown>).default;
 
     // Optional fields: wrap in anyOf: [original, {type:"null"}]
     if (isOptional) {
       // Avoid double-wrapping if already nullable
-      const alreadyNullable = Array.isArray(strictProp["anyOf"])
-        && (strictProp["anyOf"] as Record<string, unknown>[]).some((s) => s["type"] === "null");
+      const alreadyNullable =
+        Array.isArray(strictProp.anyOf) &&
+        (strictProp.anyOf as Record<string, unknown>[]).some((s) => s.type === "null");
       if (!alreadyNullable) {
         strictProp = { anyOf: [strictProp, { type: "null" }] };
       }
@@ -77,10 +87,10 @@ function strictifySchema(schema: Record<string, unknown>, depth: number): Record
     newProps[key] = strictProp;
   }
 
-  result["properties"] = newProps;
-  result["required"] = allKeys; // ALL keys go into required[]
-  result["additionalProperties"] = false;
-  delete result["default"];
+  result.properties = newProps;
+  result.required = allKeys; // ALL keys go into required[]
+  result.additionalProperties = false;
+  delete result.default;
 
   return result;
 }
@@ -102,29 +112,34 @@ export class ToolRegistry {
     // D2: enforce explicit side-effect declarations at registration time.
     // TypeScript enforces this at compile time, but plain-JS callers bypass it.
     const toolAny = tool as unknown as Record<string, unknown>;
-    if (typeof toolAny["readOnly"] !== "boolean") {
+    if (typeof toolAny.readOnly !== "boolean") {
       throw new Error(
         `Tool "${tool.name}" must declare readOnly: boolean (required for C3 speculative execution)`
       );
     }
-    if (typeof toolAny["idempotent"] !== "boolean") {
+    if (typeof toolAny.idempotent !== "boolean") {
       throw new Error(
         `Tool "${tool.name}" must declare idempotent: boolean (required for C3/C4 caching)`
       );
     }
-    if (!toolAny["inputSchema"] || typeof (toolAny["inputSchema"] as Record<string, unknown>)["safeParse"] !== "function") {
-      throw new Error(
-        `Tool "${tool.name}" must declare a Zod inputSchema with a safeParse method`
-      );
+    if (
+      !toolAny.inputSchema ||
+      typeof (toolAny.inputSchema as Record<string, unknown>).safeParse !== "function"
+    ) {
+      throw new Error(`Tool "${tool.name}" must declare a Zod inputSchema with a safeParse method`);
     }
     this.#tools.set(tool.name, tool);
     // A2: deferLoading and inputExamples are mutually exclusive — the Tool Search
     // API does not accept input_examples on deferred tools (see Anthropic docs 2026-03).
     const toolAny2 = tool as unknown as Record<string, unknown>;
-    if (toolAny2["deferLoading"] === true && Array.isArray(toolAny2["inputExamples"]) && (toolAny2["inputExamples"] as unknown[]).length > 0) {
+    if (
+      toolAny2.deferLoading === true &&
+      Array.isArray(toolAny2.inputExamples) &&
+      (toolAny2.inputExamples as unknown[]).length > 0
+    ) {
       throw new Error(
         `Tool "${tool.name}" has both deferLoading:true and inputExamples, which are mutually exclusive. ` +
-        `Tool Search does not support input_examples on deferred tools.`
+          `Tool Search does not support input_examples on deferred tools.`
       );
     }
     return this;
@@ -151,15 +166,16 @@ export class ToolRegistry {
         const schema: Record<string, unknown> = {
           name: t.name,
           description: t.description,
-          input_schema: t.rawInputJsonSchema ?? (t.inputSchema ? zodToJsonSchema(t.inputSchema) : {}),
+          input_schema:
+            t.rawInputJsonSchema ?? (t.inputSchema ? zodToJsonSchema(t.inputSchema) : {}),
         };
         // L1-2: include few-shot examples when provided.
         if (t.inputExamples && t.inputExamples.length > 0) {
-          schema["input_examples"] = t.inputExamples;
+          schema.input_examples = t.inputExamples;
         }
         // L1-3: include allowed_callers for PTC when provided.
         if (t.allowedCallers && t.allowedCallers.length > 0) {
-          schema["allowed_callers"] = t.allowedCallers;
+          schema.allowed_callers = t.allowedCallers;
         }
         return schema;
       });
@@ -190,7 +206,11 @@ export class ToolRegistry {
     return [...this.#tools.values()].some((t) => t.allowedCallers && t.allowedCallers.length > 0);
   }
 
-  async call(toolCall: ToolCall, grantedCapabilities?: string[], principal?: AgentPrincipal): Promise<ToolResult> {
+  async call(
+    toolCall: ToolCall,
+    grantedCapabilities?: string[],
+    principal?: AgentPrincipal
+  ): Promise<ToolResult> {
     const tool = this.#tools.get(toolCall.toolName);
     if (!tool) {
       return {
@@ -289,4 +309,3 @@ export class ToolRegistry {
     }
   }
 }
-

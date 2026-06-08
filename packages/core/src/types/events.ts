@@ -17,36 +17,110 @@ interface AgentEventBase {
 }
 
 export type AgentEvent =
-  | AgentEventBase & { channel: "text";     event: "run_start";           data: { task: string } }
-  | AgentEventBase & { channel: "thinking"; event: "step_start";          data: { step: number } }
-  | AgentEventBase & { channel: "thinking"; event: "thinking_delta";      data: { delta: string; step: number } }
-  | AgentEventBase & { channel: "tool";     event: "tool_call";           data: { toolName: string; args: Record<string, unknown>; callId: string; batchId: string; batchSize: number; stepIndex: number } }
-  | AgentEventBase & { channel: "tool";     event: "tool_result";         data: { callId: string; toolName: string; output: unknown; error?: { code: "execution_error"; message: string }; batchId: string; batchSize: number; stepIndex: number } }
-  | AgentEventBase & { channel: "thinking"; event: "planning";            data: { step: number; plan: string; facts: string } }
-  | AgentEventBase & { channel: "text";     event: "final_answer";        data: { answer: unknown } }
-  | AgentEventBase & { channel: "text";     event: "error";               data: { error: string; step?: number } }
-  | AgentEventBase & { channel: "status";   event: "status";              data: { phase: "tool_executing"; toolName?: string; callId?: string; step: number } }
+  | (AgentEventBase & { channel: "text"; event: "run_start"; data: { task: string } })
+  | (AgentEventBase & { channel: "thinking"; event: "step_start"; data: { step: number } })
+  | (AgentEventBase & {
+      channel: "thinking";
+      event: "thinking_delta";
+      data: { delta: string; step: number };
+    })
+  | (AgentEventBase & {
+      channel: "tool";
+      event: "tool_call";
+      data: {
+        toolName: string;
+        args: Record<string, unknown>;
+        callId: string;
+        batchId: string;
+        batchSize: number;
+        stepIndex: number;
+      };
+    })
+  | (AgentEventBase & {
+      channel: "tool";
+      event: "tool_result";
+      data: {
+        callId: string;
+        toolName: string;
+        output: unknown;
+        error?: { code: "execution_error"; message: string };
+        batchId: string;
+        batchSize: number;
+        stepIndex: number;
+      };
+    })
+  | (AgentEventBase & {
+      channel: "thinking";
+      event: "planning";
+      data: { step: number; plan: string; facts: string };
+    })
+  | (AgentEventBase & { channel: "text"; event: "final_answer"; data: { answer: unknown } })
+  | (AgentEventBase & { channel: "text"; event: "error"; data: { error: string; step?: number } })
+  | (AgentEventBase & {
+      channel: "status";
+      event: "status";
+      data: { phase: "tool_executing"; toolName?: string; callId?: string; step: number };
+    })
   /** B4: human-in-the-loop pause point. Agent is suspended until humanResponse is provided. */
-  | AgentEventBase & { channel: "status";   event: "await_human_input";   data: { promptId: string; prompt: string; step: number } }
+  | (AgentEventBase & {
+      channel: "status";
+      event: "await_human_input";
+      data: { promptId: string; prompt: string; step: number };
+    })
   /**
    * E1: model inference span markers for GenAI semconv.
    * model_start — emitted before each model.generate() call; opens the 'chat' inference span.
    * model_done  — emitted after the stream ends; closes it with finish reason and token usage.
    */
-  | AgentEventBase & { channel: "model";    event: "model_start";         data: { modelId: string; step: number } }
-  | AgentEventBase & { channel: "model";    event: "model_done";          data: { modelId: string; step: number; finishReason: string; inputTokens?: number; outputTokens?: number; thinkingTokens?: number; cacheReadTokens?: number } }
+  | (AgentEventBase & {
+      channel: "model";
+      event: "model_start";
+      data: { modelId: string; step: number };
+    })
+  | (AgentEventBase & {
+      channel: "model";
+      event: "model_done";
+      data: {
+        modelId: string;
+        step: number;
+        finishReason: string;
+        inputTokens?: number;
+        outputTokens?: number;
+        thinkingTokens?: number;
+        cacheReadTokens?: number;
+      };
+    })
   /**
    * A1: guardrail tripwire triggered — emitted when an input/output/tool guardrail
    * fires fail-fast before the agent can produce or emit its answer.
    */
-  | AgentEventBase & { channel: "status";   event: "guardrail_tripwire";  data: { guardrailName: string; layer: "input" | "output" | "tool"; toolName?: string; metadata?: Record<string, unknown> } }
+  | (AgentEventBase & {
+      channel: "status";
+      event: "guardrail_tripwire";
+      data: {
+        guardrailName: string;
+        layer: "input" | "output" | "tool";
+        toolName?: string;
+        metadata?: Record<string, unknown>;
+      };
+    })
   /**
    * B2: handoff — control has been transferred to another agent.
    */
-  | AgentEventBase & { channel: "status";   event: "handoff";             data: { targetAgentName: string; step: number } };
+  | (AgentEventBase & {
+      channel: "status";
+      event: "handoff";
+      data: { targetAgentName: string; step: number };
+    });
 
 /** Structured step types mirroring smolagents' ActionStep / PlanningStep / FinalAnswerStep. */
-export type StepType = "action" | "planning" | "final_answer" | "tool_use" | "parallel_tool_use" | "user_message";
+export type StepType =
+  | "action"
+  | "planning"
+  | "final_answer"
+  | "tool_use"
+  | "parallel_tool_use"
+  | "user_message";
 
 export interface ActionStep {
   type: "action";
@@ -125,4 +199,10 @@ export interface UserMessageStep {
   content: string;
 }
 
-export type Step = ActionStep | PlanningStep | FinalAnswerStep | ToolUseStep | ParallelToolUseStep | UserMessageStep;
+export type Step =
+  | ActionStep
+  | PlanningStep
+  | FinalAnswerStep
+  | ToolUseStep
+  | ParallelToolUseStep
+  | UserMessageStep;

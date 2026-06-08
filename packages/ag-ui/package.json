@@ -28,6 +28,13 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "keywords": ["ag-ui", "agent", "ui", "protocol", "sse", "agentkit"],
+  "keywords": [
+    "ag-ui",
+    "agent",
+    "ui",
+    "protocol",
+    "sse",
+    "agentkit"
+  ],
   "license": "Apache-2.0"
 }

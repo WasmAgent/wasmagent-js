@@ -1,5 +1,5 @@
-import type { Model, ModelMessage, GenerateOptions } from "../models/types.js";
 import type { ZodSchema } from "zod";
+import type { GenerateOptions, Model, ModelMessage } from "../models/types.js";
 
 export interface SelfConsistencyOptions {
   /** Number of candidate completions (default 3). */
@@ -32,7 +32,7 @@ export interface SelfConsistencyOptions {
    * This ensures semantically identical objects (regardless of key order)
    * vote together. Falls back to string voting if parsing fails.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: intentional
   outputSchema?: ZodSchema<any>;
 }
 
@@ -64,7 +64,7 @@ export class SelfConsistencyRunner {
   readonly #earlyStopThreshold: number;
   readonly #concurrencyLimit: number;
   readonly #extractAnswer: (text: string) => string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: intentional
   readonly #outputSchema: ZodSchema<any> | undefined;
 
   constructor(opts: SelfConsistencyOptions = {}) {
@@ -127,11 +127,17 @@ export class SelfConsistencyRunner {
         let key: string;
         if (outputSchema) {
           const parsed = outputSchema.safeParse(
-            (() => { try { return JSON.parse(rawAnswer); } catch { return rawAnswer; } })()
+            (() => {
+              try {
+                return JSON.parse(rawAnswer);
+              } catch {
+                return rawAnswer;
+              }
+            })()
           );
           key = parsed.success
-            ? JSON.stringify(parsed.data)  // canonical structured key
-            : normalizeAnswer(extractAnswer(rawAnswer));  // fallback
+            ? JSON.stringify(parsed.data) // canonical structured key
+            : normalizeAnswer(extractAnswer(rawAnswer)); // fallback
         } else {
           key = normalizeAnswer(extractAnswer(rawAnswer));
         }
@@ -157,7 +163,10 @@ export class SelfConsistencyRunner {
     let bestKey = "";
     let bestCount = 0;
     for (const [key, count] of voteCounts) {
-      if (count > bestCount) { bestCount = count; bestKey = key; }
+      if (count > bestCount) {
+        bestCount = count;
+        bestKey = key;
+      }
     }
     // Return the original full text for the winning key.
     const bestAnswer = keyToFullText.get(bestKey) ?? completed[0] ?? "";
@@ -175,10 +184,13 @@ export class SelfConsistencyRunner {
 function defaultExtractAnswer(text: string): string {
   // Tier 1: LaTeX \boxed{} — common in math reasoning traces
   const boxed = /\\boxed\{([^}]*)\}/.exec(text);
-  if (boxed) return boxed[1]!.trim();
+  if (boxed) return boxed[1]?.trim();
 
   // Tier 2: last non-empty line — common in CoT where the answer is on the final line
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
   if (lines.length > 0) return lines[lines.length - 1]!;
 
   // Tier 3: full text (same as original behavior)

@@ -1,4 +1,9 @@
-import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from "@agentkit-js/core/executor";
+import type {
+  CapabilityManifest,
+  KernelOptions,
+  KernelResult,
+  WasmKernel,
+} from "@agentkit-js/core/executor";
 
 export interface RemoteSandboxOptions extends KernelOptions {
   /** E2B API key. Defaults to process.env.E2B_API_KEY. */
@@ -60,14 +65,14 @@ export class RemoteSandboxKernel implements WasmKernel {
 
     // Parse structured output from stdout if present.
     const lastStdout = execution.logs.stdout.at(-1) ?? "";
-    let output: unknown = undefined;
+    let output: unknown;
     let isFinalAnswer = false;
 
     try {
       const parsed = JSON.parse(lastStdout) as { __output?: unknown; __isFinalAnswer?: boolean };
       if (typeof parsed === "object" && parsed !== null && "__output" in parsed) {
-        output = parsed["__output"];
-        isFinalAnswer = parsed["__isFinalAnswer"] === true;
+        output = parsed.__output;
+        isFinalAnswer = parsed.__isFinalAnswer === true;
         // Remove the structured output line from logs.
         logs.splice(logs.indexOf(lastStdout), 1);
       }
@@ -93,10 +98,10 @@ export class RemoteSandboxKernel implements WasmKernel {
   async #getSandbox(): Promise<E2BSandbox> {
     if (!this.#sandbox) {
       const { Sandbox } = await loadE2B();
-      this.#sandbox = await Sandbox.create({
+      this.#sandbox = (await Sandbox.create({
         template: this.#opts.template ?? "base",
-        apiKey: this.#opts.apiKey ?? process.env["E2B_API_KEY"],
-      }) as E2BSandbox;
+        apiKey: this.#opts.apiKey ?? process.env.E2B_API_KEY,
+      })) as E2BSandbox;
     }
     return this.#sandbox;
   }
@@ -106,9 +111,10 @@ export class RemoteSandboxKernel implements WasmKernel {
 
 function buildHarness(code: string, capabilities?: Partial<CapabilityManifest>): string {
   const allowedHosts = capabilities?.allowedHosts ?? [];
-  const networkGuard = allowedHosts.length === 0
-    ? "// Network: deny-all (no allowedHosts specified)"
-    : `// Network: allowed hosts = ${JSON.stringify(allowedHosts)}`;
+  const networkGuard =
+    allowedHosts.length === 0
+      ? "// Network: deny-all (no allowedHosts specified)"
+      : `// Network: allowed hosts = ${JSON.stringify(allowedHosts)}`;
 
   return [
     `// agentkit RemoteSandboxKernel harness`,
@@ -126,7 +132,10 @@ function buildHarness(code: string, capabilities?: Partial<CapabilityManifest>):
 // ── E2B dynamic import ───────────────────────────────────────────────────────
 
 interface E2BSandbox {
-  runCode(code: string, opts?: { timeoutMs?: number }): Promise<{
+  runCode(
+    code: string,
+    opts?: { timeoutMs?: number }
+  ): Promise<{
     logs: { stdout: string[]; stderr: string[] };
   }>;
   kill(): Promise<void>;
@@ -140,12 +149,12 @@ interface E2BModule {
 
 async function loadE2B(): Promise<E2BModule> {
   try {
-    return await import("e2b") as E2BModule;
+    return (await import("e2b")) as E2BModule;
   } catch (cause) {
     const err = new Error(
       "@agentkit-js/kernel-remote requires the 'e2b' package.\n" +
-      "  Install: pnpm add e2b\n" +
-      "  Docs: https://e2b.dev/docs"
+        "  Install: pnpm add e2b\n" +
+        "  Docs: https://e2b.dev/docs"
     ) as Error & { code: string; cause: unknown };
     err.code = "KERNEL_NOT_INSTALLED";
     err.cause = cause;

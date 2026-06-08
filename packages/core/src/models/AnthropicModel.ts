@@ -1,3 +1,5 @@
+import type { RetryPolicy } from "./retry.js";
+import { withRetryGenerator } from "./retry.js";
 import type {
   GenerateOptions,
   Model,
@@ -7,8 +9,6 @@ import type {
   TokenUsage,
 } from "./types.js";
 import { CACHE_MIN_TOKENS, estimateTokens, getModelMeta } from "./types.js";
-import type { RetryPolicy } from "./retry.js";
-import { withRetryGenerator } from "./retry.js";
 
 const ANTHROPIC_MAX_CACHE_BREAKPOINTS = 4;
 
@@ -20,27 +20,27 @@ const ANTHROPIC_MAX_CACHE_BREAKPOINTS = 4;
  */
 export const ANTHROPIC_BETAS = {
   /** 1-hour extended prompt cache TTL. */
-  EXTENDED_CACHE_TTL:  "extended-cache-ttl-2025-04-11",
+  EXTENDED_CACHE_TTL: "extended-cache-ttl-2025-04-11",
   /** Interleaved extended thinking (models ≤4.6). */
   INTERLEAVED_THINKING: "interleaved-thinking-2025-05-14",
   /** Advanced tool use: defer_loading + input_examples + allowed_callers. */
-  ADVANCED_TOOL_USE:   "advanced-tool-use-2025-11-20",
+  ADVANCED_TOOL_USE: "advanced-tool-use-2025-11-20",
   /**
    * Server-side code execution sandbox.
    * Verified: anthropic.com/engineering/advanced-tool-use blog (2025-11),
    * litellm & unified.to samples (2025-12 – 2026-03).
    * Previous value "code_execution_20260120" was a fabricated future-dated string.
    */
-  CODE_EXECUTION:      "code_execution_20250825",
+  CODE_EXECUTION: "code_execution_20250825",
   /**
    * Server-side context management (clear_tool_uses strategy).
    * Verified: AWS Bedrock docs clear_tool_uses_20250919 (2026).
    */
-  CONTEXT_MANAGEMENT:  "context-management-2025-06-27",
+  CONTEXT_MANAGEMENT: "context-management-2025-06-27",
   /** Server-side memory tool. */
-  MEMORY_TOOL:         "memory-tool-2025-11",
+  MEMORY_TOOL: "memory-tool-2025-11",
   /** Server-side MCP client connector (defer remote tools without local expansion). */
-  MCP_CLIENT:          "mcp-client-2025-11-20",
+  MCP_CLIENT: "mcp-client-2025-11-20",
 } as const;
 
 /**
@@ -71,15 +71,17 @@ export { CACHE_MIN_TOKENS };
 
 /** Canonical Anthropic model IDs. */
 export const AnthropicModels = {
-  OPUS_LATEST:   "claude-opus-4-8",
+  OPUS_LATEST: "claude-opus-4-8",
   SONNET_LATEST: "claude-sonnet-4-6",
-  HAIKU_LATEST:  "claude-haiku-4-5-20251001",
+  HAIKU_LATEST: "claude-haiku-4-5-20251001",
 } as const;
 
-export type AnthropicModelId = typeof AnthropicModels[keyof typeof AnthropicModels] | (string & {});
+export type AnthropicModelId =
+  | (typeof AnthropicModels)[keyof typeof AnthropicModels]
+  | (string & {});
 
 /** Anthropic model IDs that use legacy budget_tokens instead of adaptive thinking. */
-const LEGACY_BUDGET_TOKENS_MODELS = new Set([
+const _LEGACY_BUDGET_TOKENS_MODELS = new Set([
   "claude-opus-4-5",
   "claude-opus-4-6",
   "claude-sonnet-4-5",
@@ -192,11 +194,13 @@ export class AnthropicModel implements Model {
     const has1hTtl = messages.some((m) => m.cacheBreakpoint?.ttl === "1h");
 
     const systemParam = systemMessage
-      ? [{
-          type: "text" as const,
-          text: systemMessage,
-          ...(shouldCache ? { cache_control: { type: "ephemeral" as const } } : {}),
-        }]
+      ? [
+          {
+            type: "text" as const,
+            text: systemMessage,
+            ...(shouldCache ? { cache_control: { type: "ephemeral" as const } } : {}),
+          },
+        ]
       : undefined;
 
     type StreamParams = Parameters<typeof client.messages.stream>[0];
@@ -205,7 +209,9 @@ export class AnthropicModel implements Model {
       max_tokens: opts.maxTokens ?? 4096,
       ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
       ...(opts.topP !== undefined ? { top_p: opts.topP } : {}),
-      ...(opts.stopSequences && opts.stopSequences.length > 0 ? { stop_sequences: opts.stopSequences } : {}),
+      ...(opts.stopSequences && opts.stopSequences.length > 0
+        ? { stop_sequences: opts.stopSequences }
+        : {}),
       ...(systemParam ? { system: systemParam } : {}),
       messages: trimmedMessages,
     };
@@ -217,14 +223,14 @@ export class AnthropicModel implements Model {
     if (opts.thinking && opts.thinking.mode !== "off") {
       const thinkingParam = this.#buildThinkingParam(opts);
       if (thinkingParam) {
-        (streamParams as unknown as Record<string, unknown>)["thinking"] = thinkingParam;
+        (streamParams as unknown as Record<string, unknown>).thinking = thinkingParam;
         // Adaptive thinking requires interleaved-thinking beta for ≤4.6 models.
         if (!isAdaptiveThinkingModel(this.modelId)) {
           betas.push(ANTHROPIC_BETAS.INTERLEAVED_THINKING);
         }
         // When thinking is enabled, temperature must be 1 (Anthropic requirement).
         if (opts.temperature === undefined || opts.temperature !== 1) {
-          (streamParams as unknown as Record<string, unknown>)["temperature"] = 1;
+          (streamParams as unknown as Record<string, unknown>).temperature = 1;
         }
       }
     }
@@ -238,16 +244,21 @@ export class AnthropicModel implements Model {
         description: "Return the structured response conforming to the given schema.",
         input_schema: opts.responseFormat.schema,
       };
-      const existingTools = ((streamParams as unknown as Record<string, unknown>)["tools"] as unknown[]) ?? [];
-      (streamParams as unknown as Record<string, unknown>)["tools"] = [...existingTools, syntheticTool];
-      (streamParams as unknown as Record<string, unknown>)["tool_choice"] = {
+      const existingTools =
+        ((streamParams as unknown as Record<string, unknown>).tools as unknown[]) ?? [];
+      (streamParams as unknown as Record<string, unknown>).tools = [
+        ...existingTools,
+        syntheticTool,
+      ];
+      (streamParams as unknown as Record<string, unknown>).tool_choice = {
         type: "tool",
         name: structuredOutputToolName,
       };
     } else if (opts.responseFormat?.type === "json_object") {
       // R4: Anthropic has no native json_object mode. Use system instruction + assistant pre-fill.
       // Callers should prefer json_schema for reliable output.
-      const jsonInstruction = "Respond ONLY with a valid JSON object. Do not include any text outside the JSON.";
+      const jsonInstruction =
+        "Respond ONLY with a valid JSON object. Do not include any text outside the JSON.";
       if (systemParam && systemParam.length > 0 && systemParam[0]) {
         const existing = systemParam[0].text;
         systemParam[0] = {
@@ -256,7 +267,7 @@ export class AnthropicModel implements Model {
           ...(systemParam[0].cache_control ? { cache_control: systemParam[0].cache_control } : {}),
         };
       } else {
-        (streamParams as unknown as Record<string, unknown>)["system"] = [
+        (streamParams as unknown as Record<string, unknown>).system = [
           { type: "text" as const, text: jsonInstruction },
         ];
       }
@@ -264,8 +275,8 @@ export class AnthropicModel implements Model {
 
     if (opts.tools && opts.tools.length > 0) {
       const allTools = opts.tools as Array<Record<string, unknown>>;
-      const hasDeferredTools = allTools.some((t) => t["deferLoading"] === true);
-      const hasPtcTools = allTools.some((t) => Array.isArray(t["allowed_callers"]));
+      const hasDeferredTools = allTools.some((t) => t.deferLoading === true);
+      const hasPtcTools = allTools.some((t) => Array.isArray(t.allowed_callers));
 
       if (hasDeferredTools) {
         betas.push(ANTHROPIC_BETAS.ADVANCED_TOOL_USE);
@@ -281,9 +292,10 @@ export class AnthropicModel implements Model {
       // Per Anthropic docs (advanced-tool-use, 2025-11): tool_search_tool_* MUST be
       // in the tools array alongside defer_loading:true tool definitions.
       const toolSearchVariant = this.#opts.toolSearchVariant;
-      const toolSearchType = toolSearchVariant === "bm25"
-        ? "tool_search_tool_bm25_20251119"
-        : "tool_search_tool_regex_20251119";
+      const toolSearchType =
+        toolSearchVariant === "bm25"
+          ? "tool_search_tool_bm25_20251119"
+          : "tool_search_tool_regex_20251119";
 
       // Build wire tools:
       //  - Non-deferred tools: included as-is (strip deferLoading field if present).
@@ -299,30 +311,34 @@ export class AnthropicModel implements Model {
       // Anthropic's advanced-tool-use beta does not support cache_control on deferred tools.
       let lastEagerIdx = -1;
       for (let i = allTools.length - 1; i >= 0; i--) {
-        if (allTools[i]!["deferLoading"] !== true) { lastEagerIdx = i; break; }
+        if (allTools[i]?.deferLoading !== true) {
+          lastEagerIdx = i;
+          break;
+        }
       }
 
       for (let i = 0; i < allTools.length; i++) {
         const t = allTools[i]!;
-        const isDeferred = t["deferLoading"] === true;
+        const isDeferred = t.deferLoading === true;
         const { deferLoading: _dl, ...rest } = t;
         const wire: Record<string, unknown> = { ...rest };
         if (isDeferred) {
-          wire["defer_loading"] = true;
+          wire.defer_loading = true;
         }
         // Cache control on the last non-deferred tool for prompt-cache efficiency.
         if (i === lastEagerIdx) {
-          wire["cache_control"] = { type: "ephemeral" };
+          wire.cache_control = { type: "ephemeral" };
         }
         wireTools.push(wire);
       }
 
       if (wireTools.length > 0) {
         // Merge with any synthetic structured-output tool already added.
-        const existing = ((streamParams as unknown as Record<string, unknown>)["tools"] as unknown[]) ?? [];
+        const existing =
+          ((streamParams as unknown as Record<string, unknown>).tools as unknown[]) ?? [];
         const syntheticCount = structuredOutputToolName ? 1 : 0;
         const baseTools = (existing as unknown[]).slice(0, syntheticCount);
-        (streamParams as unknown as Record<string, unknown>)["tools"] = [...baseTools, ...wireTools];
+        (streamParams as unknown as Record<string, unknown>).tools = [...baseTools, ...wireTools];
       }
     }
 
@@ -331,22 +347,21 @@ export class AnthropicModel implements Model {
     if (this.#opts.serverSideMemory) betas.push(ANTHROPIC_BETAS.MEMORY_TOOL);
 
     if (betas.length > 0) {
-      (streamParams as unknown as Record<string, unknown>)["betas"] = betas;
+      (streamParams as unknown as Record<string, unknown>).betas = betas;
     }
 
     const stream = client.messages.stream(streamParams);
 
     for await (const event of stream) {
-      if (
-        event.type === "content_block_delta" &&
-        event.delta.type === "text_delta"
-      ) {
+      if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
         yield { type: "text_delta", delta: event.delta.text };
       } else if (
         event.type === "content_block_delta" &&
-        (event.delta as unknown as Record<string, unknown>)["type"] === "thinking_delta"
+        (event.delta as unknown as Record<string, unknown>).type === "thinking_delta"
       ) {
-        const thinkingDelta = (event.delta as unknown as Record<string, unknown>)["thinking"] as string | undefined;
+        const thinkingDelta = (event.delta as unknown as Record<string, unknown>).thinking as
+          | string
+          | undefined;
         if (thinkingDelta) yield { type: "thinking_delta", delta: thinkingDelta };
       } else if (event.type === "message_stop") {
         // Stop is deferred until after tool_call events are emitted from finalMessage below.
@@ -379,10 +394,14 @@ export class AnthropicModel implements Model {
     }
 
     // Emit stop after tool_call events, using the real stop_reason from finalMessage.
-    const stopReason = finalMessage.stop_reason === "tool_use" ? "tool_use"
-      : finalMessage.stop_reason === "max_tokens" ? "max_tokens"
-      : finalMessage.stop_reason === "stop_sequence" ? "stop_sequence"
-      : "end_turn";
+    const stopReason =
+      finalMessage.stop_reason === "tool_use"
+        ? "tool_use"
+        : finalMessage.stop_reason === "max_tokens"
+          ? "max_tokens"
+          : finalMessage.stop_reason === "stop_sequence"
+            ? "stop_sequence"
+            : "end_turn";
     yield { type: "stop", stopReason };
 
     if (finalMessage.usage) {
@@ -392,20 +411,21 @@ export class AnthropicModel implements Model {
         outputTokens: u.output_tokens,
       };
       const uAny = u as unknown as Record<string, unknown>;
-      const cacheRead = uAny["cache_read_input_tokens"];
-      const cacheWrite = uAny["cache_creation_input_tokens"];
+      const cacheRead = uAny.cache_read_input_tokens;
+      const cacheWrite = uAny.cache_creation_input_tokens;
       if (typeof cacheRead === "number") usage.cacheReadTokens = cacheRead;
       if (typeof cacheWrite === "number") usage.cacheWriteTokens = cacheWrite;
-      const cache5mRead = uAny["ephemeral_5m_input_tokens"];
-      const cache1hRead = uAny["ephemeral_1h_input_tokens"];
-      const cacheCreation = uAny["cache_creation"] as Record<string, unknown> | undefined;
-      if (typeof cache5mRead === "number") usage.cacheReadTokens = (usage.cacheReadTokens ?? 0) + cache5mRead;
+      const cache5mRead = uAny.ephemeral_5m_input_tokens;
+      const cache1hRead = uAny.ephemeral_1h_input_tokens;
+      const cacheCreation = uAny.cache_creation as Record<string, unknown> | undefined;
+      if (typeof cache5mRead === "number")
+        usage.cacheReadTokens = (usage.cacheReadTokens ?? 0) + cache5mRead;
       if (typeof cache1hRead === "number") usage.cacheReadTokens1h = cache1hRead;
-      if (typeof cacheCreation?.["ephemeral_1h_input_tokens"] === "number") {
-        usage.cacheWriteTokens1h = cacheCreation["ephemeral_1h_input_tokens"] as number;
+      if (typeof cacheCreation?.ephemeral_1h_input_tokens === "number") {
+        usage.cacheWriteTokens1h = cacheCreation.ephemeral_1h_input_tokens as number;
       }
       // Thinking token usage.
-      const thinkTokens = uAny["thinking_tokens"];
+      const thinkTokens = uAny.thinking_tokens;
       if (typeof thinkTokens === "number") usage.thinkingTokens = thinkTokens;
       yield { type: "usage", usage };
     }
@@ -424,8 +444,8 @@ export class AnthropicModel implements Model {
       if (isAdaptiveThinkingModel(this.modelId)) {
         throw new Error(
           `[AnthropicModel] thinking.mode="enabled" with budgetTokens is not supported on ` +
-          `${this.modelId} (≥4.7). Use thinking.mode="adaptive" with an effort level instead. ` +
-          `The budget_tokens parameter was deprecated and returns HTTP 400 on Anthropic ≥4.7.`
+            `${this.modelId} (≥4.7). Use thinking.mode="adaptive" with an effort level instead. ` +
+            `The budget_tokens parameter was deprecated and returns HTTP 400 on Anthropic ≥4.7.`
         );
       }
       return { type: "enabled", budget_tokens: t.budgetTokens ?? 8000 };
@@ -487,11 +507,15 @@ interface AnthropicMessage {
   content: AnthropicContent;
 }
 
-function convertMessages(messages: ModelMessage[], shouldCache: boolean, cacheMinTokens: number): AnthropicMessage[] {
+function convertMessages(
+  messages: ModelMessage[],
+  shouldCache: boolean,
+  cacheMinTokens: number
+): AnthropicMessage[] {
   return messages
     .filter((m) => m.role !== "system")
     .map((m) => {
-      const role = m.role === "assistant" ? "assistant" as const : "user" as const;
+      const role = m.role === "assistant" ? ("assistant" as const) : ("user" as const);
 
       if (typeof m.content === "string") {
         const chunkTokens = estimateTokens(m.content);
@@ -511,7 +535,11 @@ function convertMessages(messages: ModelMessage[], shouldCache: boolean, cacheMi
           if (b.type === "text") return { type: "text", text: b.text };
           if (b.type === "thinking") {
             // Preserve thinking blocks in multi-turn to avoid cache invalidation (A1).
-            return { type: "thinking", thinking: b.thinking, ...(b.signature ? { signature: b.signature } : {}) };
+            return {
+              type: "thinking",
+              thinking: b.thinking,
+              ...(b.signature ? { signature: b.signature } : {}),
+            };
           }
           if (b.type === "tool_use") {
             return { type: "tool_use", id: b.id, name: b.name, input: b.input };

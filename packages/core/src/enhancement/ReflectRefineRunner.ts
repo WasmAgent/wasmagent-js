@@ -1,6 +1,6 @@
-import type { Model, ModelMessage, GenerateOptions } from "../models/types.js";
 import type { OutputGuardrail } from "../guardrails/index.js";
 import { runOutputGuardrails } from "../guardrails/index.js";
+import type { GenerateOptions, Model, ModelMessage } from "../models/types.js";
 
 export interface ReflectRefineOptions {
   /** Maximum reflection-refinement cycles (default 1). */

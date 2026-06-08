@@ -1,5 +1,5 @@
-import type { ToolRegistry } from "../tools/ToolRegistry.js";
 import type { CapabilityManifest, WasmKernel } from "../executor/types.js";
+import type { ToolRegistry } from "../tools/ToolRegistry.js";
 
 /**
  * L3-1: ProgrammaticOrchestrator — self-hosted PTC (Programmatic Tool Calling) backend.
@@ -51,7 +51,6 @@ export class ProgrammaticOrchestrator {
    */
   async run(script: string, signal?: AbortSignal): Promise<ProgrammaticResult> {
     const toolCalls: ToolCallRecord[] = [];
-    const self = this;
 
     // Inject callTool as a pseudo-synchronous global by wrapping the script
     // in an async IIFE. The kernel receives the wrapper; intermediate results
@@ -59,9 +58,9 @@ export class ProgrammaticOrchestrator {
     const callToolShim = async (name: string, args: Record<string, unknown>): Promise<string> => {
       if (signal?.aborted) throw new Error("ProgrammaticOrchestrator: aborted");
       const callId = `ptc-${toolCalls.length}-${name}`;
-      const result = await self.#tools.call(
+      const result = await this.#tools.call(
         { toolName: name, args, callId, ...(signal ? { signal } : {}) },
-        self.#capabilities.extraCapabilities
+        this.#capabilities.extraCapabilities
       );
       toolCalls.push({ name, args, callId, result: result.output, isError: !!result.error });
       if (result.error) {
@@ -80,8 +79,9 @@ export class ProgrammaticOrchestrator {
     const wrappedScript = buildWrappedScript(script);
 
     // Provide callTool as a serialisable bridge: accumulate calls, inject results.
-    const callResults = new Map<string, string>();
-    let pendingCalls: Array<{ callKey: string; name: string; args: Record<string, unknown> }> = [];
+    const _callResults = new Map<string, string>();
+    const _pendingCalls: Array<{ callKey: string; name: string; args: Record<string, unknown> }> =
+      [];
 
     // Two-phase execution: 1) dry-run to collect callTool invocations, 2) resolve + re-run.
     // Simpler: inject a synthetic __callTool_registry__ into kernel state, then run.
@@ -139,8 +139,14 @@ export class ProgrammaticOrchestrator {
           this.#capabilities
         );
 
-        const raw = typeof execResult.output === "string" ? execResult.output : JSON.stringify(execResult.output);
-        let parsed: { result: string; calls: Array<{ key: string; name: string; args: Record<string, unknown> }> };
+        const raw =
+          typeof execResult.output === "string"
+            ? execResult.output
+            : JSON.stringify(execResult.output);
+        let parsed: {
+          result: string;
+          calls: Array<{ key: string; name: string; args: Record<string, unknown> }>;
+        };
         try {
           parsed = JSON.parse(raw) as typeof parsed;
         } catch {
@@ -149,7 +155,9 @@ export class ProgrammaticOrchestrator {
         }
 
         output = parsed.result;
-        const pendingCalls = parsed.calls.filter((c) => !(c.key in ({} as Record<string, unknown>)));
+        const pendingCalls = parsed.calls.filter(
+          (c) => !(c.key in ({} as Record<string, unknown>))
+        );
 
         if (pendingCalls.length === 0 || parsed.calls.length === lastCallCount) break;
         lastCallCount = parsed.calls.length;

@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { BudgetForcingRunner } from "./BudgetForcingRunner.js";
+import { describe, expect, it } from "vitest";
 import type { Model, ModelMessage, StreamEvent } from "../models/types.js";
+import { BudgetForcingRunner } from "./BudgetForcingRunner.js";
 
 function mockModel(answers: string[]): Model {
   let idx = 0;
@@ -28,7 +28,8 @@ describe("BudgetForcingRunner", () => {
   it("injects Wait forcing when initial response is short", async () => {
     const runner = new BudgetForcingRunner({ minResponseTokens: 20, maxWaitRounds: 1 });
     const shortAnswer = "ok"; // <<80 chars
-    const longContinuation = "Here is the full detailed reasoning: the answer is 42 because of the properties of the number.";
+    const longContinuation =
+      "Here is the full detailed reasoning: the answer is 42 because of the properties of the number.";
     const model = mockModel([shortAnswer, longContinuation]);
     const result = await runner.run(model, [{ role: "user", content: "q" }]);
     expect(result.answer).toBe(longContinuation);
@@ -76,7 +77,10 @@ describe("BudgetForcingRunner", () => {
 
   it("n=0 maxWaitRounds is clamped to 1", async () => {
     const runner = new BudgetForcingRunner({ maxWaitRounds: 0 });
-    expect((runner as unknown as { _BudgetForcingRunner__maxWaitRounds?: number })["_BudgetForcingRunner__maxWaitRounds"]).toBeUndefined(); // private, just verify it runs
+    expect(
+      (runner as unknown as { _BudgetForcingRunner__maxWaitRounds?: number })
+        ._BudgetForcingRunner__maxWaitRounds
+    ).toBeUndefined(); // private, just verify it runs
     const model = mockModel(["some answer"]);
     const result = await runner.run(model, [{ role: "user", content: "q" }]);
     expect(result.answer).toBeDefined();

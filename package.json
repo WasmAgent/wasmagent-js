@@ -2,7 +2,7 @@
   "name": "agentkit-js",
   "version": "0.1.0",
   "private": true,
-  "description": "TypeScript + WASM agent runtime — a high-efficiency reimagination of smolagents",
+  "description": "TypeScript + WASM agent runtime \u2014 a high-efficiency reimagination of smolagents",
   "license": "Apache-2.0",
   "type": "module",
   "packageManager": "bun@1.3.14",
@@ -17,12 +17,15 @@
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
-    "lint": "turbo run lint",
+    "lint": "biome check packages/",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean",
-    "dev": "turbo run dev --parallel"
+    "dev": "turbo run dev --parallel",
+    "lint:fix": "biome check --write packages/",
+    "format": "biome format --write packages/"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.16",
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^2.1.9",
     "turbo": "^2.3.0",

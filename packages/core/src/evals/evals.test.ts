@@ -1,28 +1,56 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  exactMatch,
-  toolCallAccuracy,
-  trajectoryValidity,
-  finalAnswerLength,
   collectTrace,
-  runEval,
+  exactMatch,
+  finalAnswerLength,
   guardrailCompliance,
   guardrailComplianceAsync,
   llmJudgeAsync,
+  runEval,
+  toolCallAccuracy,
+  trajectoryValidity,
 } from "../evals/index.js";
-import type { AgentEvent } from "../types/events.js";
-import type { Model, StreamEvent } from "../models/types.js";
 import { forbiddenPhrases } from "../guardrails/index.js";
+import type { Model, StreamEvent } from "../models/types.js";
+import type { AgentEvent } from "../types/events.js";
 
 function makeTrace(finalAnswer: string | null, toolNames: string[] = []) {
   const events: AgentEvent[] = [];
   for (let i = 0; i < toolNames.length; i++) {
     const callId = `call-${i}`;
-    events.push({ traceId: "t1", parentTraceId: null, channel: "tool", event: "tool_call", data: { toolName: toolNames[i]!, args: {}, callId, batchId: "b", batchSize: 1, stepIndex: i }, timestampMs: 0 });
-    events.push({ traceId: "t1", parentTraceId: null, channel: "tool", event: "tool_result", data: { toolName: toolNames[i]!, callId, output: "ok", batchId: "b", batchSize: 1, stepIndex: i }, timestampMs: 0 });
+    events.push({
+      traceId: "t1",
+      parentTraceId: null,
+      channel: "tool",
+      event: "tool_call",
+      data: { toolName: toolNames[i]!, args: {}, callId, batchId: "b", batchSize: 1, stepIndex: i },
+      timestampMs: 0,
+    });
+    events.push({
+      traceId: "t1",
+      parentTraceId: null,
+      channel: "tool",
+      event: "tool_result",
+      data: {
+        toolName: toolNames[i]!,
+        callId,
+        output: "ok",
+        batchId: "b",
+        batchSize: 1,
+        stepIndex: i,
+      },
+      timestampMs: 0,
+    });
   }
   if (finalAnswer !== null) {
-    events.push({ traceId: "t1", parentTraceId: null, channel: "text", event: "final_answer", data: { answer: finalAnswer }, timestampMs: 0 });
+    events.push({
+      traceId: "t1",
+      parentTraceId: null,
+      channel: "text",
+      event: "final_answer",
+      data: { answer: finalAnswer },
+      timestampMs: 0,
+    });
   }
   return collectTrace("test task", events);
 }
@@ -56,21 +84,37 @@ describe("exactMatch scorer (B1)", () => {
 describe("toolCallAccuracy scorer (B1)", () => {
   it("returns 1 for exact tool sequence match", () => {
     const trace = makeTrace("ok", ["search", "read"]);
-    const result = toolCallAccuracy.score(trace, { id: "1", task: "", expectedTools: ["search", "read"] });
+    const result = toolCallAccuracy.score(trace, {
+      id: "1",
+      task: "",
+      expectedTools: ["search", "read"],
+    });
     expect(result.score).toBe(1);
   });
 
   it("returns lower score for wrong order (A1 DoD: wrong order < correct order)", () => {
     const traceCorrect = makeTrace("ok", ["search", "read"]);
     const traceWrong = makeTrace("ok", ["read", "search"]);
-    const correct = toolCallAccuracy.score(traceCorrect, { id: "1", task: "", expectedTools: ["search", "read"] });
-    const wrong = toolCallAccuracy.score(traceWrong, { id: "1", task: "", expectedTools: ["search", "read"] });
+    const correct = toolCallAccuracy.score(traceCorrect, {
+      id: "1",
+      task: "",
+      expectedTools: ["search", "read"],
+    });
+    const wrong = toolCallAccuracy.score(traceWrong, {
+      id: "1",
+      task: "",
+      expectedTools: ["search", "read"],
+    });
     expect(correct.score).toBeGreaterThan(wrong.score);
   });
 
   it("returns lower score for extra/missing tools", () => {
     const trace = makeTrace("ok", ["search"]);
-    const result = toolCallAccuracy.score(trace, { id: "1", task: "", expectedTools: ["search", "read", "write"] });
+    const result = toolCallAccuracy.score(trace, {
+      id: "1",
+      task: "",
+      expectedTools: ["search", "read", "write"],
+    });
     expect(result.score).toBeLessThan(1);
   });
 
@@ -95,9 +139,37 @@ describe("trajectoryValidity scorer (B1)", () => {
   it("returns fractional score when some results are missing", () => {
     // Manually craft a trace with 2 calls but only 1 result.
     const events: AgentEvent[] = [
-      { traceId: "t", parentTraceId: null, channel: "tool", event: "tool_call", data: { toolName: "a", args: {}, callId: "c1", batchId: "b", batchSize: 2, stepIndex: 1 }, timestampMs: 0 },
-      { traceId: "t", parentTraceId: null, channel: "tool", event: "tool_call", data: { toolName: "b", args: {}, callId: "c2", batchId: "b", batchSize: 2, stepIndex: 1 }, timestampMs: 0 },
-      { traceId: "t", parentTraceId: null, channel: "tool", event: "tool_result", data: { toolName: "a", callId: "c1", output: "ok", batchId: "b", batchSize: 2, stepIndex: 1 }, timestampMs: 0 },
+      {
+        traceId: "t",
+        parentTraceId: null,
+        channel: "tool",
+        event: "tool_call",
+        data: { toolName: "a", args: {}, callId: "c1", batchId: "b", batchSize: 2, stepIndex: 1 },
+        timestampMs: 0,
+      },
+      {
+        traceId: "t",
+        parentTraceId: null,
+        channel: "tool",
+        event: "tool_call",
+        data: { toolName: "b", args: {}, callId: "c2", batchId: "b", batchSize: 2, stepIndex: 1 },
+        timestampMs: 0,
+      },
+      {
+        traceId: "t",
+        parentTraceId: null,
+        channel: "tool",
+        event: "tool_result",
+        data: {
+          toolName: "a",
+          callId: "c1",
+          output: "ok",
+          batchId: "b",
+          batchSize: 2,
+          stepIndex: 1,
+        },
+        timestampMs: 0,
+      },
     ];
     const trace = collectTrace("task", events);
     expect(trajectoryValidity.score(trace, { id: "1", task: "" }).score).toBe(0.5);
@@ -119,7 +191,14 @@ describe("finalAnswerLength scorer (B1)", () => {
 describe("runEval (B1)", () => {
   it("runs samples and returns scores for each", async () => {
     async function* mockRunner(task: string): AsyncGenerator<AgentEvent> {
-      yield { traceId: "t", parentTraceId: null, channel: "text", event: "final_answer", data: { answer: task === "capital of France?" ? "Paris" : "wrong" }, timestampMs: 0 };
+      yield {
+        traceId: "t",
+        parentTraceId: null,
+        channel: "text",
+        event: "final_answer",
+        data: { answer: task === "capital of France?" ? "Paris" : "wrong" },
+        timestampMs: 0,
+      };
     }
 
     const dataset = [
@@ -129,8 +208,8 @@ describe("runEval (B1)", () => {
 
     const results = await runEval(dataset, mockRunner, [exactMatch]);
     expect(results).toHaveLength(2);
-    expect(results[0]!.scores[0]!.score).toBe(1);  // "Paris" matches
-    expect(results[1]!.scores[0]!.score).toBe(0);  // "wrong" doesn't match "Berlin"
+    expect(results[0]?.scores[0]?.score).toBe(1); // "Paris" matches
+    expect(results[1]?.scores[0]?.score).toBe(0); // "wrong" doesn't match "Berlin"
   });
 });
 
@@ -246,11 +325,16 @@ describe("llmJudgeAsync scorer (C2)", () => {
   });
 
   it("scorer.name includes rubric prefix", () => {
-    const { llmJudge } = { llmJudge: (model: Model, rubric: string) => {
-      // Re-import already-imported function inline to test name
-      void model;
-      return { name: `llmJudge(${rubric.slice(0, 40).replace(/\s+/g, " ")}...)`, score: () => ({ scorer: "llmJudge", score: 0 }) };
-    }};
+    const { llmJudge } = {
+      llmJudge: (model: Model, rubric: string) => {
+        // Re-import already-imported function inline to test name
+        void model;
+        return {
+          name: `llmJudge(${rubric.slice(0, 40).replace(/\s+/g, " ")}...)`,
+          score: () => ({ scorer: "llmJudge", score: 0 }),
+        };
+      },
+    };
     const model = makeJudgeModel("");
     const scorer = llmJudge(model, "Is the answer factually correct?");
     expect(scorer.name).toContain("llmJudge");

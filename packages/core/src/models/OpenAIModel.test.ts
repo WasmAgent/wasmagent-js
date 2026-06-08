@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ModelMessage, StreamEvent } from "../models/types.js";
 
 /**
@@ -57,7 +57,7 @@ async function collectEvents(
   vi.doMock("openai", () => ({ default: MockOpenAI }));
 
   // Re-import after mocking to get a fresh module.
-  const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now());
+  const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "");
   const model = new OpenAIModel("gpt-4o", "test-key");
 
   const events: StreamEvent[] = [];
@@ -96,7 +96,10 @@ describe("OpenAIModel streaming", () => {
 
   it("emits usage event when chunk.usage is present", async () => {
     const chunks: OAIChunk[] = [
-      { choices: [{ delta: {}, finish_reason: "stop" }], usage: { prompt_tokens: 10, completion_tokens: 5 } },
+      {
+        choices: [{ delta: {}, finish_reason: "stop" }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      },
     ];
     const events = await collectEvents(chunks);
     const usageEvent = events.find((e) => e.type === "usage");
@@ -107,22 +110,30 @@ describe("OpenAIModel streaming", () => {
   it("accumulates tool_call deltas across multiple chunks and emits one tool_call event", async () => {
     const chunks: OAIChunk[] = [
       {
-        choices: [{
-          delta: { tool_calls: [{ index: 0, id: "call-1", function: { name: "search", arguments: "" } }] },
-          finish_reason: null,
-        }],
+        choices: [
+          {
+            delta: {
+              tool_calls: [{ index: 0, id: "call-1", function: { name: "search", arguments: "" } }],
+            },
+            finish_reason: null,
+          },
+        ],
       },
       {
-        choices: [{
-          delta: { tool_calls: [{ index: 0, function: { arguments: '{"q' } }] },
-          finish_reason: null,
-        }],
+        choices: [
+          {
+            delta: { tool_calls: [{ index: 0, function: { arguments: '{"q' } }] },
+            finish_reason: null,
+          },
+        ],
       },
       {
-        choices: [{
-          delta: { tool_calls: [{ index: 0, function: { arguments: 'uery":"AI"}' } }] },
-          finish_reason: null,
-        }],
+        choices: [
+          {
+            delta: { tool_calls: [{ index: 0, function: { arguments: 'uery":"AI"}' } }] },
+            finish_reason: null,
+          },
+        ],
       },
       { choices: [{ delta: {}, finish_reason: "tool_calls" }] },
     ];
@@ -137,10 +148,14 @@ describe("OpenAIModel streaming", () => {
   it("emits stop with stopReason 'tool_use' on finish_reason=tool_calls", async () => {
     const chunks: OAIChunk[] = [
       {
-        choices: [{
-          delta: { tool_calls: [{ index: 0, id: "c1", function: { name: "fn", arguments: "{}" } }] },
-          finish_reason: null,
-        }],
+        choices: [
+          {
+            delta: {
+              tool_calls: [{ index: 0, id: "c1", function: { name: "fn", arguments: "{}" } }],
+            },
+            finish_reason: null,
+          },
+        ],
       },
       { choices: [{ delta: {}, finish_reason: "tool_calls" }] },
     ];
@@ -152,10 +167,14 @@ describe("OpenAIModel streaming", () => {
   it("no text_delta events when only tool_calls are produced", async () => {
     const chunks: OAIChunk[] = [
       {
-        choices: [{
-          delta: { tool_calls: [{ index: 0, id: "c1", function: { name: "fn", arguments: "{}" } }] },
-          finish_reason: "tool_calls",
-        }],
+        choices: [
+          {
+            delta: {
+              tool_calls: [{ index: 0, id: "c1", function: { name: "fn", arguments: "{}" } }],
+            },
+            finish_reason: "tool_calls",
+          },
+        ],
       },
     ];
     const events = await collectEvents(chunks);
@@ -175,7 +194,7 @@ describe("OpenAIModel convertMessages (via MessageAssembler)", () => {
     const messages = assembler.build();
     const sys = messages.find((m) => m.role === "system");
     expect(typeof sys?.content).toBe("string");
-    expect((sys?.content as string)).toContain("You are helpful.");
+    expect(sys?.content as string).toContain("You are helpful.");
   });
 
   it("tool_use block in assistant message has id, name, input fields", () => {
@@ -192,10 +211,10 @@ describe("OpenAIModel convertMessages (via MessageAssembler)", () => {
     });
     const messages = assembler.build();
     const assistantBlocks = messages[1]?.content as unknown as Array<Record<string, unknown>>;
-    const toolUse = assistantBlocks.find((b) => b["type"] === "tool_use");
-    expect(toolUse?.["id"]).toBe("tc1");
-    expect(toolUse?.["name"]).toBe("calc");
-    expect((toolUse?.["input"] as Record<string, unknown>)["expr"]).toBe("2+2");
+    const toolUse = assistantBlocks.find((b) => b.type === "tool_use");
+    expect(toolUse?.id).toBe("tc1");
+    expect(toolUse?.name).toBe("calc");
+    expect((toolUse?.input as Record<string, unknown>).expr).toBe("2+2");
   });
 
   it("tool_result block in user message has toolUseId and content fields", () => {
@@ -212,9 +231,9 @@ describe("OpenAIModel convertMessages (via MessageAssembler)", () => {
     });
     const messages = assembler.build();
     const userBlocks = messages[2]?.content as unknown as Array<Record<string, unknown>>;
-    const result = userBlocks.find((b) => b["type"] === "tool_result");
-    expect(result?.["toolUseId"]).toBe("tc2");
-    expect(result?.["content"]).toBe("found it");
+    const result = userBlocks.find((b) => b.type === "tool_result");
+    expect(result?.toolUseId).toBe("tc2");
+    expect(result?.content).toBe("found it");
   });
 
   it("assistant message with only tool_use (no text) has no text block", () => {
@@ -231,7 +250,7 @@ describe("OpenAIModel convertMessages (via MessageAssembler)", () => {
     });
     const messages = assembler.build();
     const assistantBlocks = messages[1]?.content as unknown as Array<Record<string, unknown>>;
-    expect(assistantBlocks.every((b) => b["type"] !== "text")).toBe(true);
+    expect(assistantBlocks.every((b) => b.type !== "text")).toBe(true);
   });
 });
 
@@ -240,7 +259,9 @@ describe("OpenAIModel convertMessages (via MessageAssembler)", () => {
  * with structured ModelMessage content (tool_use, tool_result, text arrays).
  */
 describe("OpenAIModel generate() with structured content messages", () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   async function generateWithMessages(messages: ModelMessage[]): Promise<Record<string, unknown>> {
     const { MockOpenAI, mockCreate } = makeOpenAIMock([
@@ -249,7 +270,9 @@ describe("OpenAIModel generate() with structured content messages", () => {
     vi.doMock("openai", () => ({ default: MockOpenAI }));
     const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "s");
     const model = new OpenAIModel("gpt-4o", "key");
-    for await (const _ of model.generate(messages)) { /* consume */ }
+    for await (const _ of model.generate(messages)) {
+      /* consume */
+    }
     vi.doUnmock("openai");
     return mockCreate.mock.calls[0]?.[0] as Record<string, unknown>;
   }
@@ -259,9 +282,9 @@ describe("OpenAIModel generate() with structured content messages", () => {
       { role: "system", content: "Be helpful." },
       { role: "user", content: "hi" },
     ]);
-    const msgs = params["messages"] as Array<Record<string, unknown>>;
-    expect(msgs[0]?.["role"]).toBe("system");
-    expect(msgs[0]?.["content"]).toBe("Be helpful.");
+    const msgs = params.messages as Array<Record<string, unknown>>;
+    expect(msgs[0]?.role).toBe("system");
+    expect(msgs[0]?.content).toBe("Be helpful.");
   });
 
   it("assistant message with tool_use block is converted to tool_calls format", async () => {
@@ -274,12 +297,12 @@ describe("OpenAIModel generate() with structured content messages", () => {
         ],
       },
     ]);
-    const msgs = params["messages"] as Array<Record<string, unknown>>;
+    const msgs = params.messages as Array<Record<string, unknown>>;
     const assistantMsg = msgs[0] as Record<string, unknown>;
-    expect(assistantMsg?.["role"]).toBe("assistant");
-    expect(Array.isArray(assistantMsg?.["tool_calls"])).toBe(true);
-    const toolCalls = assistantMsg?.["tool_calls"] as Array<Record<string, unknown>>;
-    expect(toolCalls[0]?.["id"]).toBe("c1");
+    expect(assistantMsg?.role).toBe("assistant");
+    expect(Array.isArray(assistantMsg?.tool_calls)).toBe(true);
+    const toolCalls = assistantMsg?.tool_calls as Array<Record<string, unknown>>;
+    expect(toolCalls[0]?.id).toBe("c1");
   });
 
   it("user message with tool_result block is converted to role:tool", async () => {
@@ -289,22 +312,25 @@ describe("OpenAIModel generate() with structured content messages", () => {
         content: [{ type: "tool_result", toolUseId: "c1", content: "result text" }],
       },
     ]);
-    const msgs = params["messages"] as Array<Record<string, unknown>>;
-    expect(msgs[0]?.["role"]).toBe("tool");
-    expect(msgs[0]?.["content"]).toBe("result text");
-    expect(msgs[0]?.["tool_call_id"]).toBe("c1");
+    const msgs = params.messages as Array<Record<string, unknown>>;
+    expect(msgs[0]?.role).toBe("tool");
+    expect(msgs[0]?.content).toBe("result text");
+    expect(msgs[0]?.tool_call_id).toBe("c1");
   });
 
   it("user message with text blocks is combined and converted", async () => {
     const params = await generateWithMessages([
       {
         role: "user",
-        content: [{ type: "text", text: "hello" }, { type: "text", text: " world" }],
+        content: [
+          { type: "text", text: "hello" },
+          { type: "text", text: " world" },
+        ],
       },
     ]);
-    const msgs = params["messages"] as Array<Record<string, unknown>>;
-    expect(msgs[0]?.["role"]).toBe("user");
-    expect(msgs[0]?.["content"]).toBe("hello\n world");
+    const msgs = params.messages as Array<Record<string, unknown>>;
+    expect(msgs[0]?.role).toBe("user");
+    expect(msgs[0]?.content).toBe("hello\n world");
   });
 });
 
@@ -318,27 +344,29 @@ describe("OpenAIModel D1 reasoning-model params", () => {
     vi.doMock("openai", () => ({ default: MockOpenAI }));
     const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "r");
     const model = new OpenAIModel(modelId, "key");
-    for await (const _ of model.generate([{ role: "user", content: "hi" }])) { /* consume */ }
+    for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
+      /* consume */
+    }
     vi.doUnmock("openai");
     return mockCreate.mock.calls[0]?.[0] as Record<string, unknown>;
   }
 
   it("D1: standard model uses max_tokens and no max_completion_tokens", async () => {
     const params = await getParams("gpt-4o");
-    expect(params["max_tokens"]).toBeDefined();
-    expect(params["max_completion_tokens"]).toBeUndefined();
+    expect(params.max_tokens).toBeDefined();
+    expect(params.max_completion_tokens).toBeUndefined();
   });
 
   it("D1: o3 model uses max_completion_tokens and no max_tokens", async () => {
     const params = await getParams("o3");
-    expect(params["max_completion_tokens"]).toBeDefined();
-    expect(params["max_tokens"]).toBeUndefined();
+    expect(params.max_completion_tokens).toBeDefined();
+    expect(params.max_tokens).toBeUndefined();
   });
 
   it("D1: o4-mini model uses max_completion_tokens", async () => {
     const params = await getParams("o4-mini");
-    expect(params["max_completion_tokens"]).toBeDefined();
-    expect(params["max_tokens"]).toBeUndefined();
+    expect(params.max_completion_tokens).toBeDefined();
+    expect(params.max_tokens).toBeUndefined();
   });
 
   it("D1: temperature is not set for o-series models", async () => {
@@ -349,17 +377,21 @@ describe("OpenAIModel D1 reasoning-model params", () => {
     vi.doMock("openai", () => ({ default: MockOpenAI }));
     const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "r2");
     const model = new OpenAIModel("o3", { apiKey: "key", samplingParams: { temperature: 0.7 } });
-    for await (const _ of model.generate([{ role: "user", content: "hi" }])) { /* consume */ }
+    for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
+      /* consume */
+    }
     vi.doUnmock("openai");
     const params = mockCreate.mock.calls[0]?.[0] as Record<string, unknown>;
-    expect(params["temperature"]).toBeUndefined();
+    expect(params.temperature).toBeUndefined();
   });
 });
 
 // ── D2: OpenAI cached_tokens metering ────────────────────────────────────────
 
 describe("OpenAIModel D2 — prompt_tokens_details.cached_tokens", () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it("reads cached_tokens from prompt_tokens_details and maps to cacheReadTokens", async () => {
     const chunk: OAIChunk = {
@@ -451,7 +483,10 @@ describe("OpenAIModel apiMode", () => {
   it("explicit apiMode='responses' works with baseURL", async () => {
     vi.resetModules();
     const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "am4");
-    const model = new OpenAIModel("gpt-4o", { baseURL: "https://oai-proxy.example.com", apiMode: "responses" });
+    const model = new OpenAIModel("gpt-4o", {
+      baseURL: "https://oai-proxy.example.com",
+      apiMode: "responses",
+    });
     expect(model.apiMode).toBe("responses");
   });
 
@@ -465,7 +500,10 @@ describe("OpenAIModel apiMode", () => {
           async next() {
             if (!done) {
               done = true;
-              return { value: { choices: [{ delta: { content: "hi" }, finish_reason: "stop" }] }, done: false };
+              return {
+                value: { choices: [{ delta: { content: "hi" }, finish_reason: "stop" }] },
+                done: false,
+              };
             }
             return { value: undefined, done: true };
           },

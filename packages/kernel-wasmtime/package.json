@@ -28,6 +28,13 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "keywords": ["webassembly", "wasm", "wasi", "javy", "sandbox", "agentkit"],
+  "keywords": [
+    "webassembly",
+    "wasm",
+    "wasi",
+    "javy",
+    "sandbox",
+    "agentkit"
+  ],
   "license": "Apache-2.0"
 }

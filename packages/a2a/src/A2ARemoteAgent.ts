@@ -1,5 +1,5 @@
-import { z } from "zod";
 import type { ToolDefinition } from "@agentkit-js/core";
+import { z } from "zod";
 import type { A2AAgentCard, A2ATaskRequest, A2ATaskResponse } from "./types.js";
 
 export interface A2ARemoteAgentOptions {
@@ -29,6 +29,7 @@ export interface A2ARemoteAgentOptions {
  *   });
  *   const parent = new ToolCallingAgent({ tools: [remoteTool], model });
  */
+// biome-ignore lint/complexity/noStaticOnlyClass: public API namespace
 export class A2ARemoteAgent {
   /**
    * Fetch an Agent Card from a remote A2A server.
@@ -36,7 +37,7 @@ export class A2ARemoteAgent {
    * @param baseUrl - Base URL of the A2A server (without /.well-known/agent-card).
    */
   static async fetchAgentCard(baseUrl: string): Promise<A2AAgentCard> {
-    const url = baseUrl.replace(/\/$/, "") + "/.well-known/agent-card";
+    const url = `${baseUrl.replace(/\/$/, "")}/.well-known/agent-card`;
     const resp = await fetch(url);
     if (!resp.ok) {
       throw new Error(`Failed to fetch Agent Card from ${url}: HTTP ${resp.status}`);
@@ -48,7 +49,7 @@ export class A2ARemoteAgent {
    * Create a ToolDefinition from a remote A2A agent's options.
    * The resulting tool can be registered in any ToolCallingAgent.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: intentional
   static asTool(opts: A2ARemoteAgentOptions): ToolDefinition<any, unknown> {
     const timeoutMs = opts.timeoutMs ?? 60_000;
 
@@ -78,7 +79,7 @@ export class A2ARemoteAgent {
 
         try {
           const headers: Record<string, string> = { "Content-Type": "application/json" };
-          if (opts.apiKey) headers["Authorization"] = `Bearer ${opts.apiKey}`;
+          if (opts.apiKey) headers.Authorization = `Bearer ${opts.apiKey}`;
 
           const resp = await fetch(opts.taskEndpoint, {
             method: "POST",
@@ -91,10 +92,12 @@ export class A2ARemoteAgent {
             throw new Error(`A2A remote agent returned HTTP ${resp.status}: ${await resp.text()}`);
           }
 
-          const result = await resp.json() as A2ATaskResponse;
+          const result = (await resp.json()) as A2ATaskResponse;
 
           if (result.status === "failed") {
-            throw new Error(`Remote agent "${opts.name}" failed: ${result.error ?? "unknown error"}`);
+            throw new Error(
+              `Remote agent "${opts.name}" failed: ${result.error ?? "unknown error"}`
+            );
           }
 
           return result.result;

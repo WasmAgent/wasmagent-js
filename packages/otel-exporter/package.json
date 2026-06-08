@@ -28,6 +28,12 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "keywords": ["opentelemetry", "otlp", "tracing", "observability", "agentkit"],
+  "keywords": [
+    "opentelemetry",
+    "otlp",
+    "tracing",
+    "observability",
+    "agentkit"
+  ],
   "license": "Apache-2.0"
 }

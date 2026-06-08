@@ -1,4 +1,4 @@
-import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from "@agentkit-js/core/executor";
+import type { CapabilityManifest, KernelResult, WasmKernel } from "@agentkit-js/core/executor";
 
 interface PyodideInterface {
   runPython(code: string): unknown;
@@ -29,8 +29,6 @@ export class PyodideKernel implements WasmKernel {
   #logs: string[] = [];
   #initPromise: Promise<PyodideInterface> | null = null;
 
-  constructor(_opts?: KernelOptions) {}
-
   async #ensurePyodide(): Promise<PyodideInterface> {
     if (this.#py) return this.#py;
     if (this.#initPromise) return this.#initPromise;
@@ -45,9 +43,9 @@ export class PyodideKernel implements WasmKernel {
       const { dirname } = await import("node:path");
       const pkgRequire = createRequire(import.meta.url);
       const pkgJsonPath = pkgRequire.resolve("pyodide/package.json");
-      const indexURL = dirname(pkgJsonPath) + "/";
+      const indexURL = `${dirname(pkgJsonPath)}/`;
 
-      const py = await loadPyodide({ indexURL }) as unknown as PyodideInterface;
+      const py = (await loadPyodide({ indexURL })) as unknown as PyodideInterface;
       // Initialise both sentinel spellings (Q5: dual alias for cross-kernel compatibility).
       py.runPython("__final_answer__ = None; __finalAnswer__ = None");
       // Q9: install capability infrastructure (urllib patch, check helpers) once.
@@ -60,14 +58,19 @@ export class PyodideKernel implements WasmKernel {
   }
 
   #attachCapture(py: PyodideInterface): void {
-    py.setStdout({ batched: (s: string) => { this.#logs.push(s); } });
-    py.setStderr({ batched: (s: string) => { this.#logs.push(`[stderr] ${s}`); } });
+    py.setStdout({
+      batched: (s: string) => {
+        this.#logs.push(s);
+      },
+    });
+    py.setStderr({
+      batched: (s: string) => {
+        this.#logs.push(`[stderr] ${s}`);
+      },
+    });
   }
 
-  async run(
-    code: string,
-    capabilities?: Partial<CapabilityManifest>
-  ): Promise<KernelResult> {
+  async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
     const py = await this.#ensurePyodide();
     this.#logs = [];
     this.#attachCapture(py);
@@ -83,16 +86,16 @@ export class PyodideKernel implements WasmKernel {
     try {
       output = py.runPython(code);
     } catch (err) {
-      throw new Error(
-        `PyodideKernelError: ${err instanceof Error ? err.message : String(err)}`
-      );
+      throw new Error(`PyodideKernelError: ${err instanceof Error ? err.message : String(err)}`);
     }
 
     // Q5: check both sentinel spellings for cross-kernel compatibility.
     const finalAnswerSnake = py.globals.get("__final_answer__");
     const finalAnswerCamel = py.globals.get("__finalAnswer__");
-    const finalAnswer = (finalAnswerSnake !== null && finalAnswerSnake !== undefined)
-      ? finalAnswerSnake : finalAnswerCamel;
+    const finalAnswer =
+      finalAnswerSnake !== null && finalAnswerSnake !== undefined
+        ? finalAnswerSnake
+        : finalAnswerCamel;
     const isFinalAnswer = finalAnswer !== null && finalAnswer !== undefined;
 
     return {

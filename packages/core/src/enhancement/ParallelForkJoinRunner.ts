@@ -1,4 +1,4 @@
-import type { Model, ModelMessage, GenerateOptions } from "../models/types.js";
+import type { GenerateOptions, Model, ModelMessage } from "../models/types.js";
 
 export interface ParallelForkJoinOptions {
   /** Number of parallel branches to run (default 3). */
@@ -88,9 +88,7 @@ export class ParallelForkJoinRunner {
 
     // "first" mode: race all branches, return winner immediately.
     if (this.#aggregation === "first") {
-      const branchCtxs = Array.from({ length: n }, (_, i) =>
-        this.#branchPrompt(i, messages)
-      );
+      const branchCtxs = Array.from({ length: n }, (_, i) => this.#branchPrompt(i, messages));
       const answer = await Promise.race(branchCtxs.map((ctx) => collectText(model, ctx, opts)));
       return { answer, branches: [answer], branchesCompleted: 1 };
     }
@@ -135,9 +133,7 @@ export class ParallelForkJoinRunner {
     }
 
     // "summary": build a synthesis context and call the model once.
-    const branchList = branchAnswers
-      .map((a, i) => `Answer ${i + 1}:\n${a}`)
-      .join("\n\n---\n\n");
+    const branchList = branchAnswers.map((a, i) => `Answer ${i + 1}:\n${a}`).join("\n\n---\n\n");
 
     const summaryCtx: ModelMessage[] = [
       ...originalMessages,

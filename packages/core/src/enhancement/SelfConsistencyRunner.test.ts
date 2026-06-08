@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { SelfConsistencyRunner } from "./SelfConsistencyRunner.js";
+import { describe, expect, it } from "vitest";
 import type { Model, StreamEvent } from "../models/types.js";
+import { SelfConsistencyRunner } from "./SelfConsistencyRunner.js";
 
 function mockModel(answers: string[]): Model {
   let callIdx = 0;
@@ -29,7 +29,11 @@ describe("SelfConsistencyRunner", () => {
 
   it("early-stops when threshold fraction agree", async () => {
     // earlyStopThreshold=0.6 with 3 candidates — stops as soon as 2/2 = 100% agree
-    const runner = new SelfConsistencyRunner({ n: 5, earlyStopThreshold: 0.6, concurrencyLimit: 2 });
+    const runner = new SelfConsistencyRunner({
+      n: 5,
+      earlyStopThreshold: 0.6,
+      concurrencyLimit: 2,
+    });
     const model = mockModel(["yes", "yes", "no", "no", "no"]);
     const result = await runner.run(model, [{ role: "user", content: "q" }]);
     // Should stop before all 5 because 2/2 = 1.0 >= 0.6 once first two agree
@@ -51,7 +55,11 @@ describe("SelfConsistencyRunner", () => {
         yield { type: "stop", stopReason: "end_turn" };
       },
     };
-    const runner = new SelfConsistencyRunner({ n: 6, concurrencyLimit: 2, earlyStopThreshold: 1.1 });
+    const runner = new SelfConsistencyRunner({
+      n: 6,
+      concurrencyLimit: 2,
+      earlyStopThreshold: 1.1,
+    });
     await runner.run(model, [{ role: "user", content: "q" }]);
     expect(maxConcurrent).toBeLessThanOrEqual(2);
   });

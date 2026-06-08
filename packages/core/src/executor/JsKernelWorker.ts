@@ -24,8 +24,8 @@
  *   but would not silently produce correct-looking corrupted results.
  */
 
-import { parentPort } from "node:worker_threads";
 import { createContext, Script } from "node:vm";
+import { parentPort } from "node:worker_threads";
 import { buildCapabilityGlobals } from "./capabilities.js";
 import type { CapabilityManifest } from "./types.js";
 
@@ -41,7 +41,18 @@ const sandbox = createContext({
     warn: (..._args: unknown[]) => {},
     error: (..._args: unknown[]) => {},
   },
-  Math, JSON, Array, Object, String, Number, Boolean, Promise, Map, Set, Error, TypeError,
+  Math,
+  JSON,
+  Array,
+  Object,
+  String,
+  Number,
+  Boolean,
+  Promise,
+  Map,
+  Set,
+  Error,
+  TypeError,
   // Q5: both camelCase (JS convention) and snake_case (Python convention) sentinels
   // are recognised so agent code can use either spelling regardless of which kernel
   // backend is active. Setting either one signals a final answer.
@@ -51,79 +62,83 @@ const sandbox = createContext({
 
 // ── message loop ──────────────────────────────────────────────────────────────
 
-parentPort!.on("message", async (msg: {
-  type: "run";
-  code: string;
-  capabilities?: Partial<CapabilityManifest>;
-  serial: number;
-  timeoutMs?: number;
-}) => {
-  // Q3: localise per-call mutable state to avoid pollution if handlers ever overlap.
-  const localLogs: string[] = [];
-  const logCapture = (...args: unknown[]) => localLogs.push(args.map(String).join(" "));
-  sandbox["console"] = { log: logCapture, warn: logCapture, error: logCapture };
+parentPort?.on(
+  "message",
+  async (msg: {
+    type: "run";
+    code: string;
+    capabilities?: Partial<CapabilityManifest>;
+    serial: number;
+    timeoutMs?: number;
+  }) => {
+    // Q3: localise per-call mutable state to avoid pollution if handlers ever overlap.
+    const localLogs: string[] = [];
+    const logCapture = (...args: unknown[]) => localLogs.push(args.map(String).join(" "));
+    sandbox.console = { log: logCapture, warn: logCapture, error: logCapture };
 
-  sandbox["__finalAnswer__"] = undefined;
-  sandbox["__final_answer__"] = undefined;
+    sandbox.__finalAnswer__ = undefined;
+    sandbox.__final_answer__ = undefined;
 
-  // Apply capability globals using buildCapabilityGlobals (same as VmKernel).
-  // Always clear capability globals first so a truthy-but-empty manifest ({})
-  // does not leave capabilities from the previous call in the sandbox.
-  delete sandbox["fetch"];
-  delete sandbox["__fs__"];
-  if (msg.capabilities) {
-    const capGlobals = buildCapabilityGlobals(msg.capabilities);
-    for (const [k, v] of Object.entries(capGlobals)) {
-      sandbox[k] = v;
-    }
-  }
-
-  try {
-    const script = new Script(msg.code, { filename: "agent-step.js" });
-    let output = script.runInContext(sandbox, { timeout: msg.timeoutMs });
-
-    // If the code returned a Promise (e.g. __fs__.readFile(...)), await it so the
-    // resolved value can be structured-cloned back to the host.
-    if (
-      output instanceof Promise ||
-      (output !== null && typeof output === "object" &&
-        typeof (output as { then?: unknown }).then === "function")
-    ) {
-      output = await (output as Promise<unknown>);
+    // Apply capability globals using buildCapabilityGlobals (same as VmKernel).
+    // Always clear capability globals first so a truthy-but-empty manifest ({})
+    // does not leave capabilities from the previous call in the sandbox.
+    delete sandbox.fetch;
+    delete sandbox.__fs__;
+    if (msg.capabilities) {
+      const capGlobals = buildCapabilityGlobals(msg.capabilities);
+      for (const [k, v] of Object.entries(capGlobals)) {
+        sandbox[k] = v;
+      }
     }
 
-    // Q5: check both spellings — camelCase (JS convention) and snake_case (Python convention).
-    // Setting either one signals a final answer, so agent code works regardless of kernel backend.
-    const finalAnswerCamel = sandbox["__finalAnswer__"] as unknown;
-    const finalAnswerSnake = sandbox["__final_answer__"] as unknown;
-    const isFinalAnswer = finalAnswerCamel !== undefined || finalAnswerSnake !== undefined;
-    const finalAnswer = finalAnswerCamel !== undefined ? finalAnswerCamel : finalAnswerSnake;
+    try {
+      const script = new Script(msg.code, { filename: "agent-step.js" });
+      let output = script.runInContext(sandbox, { timeout: msg.timeoutMs });
 
-    // Q3 — __finalAnswer__ async contract:
-    // Agent code that sets __finalAnswer__ inside an async callback that is NOT
-    // awaited or returned will NOT be detected here. Only two patterns are safe:
-    //   (a) Synchronous: `__finalAnswer__ = value;`
-    //   (b) Async via returned Promise: `return somePromise.then(r => { __finalAnswer__ = r; })`
-    //       or `async function main() { __finalAnswer__ = await x; } main()` — the
-    //       returned Promise resolves *after* the assignment, so the worker's await above
-    //       guarantees the value is visible.
-    // Fire-and-forget patterns (setTimeout, bare .then not returned, unhandled Promises)
-    // will NOT set __finalAnswer__ in time. This is documented as a design constraint,
-    // not a bug to fix — detecting detached async tasks would require draining the entire
-    // event loop, which is incompatible with bounded step execution and timeout semantics.
+      // If the code returned a Promise (e.g. __fs__.readFile(...)), await it so the
+      // resolved value can be structured-cloned back to the host.
+      if (
+        output instanceof Promise ||
+        (output !== null &&
+          typeof output === "object" &&
+          typeof (output as { then?: unknown }).then === "function")
+      ) {
+        output = await (output as Promise<unknown>);
+      }
 
-    parentPort!.postMessage({
-      type: "result",
-      serial: msg.serial,
-      output: isFinalAnswer ? finalAnswer : output,
-      logs: localLogs,
-      isFinalAnswer,
-    });
-  } catch (err) {
-    parentPort!.postMessage({
-      type: "error",
-      serial: msg.serial,
-      message: err instanceof Error ? err.message : String(err),
-    });
+      // Q5: check both spellings — camelCase (JS convention) and snake_case (Python convention).
+      // Setting either one signals a final answer, so agent code works regardless of kernel backend.
+      const finalAnswerCamel = sandbox.__finalAnswer__ as unknown;
+      const finalAnswerSnake = sandbox.__final_answer__ as unknown;
+      const isFinalAnswer = finalAnswerCamel !== undefined || finalAnswerSnake !== undefined;
+      const finalAnswer = finalAnswerCamel !== undefined ? finalAnswerCamel : finalAnswerSnake;
+
+      // Q3 — __finalAnswer__ async contract:
+      // Agent code that sets __finalAnswer__ inside an async callback that is NOT
+      // awaited or returned will NOT be detected here. Only two patterns are safe:
+      //   (a) Synchronous: `__finalAnswer__ = value;`
+      //   (b) Async via returned Promise: `return somePromise.then(r => { __finalAnswer__ = r; })`
+      //       or `async function main() { __finalAnswer__ = await x; } main()` — the
+      //       returned Promise resolves *after* the assignment, so the worker's await above
+      //       guarantees the value is visible.
+      // Fire-and-forget patterns (setTimeout, bare .then not returned, unhandled Promises)
+      // will NOT set __finalAnswer__ in time. This is documented as a design constraint,
+      // not a bug to fix — detecting detached async tasks would require draining the entire
+      // event loop, which is incompatible with bounded step execution and timeout semantics.
+
+      parentPort?.postMessage({
+        type: "result",
+        serial: msg.serial,
+        output: isFinalAnswer ? finalAnswer : output,
+        logs: localLogs,
+        isFinalAnswer,
+      });
+    } catch (err) {
+      parentPort?.postMessage({
+        type: "error",
+        serial: msg.serial,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
-});
+);

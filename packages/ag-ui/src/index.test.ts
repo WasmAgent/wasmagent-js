@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { toAgUiEvents, toSseString } from "./index.js";
 import type { AgentEvent } from "@agentkit-js/core";
+import { describe, expect, it } from "vitest";
+import { toAgUiEvents, toSseString } from "./index.js";
 
 function makeEvent<T extends Partial<AgentEvent>>(overrides: T): AgentEvent {
   return {
@@ -11,14 +11,18 @@ function makeEvent<T extends Partial<AgentEvent>>(overrides: T): AgentEvent {
   } as AgentEvent;
 }
 
-async function collect(events: AgentEvent[]): Promise<ReturnType<typeof toAgUiEvents> extends AsyncGenerator<infer T> ? T[] : never> {
+async function collect(
+  events: AgentEvent[]
+): Promise<ReturnType<typeof toAgUiEvents> extends AsyncGenerator<infer T> ? T[] : never> {
   const result = [];
   for await (const ev of toAgUiEvents(
-    (async function*() { yield* events; })()
+    (async function* () {
+      yield* events;
+    })()
   )) {
     result.push(ev);
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: intentional
   return result as any;
 }
 
@@ -42,7 +46,11 @@ describe("toAgUiEvents — AG-UI mapping", () => {
 
   it("thinking_delta → TEXT_MESSAGE_CHUNK (channel: thinking)", async () => {
     const events = await collect([
-      makeEvent({ channel: "thinking", event: "thinking_delta", data: { delta: "I'm thinking...", step: 1 } }),
+      makeEvent({
+        channel: "thinking",
+        event: "thinking_delta",
+        data: { delta: "I'm thinking...", step: 1 },
+      }),
     ]);
     expect(events[0]?.type).toBe("TEXT_MESSAGE_CHUNK");
     const d = (events[0] as { data: { channel?: string; delta: string } }).data;
@@ -55,7 +63,14 @@ describe("toAgUiEvents — AG-UI mapping", () => {
       makeEvent({
         channel: "tool",
         event: "tool_call",
-        data: { toolName: "search", args: { q: "foo" }, callId: "c1", batchId: "b1", batchSize: 1, stepIndex: 1 },
+        data: {
+          toolName: "search",
+          args: { q: "foo" },
+          callId: "c1",
+          batchId: "b1",
+          batchSize: 1,
+          stepIndex: 1,
+        },
       }),
     ]);
     // AG1: tool_call now emits TOOL_CALL_START + TOOL_CALL_ARGS
@@ -72,7 +87,14 @@ describe("toAgUiEvents — AG-UI mapping", () => {
       makeEvent({
         channel: "tool",
         event: "tool_result",
-        data: { callId: "c1", toolName: "search", output: { result: "found" }, batchId: "b1", batchSize: 1, stepIndex: 1 },
+        data: {
+          callId: "c1",
+          toolName: "search",
+          output: { result: "found" },
+          batchId: "b1",
+          batchSize: 1,
+          stepIndex: 1,
+        },
       }),
     ]);
     // AG1: tool_result now emits TOOL_CALL_RESULT (official) + TOOL_CALL_END (backward-compat)
@@ -89,7 +111,15 @@ describe("toAgUiEvents — AG-UI mapping", () => {
       makeEvent({
         channel: "tool",
         event: "tool_result",
-        data: { callId: "c2", toolName: "search", output: null as unknown, error: { code: "execution_error" as const, message: "failed" }, batchId: "b1", batchSize: 1, stepIndex: 1 },
+        data: {
+          callId: "c2",
+          toolName: "search",
+          output: null as unknown,
+          error: { code: "execution_error" as const, message: "failed" },
+          batchId: "b1",
+          batchSize: 1,
+          stepIndex: 1,
+        },
       }),
     ]);
     const ev = events[0] as { data: { isError: boolean } };
@@ -112,13 +142,19 @@ describe("toAgUiEvents — AG-UI mapping", () => {
     const events = await collect([
       makeEvent({ channel: "text", event: "final_answer", data: { answer: { value: 42 } } }),
     ]);
-    const contentEv = events.find((e) => e.type === "TEXT_MESSAGE_CONTENT") as { data: { delta: string } } | undefined;
+    const contentEv = events.find((e) => e.type === "TEXT_MESSAGE_CONTENT") as
+      | { data: { delta: string } }
+      | undefined;
     expect(contentEv?.data.delta).toBe(JSON.stringify({ value: 42 }));
   });
 
   it("error → RUN_ERROR", async () => {
     const events = await collect([
-      makeEvent({ channel: "text", event: "error", data: { error: "something went wrong", step: 1 } }),
+      makeEvent({
+        channel: "text",
+        event: "error",
+        data: { error: "something went wrong", step: 1 },
+      }),
     ]);
     expect(events[0]?.type).toBe("RUN_ERROR");
     expect((events[0] as { data: { message: string } }).data.message).toBe("something went wrong");
@@ -126,17 +162,24 @@ describe("toAgUiEvents — AG-UI mapping", () => {
 
   it("await_human_input → INTERRUPT + STATE_DELTA + STEP_FINISHED (AG4)", async () => {
     const events = await collect([
-      makeEvent({ channel: "status", event: "await_human_input", data: { promptId: "p1", prompt: "Approve?", step: 2 } }),
+      makeEvent({
+        channel: "status",
+        event: "await_human_input",
+        data: { promptId: "p1", prompt: "Approve?", step: 2 },
+      }),
     ]);
     // AG4: INTERRUPT is now emitted first, then STATE_DELTA (backward-compat) + STEP_FINISHED
     expect(events).toHaveLength(3);
     expect(events[0]?.type).toBe("INTERRUPT");
     expect(events[1]?.type).toBe("STATE_DELTA");
     expect(events[2]?.type).toBe("STEP_FINISHED");
-    const interruptData = (events[0] as { data: { promptId: string; prompt: string; step: number } }).data;
+    const interruptData = (
+      events[0] as { data: { promptId: string; prompt: string; step: number } }
+    ).data;
     expect(interruptData.promptId).toBe("p1");
     expect(interruptData.step).toBe(2);
-    const delta = (events[1] as { data: { delta: { pendingApproval: { promptId: string } } } }).data.delta;
+    const delta = (events[1] as { data: { delta: { pendingApproval: { promptId: string } } } }).data
+      .delta;
     expect(delta.pendingApproval.promptId).toBe("p1");
   });
 
@@ -163,8 +206,16 @@ describe("toAgUiEvents — AG-UI mapping", () => {
 
   it("model_start and model_done are suppressed", async () => {
     const events = await collect([
-      makeEvent({ channel: "model", event: "model_start", data: { modelId: "claude-sonnet-4-6", step: 1 } }),
-      makeEvent({ channel: "model", event: "model_done", data: { modelId: "claude-sonnet-4-6", step: 1, finishReason: "end_turn" } }),
+      makeEvent({
+        channel: "model",
+        event: "model_start",
+        data: { modelId: "claude-sonnet-4-6", step: 1 },
+      }),
+      makeEvent({
+        channel: "model",
+        event: "model_done",
+        data: { modelId: "claude-sonnet-4-6", step: 1, finishReason: "end_turn" },
+      }),
     ]);
     expect(events).toHaveLength(0);
   });
@@ -180,8 +231,23 @@ describe("toAgUiEvents — AG-UI mapping", () => {
     const pipeline: AgentEvent[] = [
       makeEvent({ channel: "text", event: "run_start", data: { task: "task" } }),
       makeEvent({ channel: "thinking", event: "step_start", data: { step: 1 } }),
-      makeEvent({ channel: "tool", event: "tool_call", data: { toolName: "t", args: {}, callId: "c1", batchId: "b1", batchSize: 1, stepIndex: 1 } }),
-      makeEvent({ channel: "tool", event: "tool_result", data: { callId: "c1", toolName: "t", output: "out", batchId: "b1", batchSize: 1, stepIndex: 1 } }),
+      makeEvent({
+        channel: "tool",
+        event: "tool_call",
+        data: { toolName: "t", args: {}, callId: "c1", batchId: "b1", batchSize: 1, stepIndex: 1 },
+      }),
+      makeEvent({
+        channel: "tool",
+        event: "tool_result",
+        data: {
+          callId: "c1",
+          toolName: "t",
+          output: "out",
+          batchId: "b1",
+          batchSize: 1,
+          stepIndex: 1,
+        },
+      }),
       makeEvent({ channel: "text", event: "final_answer", data: { answer: "done" } }),
     ];
     const events = await collect(pipeline);
@@ -211,7 +277,7 @@ describe("toSseString", () => {
     expect(sse).toMatch(/\n\n$/);
     const dataLine = sse.split("\n").find((l) => l.startsWith("data:"));
     expect(dataLine).toBeDefined();
-    const parsed = JSON.parse(dataLine!.replace("data: ", ""));
+    const parsed = JSON.parse(dataLine?.replace("data: ", ""));
     expect(parsed.type).toBe("RUN_STARTED");
   });
 });

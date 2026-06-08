@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 /**
  * Smoke tests for the @agentkit-js/model-anthropic re-export package.

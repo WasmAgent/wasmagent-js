@@ -1,4 +1,4 @@
-import type { Model, ModelMessage, GenerateOptions } from "../models/types.js";
+import type { GenerateOptions, Model, ModelMessage } from "../models/types.js";
 import { estimateTokens } from "../models/types.js";
 
 export interface BudgetForcingOptions {
@@ -82,8 +82,11 @@ export class BudgetForcingRunner {
       // the model rewrites the full answer rather than appending a fragment.
       context = [
         ...context,
-        { role: "assistant", content: fullAnswer + "\n" + this.#prefillToken },
-        { role: "user", content: "Restate the complete final answer incorporating your prior reasoning." },
+        { role: "assistant", content: `${fullAnswer}\n${this.#prefillToken}` },
+        {
+          role: "user",
+          content: "Restate the complete final answer incorporating your prior reasoning.",
+        },
       ];
 
       const continuation = await collectText(model, context, opts);

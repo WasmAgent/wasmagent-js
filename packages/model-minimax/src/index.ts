@@ -1,5 +1,5 @@
-import { OpenAICompatModel, type OpenAICompatModelOptions } from "@agentkit-js/core/models";
 import type { GenerateOptions, ModelCapabilities, StreamEvent } from "@agentkit-js/core/models";
+import { OpenAICompatModel, type OpenAICompatModelOptions } from "@agentkit-js/core/models";
 
 /** International endpoint (default). */
 export const MINIMAX_BASE_URL = "https://api.minimax.io/v1";
@@ -8,17 +8,17 @@ export const MINIMAX_CN_BASE_URL = "https://api.minimaxi.com/v1";
 
 /** Canonical MiniMax model IDs. */
 export const MiniMaxModels = {
-  TEXT_01:            "minimax-text-01",
-  M2:                 "MiniMax-M2",
-  M2_5:               "MiniMax-M2.5",
-  M2_7:               "MiniMax-M2.7",
-  M2_7_HIGHSPEED:     "MiniMax-M2.7-highspeed",
-  M3:                 "MiniMax-M3",
+  TEXT_01: "minimax-text-01",
+  M2: "MiniMax-M2",
+  M2_5: "MiniMax-M2.5",
+  M2_7: "MiniMax-M2.7",
+  M2_7_HIGHSPEED: "MiniMax-M2.7-highspeed",
+  M3: "MiniMax-M3",
   /** Always points to the latest recommended model. */
-  LATEST:             "MiniMax-M3",
+  LATEST: "MiniMax-M3",
 } as const;
 
-export type MiniMaxModelId = typeof MiniMaxModels[keyof typeof MiniMaxModels] | (string & {});
+export type MiniMaxModelId = (typeof MiniMaxModels)[keyof typeof MiniMaxModels] | (string & {});
 
 export interface MiniMaxModelOptions extends OpenAICompatModelOptions {
   /**
@@ -48,13 +48,9 @@ export interface MiniMaxModelOptions extends OpenAICompatModelOptions {
 export class MiniMaxModel extends OpenAICompatModel {
   readonly #reasoningSplit: boolean;
 
-  constructor(
-    modelId: MiniMaxModelId,
-    apiKeyOrOpts?: string | MiniMaxModelOptions
-  ) {
-    const opts: MiniMaxModelOptions = typeof apiKeyOrOpts === "string"
-      ? { apiKey: apiKeyOrOpts }
-      : (apiKeyOrOpts ?? {});
+  constructor(modelId: MiniMaxModelId, apiKeyOrOpts?: string | MiniMaxModelOptions) {
+    const opts: MiniMaxModelOptions =
+      typeof apiKeyOrOpts === "string" ? { apiKey: apiKeyOrOpts } : (apiKeyOrOpts ?? {});
     const isReasoningModel = /^MiniMax-M[0-9]/.test(modelId);
     const baseUrl = opts.region === "cn" ? MINIMAX_CN_BASE_URL : MINIMAX_BASE_URL;
     const superOpts: MiniMaxModelOptions & { reasoningContentField?: string } = {
@@ -76,19 +72,24 @@ export class MiniMaxModel extends OpenAICompatModel {
    * Extract reasoning text from reasoning_details array (reasoning_split=true).
    * When reasoning_split=false, reasoning is embedded in content — handled in generate override.
    */
-  protected override mapReasoningField(chunk: Record<string, unknown>, _opts: GenerateOptions): string | undefined {
+  protected override mapReasoningField(
+    chunk: Record<string, unknown>,
+    _opts: GenerateOptions
+  ): string | undefined {
     if (!this.#reasoningSplit) return undefined;
-    const choices = chunk["choices"] as Array<Record<string, unknown>> | undefined;
-    const delta = choices?.[0]?.["delta"] as Record<string, unknown> | undefined;
-    const details = delta?.["reasoning_details"];
+    const choices = chunk.choices as Array<Record<string, unknown>> | undefined;
+    const delta = choices?.[0]?.delta as Record<string, unknown> | undefined;
+    const details = delta?.reasoning_details;
     if (!Array.isArray(details)) return undefined;
     const parts = details
-      .map((d: unknown) => (d && typeof d === "object" && "text" in d ? (d as Record<string, unknown>)["text"] : null))
+      .map((d: unknown) =>
+        d && typeof d === "object" && "text" in d ? (d as Record<string, unknown>).text : null
+      )
       .filter((t): t is string => typeof t === "string");
     return parts.length > 0 ? parts.join("") : undefined;
   }
 
-  protected override mapRequestParams(opts: GenerateOptions): Record<string, unknown> {
+  protected override mapRequestParams(_opts: GenerateOptions): Record<string, unknown> {
     if (this.#reasoningSplit) {
       return { reasoning_split: true };
     }
@@ -128,7 +129,10 @@ export class MiniMaxModel extends OpenAICompatModel {
   }
 
   /** Parse a text chunk, splitting on `<think>` / `</think>` across chunk boundaries. */
-  *#parseThinkTags(text: string, state: { inThinkTag: boolean; buffer: string }): Generator<StreamEvent> {
+  *#parseThinkTags(
+    text: string,
+    state: { inThinkTag: boolean; buffer: string }
+  ): Generator<StreamEvent> {
     // Prepend any buffered partial tag from the previous chunk.
     const input = state.buffer + text;
     state.buffer = "";
@@ -143,7 +147,10 @@ export class MiniMaxModel extends OpenAICompatModel {
           const partialLen = this.#partialTagLength(remaining, "</think>");
           if (partialLen > 0) {
             // Emit confirmed thinking content, buffer the potential partial tag.
-            yield { type: "thinking_delta", delta: remaining.slice(0, remaining.length - partialLen) };
+            yield {
+              type: "thinking_delta",
+              delta: remaining.slice(0, remaining.length - partialLen),
+            };
             state.buffer = remaining.slice(remaining.length - partialLen);
             return;
           }
@@ -161,7 +168,10 @@ export class MiniMaxModel extends OpenAICompatModel {
           const partialLen = this.#partialTagLength(remaining, "<think>");
           if (partialLen > 0) {
             if (remaining.length - partialLen > 0) {
-              yield { type: "text_delta", delta: remaining.slice(0, remaining.length - partialLen) };
+              yield {
+                type: "text_delta",
+                delta: remaining.slice(0, remaining.length - partialLen),
+              };
             }
             state.buffer = remaining.slice(remaining.length - partialLen);
             return;

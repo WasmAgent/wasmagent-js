@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { StreamEvent } from "@agentkit-js/core/models";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type OAIChunk = {
   choices: Array<{
@@ -46,7 +46,7 @@ async function collectEvents(
   }));
   vi.doMock("openai", () => ({ default: MockOpenAI }));
 
-  const { DeepSeekModel } = await import("./index.js?t=" + Date.now());
+  const { DeepSeekModel } = await import("./index.js?t=" + Date.now() + "");
   const model = new DeepSeekModel(modelId, "test-key");
 
   const events: StreamEvent[] = [];
@@ -58,7 +58,9 @@ async function collectEvents(
 }
 
 describe("DeepSeekModel", () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it("emits text_delta for normal content", async () => {
     const events = await collectEvents([
@@ -83,7 +85,11 @@ describe("DeepSeekModel", () => {
 
   it("reasoning_content does NOT appear in text_delta", async () => {
     const events = await collectEvents([
-      { choices: [{ delta: { reasoning_content: "reasoning", content: "answer" }, finish_reason: "stop" }] },
+      {
+        choices: [
+          { delta: { reasoning_content: "reasoning", content: "answer" }, finish_reason: "stop" },
+        ],
+      },
     ]);
     const textDeltas = events.filter((e) => e.type === "text_delta");
     expect(textDeltas.every((e) => !e.delta?.includes("reasoning"))).toBe(true);
@@ -92,13 +98,25 @@ describe("DeepSeekModel", () => {
   it("uses DEEPSEEK_BASE_URL as base URL", async () => {
     let capturedBaseURL: string | undefined;
     const MockOpenAI = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
-      capturedBaseURL = opts["baseURL"] as string;
-      return { chat: { completions: { create: vi.fn().mockResolvedValue(makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])) } } };
+      capturedBaseURL = opts.baseURL as string;
+      return {
+        chat: {
+          completions: {
+            create: vi
+              .fn()
+              .mockResolvedValue(
+                makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])
+              ),
+          },
+        },
+      };
     });
     vi.doMock("openai", () => ({ default: MockOpenAI }));
     const { DeepSeekModel, DEEPSEEK_BASE_URL } = await import("./index.js?t=" + Date.now() + "u");
     const model = new DeepSeekModel("deepseek-chat", "key");
-    for await (const _ of model.generate([{ role: "user", content: "hi" }])) { /* consume */ }
+    for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
+      /* consume */
+    }
     expect(capturedBaseURL).toBe(DEEPSEEK_BASE_URL);
     vi.doUnmock("openai");
   });
@@ -122,8 +140,8 @@ describe("DeepSeekModel", () => {
       { thinking: { mode: "off" } },
       captured
     );
-    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
-    expect(body?.["thinking"]).toMatchObject({ type: "disabled" });
+    const body = captured.ref?.extra_body as Record<string, unknown> | undefined;
+    expect(body?.thinking).toMatchObject({ type: "disabled" });
   });
 
   it("mode:off does NOT produce thinking_delta", async () => {
@@ -146,8 +164,8 @@ describe("DeepSeekModel", () => {
       {},
       captured
     );
-    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
-    expect(body?.["thinking"]).toMatchObject({ type: "enabled" });
+    const body = captured.ref?.extra_body as Record<string, unknown> | undefined;
+    expect(body?.thinking).toMatchObject({ type: "enabled" });
   });
 
   it("effort:max maps to effort:max in thinking body", async () => {
@@ -158,9 +176,9 @@ describe("DeepSeekModel", () => {
       { thinking: { mode: "enabled", effort: "max" } },
       captured
     );
-    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
-    const thinking = body?.["thinking"] as Record<string, unknown> | undefined;
-    expect(thinking?.["effort"]).toBe("max");
+    const body = captured.ref?.extra_body as Record<string, unknown> | undefined;
+    const thinking = body?.thinking as Record<string, unknown> | undefined;
+    expect(thinking?.effort).toBe("max");
   });
 
   it("effort:low maps to effort:high in thinking body (DeepSeek consolidates low→high)", async () => {
@@ -171,8 +189,8 @@ describe("DeepSeekModel", () => {
       { thinking: { mode: "enabled", effort: "low" } },
       captured
     );
-    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
-    const thinking = body?.["thinking"] as Record<string, unknown> | undefined;
-    expect(thinking?.["effort"]).toBe("high");
+    const body = captured.ref?.extra_body as Record<string, unknown> | undefined;
+    const thinking = body?.thinking as Record<string, unknown> | undefined;
+    expect(thinking?.effort).toBe("high");
   });
 });

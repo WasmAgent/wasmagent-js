@@ -24,7 +24,13 @@
  *   gen_ai.anthropic.thinking_tokens
  */
 
-import type { SpanExporter, ReadableSpan, SpanAttributes, GenAiMetricPoint, MetricExporter } from "@agentkit-js/core";
+import type {
+  GenAiMetricPoint,
+  MetricExporter,
+  ReadableSpan,
+  SpanAttributes,
+  SpanExporter,
+} from "@agentkit-js/core";
 
 export interface OtlpHttpExporterOptions {
   /**
@@ -106,7 +112,10 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
     if (spans.length === 0) return;
     const body = this.#toOtlpPayload(spans);
     this.#exportWithRetry(this.#traceEndpoint, body).catch((err) => {
-      console.error("[OtlpHttpExporter] trace export failed after retries:", (err as Error)?.message ?? err);
+      console.error(
+        "[OtlpHttpExporter] trace export failed after retries:",
+        (err as Error)?.message ?? err
+      );
     });
   }
 
@@ -117,7 +126,10 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
     if (metrics.length === 0) return;
     const body = this.#toOtlpMetricsPayload(metrics);
     this.#exportWithRetry(this.#metricsEndpoint, body).catch((err) => {
-      console.error("[OtlpHttpExporter] metrics export failed after retries:", (err as Error)?.message ?? err);
+      console.error(
+        "[OtlpHttpExporter] metrics export failed after retries:",
+        (err as Error)?.message ?? err
+      );
     });
   }
 
@@ -206,9 +218,11 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
     const attrs = attributesToOtlp(filteredAttrs);
 
     const statusCode =
-      s.status === "ok" ? 1 /* STATUS_CODE_OK */
-      : s.status === "error" ? 2 /* STATUS_CODE_ERROR */
-      : 0; /* STATUS_CODE_UNSET */
+      s.status === "ok"
+        ? 1 /* STATUS_CODE_OK */
+        : s.status === "error"
+          ? 2 /* STATUS_CODE_ERROR */
+          : 0; /* STATUS_CODE_UNSET */
 
     return {
       traceId: ensureHex(s.traceId, 32),
@@ -231,14 +245,21 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
   /** O2: Convert GenAI metric points to OTLP JSON metrics payload. */
   #toOtlpMetricsPayload(metrics: GenAiMetricPoint[]): object {
     const resourceAttrs = Object.entries(this.#resource).map(([k, v]) => ({
-      key: k, value: { stringValue: v },
+      key: k,
+      value: { stringValue: v },
     }));
 
     // Aggregate by model: sum tokens, collect durations for histogram approximation.
-    const byModel = new Map<string, { inputTokens: number; outputTokens: number; durations: number[] }>();
+    const byModel = new Map<
+      string,
+      { inputTokens: number; outputTokens: number; durations: number[] }
+    >();
     for (const m of metrics) {
       let bucket = byModel.get(m.modelId);
-      if (!bucket) { bucket = { inputTokens: 0, outputTokens: 0, durations: [] }; byModel.set(m.modelId, bucket); }
+      if (!bucket) {
+        bucket = { inputTokens: 0, outputTokens: 0, durations: [] };
+        byModel.set(m.modelId, bucket);
+      }
       if (m.inputTokens !== undefined) bucket.inputTokens += m.inputTokens;
       if (m.outputTokens !== undefined) bucket.outputTokens += m.outputTokens;
       if (m.durationMs !== undefined) bucket.durations.push(m.durationMs);
@@ -246,9 +267,7 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
 
     const dataPoints: object[] = [];
     for (const [modelId, data] of byModel) {
-      const attrs = [
-        { key: "gen_ai.request.model", value: { stringValue: modelId } },
-      ];
+      const attrs = [{ key: "gen_ai.request.model", value: { stringValue: modelId } }];
       if (data.inputTokens > 0) {
         dataPoints.push({
           attributes: [...attrs, { key: "gen_ai.token.type", value: { stringValue: "input" } }],
@@ -265,18 +284,24 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
     }
 
     return {
-      resourceMetrics: [{
-        resource: { attributes: resourceAttrs },
-        scopeMetrics: [{
-          scope: { name: "@agentkit-js/otel-exporter", version: "0.1.0" },
-          metrics: [{
-            name: "gen_ai.client.token.usage",
-            description: "GenAI client token usage",
-            unit: "token",
-            sum: { dataPoints, aggregationTemporality: 1, isMonotonic: true },
-          }],
-        }],
-      }],
+      resourceMetrics: [
+        {
+          resource: { attributes: resourceAttrs },
+          scopeMetrics: [
+            {
+              scope: { name: "@agentkit-js/otel-exporter", version: "0.1.0" },
+              metrics: [
+                {
+                  name: "gen_ai.client.token.usage",
+                  description: "GenAI client token usage",
+                  unit: "token",
+                  sum: { dataPoints, aggregationTemporality: 1, isMonotonic: true },
+                },
+              ],
+            },
+          ],
+        },
+      ],
     };
   }
 }
@@ -285,7 +310,7 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
 
 interface OtlpAnyValue {
   stringValue?: string;
-  intValue?: string;  // OTLP uses string for int64
+  intValue?: string; // OTLP uses string for int64
   doubleValue?: number;
   boolValue?: boolean;
 }
@@ -359,10 +384,15 @@ function attributesToOtlp(attrs: SpanAttributes): OtlpKeyValue[] {
     .filter(([, v]) => v !== undefined)
     .map(([k, v]) => {
       const value: OtlpAnyValue =
-        typeof v === "string" ? { stringValue: v }
-        : typeof v === "number" ? Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v }
-        : typeof v === "boolean" ? { boolValue: v }
-        : { stringValue: String(v) };
+        typeof v === "string"
+          ? { stringValue: v }
+          : typeof v === "number"
+            ? Number.isInteger(v)
+              ? { intValue: String(v) }
+              : { doubleValue: v }
+            : typeof v === "boolean"
+              ? { boolValue: v }
+              : { stringValue: String(v) };
       return { key: k, value };
     });
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { ToolRegistry, zodToJsonSchema } from "../tools/ToolRegistry.js";
 import type { AgentPrincipal, ToolDefinition } from "../tools/types.js";
@@ -65,14 +65,14 @@ describe("ToolRegistry", () => {
   it("rejects tool missing readOnly (D2 enforcement)", () => {
     const registry = new ToolRegistry();
     const bad = { ...echoTool, name: "bad" };
-    delete (bad as Record<string, unknown>)["readOnly"];
+    delete (bad as Record<string, unknown>).readOnly;
     expect(() => registry.register(bad as ToolDefinition)).toThrow(/readOnly/);
   });
 
   it("rejects tool missing idempotent (D2 enforcement)", () => {
     const registry = new ToolRegistry();
     const bad = { ...echoTool, name: "bad2" };
-    delete (bad as Record<string, unknown>)["idempotent"];
+    delete (bad as Record<string, unknown>).idempotent;
     expect(() => registry.register(bad as ToolDefinition)).toThrow(/idempotent/);
   });
 
@@ -110,76 +110,79 @@ describe("zodToJsonSchema", () => {
       age: z.number().optional(),
     });
     const result = zodToJsonSchema(schema) as Record<string, unknown>;
-    expect(result["type"]).toBe("object");
-    const props = result["properties"] as Record<string, unknown>;
-    expect(props["name"]).toEqual({ type: "string" });
+    expect(result.type).toBe("object");
+    const props = result.properties as Record<string, unknown>;
+    expect(props.name).toEqual({ type: "string" });
     // optional field appears in properties (library may emit anyOf or plain type)
-    expect(props["age"]).toBeDefined();
-    expect(result["required"]).toEqual(["name"]);
+    expect(props.age).toBeDefined();
+    expect(result.required).toEqual(["name"]);
   });
 
   it("ZodOptional emits anyOf per OpenAPI 3.0", () => {
     const result = zodToJsonSchema(z.string().optional()) as Record<string, unknown>;
-    expect(result["anyOf"]).toBeDefined();
+    expect(result.anyOf).toBeDefined();
   });
 
   it("ZodNullable adds nullable: true", () => {
     const result = zodToJsonSchema(z.string().nullable()) as Record<string, unknown>;
-    expect(result["type"]).toBe("string");
-    expect(result["nullable"]).toBe(true);
+    expect(result.type).toBe("string");
+    expect(result.nullable).toBe(true);
   });
 
   it("ZodArray with typed items", () => {
     const result = zodToJsonSchema(z.array(z.string())) as Record<string, unknown>;
-    expect(result["type"]).toBe("array");
-    expect(result["items"]).toEqual({ type: "string" });
+    expect(result.type).toBe("array");
+    expect(result.items).toEqual({ type: "string" });
   });
 
   it("ZodArray of objects", () => {
-    const result = zodToJsonSchema(z.array(z.object({ id: z.number() }))) as Record<string, unknown>;
-    expect(result["type"]).toBe("array");
-    expect((result["items"] as Record<string, unknown>)["type"]).toBe("object");
+    const result = zodToJsonSchema(z.array(z.object({ id: z.number() }))) as Record<
+      string,
+      unknown
+    >;
+    expect(result.type).toBe("array");
+    expect((result.items as Record<string, unknown>).type).toBe("object");
   });
 
   it("ZodEnum produces string enum", () => {
     const result = zodToJsonSchema(z.enum(["a", "b", "c"])) as Record<string, unknown>;
-    expect(result["type"]).toBe("string");
-    expect(result["enum"]).toEqual(["a", "b", "c"]);
+    expect(result.type).toBe("string");
+    expect(result.enum).toEqual(["a", "b", "c"]);
   });
 
   it("ZodLiteral string", () => {
     const result = zodToJsonSchema(z.literal("hello")) as Record<string, unknown>;
-    expect(result["type"]).toBe("string");
+    expect(result.type).toBe("string");
     // library uses enum for literals (equivalent to const per JSON Schema)
-    expect(result["enum"]).toEqual(["hello"]);
+    expect(result.enum).toEqual(["hello"]);
   });
 
   it("ZodLiteral number", () => {
     const result = zodToJsonSchema(z.literal(42)) as Record<string, unknown>;
-    expect(result["type"]).toBe("number");
-    expect(result["enum"]).toEqual([42]);
+    expect(result.type).toBe("number");
+    expect(result.enum).toEqual([42]);
   });
 
   it("ZodUnion produces anyOf", () => {
     const result = zodToJsonSchema(z.union([z.string(), z.number()])) as Record<string, unknown>;
-    expect(result["anyOf"]).toHaveLength(2);
+    expect(result.anyOf).toHaveLength(2);
   });
 
   it("ZodRecord produces additionalProperties", () => {
     const result = zodToJsonSchema(z.record(z.string())) as Record<string, unknown>;
-    expect(result["type"]).toBe("object");
-    expect(result["additionalProperties"]).toEqual({ type: "string" });
+    expect(result.type).toBe("object");
+    expect(result.additionalProperties).toEqual({ type: "string" });
   });
 
   it(".describe() passthrough", () => {
     const result = zodToJsonSchema(z.string().describe("A user name")) as Record<string, unknown>;
-    expect(result["type"]).toBe("string");
-    expect(result["description"]).toBe("A user name");
+    expect(result.type).toBe("string");
+    expect(result.description).toBe("A user name");
   });
 
   it("ZodDefault preserves type (library includes default value)", () => {
     const result = zodToJsonSchema(z.string().default("hello")) as Record<string, unknown>;
-    expect(result["type"]).toBe("string");
+    expect(result.type).toBe("string");
   });
 
   it("nested ZodObject", () => {
@@ -187,11 +190,11 @@ describe("zodToJsonSchema", () => {
       user: z.object({ id: z.number(), name: z.string() }),
     });
     const result = zodToJsonSchema(schema) as Record<string, unknown>;
-    const props = result["properties"] as Record<string, unknown>;
-    const userSchema = props["user"] as Record<string, unknown>;
-    expect(userSchema["type"]).toBe("object");
-    const userProps = userSchema["properties"] as Record<string, unknown>;
-    expect(userProps["id"]).toEqual({ type: "number" });
+    const props = result.properties as Record<string, unknown>;
+    const userSchema = props.user as Record<string, unknown>;
+    expect(userSchema.type).toBe("object");
+    const userProps = userSchema.properties as Record<string, unknown>;
+    expect(userProps.id).toEqual({ type: "number" });
   });
 });
 
@@ -218,20 +221,18 @@ describe("ToolRegistry extraCapabilities (A2)", () => {
   it("returns capability_denied when grantedCapabilities list does not include the required one", async () => {
     const registry = new ToolRegistry();
     registry.register(gateTool);
-    const result = await registry.call(
-      { toolName: "gated", args: { x: 1 }, callId: "c2" },
-      ["tool:other"]
-    );
+    const result = await registry.call({ toolName: "gated", args: { x: 1 }, callId: "c2" }, [
+      "tool:other",
+    ]);
     expect(result.error?.code).toBe("capability_denied");
   });
 
   it("succeeds when the required capability is in grantedCapabilities", async () => {
     const registry = new ToolRegistry();
     registry.register(gateTool);
-    const result = await registry.call(
-      { toolName: "gated", args: { x: 5 }, callId: "c3" },
-      ["tool:gated"]
-    );
+    const result = await registry.call({ toolName: "gated", args: { x: 5 }, callId: "c3" }, [
+      "tool:gated",
+    ]);
     expect(result.error).toBeUndefined();
     expect(result.output).toBe(50);
   });
@@ -259,7 +260,7 @@ describe("zodToJsonSchema additional branches", () => {
   it("ZodNull → nullable type (library maps z.null() to nullable)", () => {
     const result = zodToJsonSchema(z.null()) as Record<string, unknown>;
     // library emits { enum: ["null"], nullable: true } for z.null() in openApi3 mode
-    expect(result["nullable"]).toBe(true);
+    expect(result.nullable).toBe(true);
   });
 
   it("ZodAny → {} (empty schema)", () => {
@@ -272,7 +273,7 @@ describe("zodToJsonSchema additional branches", () => {
 
   it("ZodBigInt → integer type (library uses { type: 'integer', format: 'int64' })", () => {
     const result = zodToJsonSchema(z.bigint()) as Record<string, unknown>;
-    expect(result["type"]).toBe("integer");
+    expect(result.type).toBe("integer");
   });
 
   it("ZodDiscriminatedUnion → anyOf", () => {
@@ -281,22 +282,27 @@ describe("zodToJsonSchema additional branches", () => {
       z.object({ kind: z.literal("b"), count: z.number() }),
     ]);
     const result = zodToJsonSchema(schema) as Record<string, unknown>;
-    expect(Array.isArray(result["anyOf"])).toBe(true);
-    expect((result["anyOf"] as unknown[]).length).toBe(2);
+    expect(Array.isArray(result.anyOf)).toBe(true);
+    expect((result.anyOf as unknown[]).length).toBe(2);
   });
 
   it("ZodNativeEnum → enum values array", () => {
-    enum Direction { Up = "UP", Down = "DOWN" }
+    enum Direction {
+      Up = "UP",
+      Down = "DOWN",
+    }
     const result = zodToJsonSchema(z.nativeEnum(Direction)) as Record<string, unknown>;
-    expect(Array.isArray(result["enum"])).toBe(true);
-    expect(result["enum"]).toContain("UP");
-    expect(result["enum"]).toContain("DOWN");
+    expect(Array.isArray(result.enum)).toBe(true);
+    expect(result.enum).toContain("UP");
+    expect(result.enum).toContain("DOWN");
   });
 
   it("unknown type → fallback empty schema {}", () => {
     // Simulate an unrecognised typeName by passing a raw Zod schema whose _def
     // has no matching typeName branch.
-    const fakeSchema = { _def: { typeName: "ZodNeverEverKnown" } } as unknown as ReturnType<typeof z.string>;
+    const fakeSchema = { _def: { typeName: "ZodNeverEverKnown" } } as unknown as ReturnType<
+      typeof z.string
+    >;
     expect(zodToJsonSchema(fakeSchema)).toEqual({});
   });
 });
@@ -327,7 +333,7 @@ describe("ToolRegistry — L1 advanced tool use", () => {
     registry.register(makeTool("deferred_tool", { deferLoading: true }));
 
     const schemas = registry.toJsonSchema() as Array<Record<string, unknown>>;
-    const names = schemas.map((s) => s["name"]);
+    const names = schemas.map((s) => s.name);
     expect(names).toContain("eager_tool");
     expect(names).not.toContain("deferred_tool");
   });
@@ -338,7 +344,7 @@ describe("ToolRegistry — L1 advanced tool use", () => {
     registry.register(makeTool("deferred_tool", { deferLoading: true }));
 
     const deferred = registry.toDeferredJsonSchema() as Array<Record<string, unknown>>;
-    expect(deferred.map((s) => s["name"])).toEqual(["deferred_tool"]);
+    expect(deferred.map((s) => s.name)).toEqual(["deferred_tool"]);
   });
 
   it("L1-1: hasDeferred is false when no deferred tools", () => {
@@ -355,30 +361,34 @@ describe("ToolRegistry — L1 advanced tool use", () => {
 
   it("L1-2: inputExamples appear in toJsonSchema() output", () => {
     const registry = new ToolRegistry();
-    registry.register(makeTool("search_tool", {
-      inputExamples: [{ q: "example query" }],
-    }));
+    registry.register(
+      makeTool("search_tool", {
+        inputExamples: [{ q: "example query" }],
+      })
+    );
     const schemas = registry.toJsonSchema() as Array<Record<string, unknown>>;
-    const schema = schemas.find((s) => s["name"] === "search_tool");
-    expect(schema?.["input_examples"]).toEqual([{ q: "example query" }]);
+    const schema = schemas.find((s) => s.name === "search_tool");
+    expect(schema?.input_examples).toEqual([{ q: "example query" }]);
   });
 
   it("L1-2: no input_examples field when inputExamples is absent", () => {
     const registry = new ToolRegistry();
     registry.register(makeTool("plain_tool"));
     const schemas = registry.toJsonSchema() as Array<Record<string, unknown>>;
-    const schema = schemas.find((s) => s["name"] === "plain_tool");
-    expect(schema?.["input_examples"]).toBeUndefined();
+    const schema = schemas.find((s) => s.name === "plain_tool");
+    expect(schema?.input_examples).toBeUndefined();
   });
 
   it("L1-3: allowedCallers appear in toJsonSchema() output", () => {
     const registry = new ToolRegistry();
-    registry.register(makeTool("ptc_tool", {
-      allowedCallers: ["model"],
-    }));
+    registry.register(
+      makeTool("ptc_tool", {
+        allowedCallers: ["model"],
+      })
+    );
     const schemas = registry.toJsonSchema() as Array<Record<string, unknown>>;
-    const schema = schemas.find((s) => s["name"] === "ptc_tool");
-    expect(schema?.["allowed_callers"]).toEqual(["model"]);
+    const schema = schemas.find((s) => s.name === "ptc_tool");
+    expect(schema?.allowed_callers).toEqual(["model"]);
   });
 
   it("L1-3: hasProgrammaticCallers is true when a tool has allowedCallers", () => {
@@ -413,18 +423,18 @@ describe("ToolRegistry — A2 deferLoading + inputExamples mutual exclusion", ()
   it("throws when a tool has both deferLoading:true and inputExamples", () => {
     const registry = new ToolRegistry();
     expect(() =>
-      registry.register(makeTool("conflict_tool", {
-        deferLoading: true,
-        inputExamples: [{ q: "example" }],
-      }))
+      registry.register(
+        makeTool("conflict_tool", {
+          deferLoading: true,
+          inputExamples: [{ q: "example" }],
+        })
+      )
     ).toThrow(/mutually exclusive/);
   });
 
   it("allows deferLoading:true without inputExamples", () => {
     const registry = new ToolRegistry();
-    expect(() =>
-      registry.register(makeTool("ok_deferred", { deferLoading: true }))
-    ).not.toThrow();
+    expect(() => registry.register(makeTool("ok_deferred", { deferLoading: true }))).not.toThrow();
   });
 
   it("allows inputExamples without deferLoading", () => {
@@ -472,7 +482,11 @@ describe("ToolRegistry — B2 writeScope / AgentPrincipal", () => {
     const registry = new ToolRegistry();
     registry.register(makeWriteTool("scoped_write2", ["files:write"]));
     const principal: AgentPrincipal = { id: "agent-1", grantedScopes: ["db:read"] };
-    const result = await registry.call({ toolName: "scoped_write2", args: { x: 5 }, callId: "c1" }, undefined, principal);
+    const result = await registry.call(
+      { toolName: "scoped_write2", args: { x: 5 }, callId: "c1" },
+      undefined,
+      principal
+    );
     expect(result.error?.code).toBe("capability_denied");
     expect(result.error?.message).toMatch(/files:write/);
     expect(result.error?.message).toMatch(/agent-1/);
@@ -482,7 +496,11 @@ describe("ToolRegistry — B2 writeScope / AgentPrincipal", () => {
     const registry = new ToolRegistry();
     registry.register(makeWriteTool("scoped_write3", ["files:write"]));
     const principal: AgentPrincipal = { id: "agent-2", grantedScopes: ["files:write", "db:read"] };
-    const result = await registry.call({ toolName: "scoped_write3", args: { x: 7 }, callId: "c1" }, undefined, principal);
+    const result = await registry.call(
+      { toolName: "scoped_write3", args: { x: 7 }, callId: "c1" },
+      undefined,
+      principal
+    );
     expect(result.error).toBeUndefined();
     expect(result.output).toBe(14);
   });
@@ -519,7 +537,8 @@ describe("ToolRegistry — C3 toModelOutput hook", () => {
       readOnly: true,
       idempotent: true,
       forward: async () => ({ items: ["a", "b", "c", "d", "e"] }),
-      toModelOutput: (result: { items: string[] }) => `Found ${result.items.length} items: ${result.items.slice(0, 2).join(", ")}...`,
+      toModelOutput: (result: { items: string[] }) =>
+        `Found ${result.items.length} items: ${result.items.slice(0, 2).join(", ")}...`,
     };
     registry.register(bigResultTool);
     const result = await registry.call({ toolName: "big_result", args: {}, callId: "c1" });

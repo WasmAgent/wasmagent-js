@@ -14,7 +14,13 @@
  * the primary). Caller should wrap FallbackModel with withOtel() for tracing.
  */
 
-import type { Model, ModelCapabilities, ModelMessage, GenerateOptions, StreamEvent } from "./types.js";
+import type {
+  GenerateOptions,
+  Model,
+  ModelCapabilities,
+  ModelMessage,
+  StreamEvent,
+} from "./types.js";
 
 // ── FallbackModel ──────────────────────────────────────────────────────────────
 
@@ -26,7 +32,7 @@ export interface FallbackModelOptions {
   models: Model[];
 }
 
-function isNonRetryable(err: unknown): boolean {
+function _isNonRetryable(err: unknown): boolean {
   if (err instanceof Error && "status" in err) {
     const status = (err as { status: number }).status;
     // 4xx (except 429 rate-limit) are non-retryable; 5xx are retryable.
@@ -65,7 +71,7 @@ export class FallbackModel implements Model {
   constructor(models: Model[]) {
     if (models.length === 0) throw new Error("FallbackModel requires at least one model");
     this.#models = models;
-    this.#lastProviderId = models[0]!.providerId;
+    this.#lastProviderId = models[0]?.providerId;
     // Pre-compute merged capabilities.
     const caps: ModelCapabilities = {};
     for (const m of models) {
@@ -74,10 +80,12 @@ export class FallbackModel implements Model {
       if (m.capabilities.metered !== undefined) caps.metered = m.capabilities.metered;
       if (m.capabilities.supportsGrammar) caps.supportsGrammar = true;
       if (m.capabilities.supportsBudgetForcing) caps.supportsBudgetForcing = true;
-      if (m.capabilities.contextWindow) caps.contextWindow = Math.max(caps.contextWindow ?? 0, m.capabilities.contextWindow);
+      if (m.capabilities.contextWindow)
+        caps.contextWindow = Math.max(caps.contextWindow ?? 0, m.capabilities.contextWindow);
       if (m.capabilities.supportsReasoningEffort) caps.supportsReasoningEffort = true;
       if (m.capabilities.supportsVerbosity) caps.supportsVerbosity = true;
-      if (!caps.cacheStrategy && m.capabilities.cacheStrategy) caps.cacheStrategy = m.capabilities.cacheStrategy;
+      if (!caps.cacheStrategy && m.capabilities.cacheStrategy)
+        caps.cacheStrategy = m.capabilities.cacheStrategy;
     }
     if (Object.keys(caps).length > 0) {
       this.capabilities = caps;
@@ -86,7 +94,7 @@ export class FallbackModel implements Model {
 
   /** Primary model's providerId (for interface compliance). */
   get providerId(): string {
-    return this.#models[0]!.providerId;
+    return this.#models[0]?.providerId;
   }
 
   /** The providerId of the model that successfully responded on the last generate() call. */

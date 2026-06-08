@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { StreamEvent } from "@agentkit-js/core/models";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type OAIChunk = {
   choices: Array<{
@@ -13,7 +13,12 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
   return {
     [Symbol.asyncIterator]() {
       let i = 0;
-      return { async next() { if (i < chunks.length) return { value: chunks[i++]!, done: false }; return { value: undefined as unknown as OAIChunk, done: true }; } };
+      return {
+        async next() {
+          if (i < chunks.length) return { value: chunks[i++]!, done: false };
+          return { value: undefined as unknown as OAIChunk, done: true };
+        },
+      };
     },
   };
 }
@@ -28,8 +33,10 @@ async function collectEvents(
     if (captureParams) captureParams.ref = params;
     return Promise.resolve(makeChunkStream(chunks));
   });
-  vi.doMock("openai", () => ({ default: vi.fn().mockImplementation(() => ({ chat: { completions: { create: mockCreate } } })) }));
-  const { ZhipuModel } = await import("./index.js?t=" + Date.now());
+  vi.doMock("openai", () => ({
+    default: vi.fn().mockImplementation(() => ({ chat: { completions: { create: mockCreate } } })),
+  }));
+  const { ZhipuModel } = await import("./index.js?t=" + Date.now() + "");
   const model = new ZhipuModel(modelId, "key");
   const events: StreamEvent[] = [];
   for await (const e of model.generate([{ role: "user", content: "x" }], opts)) events.push(e);
@@ -38,7 +45,9 @@ async function collectEvents(
 }
 
 describe("ZhipuModel", () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it("emits text_delta for content", async () => {
     const events = await collectEvents([
@@ -49,26 +58,35 @@ describe("ZhipuModel", () => {
   });
 
   it("emits thinking_delta for reasoning_content on glm-5", async () => {
-    const events = await collectEvents([
-      { choices: [{ delta: { reasoning_content: "thinking..." }, finish_reason: null }] },
-      { choices: [{ delta: {}, finish_reason: "stop" }] },
-    ], "glm-5");
+    const events = await collectEvents(
+      [
+        { choices: [{ delta: { reasoning_content: "thinking..." }, finish_reason: null }] },
+        { choices: [{ delta: {}, finish_reason: "stop" }] },
+      ],
+      "glm-5"
+    );
     expect(events.filter((e) => e.type === "thinking_delta")[0]?.delta).toBe("thinking...");
   });
 
   it("emits thinking_delta for reasoning_content on glm-4.7 (hybrid model)", async () => {
-    const events = await collectEvents([
-      { choices: [{ delta: { reasoning_content: "thinking..." }, finish_reason: null }] },
-      { choices: [{ delta: {}, finish_reason: "stop" }] },
-    ], "glm-4.7");
+    const events = await collectEvents(
+      [
+        { choices: [{ delta: { reasoning_content: "thinking..." }, finish_reason: null }] },
+        { choices: [{ delta: {}, finish_reason: "stop" }] },
+      ],
+      "glm-4.7"
+    );
     expect(events.filter((e) => e.type === "thinking_delta")[0]?.delta).toBe("thinking...");
   });
 
   it("does NOT emit thinking_delta for glm-4-plus (non-reasoning model)", async () => {
-    const events = await collectEvents([
-      { choices: [{ delta: { reasoning_content: "ignored" }, finish_reason: null }] },
-      { choices: [{ delta: {}, finish_reason: "stop" }] },
-    ], "glm-4-plus");
+    const events = await collectEvents(
+      [
+        { choices: [{ delta: { reasoning_content: "ignored" }, finish_reason: null }] },
+        { choices: [{ delta: {}, finish_reason: "stop" }] },
+      ],
+      "glm-4-plus"
+    );
     expect(events.filter((e) => e.type === "thinking_delta")).toHaveLength(0);
   });
 
@@ -76,9 +94,14 @@ describe("ZhipuModel", () => {
 
   it("glm-5 default: sends thinking:{type:enabled} in extra_body", async () => {
     const captured = { ref: null as Record<string, unknown> | null };
-    await collectEvents([{ choices: [{ delta: {}, finish_reason: "stop" }] }], "glm-5", {}, captured);
-    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
-    expect(body?.["thinking"]).toMatchObject({ type: "enabled" });
+    await collectEvents(
+      [{ choices: [{ delta: {}, finish_reason: "stop" }] }],
+      "glm-5",
+      {},
+      captured
+    );
+    const body = captured.ref?.extra_body as Record<string, unknown> | undefined;
+    expect(body?.thinking).toMatchObject({ type: "enabled" });
   });
 
   it("mode:off sends thinking:{type:disabled}", async () => {
@@ -89,15 +112,19 @@ describe("ZhipuModel", () => {
       { thinking: { mode: "off" } },
       captured
     );
-    const body = captured.ref?.["extra_body"] as Record<string, unknown> | undefined;
-    expect(body?.["thinking"]).toMatchObject({ type: "disabled" });
+    const body = captured.ref?.extra_body as Record<string, unknown> | undefined;
+    expect(body?.thinking).toMatchObject({ type: "disabled" });
   });
 
   it("mode:off suppresses thinking_delta even on glm-5", async () => {
-    const events = await collectEvents([
-      { choices: [{ delta: { reasoning_content: "hidden" }, finish_reason: null }] },
-      { choices: [{ delta: {}, finish_reason: "stop" }] },
-    ], "glm-5", { thinking: { mode: "off" } });
+    const events = await collectEvents(
+      [
+        { choices: [{ delta: { reasoning_content: "hidden" }, finish_reason: null }] },
+        { choices: [{ delta: {}, finish_reason: "stop" }] },
+      ],
+      "glm-5",
+      { thinking: { mode: "off" } }
+    );
     expect(events.filter((e) => e.type === "thinking_delta")).toHaveLength(0);
   });
 

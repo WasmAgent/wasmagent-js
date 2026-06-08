@@ -29,6 +29,12 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "keywords": ["a2a", "agent2agent", "agent", "interop", "agentkit"],
+  "keywords": [
+    "a2a",
+    "agent2agent",
+    "agent",
+    "interop",
+    "agentkit"
+  ],
   "license": "Apache-2.0"
 }
