@@ -15,6 +15,7 @@
     "clean": "rm -rf dist .wrangler .turbo"
   },
   "dependencies": {
+    "@agentkit-js/ag-ui": "workspace:*",
     "@agentkit-js/core": "workspace:*",
     "@agentkit-js/kernel-quickjs": "workspace:*",
     "@jitl/quickjs-wasmfile-release-sync": "0.32.0",

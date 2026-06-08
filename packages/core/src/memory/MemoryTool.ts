@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { ToolDefinition } from "../tools/types.js";
 import type { KvBackend } from "../checkpoint/index.js";
+import type { OutputGuardrail } from "../guardrails/index.js";
+import { runOutputGuardrails } from "../guardrails/index.js";
 
 /**
  * L2-2: File-backed Memory Tool for cross-session learning.
@@ -48,6 +50,12 @@ export interface MemoryToolOptions {
   backend: KvBackend & { list?: (prefix: string) => Promise<string[]> };
   /** Whether write/delete operations require human approval. Default: false. */
   needsApproval?: boolean;
+  /**
+   * S4: Output guardrails applied to values before they are written to memory.
+   * Use to block adversarial content (e.g. prompt injection) from being persisted.
+   * A tripwire will cause the write to fail with an error message.
+   */
+  writeGuardrails?: OutputGuardrail[];
 }
 
 /**
@@ -60,7 +68,7 @@ export interface MemoryToolOptions {
  *  - delete(key)       → removes a key
  */
 export function createMemoryTool(opts: MemoryToolOptions): ToolDefinition<MemoryOperation, string> {
-  const { backend, needsApproval = false } = opts;
+  const { backend, needsApproval = false, writeGuardrails = [] } = opts;
 
   const tool: ToolDefinition<MemoryOperation, string> = {
     name: "memory",
@@ -77,6 +85,13 @@ export function createMemoryTool(opts: MemoryToolOptions): ToolDefinition<Memory
           return value !== null ? value : `(no value stored for key: ${input.key})`;
         }
         case "write": {
+          // S4: run write guardrails before persisting to memory.
+          if (writeGuardrails.length > 0) {
+            const tripwire = await runOutputGuardrails(writeGuardrails, input.value);
+            if (tripwire) {
+              return `Write blocked by guardrail "${tripwire.guardrailName}": ${JSON.stringify(tripwire.result.metadata ?? {})}`;
+            }
+          }
           await backend.put(MEMORY_PREFIX + input.key, input.value);
           return `Stored: ${input.key}`;
         }

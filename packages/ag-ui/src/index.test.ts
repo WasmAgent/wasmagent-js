@@ -50,7 +50,7 @@ describe("toAgUiEvents — AG-UI mapping", () => {
     expect(d.delta).toBe("I'm thinking...");
   });
 
-  it("tool_call → TOOL_CALL_START", async () => {
+  it("tool_call → TOOL_CALL_START + TOOL_CALL_ARGS (AG1)", async () => {
     const events = await collect([
       makeEvent({
         channel: "tool",
@@ -58,13 +58,16 @@ describe("toAgUiEvents — AG-UI mapping", () => {
         data: { toolName: "search", args: { q: "foo" }, callId: "c1", batchId: "b1", batchSize: 1, stepIndex: 1 },
       }),
     ]);
+    // AG1: tool_call now emits TOOL_CALL_START + TOOL_CALL_ARGS
+    expect(events).toHaveLength(2);
     expect(events[0]?.type).toBe("TOOL_CALL_START");
+    expect(events[1]?.type).toBe("TOOL_CALL_ARGS");
     const d = (events[0] as { data: { toolCallId: string; toolName: string } }).data;
     expect(d.toolCallId).toBe("c1");
     expect(d.toolName).toBe("search");
   });
 
-  it("tool_result → TOOL_CALL_END (success)", async () => {
+  it("tool_result → TOOL_CALL_RESULT + TOOL_CALL_END (success)", async () => {
     const events = await collect([
       makeEvent({
         channel: "tool",
@@ -72,7 +75,10 @@ describe("toAgUiEvents — AG-UI mapping", () => {
         data: { callId: "c1", toolName: "search", output: { result: "found" }, batchId: "b1", batchSize: 1, stepIndex: 1 },
       }),
     ]);
-    expect(events[0]?.type).toBe("TOOL_CALL_END");
+    // AG1: tool_result now emits TOOL_CALL_RESULT (official) + TOOL_CALL_END (backward-compat)
+    expect(events).toHaveLength(2);
+    expect(events[0]?.type).toBe("TOOL_CALL_RESULT");
+    expect(events[1]?.type).toBe("TOOL_CALL_END");
     const d = (events[0] as { data: { isError: boolean; toolCallId: string } }).data;
     expect(d.isError).toBe(false);
     expect(d.toolCallId).toBe("c1");
@@ -118,14 +124,19 @@ describe("toAgUiEvents — AG-UI mapping", () => {
     expect((events[0] as { data: { message: string } }).data.message).toBe("something went wrong");
   });
 
-  it("await_human_input → STATE_DELTA + STEP_FINISHED (approval pending)", async () => {
+  it("await_human_input → INTERRUPT + STATE_DELTA + STEP_FINISHED (AG4)", async () => {
     const events = await collect([
       makeEvent({ channel: "status", event: "await_human_input", data: { promptId: "p1", prompt: "Approve?", step: 2 } }),
     ]);
-    expect(events).toHaveLength(2);
-    expect(events[0]?.type).toBe("STATE_DELTA");
-    expect(events[1]?.type).toBe("STEP_FINISHED");
-    const delta = (events[0] as { data: { delta: { pendingApproval: { promptId: string } } } }).data.delta;
+    // AG4: INTERRUPT is now emitted first, then STATE_DELTA (backward-compat) + STEP_FINISHED
+    expect(events).toHaveLength(3);
+    expect(events[0]?.type).toBe("INTERRUPT");
+    expect(events[1]?.type).toBe("STATE_DELTA");
+    expect(events[2]?.type).toBe("STEP_FINISHED");
+    const interruptData = (events[0] as { data: { promptId: string; prompt: string; step: number } }).data;
+    expect(interruptData.promptId).toBe("p1");
+    expect(interruptData.step).toBe(2);
+    const delta = (events[1] as { data: { delta: { pendingApproval: { promptId: string } } } }).data.delta;
     expect(delta.pendingApproval.promptId).toBe("p1");
   });
 
@@ -191,7 +202,7 @@ describe("toSseString", () => {
     const ev = {
       type: "RUN_STARTED" as const,
       runId: "r1",
-      timestampMs: 1000,
+      timestamp: 1000,
       data: { task: "test" },
     };
     const sse = toSseString(ev);

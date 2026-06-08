@@ -34,7 +34,7 @@ export type { AnthropicModelOptions, AnthropicModelId } from "./AnthropicModel.j
 export { AnthropicModels } from "./AnthropicModel.js";
 export { CACHE_MIN_TOKENS as ANTHROPIC_CACHE_MIN_TOKENS } from "./AnthropicModel.js";
 
-export { OpenAIModel } from "./OpenAIModel.js";
+export { OpenAIModel, repairJson } from "./OpenAIModel.js";
 export type { OpenAIModelOptions, OpenAIModelId } from "./OpenAIModel.js";
 export { OpenAIModels } from "./OpenAIModel.js";
 

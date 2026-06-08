@@ -95,6 +95,9 @@ importers:
 
   packages/cloudflare-worker:
     dependencies:
+      '@agentkit-js/ag-ui':
+        specifier: workspace:*
+        version: link:../ag-ui
       '@agentkit-js/core':
         specifier: workspace:*
         version: link:../core

@@ -24,7 +24,7 @@
  *   gen_ai.anthropic.thinking_tokens
  */
 
-import type { SpanExporter, ReadableSpan, SpanAttributes } from "@agentkit-js/core";
+import type { SpanExporter, ReadableSpan, SpanAttributes, GenAiMetricPoint, MetricExporter } from "@agentkit-js/core";
 
 export interface OtlpHttpExporterOptions {
   /**
@@ -51,28 +51,47 @@ export interface OtlpHttpExporterOptions {
    * Service version added to resource attributes.
    */
   serviceVersion?: string;
+  /**
+   * O4: Max retry attempts for failed exports (HTTP 5xx / network errors).
+   * Default: 3. Set to 0 to disable retries.
+   */
+  maxRetries?: number;
+  /**
+   * O4: Initial retry delay in milliseconds (doubles on each attempt).
+   * Default: 1000.
+   */
+  retryDelayMs?: number;
 }
 
 /**
- * OTLP/HTTP span exporter (JSON encoding).
+ * OTLP/HTTP span + metrics exporter (JSON encoding).
  *
- * Implements SpanExporter from @agentkit-js/core and posts batches of
- * completed spans to an OTLP-compatible collector.
+ * Implements SpanExporter + MetricExporter from @agentkit-js/core and posts
+ * batches of completed spans/metrics to an OTLP-compatible collector.
+ *
+ * O4: Failed exports are retried with exponential backoff.
+ * O2: GenAI client metrics are posted to /v1/metrics when available.
  */
-export class OtlpHttpExporter implements SpanExporter {
-  readonly #endpoint: string;
+export class OtlpHttpExporter implements SpanExporter, MetricExporter {
+  readonly #traceEndpoint: string;
+  readonly #metricsEndpoint: string;
   readonly #headers: Record<string, string>;
   readonly #timeoutMs: number;
+  readonly #maxRetries: number;
+  readonly #retryDelayMs: number;
   readonly #resource: Record<string, string>;
 
   constructor(opts: OtlpHttpExporterOptions = {}) {
     const base = (opts.endpoint ?? "http://localhost:4318").replace(/\/$/, "");
-    this.#endpoint = `${base}/v1/traces`;
+    this.#traceEndpoint = `${base}/v1/traces`;
+    this.#metricsEndpoint = `${base}/v1/metrics`;
     this.#headers = {
       "Content-Type": "application/json",
       ...opts.headers,
     };
     this.#timeoutMs = opts.timeoutMs ?? 5000;
+    this.#maxRetries = opts.maxRetries ?? 3;
+    this.#retryDelayMs = opts.retryDelayMs ?? 1000;
     this.#resource = {
       "service.name": opts.serviceName ?? "agentkit",
       ...(opts.serviceVersion ? { "service.version": opts.serviceVersion } : {}),
@@ -81,32 +100,25 @@ export class OtlpHttpExporter implements SpanExporter {
 
   /**
    * Export a batch of completed spans to the OTLP collector.
-   * Failures are logged to stderr and swallowed (fire-and-forget).
+   * Failures are retried with exponential backoff (O4), then logged.
    */
   export(spans: ReadableSpan[]): void {
     if (spans.length === 0) return;
     const body = this.#toOtlpPayload(spans);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.#timeoutMs);
-    fetch(this.#endpoint, {
-      method: "POST",
-      headers: this.#headers,
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    })
-      .then((res) => {
-        if (!res.ok) {
-          res.text().then((t) => {
-            console.error(`[OtlpHttpExporter] export failed ${res.status}: ${t.slice(0, 200)}`);
-          }).catch(() => {});
-        }
-      })
-      .catch((err) => {
-        if ((err as Error)?.name !== "AbortError") {
-          console.error("[OtlpHttpExporter] export error:", (err as Error)?.message ?? err);
-        }
-      })
-      .finally(() => clearTimeout(timer));
+    this.#exportWithRetry(this.#traceEndpoint, body).catch((err) => {
+      console.error("[OtlpHttpExporter] trace export failed after retries:", (err as Error)?.message ?? err);
+    });
+  }
+
+  /**
+   * O2: Export GenAI metrics to /v1/metrics.
+   */
+  exportMetrics(metrics: GenAiMetricPoint[]): void {
+    if (metrics.length === 0) return;
+    const body = this.#toOtlpMetricsPayload(metrics);
+    this.#exportWithRetry(this.#metricsEndpoint, body).catch((err) => {
+      console.error("[OtlpHttpExporter] metrics export failed after retries:", (err as Error)?.message ?? err);
+    });
   }
 
   /**
@@ -115,22 +127,47 @@ export class OtlpHttpExporter implements SpanExporter {
   async exportAsync(spans: ReadableSpan[]): Promise<void> {
     if (spans.length === 0) return;
     const body = this.#toOtlpPayload(spans);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.#timeoutMs);
-    try {
-      const res = await fetch(this.#endpoint, {
-        method: "POST",
-        headers: this.#headers,
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-      if (!res.ok) {
-        const t = await res.text().catch(() => "");
-        throw new Error(`OTLP export failed ${res.status}: ${t.slice(0, 200)}`);
+    await this.#exportWithRetry(this.#traceEndpoint, body);
+  }
+
+  /** O4: Export with exponential backoff retry. */
+  async #exportWithRetry(endpoint: string, body: object): Promise<void> {
+    let lastError: Error | undefined;
+    let delayMs = this.#retryDelayMs;
+
+    for (let attempt = 0; attempt <= this.#maxRetries; attempt++) {
+      if (attempt > 0) {
+        await new Promise<void>((r) => setTimeout(r, delayMs));
+        delayMs = Math.min(delayMs * 2, 30_000);
       }
-    } finally {
-      clearTimeout(timer);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), this.#timeoutMs);
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: this.#headers,
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+        if (res.ok) return;
+        // 4xx errors are not retryable (client error)
+        if (res.status >= 400 && res.status < 500) {
+          const t = await res.text().catch(() => "");
+          throw new Error(`OTLP export HTTP ${res.status}: ${t.slice(0, 200)}`);
+        }
+        // 5xx: retryable
+        lastError = new Error(`OTLP export HTTP ${res.status} (retrying)`);
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") {
+          lastError = new Error("OTLP export timed out");
+        } else {
+          lastError = err instanceof Error ? err : new Error(String(err));
+        }
+      } finally {
+        clearTimeout(timer);
+      }
     }
+    throw lastError ?? new Error("OTLP export failed");
   }
 
   /** Convert internal ReadableSpan[] to OTLP JSON trace payload. */
@@ -161,7 +198,12 @@ export class OtlpHttpExporter implements SpanExporter {
   #toOtlpSpan(s: ReadableSpan): OtlpSpan {
     const startNs = msToNs(s.startTimeMs);
     const endNs = msToNs(s.endTimeMs ?? s.startTimeMs);
-    const attrs = attributesToOtlp(s.attributes);
+    // Filter internal tracking attributes (prefixed with _) from export.
+    const filteredAttrs: typeof s.attributes = {};
+    for (const [k, v] of Object.entries(s.attributes)) {
+      if (!k.startsWith("_")) filteredAttrs[k] = v;
+    }
+    const attrs = attributesToOtlp(filteredAttrs);
 
     const statusCode =
       s.status === "ok" ? 1 /* STATUS_CODE_OK */
@@ -169,9 +211,9 @@ export class OtlpHttpExporter implements SpanExporter {
       : 0; /* STATUS_CODE_UNSET */
 
     return {
-      traceId: padHex(s.traceId, 32),
-      spanId: padHex(s.spanId, 16),
-      ...(s.parentSpanId ? { parentSpanId: padHex(s.parentSpanId, 16) } : {}),
+      traceId: ensureHex(s.traceId, 32),
+      spanId: ensureHex(s.spanId, 16),
+      ...(s.parentSpanId ? { parentSpanId: ensureHex(s.parentSpanId, 16) } : {}),
       name: s.name,
       kind: 2, // SPAN_KIND_SERVER
       startTimeUnixNano: startNs,
@@ -183,6 +225,58 @@ export class OtlpHttpExporter implements SpanExporter {
         timeUnixNano: msToNs(e.timestampMs),
         attributes: e.attributes ? attributesToOtlp(e.attributes) : [],
       })),
+    };
+  }
+
+  /** O2: Convert GenAI metric points to OTLP JSON metrics payload. */
+  #toOtlpMetricsPayload(metrics: GenAiMetricPoint[]): object {
+    const resourceAttrs = Object.entries(this.#resource).map(([k, v]) => ({
+      key: k, value: { stringValue: v },
+    }));
+
+    // Aggregate by model: sum tokens, collect durations for histogram approximation.
+    const byModel = new Map<string, { inputTokens: number; outputTokens: number; durations: number[] }>();
+    for (const m of metrics) {
+      let bucket = byModel.get(m.modelId);
+      if (!bucket) { bucket = { inputTokens: 0, outputTokens: 0, durations: [] }; byModel.set(m.modelId, bucket); }
+      if (m.inputTokens !== undefined) bucket.inputTokens += m.inputTokens;
+      if (m.outputTokens !== undefined) bucket.outputTokens += m.outputTokens;
+      if (m.durationMs !== undefined) bucket.durations.push(m.durationMs);
+    }
+
+    const dataPoints: object[] = [];
+    for (const [modelId, data] of byModel) {
+      const attrs = [
+        { key: "gen_ai.request.model", value: { stringValue: modelId } },
+      ];
+      if (data.inputTokens > 0) {
+        dataPoints.push({
+          attributes: [...attrs, { key: "gen_ai.token.type", value: { stringValue: "input" } }],
+          asInt: String(data.inputTokens),
+        });
+      }
+      if (data.outputTokens > 0) {
+        dataPoints.push({
+          attributes: [...attrs, { key: "gen_ai.token.type", value: { stringValue: "output" } }],
+          asInt: String(data.outputTokens),
+        });
+      }
+      // data.durations available for histogram export in future
+    }
+
+    return {
+      resourceMetrics: [{
+        resource: { attributes: resourceAttrs },
+        scopeMetrics: [{
+          scope: { name: "@agentkit-js/otel-exporter", version: "0.1.0" },
+          metrics: [{
+            name: "gen_ai.client.token.usage",
+            description: "GenAI client token usage",
+            unit: "token",
+            sum: { dataPoints, aggregationTemporality: 1, isMonotonic: true },
+          }],
+        }],
+      }],
     };
   }
 }
@@ -242,10 +336,22 @@ function msToNs(ms: number): string {
   return String(Math.round(ms) * 1_000_000);
 }
 
-function padHex(id: string, targetLen: number): string {
-  // Strip "span-" / "agent-" prefixes and pad to targetLen hex chars
-  const stripped = id.replace(/^[a-z-]+-/i, "").replace(/-/g, "");
-  return stripped.padStart(targetLen, "0").slice(0, targetLen);
+/**
+ * Ensure a W3C-valid hex ID of the expected length.
+ * If the ID is already valid hex of the right length, pass through.
+ * Otherwise strip non-hex chars and pad/truncate — but only as a last resort
+ * to avoid dropping spans with IDs from legacy bridge versions.
+ */
+function ensureHex(id: string, targetLen: number): string {
+  // Fast path: already valid
+  if (id.length === targetLen && /^[0-9a-f]+$/.test(id)) return id;
+  // Strip non-hex and adjust length
+  const stripped = id.replace(/[^0-9a-fA-F]/g, "").toLowerCase();
+  if (stripped.length === 0) {
+    // All-zeros is the W3C invalid marker; use it to signal bad input.
+    return "0".repeat(targetLen);
+  }
+  return stripped.padStart(targetLen, "0").slice(-targetLen);
 }
 
 function attributesToOtlp(attrs: SpanAttributes): OtlpKeyValue[] {

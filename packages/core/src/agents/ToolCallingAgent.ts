@@ -21,7 +21,8 @@ import type { Checkpointer } from "../checkpoint/index.js";
 import type { InputGuardrail, OutputGuardrail, ToolGuardrail } from "../guardrails/index.js";
 import { runInputGuardrails, runOutputGuardrails, runToolGuardrails } from "../guardrails/index.js";
 import type { ZodSchema } from "zod";
-import { zodToJsonSchema } from "../tools/ToolRegistry.js";
+import { zodToJsonSchema, toStrictJsonSchema } from "../tools/ToolRegistry.js";
+import { repairJson } from "../models/OpenAIModel.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant. Use the provided tools to answer questions.
 When you have a final answer, respond with plain text (no tool call).
@@ -174,6 +175,21 @@ export class ToolCallingAgent {
     // C2: call fingerprint history for noProgress detection.
     const callHistory: string[][] = [];
 
+    // A2: Build responseFormat for outputSchema if the model supports constrained decoding.
+    const outputResponseFormat = this.#outputSchema && this.#model.capabilities?.supportsGrammar
+      ? (() => {
+          try {
+            const isAnthropic = this.#model.providerId?.startsWith("anthropic/");
+            const schema = isAnthropic
+              ? zodToJsonSchema(this.#outputSchema)
+              : toStrictJsonSchema(this.#outputSchema);
+            return { type: "json_schema" as const, schema, name: "output", strict: true };
+          } catch {
+            return undefined;
+          }
+        })()
+      : undefined;
+
     // A1: input guardrail check — runs concurrently with step 1's model invocation.
     // We kick it off here before the loop so it overlaps with the first model call.
     const inputGuardrailPromise = runInputGuardrails(
@@ -279,6 +295,7 @@ export class ToolCallingAgent {
           for await (const event of this.#model.generate(messages, {
             stream: true,
             tools: this.#toolsSchema,
+            ...(outputResponseFormat ? { responseFormat: outputResponseFormat } : {}),
           })) {
             if (event.type === "text_delta" && event.delta) {
               fullText += event.delta;
@@ -299,6 +316,7 @@ export class ToolCallingAgent {
         for await (const event of this.#model.generate(messages, {
           stream: true,
           tools: this.#toolsSchema,
+          ...(outputResponseFormat ? { responseFormat: outputResponseFormat } : {}),
         })) {
           if (event.type === "text_delta" && event.delta) {
             fullText += event.delta;
@@ -376,8 +394,14 @@ export class ToolCallingAgent {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let parsedAnswer: any = answer;
         if (this.#outputSchema) {
+          // R3: first try deterministic JSON repair before going to model retries.
+          const parseCandidate = (raw: string): unknown => {
+            try { return JSON.parse(raw); } catch { /* fallthrough */ }
+            const repaired = repairJson(raw);
+            try { return JSON.parse(repaired); } catch { return raw; }
+          };
           let parseResult = this.#outputSchema.safeParse(
-            typeof answer === "string" ? (() => { try { return JSON.parse(answer); } catch { return answer; } })() : answer
+            typeof answer === "string" ? parseCandidate(answer) : answer
           );
           let retries = 0;
           while (!parseResult.success && retries < this.#outputSchemaRetries) {
@@ -391,13 +415,14 @@ export class ToolCallingAgent {
               },
             ];
             let fixText = "";
-            for await (const ev of this.#model.generate(fixMessages, { stream: true })) {
+            for await (const ev of this.#model.generate(fixMessages, {
+              stream: true,
+              ...(outputResponseFormat ? { responseFormat: outputResponseFormat } : {}),
+            })) {
               if (ev.type === "text_delta" && ev.delta) fixText += ev.delta;
             }
             const candidate = fixText.trim();
-            parseResult = this.#outputSchema.safeParse(
-              (() => { try { return JSON.parse(candidate); } catch { return candidate; } })()
-            );
+            parseResult = this.#outputSchema.safeParse(parseCandidate(candidate));
             if (parseResult.success) {
               parsedAnswer = parseResult.data;
             }
@@ -471,7 +496,12 @@ export class ToolCallingAgent {
       // A1: tool guardrail check — runs before any tool is dispatched.
       if (this.#toolGuardrails.length > 0) {
         for (const call of pendingCalls) {
-          const toolTripwire = await runToolGuardrails(this.#toolGuardrails, call.name, call.input);
+          const toolTripwire = await runToolGuardrails(
+            this.#toolGuardrails,
+            call.name,
+            call.input,
+            { originalTask: task, proposedAction: `Call tool "${call.name}" with args: ${JSON.stringify(call.input)}` }
+          );
           if (toolTripwire) {
             yield {
               traceId, parentTraceId, channel: "status", event: "guardrail_tripwire",

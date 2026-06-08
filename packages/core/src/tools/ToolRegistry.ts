@@ -7,6 +7,85 @@ export function zodToJsonSchema(schema: import("zod").ZodSchema): object {
 }
 
 /**
+ * Convert a Zod schema to an OpenAI strict-mode compatible JSON Schema.
+ *
+ * OpenAI strict requirements (2026):
+ *  - Every object must have additionalProperties: false
+ *  - All properties must appear in required[]
+ *  - Optional fields become anyOf: [T, {type: "null"}]
+ *  - No default values
+ *  - Root must be an object
+ *  - Max 5 levels of nesting
+ *
+ * @throws Error when nesting depth exceeds 5
+ */
+export function toStrictJsonSchema(schema: import("zod").ZodSchema): object {
+  const base = zodToJsonSchemaLib(schema, { target: "openApi3", $refStrategy: "none" }) as Record<string, unknown>;
+  return strictifySchema(base, 0);
+}
+
+function strictifySchema(schema: Record<string, unknown>, depth: number): Record<string, unknown> {
+  if (depth > 5) {
+    throw new Error(
+      `[toStrictJsonSchema] Schema nesting depth exceeds 5 levels, which OpenAI strict mode does not support. ` +
+      `Flatten your schema or remove optional wrappers.`
+    );
+  }
+  const result: Record<string, unknown> = { ...schema };
+
+  // Recurse into array items
+  if (result["type"] === "array" && result["items"] && typeof result["items"] === "object") {
+    result["items"] = strictifySchema(result["items"] as Record<string, unknown>, depth + 1);
+  }
+
+  // Recurse into allOf/anyOf/oneOf members
+  for (const key of ["allOf", "anyOf", "oneOf"] as const) {
+    if (Array.isArray(result[key])) {
+      result[key] = (result[key] as Record<string, unknown>[]).map((s) => strictifySchema(s, depth + 1));
+    }
+  }
+
+  if (result["type"] !== "object" || typeof result["properties"] !== "object" || result["properties"] === null) {
+    // Remove defaults at every level
+    delete result["default"];
+    return result;
+  }
+
+  const props = result["properties"] as Record<string, Record<string, unknown>>;
+  const existingRequired = Array.isArray(result["required"]) ? (result["required"] as string[]) : [];
+  const existingRequiredSet = new Set(existingRequired);
+
+  const newProps: Record<string, Record<string, unknown>> = {};
+  const allKeys = Object.keys(props);
+
+  for (const key of allKeys) {
+    const propSchema = props[key]!;
+    const isOptional = !existingRequiredSet.has(key);
+
+    let strictProp = strictifySchema(propSchema, depth + 1);
+    delete (strictProp as Record<string, unknown>)["default"];
+
+    // Optional fields: wrap in anyOf: [original, {type:"null"}]
+    if (isOptional) {
+      // Avoid double-wrapping if already nullable
+      const alreadyNullable = Array.isArray(strictProp["anyOf"])
+        && (strictProp["anyOf"] as Record<string, unknown>[]).some((s) => s["type"] === "null");
+      if (!alreadyNullable) {
+        strictProp = { anyOf: [strictProp, { type: "null" }] };
+      }
+    }
+    newProps[key] = strictProp;
+  }
+
+  result["properties"] = newProps;
+  result["required"] = allKeys; // ALL keys go into required[]
+  result["additionalProperties"] = false;
+  delete result["default"];
+
+  return result;
+}
+
+/**
  * Registry that holds all tools available to an agent.
  *
  * Validates side-effect metadata at registration (D2) — a tool without
