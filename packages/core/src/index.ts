@@ -1,6 +1,10 @@
 // Agents
-export { CodeAgent, ToolCallingAgent, stepCountIs, noProgress, costBudget, callFingerprint, asTool } from "./agents/index.js";
-export type { CodeAgentOptions, ToolCallingAgentOptions, StopCondition, StopConditionContext, AsToolOptions, SubagentRunnable } from "./agents/index.js";
+export { CodeAgent, ToolCallingAgent, stepCountIs, noProgress, costBudget, callFingerprint, asTool, handoff, handoffGenerator } from "./agents/index.js";
+export type { CodeAgentOptions, ToolCallingAgentOptions, StopCondition, StopConditionContext, AsToolOptions, SubagentRunnable, HandoffOptions, HandoffResult, HandoffAgent } from "./agents/index.js";
+
+// Guardrails (A1)
+export { maxInputLength, forbiddenPhrases, denyTools, runInputGuardrails, runOutputGuardrails, runToolGuardrails } from "./guardrails/index.js";
+export type { GuardrailResult, InputGuardrail, OutputGuardrail, ToolGuardrail } from "./guardrails/index.js";
 
 // Executor
 export { JsKernel, VmKernel, createKernel, buildCapabilityGlobals, buildSandboxFetch, assertPathAllowed, matchGlob, ProgrammaticOrchestrator } from "./executor/index.js";
@@ -18,7 +22,7 @@ export { MessageAssembler, LazyObservationHandle, InMemoryVectorStore, makeRetri
 export type { AssemblerConfig, EditToolResultsOptions, Retriever, EmbedResult, SearchResult, MemoryToolOptions } from "./memory/index.js";
 
 // Models
-export { AnthropicModel, AnthropicModels, OpenAIModel, OpenAIModels, CACHE_MIN_TOKENS, estimateTokens, estimateMessagesTokens, TokenBudget } from "./models/index.js";
+export { AnthropicModel, AnthropicModels, OpenAIModel, OpenAIModels, CACHE_MIN_TOKENS, estimateTokens, estimateMessagesTokens, TokenBudget, FallbackModel } from "./models/index.js";
 export type {
   Model,
   ModelCapabilities,
@@ -35,6 +39,7 @@ export type {
   OpenAIModelOptions,
   OpenAIModelId,
   RetryPolicy,
+  FallbackModelOptions,
 } from "./models/index.js";
 
 // Enhancement runners
@@ -52,15 +57,15 @@ export type {
 
 // Tools
 export { ToolRegistry, zodToJsonSchema, McpToolCollection } from "./tools/index.js";
-export type { ToolDefinition, ToolCall, ToolResult, McpIntegrityOptions, McpToolSchema } from "./tools/index.js";
+export type { ToolDefinition, ToolCall, ToolResult, McpIntegrityOptions, McpToolSchema, McpResource, McpResourceContent, McpPromptSchema, McpPromptMessage, McpGetPromptResult } from "./tools/index.js";
 
 // Scheduler
 export { Scheduler, SimpleIR, deriveDependencies } from "./scheduler/index.js";
 export type { ActionIR, IRNode, SchedulerEvent, CallDescriptor } from "./scheduler/index.js";
 
 // Evals
-export { exactMatch, toolCallAccuracy, trajectoryValidity, finalAnswerLength, collectTrace, runEval } from "./evals/index.js";
-export type { Scorer, ScorerResult, AgentTrace, EvalSample, EvalRunResult, AgentRunner } from "./evals/index.js";
+export { exactMatch, toolCallAccuracy, trajectoryValidity, finalAnswerLength, collectTrace, runEval, llmJudge, llmJudgeAsync, guardrailCompliance, guardrailComplianceAsync } from "./evals/index.js";
+export type { Scorer, ScorerResult, AgentTrace, EvalSample, EvalRunResult, AgentRunner, LlmJudgeScorerResult } from "./evals/index.js";
 
 // Observability
 export { OtelBridge, InMemorySpanExporter, withOtel } from "./observability/index.js";

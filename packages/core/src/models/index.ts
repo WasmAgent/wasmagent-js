@@ -42,3 +42,6 @@ export { OpenAICompatModel } from "./OpenAICompatModel.js";
 export type { OpenAICompatModelOptions } from "./OpenAICompatModel.js";
 
 export type { RetryPolicy } from "./retry.js";
+
+export { FallbackModel } from "./FallbackModel.js";
+export type { FallbackModelOptions } from "./FallbackModel.js";

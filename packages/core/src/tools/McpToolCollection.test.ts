@@ -224,3 +224,155 @@ describe("B3 — MCP supply chain integrity", () => {
     expect(fp1).toMatch(/^[0-9a-f]{64}$/);
   });
 });
+
+// ── B3: Resources and Prompts tests ──────────────────────────────────────────
+
+describe("McpToolCollection — B3: resources and prompts", () => {
+  afterEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+  });
+
+  function makeMockMcpClientWithResourcesAndPrompts() {
+    return {
+      connect: vi.fn().mockResolvedValue(undefined),
+      listTools: vi.fn().mockResolvedValue({ tools: [{ name: "search" }] }),
+      callTool: vi.fn().mockResolvedValue({ content: [{ type: "text", text: "ok" }] }),
+      close: vi.fn().mockResolvedValue(undefined),
+      listResources: vi.fn().mockResolvedValue({
+        resources: [
+          { uri: "file:///data.json", name: "data", description: "Main dataset", mimeType: "application/json" },
+          { uri: "file:///config.yaml", name: "config", mimeType: "text/yaml" },
+        ],
+      }),
+      readResource: vi.fn().mockImplementation(({ uri }: { uri: string }) =>
+        Promise.resolve({
+          contents: [{ uri, mimeType: "application/json", text: JSON.stringify({ key: "value" }) }],
+        })
+      ),
+      listPrompts: vi.fn().mockResolvedValue({
+        prompts: [
+          { name: "system_prompt", description: "System instructions", arguments: [] },
+          { name: "user_prefix", description: "User prefix" },
+        ],
+      }),
+      getPrompt: vi.fn().mockImplementation(({ name }: { name: string }) =>
+        Promise.resolve({
+          description: `${name} description`,
+          messages: [
+            { role: "user", content: { type: "text", text: `You are a helpful assistant. (${name})` } },
+          ],
+        })
+      ),
+    };
+  }
+
+  it("listResources returns all available resources", async () => {
+    const mockClient = makeMockMcpClientWithResourcesAndPrompts();
+    vi.doMock("@modelcontextprotocol/sdk/client/index.js", () => ({
+      Client: vi.fn().mockImplementation(() => mockClient),
+    }));
+    vi.doMock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
+      StdioClientTransport: vi.fn().mockImplementation(() => ({})),
+    }));
+
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3r1=" + Date.now());
+    const collection = await MTC.fromStdio("echo", []);
+    const resources = await collection.listResources();
+
+    expect(resources).toHaveLength(2);
+    expect(resources[0]?.uri).toBe("file:///data.json");
+    expect(resources[0]?.name).toBe("data");
+    expect(resources[1]?.mimeType).toBe("text/yaml");
+  });
+
+  it("readResource returns the resource contents", async () => {
+    const mockClient = makeMockMcpClientWithResourcesAndPrompts();
+    vi.doMock("@modelcontextprotocol/sdk/client/index.js", () => ({
+      Client: vi.fn().mockImplementation(() => mockClient),
+    }));
+    vi.doMock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
+      StdioClientTransport: vi.fn().mockImplementation(() => ({})),
+    }));
+
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3r2=" + Date.now());
+    const collection = await MTC.fromStdio("echo", []);
+    const contents = await collection.readResource("file:///data.json");
+
+    expect(contents).toHaveLength(1);
+    expect(contents[0]?.uri).toBe("file:///data.json");
+    expect(JSON.parse(contents[0]?.text ?? "{}")).toEqual({ key: "value" });
+  });
+
+  it("listPrompts returns available prompts", async () => {
+    const mockClient = makeMockMcpClientWithResourcesAndPrompts();
+    vi.doMock("@modelcontextprotocol/sdk/client/index.js", () => ({
+      Client: vi.fn().mockImplementation(() => mockClient),
+    }));
+    vi.doMock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
+      StdioClientTransport: vi.fn().mockImplementation(() => ({})),
+    }));
+
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3p1=" + Date.now());
+    const collection = await MTC.fromStdio("echo", []);
+    const prompts = await collection.listPrompts();
+
+    expect(prompts).toHaveLength(2);
+    expect(prompts[0]?.name).toBe("system_prompt");
+  });
+
+  it("getPrompt retrieves a named prompt", async () => {
+    const mockClient = makeMockMcpClientWithResourcesAndPrompts();
+    vi.doMock("@modelcontextprotocol/sdk/client/index.js", () => ({
+      Client: vi.fn().mockImplementation(() => mockClient),
+    }));
+    vi.doMock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
+      StdioClientTransport: vi.fn().mockImplementation(() => ({})),
+    }));
+
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3p2=" + Date.now());
+    const collection = await MTC.fromStdio("echo", []);
+    const result = await collection.getPrompt("system_prompt");
+
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0]?.role).toBe("user");
+  });
+
+  it("getPromptAsSystemPrefix extracts text from user messages", async () => {
+    const mockClient = makeMockMcpClientWithResourcesAndPrompts();
+    vi.doMock("@modelcontextprotocol/sdk/client/index.js", () => ({
+      Client: vi.fn().mockImplementation(() => mockClient),
+    }));
+    vi.doMock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
+      StdioClientTransport: vi.fn().mockImplementation(() => ({})),
+    }));
+
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3p3=" + Date.now());
+    const collection = await MTC.fromStdio("echo", []);
+    const prefix = await collection.getPromptAsSystemPrefix("system_prompt");
+
+    expect(prefix).toContain("You are a helpful assistant");
+    expect(prefix).toContain("system_prompt");
+  });
+
+  it("listResources throws when server does not support resources", async () => {
+    const mockClientNoResources = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      listTools: vi.fn().mockResolvedValue({ tools: [] }),
+      callTool: vi.fn(),
+      close: vi.fn().mockResolvedValue(undefined),
+      // no listResources method
+    };
+    vi.doMock("@modelcontextprotocol/sdk/client/index.js", () => ({
+      Client: vi.fn().mockImplementation(() => mockClientNoResources),
+    }));
+    vi.doMock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
+      StdioClientTransport: vi.fn().mockImplementation(() => ({})),
+    }));
+
+    const { McpToolCollection: MTC } = await import("../tools/McpToolCollection.js?b3r3=" + Date.now());
+    const collection = await MTC.fromStdio("echo", []);
+
+    await expect(collection.listResources()).rejects.toThrow(/resources capability/);
+  });
+});

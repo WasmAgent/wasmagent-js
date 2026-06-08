@@ -1,4 +1,5 @@
 import type { Model, ModelMessage, GenerateOptions } from "../models/types.js";
+import type { ZodSchema } from "zod";
 
 export interface SelfConsistencyOptions {
   /** Number of candidate completions (default 3). */
@@ -24,6 +25,15 @@ export interface SelfConsistencyOptions {
    * answers cluster correctly.
    */
   extractAnswer?: (text: string) => string;
+  /**
+   * C1: Optional Zod schema for structured output voting.
+   * When provided, candidates are parsed and voted on as JSON objects
+   * (using JSON.stringify of the parsed result as the vote key).
+   * This ensures semantically identical objects (regardless of key order)
+   * vote together. Falls back to string voting if parsing fails.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  outputSchema?: ZodSchema<any>;
 }
 
 export interface SelfConsistencyResult {
@@ -54,12 +64,15 @@ export class SelfConsistencyRunner {
   readonly #earlyStopThreshold: number;
   readonly #concurrencyLimit: number;
   readonly #extractAnswer: (text: string) => string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly #outputSchema: ZodSchema<any> | undefined;
 
   constructor(opts: SelfConsistencyOptions = {}) {
     this.#n = Math.max(1, opts.n ?? 3);
     this.#earlyStopThreshold = opts.earlyStopThreshold ?? 0.6;
     this.#concurrencyLimit = Math.max(1, opts.concurrencyLimit ?? 4);
     this.#extractAnswer = opts.extractAnswer ?? defaultExtractAnswer;
+    this.#outputSchema = opts.outputSchema;
   }
 
   /**
@@ -78,6 +91,7 @@ export class SelfConsistencyRunner {
     const threshold = this.#earlyStopThreshold;
     const limit = Math.min(this.#concurrencyLimit, n);
     const extractAnswer = this.#extractAnswer;
+    const outputSchema = this.#outputSchema;
 
     const voteCounts = new Map<string, number>();
     // Map from normalized vote key → first full raw text that produced it.
@@ -106,7 +120,21 @@ export class SelfConsistencyRunner {
         if (shouldStop) break;
 
         completed.push(rawAnswer);
-        const key = normalizeAnswer(extractAnswer(rawAnswer));
+        // C1: if outputSchema is provided, parse the candidate and vote on the
+        // canonical JSON representation of the parsed object — this ensures
+        // semantically identical structured answers cluster even if their
+        // string representation differs (key order, whitespace, etc.).
+        let key: string;
+        if (outputSchema) {
+          const parsed = outputSchema.safeParse(
+            (() => { try { return JSON.parse(rawAnswer); } catch { return rawAnswer; } })()
+          );
+          key = parsed.success
+            ? JSON.stringify(parsed.data)  // canonical structured key
+            : normalizeAnswer(extractAnswer(rawAnswer));  // fallback
+        } else {
+          key = normalizeAnswer(extractAnswer(rawAnswer));
+        }
         voteCounts.set(key, (voteCounts.get(key) ?? 0) + 1);
         if (!keyToFullText.has(key)) keyToFullText.set(key, rawAnswer);
 

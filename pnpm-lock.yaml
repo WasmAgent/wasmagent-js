@@ -64,6 +64,22 @@ importers:
         specifier: ^3.22.0
         version: 3.25.76
 
+  packages/ag-ui:
+    dependencies:
+      '@agentkit-js/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.19
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.19)(terser@5.48.0)
+
   packages/cli:
     dependencies:
       '@agentkit-js/core':
@@ -330,6 +346,22 @@ importers:
       openai:
         specifier: ^4.80.0
         version: 4.104.0(ws@8.21.0)(zod@3.25.76)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.19)(terser@5.48.0)
+
+  packages/otel-exporter:
+    dependencies:
+      '@agentkit-js/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.19
       typescript:
         specifier: ^5.7.0
         version: 5.9.3

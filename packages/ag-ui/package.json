@@ -1,0 +1,33 @@
+{
+  "name": "@agentkit-js/ag-ui",
+  "version": "0.1.0",
+  "description": "AG-UI protocol adapter for @agentkit-js/core — maps private AgentEvent stream to AG-UI 16-class events",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": ["ag-ui", "agent", "ui", "protocol", "sse", "agentkit"],
+  "license": "Apache-2.0"
+}

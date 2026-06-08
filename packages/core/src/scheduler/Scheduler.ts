@@ -53,8 +53,27 @@ export class Scheduler {
 
   async *#executeInner(ir: ActionIR, signal: AbortSignal): AsyncGenerator<SchedulerEvent> {
     const remaining = new Map<string, Set<string>>();
+
+    // A4: resourceKey serialization — for !readOnly nodes sharing the same resourceKey,
+    // inject implicit dependsOn edges so they execute serially.
+    // We build a mapping resourceKey → last seen !readOnly node, and chain them.
+    const lastWriterByResource = new Map<string, string>();
+    const augmentedDeps = new Map<string, string[]>();
     for (const node of ir.nodes) {
-      remaining.set(node.id, new Set(node.dependsOn));
+      augmentedDeps.set(node.id, [...(node.dependsOn ?? [])]);
+    }
+    for (const node of ir.nodes) {
+      if (!node.readOnly && node.resourceKey) {
+        const prev = lastWriterByResource.get(node.resourceKey);
+        if (prev) {
+          augmentedDeps.get(node.id)!.push(prev);
+        }
+        lastWriterByResource.set(node.resourceKey, node.id);
+      }
+    }
+
+    for (const node of ir.nodes) {
+      remaining.set(node.id, new Set(augmentedDeps.get(node.id) ?? node.dependsOn));
     }
 
     // C1: Map from nodeId → its tool result, used to substitute $ref values in

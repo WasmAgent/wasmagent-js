@@ -34,7 +34,16 @@ export type AgentEvent =
    * model_done  — emitted after the stream ends; closes it with finish reason and token usage.
    */
   | AgentEventBase & { channel: "model";    event: "model_start";         data: { modelId: string; step: number } }
-  | AgentEventBase & { channel: "model";    event: "model_done";          data: { modelId: string; step: number; finishReason: string; inputTokens?: number; outputTokens?: number; thinkingTokens?: number; cacheReadTokens?: number } };
+  | AgentEventBase & { channel: "model";    event: "model_done";          data: { modelId: string; step: number; finishReason: string; inputTokens?: number; outputTokens?: number; thinkingTokens?: number; cacheReadTokens?: number } }
+  /**
+   * A1: guardrail tripwire triggered — emitted when an input/output/tool guardrail
+   * fires fail-fast before the agent can produce or emit its answer.
+   */
+  | AgentEventBase & { channel: "status";   event: "guardrail_tripwire";  data: { guardrailName: string; layer: "input" | "output" | "tool"; toolName?: string; metadata?: Record<string, unknown> } }
+  /**
+   * B2: handoff — control has been transferred to another agent.
+   */
+  | AgentEventBase & { channel: "status";   event: "handoff";             data: { targetAgentName: string; step: number } };
 
 /** Structured step types mirroring smolagents' ActionStep / PlanningStep / FinalAnswerStep. */
 export type StepType = "action" | "planning" | "final_answer" | "tool_use" | "parallel_tool_use" | "user_message";

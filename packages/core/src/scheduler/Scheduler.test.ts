@@ -324,3 +324,108 @@ describe("Scheduler — C1 $ref value substitution", () => {
     }).rejects.toThrow("deadlock");
   });
 });
+
+// ── A4: resourceKey serialization tests ──────────────────────────────────────
+
+describe("Scheduler — A4: resourceKey serialization", () => {
+  it("two !readOnly nodes with same resourceKey execute serially (event order)", async () => {
+    const executionOrder: string[] = [];
+    let n1Started = false;
+
+    const slowWriteTool: ToolDefinition<{ id: string }, string> = {
+      name: "slowWrite",
+      description: "slow write tool",
+      inputSchema: z.object({ id: z.string() }),
+      outputSchema: z.string(),
+      readOnly: false,
+      idempotent: false,
+      async forward({ id }) {
+        executionOrder.push(`start:${id}`);
+        if (id === "a") {
+          n1Started = true;
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        executionOrder.push(`end:${id}`);
+        return `done:${id}`;
+      },
+    };
+
+    const registry = makeRegistry(slowWriteTool);
+    const scheduler = new Scheduler(registry);
+    const ir = new SimpleIR([
+      { id: "n1", toolName: "slowWrite", args: { id: "a" }, dependsOn: [], readOnly: false, idempotent: false, resourceKey: "shared-resource" },
+      { id: "n2", toolName: "slowWrite", args: { id: "b" }, dependsOn: [], readOnly: false, idempotent: false, resourceKey: "shared-resource" },
+    ]);
+
+    for await (const _ of scheduler.execute(ir)) { /* consume */ }
+
+    // n1 must fully complete before n2 starts
+    expect(executionOrder.indexOf("end:a")).toBeLessThan(executionOrder.indexOf("start:b"));
+  });
+
+  it("!readOnly nodes with different resourceKeys still run in parallel", async () => {
+    const concurrentCount = { max: 0, current: 0 };
+    const parallelWriteTool: ToolDefinition<{ id: string }, string> = {
+      name: "parallelWrite",
+      description: "tool",
+      inputSchema: z.object({ id: z.string() }),
+      outputSchema: z.string(),
+      readOnly: false,
+      idempotent: false,
+      async forward({ id }) {
+        concurrentCount.current++;
+        if (concurrentCount.current > concurrentCount.max) {
+          concurrentCount.max = concurrentCount.current;
+        }
+        await new Promise((r) => setTimeout(r, 10));
+        concurrentCount.current--;
+        return id;
+      },
+    };
+
+    const registry = makeRegistry(parallelWriteTool);
+    const scheduler = new Scheduler(registry);
+    const ir = new SimpleIR([
+      { id: "n1", toolName: "parallelWrite", args: { id: "a" }, dependsOn: [], readOnly: false, idempotent: false, resourceKey: "resource-A" },
+      { id: "n2", toolName: "parallelWrite", args: { id: "b" }, dependsOn: [], readOnly: false, idempotent: false, resourceKey: "resource-B" },
+    ]);
+
+    for await (const _ of scheduler.execute(ir)) { /* consume */ }
+
+    // Different resourceKeys → parallel execution → max concurrent should be > 1
+    expect(concurrentCount.max).toBeGreaterThan(1);
+  });
+
+  it("nodes without resourceKey are unaffected by nodes that have it", async () => {
+    const callOrder: string[] = [];
+    const writeTool: ToolDefinition<{ id: string }, string> = {
+      name: "write",
+      description: "tool",
+      inputSchema: z.object({ id: z.string() }),
+      outputSchema: z.string(),
+      readOnly: false,
+      idempotent: false,
+      async forward({ id }) {
+        callOrder.push(id);
+        return id;
+      },
+    };
+
+    const registry = makeRegistry(writeTool);
+    const scheduler = new Scheduler(registry);
+    const ir = new SimpleIR([
+      { id: "n1", toolName: "write", args: { id: "a" }, dependsOn: [], readOnly: false, idempotent: false, resourceKey: "shared" },
+      { id: "n2", toolName: "write", args: { id: "b" }, dependsOn: [], readOnly: false, idempotent: false }, // no resourceKey
+      { id: "n3", toolName: "write", args: { id: "c" }, dependsOn: [], readOnly: false, idempotent: false, resourceKey: "shared" },
+    ]);
+
+    for await (const _ of scheduler.execute(ir)) { /* consume */ }
+
+    // n1 and n3 must be serial (via implicit resourceKey dep); n2 is independent
+    expect(callOrder).toContain("a");
+    expect(callOrder).toContain("b");
+    expect(callOrder).toContain("c");
+    // n1 must precede n3 in execution
+    expect(callOrder.indexOf("a")).toBeLessThan(callOrder.indexOf("c"));
+  });
+});

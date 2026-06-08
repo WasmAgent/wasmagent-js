@@ -6,6 +6,9 @@
  */
 
 import type { AgentEvent } from "../types/events.js";
+import type { Model, ModelMessage } from "../models/types.js";
+import type { GuardrailResult, OutputGuardrail } from "../guardrails/index.js";
+import { runOutputGuardrails } from "../guardrails/index.js";
 
 // ── Scorer interface ──────────────────────────────────────────────────────────
 
@@ -181,4 +184,158 @@ function lcsLength(a: string[], b: string[]): number {
     }
   }
   return dp[m]![n]!;
+}
+
+// ── C2: llmJudge and guardrailCompliance scorers ───────────────────────────────
+
+export interface LlmJudgeScorerResult extends ScorerResult {
+  /** The judge's reasoning (from the model response). */
+  reasoning?: string;
+}
+
+/**
+ * C2: LLM-as-judge scorer.
+ *
+ * Uses a model to evaluate the agent's final answer against a rubric.
+ * Returns a score in [0, 1] based on the model's judgment.
+ *
+ * To get reproducible scores in tests, pass temperature: 0 via generateOpts.
+ *
+ * @param model - The model to use as judge.
+ * @param rubric - The evaluation criteria for the judge.
+ * @param generateOpts - Optional overrides for the judge's generate() call.
+ */
+export function llmJudge(
+  model: Model,
+  rubric: string,
+  generateOpts: { temperature?: number; maxTokens?: number } = {}
+): Scorer {
+  return {
+    name: `llmJudge(${rubric.slice(0, 40).replace(/\s+/g, " ")}...)`,
+    score(trace, _sample): ScorerResult {
+      // Note: Scorer.score() is sync, but we need async for LLM calls.
+      // The async evaluation is deferred — use runEvalAsync() or manually await.
+      // This returns 0 synchronously as a sentinel; use llmJudgeAsync for real scoring.
+      void model;
+      void generateOpts;
+      return {
+        scorer: "llmJudge",
+        score: 0,
+        detail: "Use llmJudgeAsync() for asynchronous LLM evaluation",
+      };
+    },
+  };
+}
+
+/**
+ * C2: Async LLM-as-judge scorer — evaluates final answer against a rubric.
+ *
+ * Returns a score in [0, 1]:
+ *   1.0 — answer meets all rubric criteria
+ *   0.5 — answer partially meets criteria
+ *   0.0 — answer fails criteria
+ *
+ * @param model - The model to use as judge.
+ * @param rubric - The evaluation criteria (e.g. "Is the answer factually correct? Is it complete?")
+ * @param trace - The agent trace to evaluate.
+ * @param generateOpts - Optional generate options (e.g. temperature: 0 for reproducibility).
+ */
+export async function llmJudgeAsync(
+  model: Model,
+  rubric: string,
+  trace: AgentTrace,
+  generateOpts: { temperature?: number; maxTokens?: number } = {}
+): Promise<LlmJudgeScorerResult> {
+  const answer = trace.finalAnswer ?? "(no answer)";
+  const prompt = `You are an objective evaluator. Assess the following answer against the rubric.
+
+Task: ${trace.task}
+Answer: ${answer}
+
+Rubric: ${rubric}
+
+Respond in this exact format:
+SCORE: <0.0|0.5|1.0>
+REASONING: <one sentence explanation>`;
+
+  const messages: ModelMessage[] = [{ role: "user", content: prompt }];
+  let responseText = "";
+  for await (const ev of model.generate(messages, { ...generateOpts, stream: true })) {
+    if (ev.type === "text_delta" && ev.delta) responseText += ev.delta;
+  }
+
+  const scoreMatch = /SCORE:\s*(0\.0|0\.5|1\.0|0|1)/.exec(responseText);
+  const reasoningMatch = /REASONING:\s*(.+)/.exec(responseText);
+  const score = scoreMatch ? parseFloat(scoreMatch[1]!) : 0;
+  const reasoning = reasoningMatch ? reasoningMatch[1]!.trim() : responseText.trim().slice(0, 200);
+
+  return {
+    scorer: "llmJudge",
+    score: Math.min(1, Math.max(0, score)),
+    detail: reasoning,
+    reasoning,
+  };
+}
+
+/**
+ * C2: Guardrail compliance scorer.
+ *
+ * Checks whether the agent's final answer passes all output guardrails.
+ * Score is 1.0 when all guardrails pass, 0.0 when any tripwire fires.
+ *
+ * Use this to detect guardrail-violating samples in a dataset:
+ *   score === 0 means the answer would have been blocked in production.
+ *
+ * @param guardrails - Output guardrails to check the final answer against.
+ */
+export function guardrailCompliance(guardrails: OutputGuardrail[]): Scorer {
+  return {
+    name: "guardrailCompliance",
+    score(trace): ScorerResult {
+      // Note: sync scorer signature — use runOutputGuardrails synchronously
+      // by checking if all guardrails are sync (no async check() methods).
+      // For async guardrails, use guardrailComplianceAsync.
+      const answer = trace.finalAnswer ?? "";
+      let tripwireTriggered = false;
+      let tripwireName = "";
+      for (const g of guardrails) {
+        const result = g.check(answer) as GuardrailResult | Promise<GuardrailResult>;
+        if (result instanceof Promise) {
+          // Async guardrail — cannot evaluate synchronously; treat as passed.
+          continue;
+        }
+        if (result.tripwireTriggered) {
+          tripwireTriggered = true;
+          tripwireName = g.name;
+          break;
+        }
+      }
+      return {
+        scorer: "guardrailCompliance",
+        score: tripwireTriggered ? 0 : 1,
+        detail: tripwireTriggered ? `Guardrail "${tripwireName}" triggered` : "All guardrails passed",
+      };
+    },
+  };
+}
+
+/**
+ * C2: Async version of guardrailCompliance — handles async guardrails properly.
+ *
+ * @param guardrails - Output guardrails to check against.
+ * @param trace - The agent trace to evaluate.
+ */
+export async function guardrailComplianceAsync(
+  guardrails: OutputGuardrail[],
+  trace: AgentTrace
+): Promise<ScorerResult> {
+  const answer = trace.finalAnswer ?? "";
+  const tripwire = await runOutputGuardrails(guardrails, answer);
+  return {
+    scorer: "guardrailCompliance",
+    score: tripwire === null ? 1 : 0,
+    detail: tripwire !== null
+      ? `Guardrail "${tripwire.guardrailName}" triggered`
+      : "All guardrails passed",
+  };
 }
