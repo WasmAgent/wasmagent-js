@@ -32,6 +32,14 @@ const AUTO_CAPABLE_MODELS = new Set<string>([
   "doubao-seed-2-0-pro",
 ]);
 
+/** Model IDs that support thinking/reasoning. */
+const REASONING_MODELS = new Set<string>([
+  "doubao-seed-1-6-251015",
+  "doubao-seed-1-6-thinking",
+  "doubao-1-5-thinking-pro",
+  "doubao-seed-2-0-pro",
+]);
+
 export interface DoubaoModelOptions extends OpenAICompatModelOptions {
   /**
    * Enable Ark explicit Context API caching (context_id + per-hour storage cost).
@@ -101,6 +109,9 @@ export class DoubaoModel extends OpenAICompatModel {
     const mode = opts.thinking?.mode;
     const effort = opts.thinking?.effort;
     const budgetTokens = opts.thinking?.budgetTokens;
+
+    // Only reasoning-capable models accept the thinking parameter.
+    if (!REASONING_MODELS.has(this.modelId) && mode === undefined) return {};
 
     if (mode === "off") {
       return { extra_body: { thinking: { type: "disabled" } } };

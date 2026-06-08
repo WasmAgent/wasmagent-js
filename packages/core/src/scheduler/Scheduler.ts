@@ -119,6 +119,8 @@ export class Scheduler {
               console.error("[scheduler] speculative node rejected unexpectedly:", reason);
             }
             speculative.delete(failedId);
+            completedResults.set(failedId, undefined);
+            this.#unblockDependents(failedId, remaining);
             yield { type: "node_error", nodeId: failedId, error: isAbort ? undefined : reason };
           }
         }
@@ -153,6 +155,8 @@ export class Scheduler {
             if (!isAbort) {
               console.error("[scheduler] write node rejected:", reason);
             }
+            completedResults.set(failedNode.id, undefined);
+            this.#unblockDependents(failedNode.id, remaining);
             yield { type: "node_error", nodeId: failedNode.id, error: isAbort ? undefined : reason };
           }
         }
@@ -180,6 +184,8 @@ export class Scheduler {
               console.error("[scheduler] speculative node rejected unexpectedly:", reason);
             }
             speculative.delete(failedId);
+            completedResults.set(failedId, undefined);
+            this.#unblockDependents(failedId, remaining);
             yield { type: "node_error", nodeId: failedId, error: isAbort ? undefined : reason };
           }
         }
