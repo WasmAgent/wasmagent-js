@@ -1,4 +1,4 @@
-export type { ToolDefinition, ToolCall, ToolResult } from "./types.js";
+export type { AgentPrincipal, ToolDefinition, ToolCall, ToolResult } from "./types.js";
 export { ToolRegistry, zodToJsonSchema, toStrictJsonSchema } from "./ToolRegistry.js";
-export { McpToolCollection } from "./McpToolCollection.js";
-export type { McpIntegrityOptions, McpToolSchema, McpResource, McpResourceContent, McpPromptSchema, McpPromptMessage, McpGetPromptResult } from "./McpToolCollection.js";
+export { McpToolCollection, McpAuthError } from "./McpToolCollection.js";
+export type { McpAuthOptions, McpIntegrityOptions, McpToolSchema, McpResource, McpResourceContent, McpPromptSchema, McpPromptMessage, McpGetPromptResult, McpElicitationRequest, McpSamplingRequest, SamplingCallback, ElicitationCallback } from "./McpToolCollection.js";

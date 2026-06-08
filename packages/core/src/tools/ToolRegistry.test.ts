@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
 import { ToolRegistry, zodToJsonSchema } from "../tools/ToolRegistry.js";
-import type { ToolDefinition } from "../tools/types.js";
+import type { AgentPrincipal, ToolDefinition } from "../tools/types.js";
 
 const echoTool: ToolDefinition<{ message: string }, string> = {
   name: "echo",
@@ -432,5 +432,114 @@ describe("ToolRegistry — A2 deferLoading + inputExamples mutual exclusion", ()
     expect(() =>
       registry.register(makeTool("ok_examples", { inputExamples: [{ q: "ex" }] }))
     ).not.toThrow();
+  });
+});
+
+// ── B2: writeScope / AgentPrincipal least-agency ─────────────────────────────
+
+describe("ToolRegistry — B2 writeScope / AgentPrincipal", () => {
+  function makeWriteTool(name: string, writeScope?: string[]): ToolDefinition {
+    return {
+      name,
+      description: `${name} write tool`,
+      inputSchema: z.object({ x: z.number() }),
+      outputSchema: z.number(),
+      readOnly: false,
+      idempotent: false,
+      ...(writeScope !== undefined ? { writeScope } : {}),
+      forward: async (input: { x: number }) => input.x * 2,
+    };
+  }
+
+  it("write tool without writeScope executes regardless of principal", async () => {
+    const registry = new ToolRegistry();
+    registry.register(makeWriteTool("free_write"));
+    const result = await registry.call({ toolName: "free_write", args: { x: 5 }, callId: "c1" });
+    expect(result.error).toBeUndefined();
+    expect(result.output).toBe(10);
+  });
+
+  it("write tool with writeScope denies when no principal provided", async () => {
+    const registry = new ToolRegistry();
+    registry.register(makeWriteTool("scoped_write", ["files:write"]));
+    const result = await registry.call({ toolName: "scoped_write", args: { x: 5 }, callId: "c1" });
+    expect(result.error?.code).toBe("capability_denied");
+    expect(result.error?.message).toMatch(/files:write/);
+    expect(result.error?.message).toMatch(/anonymous/);
+  });
+
+  it("write tool with writeScope denies when principal lacks the scope", async () => {
+    const registry = new ToolRegistry();
+    registry.register(makeWriteTool("scoped_write2", ["files:write"]));
+    const principal: AgentPrincipal = { id: "agent-1", grantedScopes: ["db:read"] };
+    const result = await registry.call({ toolName: "scoped_write2", args: { x: 5 }, callId: "c1" }, undefined, principal);
+    expect(result.error?.code).toBe("capability_denied");
+    expect(result.error?.message).toMatch(/files:write/);
+    expect(result.error?.message).toMatch(/agent-1/);
+  });
+
+  it("write tool with writeScope succeeds when principal has all required scopes", async () => {
+    const registry = new ToolRegistry();
+    registry.register(makeWriteTool("scoped_write3", ["files:write"]));
+    const principal: AgentPrincipal = { id: "agent-2", grantedScopes: ["files:write", "db:read"] };
+    const result = await registry.call({ toolName: "scoped_write3", args: { x: 7 }, callId: "c1" }, undefined, principal);
+    expect(result.error).toBeUndefined();
+    expect(result.output).toBe(14);
+  });
+
+  it("readOnly tools ignore writeScope — no principal needed", async () => {
+    const registry = new ToolRegistry();
+    const readTool: ToolDefinition = {
+      name: "read_only",
+      description: "readonly",
+      inputSchema: z.object({ x: z.number() }),
+      outputSchema: z.number(),
+      readOnly: true,
+      idempotent: true,
+      writeScope: ["should:be:ignored"],
+      forward: async (input: { x: number }) => input.x,
+    };
+    registry.register(readTool);
+    const result = await registry.call({ toolName: "read_only", args: { x: 3 }, callId: "c1" });
+    expect(result.error).toBeUndefined();
+    expect(result.output).toBe(3);
+  });
+});
+
+// ── C3: toModelOutput compression hook ───────────────────────────────────────
+
+describe("ToolRegistry — C3 toModelOutput hook", () => {
+  it("applies toModelOutput to compress large output", async () => {
+    const registry = new ToolRegistry();
+    const bigResultTool: ToolDefinition = {
+      name: "big_result",
+      description: "returns a big object",
+      inputSchema: z.object({}),
+      outputSchema: z.object({ items: z.array(z.string()) }),
+      readOnly: true,
+      idempotent: true,
+      forward: async () => ({ items: ["a", "b", "c", "d", "e"] }),
+      toModelOutput: (result: { items: string[] }) => `Found ${result.items.length} items: ${result.items.slice(0, 2).join(", ")}...`,
+    };
+    registry.register(bigResultTool);
+    const result = await registry.call({ toolName: "big_result", args: {}, callId: "c1" });
+    expect(result.error).toBeUndefined();
+    expect(result.output).toBe("Found 5 items: a, b...");
+  });
+
+  it("without toModelOutput, output is returned as-is", async () => {
+    const registry = new ToolRegistry();
+    const plainTool: ToolDefinition = {
+      name: "plain",
+      description: "plain",
+      inputSchema: z.object({ v: z.string() }),
+      outputSchema: z.string(),
+      readOnly: true,
+      idempotent: true,
+      forward: async (input: { v: string }) => `result:${input.v}`,
+    };
+    registry.register(plainTool);
+    const result = await registry.call({ toolName: "plain", args: { v: "hello" }, callId: "c1" });
+    expect(result.output).toBe("result:hello");
   });
 });

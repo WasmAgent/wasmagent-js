@@ -18,8 +18,8 @@ export type {
 } from "./executor/index.js";
 
 // Memory
-export { MessageAssembler, LazyObservationHandle, InMemoryVectorStore, makeRetrievalTool, createMemoryTool, MapKvBackend } from "./memory/index.js";
-export type { AssemblerConfig, EditToolResultsOptions, Retriever, EmbedResult, SearchResult, MemoryToolOptions } from "./memory/index.js";
+export { MessageAssembler, LazyObservationHandle, InMemoryVectorStore, KvBackendVectorStore, TfidfEmbedder, makeRetrievalTool, createMemoryTool, MapKvBackend } from "./memory/index.js";
+export type { AssemblerConfig, EditToolResultsOptions, Retriever, Embedder, EmbedResult, SearchResult, MemoryToolOptions } from "./memory/index.js";
 
 // Models
 export { AnthropicModel, AnthropicModels, OpenAIModel, OpenAIModels, CACHE_MIN_TOKENS, estimateTokens, estimateMessagesTokens, TokenBudget, FallbackModel, repairJson } from "./models/index.js";
@@ -56,8 +56,8 @@ export type {
 } from "./enhancement/index.js";
 
 // Tools
-export { ToolRegistry, zodToJsonSchema, toStrictJsonSchema, McpToolCollection } from "./tools/index.js";
-export type { ToolDefinition, ToolCall, ToolResult, McpIntegrityOptions, McpToolSchema, McpResource, McpResourceContent, McpPromptSchema, McpPromptMessage, McpGetPromptResult } from "./tools/index.js";
+export { ToolRegistry, zodToJsonSchema, toStrictJsonSchema, McpToolCollection, McpAuthError } from "./tools/index.js";
+export type { AgentPrincipal, ToolDefinition, ToolCall, ToolResult, McpAuthOptions, McpIntegrityOptions, McpToolSchema, McpResource, McpResourceContent, McpPromptSchema, McpPromptMessage, McpGetPromptResult } from "./tools/index.js";
 
 // Scheduler
 export { Scheduler, SimpleIR, deriveDependencies } from "./scheduler/index.js";

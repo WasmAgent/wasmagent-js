@@ -717,3 +717,42 @@ describe("B1 — Untrusted tool output wrapping", () => {
     expect(sysContent).toContain("DATA ONLY");
   });
 });
+
+describe("D1 — systemPrefixTtl", () => {
+  it("default (no option): system message cacheBreakpoint has type=ephemeral and no ttl", () => {
+    const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
+    const msgs = a.build();
+    const sys = msgs[0]!;
+    expect(sys.cacheBreakpoint?.type).toBe("ephemeral");
+    expect(sys.cacheBreakpoint?.ttl).toBeUndefined();
+  });
+
+  it("systemPrefixTtl='5m': behaves the same as default (no ttl field)", () => {
+    const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [], systemPrefixTtl: "5m" });
+    const msgs = a.build();
+    const sys = msgs[0]!;
+    expect(sys.cacheBreakpoint?.type).toBe("ephemeral");
+    expect(sys.cacheBreakpoint?.ttl).toBeUndefined();
+  });
+
+  it("systemPrefixTtl='1h': system message cacheBreakpoint has ttl='1h'", () => {
+    const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [], systemPrefixTtl: "1h" });
+    const msgs = a.build();
+    const sys = msgs[0]!;
+    expect(sys.cacheBreakpoint?.type).toBe("ephemeral");
+    expect(sys.cacheBreakpoint?.ttl).toBe("1h");
+  });
+
+  it("1h ttl does not affect B2 history segment breakpoints (they stay ephemeral without ttl)", () => {
+    const a = new MessageAssembler({
+      systemPrompt: "sys",
+      toolsSchema: [],
+      systemPrefixTtl: "1h",
+      chunkSizeSteps: 1,
+    });
+    a.addStep(makeAction(0));
+    const msgs = a.build();
+    const sealedMsg = msgs.find((m) => m.cacheBreakpoint !== undefined && m !== msgs[0]);
+    expect(sealedMsg?.cacheBreakpoint?.ttl).toBeUndefined();
+  });
+});

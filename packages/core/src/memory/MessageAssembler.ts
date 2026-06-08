@@ -26,6 +26,15 @@ export interface AssemblerConfig {
    * Recommended: 5–10 for long-running agents.
    */
   chunkSizeSteps?: number;
+  /**
+   * D1: Cache TTL for the system prefix (tools schema + system prompt + few-shot examples).
+   * - "5m" (default): standard 5-minute ephemeral cache — best for dynamic prefixes.
+   * - "1h": extended 1-hour cache — use when the system prefix is stable across many sessions.
+   *   Requires AnthropicModel with extended-cache-ttl-2025-04-11 beta header; other adapters ignore it.
+   *
+   * History segments (B2) always use "5m" regardless of this setting.
+   */
+  systemPrefixTtl?: "5m" | "1h";
 }
 
 /** Options for L2-1 context editing (reversible tool result cleanup). */
@@ -64,10 +73,11 @@ export class MessageAssembler {
 
   constructor(config: AssemblerConfig) {
     this.#config = config;
+    const ttl = config.systemPrefixTtl ?? "5m";
     this.#systemMsg = {
       role: "system",
       content: this.#buildSystemContent(),
-      cacheBreakpoint: { type: "ephemeral" },
+      cacheBreakpoint: ttl === "1h" ? { type: "ephemeral", ttl: "1h" } : { type: "ephemeral" },
     };
   }
 
