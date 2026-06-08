@@ -30,6 +30,12 @@ export interface IRNode {
    * Forwarded to ToolRegistry.call() so capability-gated tools can be invoked.
    */
   extraCapabilities?: string[];
+  /**
+   * A4: Optional resource key for conflict serialization.
+   * !readOnly nodes sharing the same resourceKey are serialized automatically
+   * by the Scheduler without requiring explicit dependsOn edges.
+   */
+  resourceKey?: string;
 }
 
 export interface ActionIR {

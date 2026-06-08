@@ -90,6 +90,18 @@ export interface ToolDefinition<TInput = unknown, TOutput = unknown> {
    */
   sanitizeToolResult?: (text: string, ctx: { toolName: string; callId: string; input: unknown }) => string | Promise<string>;
   forward(input: TInput, signal?: AbortSignal): Promise<TOutput>;
+  /**
+   * A4: Optional resource key for conflict serialization.
+   * Two !readOnly tools sharing the same resourceKey are automatically
+   * serialized by the Scheduler (implicit dependsOn barrier).
+   * Use this to prevent concurrent writes to the same external resource
+   * (same file, same API endpoint, same DB row) without requiring callers
+   * to manually wire dependsOn edges.
+   *
+   * Can be a static string or a function of the input (for per-call disambiguation).
+   * The function receives input typed as `never` to allow assignment to any ToolDefinition<T>.
+   */
+  resourceKey?: string | ((input: never) => string);
 }
 
 /** Validated tool call descriptor emitted by the agent step parser. */

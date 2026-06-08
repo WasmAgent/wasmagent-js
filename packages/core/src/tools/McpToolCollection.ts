@@ -232,6 +232,68 @@ export class McpToolCollection {
 
   get size(): number { return this.#tools.length; }
 
+  /**
+   * B3: List all resources available on the MCP server.
+   * Requires the server to support the resources capability.
+   */
+  async listResources(): Promise<McpResource[]> {
+    const client = this.#client as McpClientInterface;
+    if (typeof client.listResources !== "function") {
+      throw new Error("MCP server does not support the resources capability");
+    }
+    const { resources } = await client.listResources();
+    return resources;
+  }
+
+  /**
+   * B3: Read the contents of a single MCP resource by URI.
+   */
+  async readResource(uri: string): Promise<McpResourceContent[]> {
+    const client = this.#client as McpClientInterface;
+    if (typeof client.readResource !== "function") {
+      throw new Error("MCP server does not support the resources capability");
+    }
+    const { contents } = await client.readResource({ uri });
+    return contents;
+  }
+
+  /**
+   * B3: List all prompts available on the MCP server.
+   */
+  async listPrompts(): Promise<McpPromptSchema[]> {
+    const client = this.#client as McpClientInterface;
+    if (typeof client.listPrompts !== "function") {
+      throw new Error("MCP server does not support the prompts capability");
+    }
+    const { prompts } = await client.listPrompts();
+    return prompts;
+  }
+
+  /**
+   * B3: Retrieve an MCP prompt by name with optional arguments.
+   * Returns the rendered messages array suitable for injection into a MessageAssembler.
+   */
+  async getPrompt(name: string, args?: Record<string, string>): Promise<McpGetPromptResult> {
+    const client = this.#client as McpClientInterface;
+    if (typeof client.getPrompt !== "function") {
+      throw new Error("MCP server does not support the prompts capability");
+    }
+    return client.getPrompt({ name, ...(args ? { arguments: args } : {}) });
+  }
+
+  /**
+   * B3: Extract a system-prompt prefix string from an MCP prompt.
+   * Concatenates all "user" role text blocks from the prompt messages.
+   * Suitable for injection as a MessageAssembler system prefix.
+   */
+  async getPromptAsSystemPrefix(name: string, args?: Record<string, string>): Promise<string> {
+    const result = await this.getPrompt(name, args);
+    return result.messages
+      .filter((m) => m.role === "user" && m.content.type === "text")
+      .map((m) => (m.content as { type: "text"; text: string }).text)
+      .join("\n");
+  }
+
   async close(): Promise<void> {
     await (this.#client as { close(): Promise<void> }).close();
   }
@@ -260,7 +322,10 @@ function registerElicitation(client: McpClientInterface, callback: ElicitationCa
   }
 }
 
-// ── MCP SDK type stubs ───────────────────────────────────────────────────────
+// ── MCP SDK type stubs (B3: these are local interface stubs that mirror the SDK) ───────────────────────────────────────────────────────
+// NOTE: The MCP Client is imported dynamically from @modelcontextprotocol/sdk.
+// These stubs define the minimal surface we use. When the SDK is available,
+// assertMcpClient() verifies the real client satisfies this interface.
 
 interface StreamableHTTPConstructor {
   new(url: URL): { start(): Promise<void>; close(): Promise<void> };
@@ -273,6 +338,14 @@ interface McpClientInterface {
     structuredContent?: unknown;
     isError?: boolean;
   }>;
+  /** B3: list available resources on the MCP server. */
+  listResources(): Promise<{ resources: McpResource[] }>;
+  /** B3: read the contents of an MCP resource by URI. */
+  readResource(params: { uri: string }): Promise<{ contents: McpResourceContent[] }>;
+  /** B3: get a prompt by name with optional arguments. */
+  getPrompt(params: { name: string; arguments?: Record<string, string> }): Promise<McpGetPromptResult>;
+  /** B3: list available prompts on the MCP server. */
+  listPrompts(): Promise<{ prompts: McpPromptSchema[] }>;
   close(): Promise<void>;
 }
 
@@ -282,6 +355,7 @@ function assertMcpClient(client: unknown): asserts client is McpClientInterface 
   if (typeof c["listTools"] !== "function") throw new Error("Invalid MCP client: missing listTools()");
   if (typeof c["callTool"] !== "function") throw new Error("Invalid MCP client: missing callTool()");
   if (typeof c["close"] !== "function") throw new Error("Invalid MCP client: missing close()");
+  // resources/prompts are optional capabilities — don't assert here, check at call time.
 }
 
 export interface McpToolSchema {
@@ -298,6 +372,41 @@ export interface McpToolSchema {
     properties?: Record<string, unknown>;
     required?: string[];
   };
+}
+
+/** B3: MCP resource descriptor. */
+export interface McpResource {
+  uri: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+}
+
+/** B3: MCP resource content item. */
+export interface McpResourceContent {
+  uri: string;
+  mimeType?: string;
+  text?: string;
+  blob?: string;
+}
+
+/** B3: MCP prompt message (used in getPrompt results). */
+export interface McpPromptMessage {
+  role: "user" | "assistant";
+  content: { type: "text"; text: string } | { type: string };
+}
+
+/** B3: Result of getPrompt(). */
+export interface McpGetPromptResult {
+  description?: string;
+  messages: McpPromptMessage[];
+}
+
+/** B3: MCP prompt descriptor. */
+export interface McpPromptSchema {
+  name: string;
+  description?: string;
+  arguments?: Array<{ name: string; description?: string; required?: boolean }>;
 }
 
 interface McpTextContent {

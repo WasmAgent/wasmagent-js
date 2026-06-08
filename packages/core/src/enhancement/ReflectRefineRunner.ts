@@ -1,4 +1,6 @@
 import type { Model, ModelMessage, GenerateOptions } from "../models/types.js";
+import type { OutputGuardrail } from "../guardrails/index.js";
+import { runOutputGuardrails } from "../guardrails/index.js";
 
 export interface ReflectRefineOptions {
   /** Maximum reflection-refinement cycles (default 1). */
@@ -12,6 +14,15 @@ export interface ReflectRefineOptions {
   critiquePrompt?: string;
   /** Prompt appended to ask the model to refine given the critique. */
   refinePrompt?: string;
+  /**
+   * C1: Output guardrails used as quality signal.
+   * If any output guardrail passes (no tripwire), the draft is considered
+   * satisfactory and the loop terminates early. If a tripwire fires, that
+   * signals the loop should continue refining.
+   *
+   * Takes priority over qualitySignal when provided.
+   */
+  outputGuardrails?: OutputGuardrail[];
 }
 
 export interface ReflectRefineResult {
@@ -48,11 +59,20 @@ export class ReflectRefineRunner {
   readonly #qualitySignal: (draft: string) => boolean | Promise<boolean>;
   readonly #critiquePrompt: string;
   readonly #refinePrompt: string;
+  readonly #outputGuardrails: OutputGuardrail[];
 
   constructor(opts: ReflectRefineOptions = {}) {
     this.#maxCycles = Math.max(1, opts.maxCycles ?? 1);
-    // Default quality signal: never satisfied — always run at least one cycle.
-    this.#qualitySignal = opts.qualitySignal ?? (() => false);
+    this.#outputGuardrails = opts.outputGuardrails ?? [];
+    if (this.#outputGuardrails.length > 0) {
+      // C1: output guardrails take priority — draft passes when NO tripwire fires.
+      this.#qualitySignal = async (draft: string) => {
+        const tripwire = await runOutputGuardrails(this.#outputGuardrails, draft);
+        return tripwire === null; // null = all passed = draft is good
+      };
+    } else {
+      this.#qualitySignal = opts.qualitySignal ?? (() => false);
+    }
     this.#critiquePrompt = opts.critiquePrompt ?? DEFAULT_CRITIQUE_PROMPT;
     this.#refinePrompt = opts.refinePrompt ?? DEFAULT_REFINE_PROMPT;
   }

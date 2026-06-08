@@ -18,6 +18,10 @@ import { deriveDependencies } from "../scheduler/deriveDeps.js";
 import type { StopCondition } from "./stopConditions.js";
 import { callFingerprint } from "./stopConditions.js";
 import type { Checkpointer } from "../checkpoint/index.js";
+import type { InputGuardrail, OutputGuardrail, ToolGuardrail } from "../guardrails/index.js";
+import { runInputGuardrails, runOutputGuardrails, runToolGuardrails } from "../guardrails/index.js";
+import type { ZodSchema } from "zod";
+import { zodToJsonSchema } from "../tools/ToolRegistry.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant. Use the provided tools to answer questions.
 When you have a final answer, respond with plain text (no tool call).
@@ -54,6 +58,33 @@ export interface ToolCallingAgentOptions {
    * "await_human_input" event and polls the checkpointer until a response arrives.
    */
   checkpointer?: Checkpointer;
+  /**
+   * A1: Input guardrails run in parallel with the first model call.
+   * A tripwire triggers fail-fast before any model output is consumed.
+   */
+  inputGuardrails?: InputGuardrail[];
+  /**
+   * A1: Output guardrails run before the final_answer event is emitted.
+   * A tripwire prevents the answer from being delivered and emits guardrail_tripwire.
+   */
+  outputGuardrails?: OutputGuardrail[];
+  /**
+   * A1: Tool guardrails run before each tool invocation.
+   * A tripwire blocks the tool call and emits guardrail_tripwire.
+   */
+  toolGuardrails?: ToolGuardrail[];
+  /**
+   * A2: Zod schema constraining the type of final_answer.data.answer.
+   * When provided, the answer is validated after each candidate and
+   * retried (with a fix prompt) up to outputSchemaRetries times on failure.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  outputSchema?: ZodSchema<any>;
+  /**
+   * A2: Maximum number of fix-prompt retries when outputSchema validation fails.
+   * Default: 2.
+   */
+  outputSchemaRetries?: number;
 }
 
 /**
@@ -78,6 +109,12 @@ export class ToolCallingAgent {
   readonly #schedulerMode: "dag" | "parallel";
   readonly #stopWhen: StopCondition[];
   readonly #checkpointer: Checkpointer | undefined;
+  readonly #inputGuardrails: InputGuardrail[];
+  readonly #outputGuardrails: OutputGuardrail[];
+  readonly #toolGuardrails: ToolGuardrail[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly #outputSchema: ZodSchema<any> | undefined;
+  readonly #outputSchemaRetries: number;
 
   constructor(opts: ToolCallingAgentOptions) {
     this.#tools = new ToolRegistry();
@@ -92,6 +129,11 @@ export class ToolCallingAgent {
     this.#schedulerMode = opts.scheduler ?? "dag";
     this.#stopWhen = opts.stopWhen ?? [];
     this.#checkpointer = opts.checkpointer;
+    this.#inputGuardrails = opts.inputGuardrails ?? [];
+    this.#outputGuardrails = opts.outputGuardrails ?? [];
+    this.#toolGuardrails = opts.toolGuardrails ?? [];
+    this.#outputSchema = opts.outputSchema;
+    this.#outputSchemaRetries = opts.outputSchemaRetries ?? 2;
     this.#toolsSchema = this.#tools.toJsonSchema();
     this.#assembler = opts.assembler ?? new MessageAssembler({
       systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
@@ -131,6 +173,16 @@ export class ToolCallingAgent {
     const budgetMaxDurationMs = this.#policy?.budget?.maxDurationMs;
     // C2: call fingerprint history for noProgress detection.
     const callHistory: string[][] = [];
+
+    // A1: input guardrail check — runs concurrently with step 1's model invocation.
+    // We kick it off here before the loop so it overlaps with the first model call.
+    const inputGuardrailPromise = runInputGuardrails(
+      this.#inputGuardrails,
+      task,
+      this.#assembler.build()
+    );
+
+    let inputGuardrailChecked = false;
 
     for (let step = 1; step <= this.#maxSteps; step++) {
       // B2: external kill-switch — check before every step and abort if signalled.
@@ -217,22 +269,65 @@ export class ToolCallingAgent {
       const pendingCalls: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
       let receivedUsage = false;
 
-      for await (const event of this.#model.generate(messages, {
-        stream: true,
-        tools: this.#toolsSchema,
-      })) {
-        if (event.type === "text_delta" && event.delta) {
-          fullText += event.delta;
-        } else if (event.type === "tool_call" && event.toolCall) {
-          pendingCalls.push({
-            id: event.toolCall.id,
-            name: event.toolCall.name,
-            input: event.toolCall.input,
-          });
-        } else if (event.type === "usage" && event.usage) {
-          budget.recordUsage(event.usage);
-          receivedUsage = true;
+      // A1: on step 1, resolve input guardrails concurrently with model generation.
+      // After step 1, input was already checked — skip the await.
+      let inputGuardrailTripwire: Awaited<typeof inputGuardrailPromise> = null;
+      if (!inputGuardrailChecked) {
+        inputGuardrailChecked = true;
+        // Start model generation — input guardrail runs concurrently.
+        const generatePromise = (async () => {
+          for await (const event of this.#model.generate(messages, {
+            stream: true,
+            tools: this.#toolsSchema,
+          })) {
+            if (event.type === "text_delta" && event.delta) {
+              fullText += event.delta;
+            } else if (event.type === "tool_call" && event.toolCall) {
+              pendingCalls.push({
+                id: event.toolCall.id,
+                name: event.toolCall.name,
+                input: event.toolCall.input,
+              });
+            } else if (event.type === "usage" && event.usage) {
+              budget.recordUsage(event.usage);
+              receivedUsage = true;
+            }
+          }
+        })();
+        [inputGuardrailTripwire] = await Promise.all([inputGuardrailPromise, generatePromise]);
+      } else {
+        for await (const event of this.#model.generate(messages, {
+          stream: true,
+          tools: this.#toolsSchema,
+        })) {
+          if (event.type === "text_delta" && event.delta) {
+            fullText += event.delta;
+          } else if (event.type === "tool_call" && event.toolCall) {
+            pendingCalls.push({
+              id: event.toolCall.id,
+              name: event.toolCall.name,
+              input: event.toolCall.input,
+            });
+          } else if (event.type === "usage" && event.usage) {
+            budget.recordUsage(event.usage);
+            receivedUsage = true;
+          }
         }
+      }
+
+      // A1: check if input guardrail triggered (checked after generation to preserve concurrency).
+      if (inputGuardrailTripwire) {
+        yield {
+          traceId, parentTraceId, channel: "status", event: "guardrail_tripwire",
+          data: { guardrailName: inputGuardrailTripwire.guardrailName, layer: "input" as const, ...(inputGuardrailTripwire.result.metadata ? { metadata: inputGuardrailTripwire.result.metadata } : {}) },
+          timestampMs: Date.now(),
+        };
+        yield {
+          traceId, parentTraceId, channel: "text", event: "error",
+          data: { error: `Input guardrail "${inputGuardrailTripwire.guardrailName}" triggered`, step },
+          timestampMs: Date.now(),
+        };
+        return;
       }
 
       if (!receivedUsage) {
@@ -276,12 +371,70 @@ export class ToolCallingAgent {
 
         const finalStep: FinalAnswerStep = { type: "final_answer", answer };
         this.#assembler.addStep(finalStep);
+
+        // A2: validate answer against outputSchema, retry on failure.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let parsedAnswer: any = answer;
+        if (this.#outputSchema) {
+          let parseResult = this.#outputSchema.safeParse(
+            typeof answer === "string" ? (() => { try { return JSON.parse(answer); } catch { return answer; } })() : answer
+          );
+          let retries = 0;
+          while (!parseResult.success && retries < this.#outputSchemaRetries) {
+            retries++;
+            const schemaDesc = JSON.stringify(zodToJsonSchema(this.#outputSchema));
+            const fixMessages = [
+              ...this.#assembler.build(),
+              {
+                role: "user" as const,
+                content: `Your previous answer failed schema validation: ${parseResult.error.message}\nPlease respond with a valid JSON object matching this schema: ${schemaDesc}`,
+              },
+            ];
+            let fixText = "";
+            for await (const ev of this.#model.generate(fixMessages, { stream: true })) {
+              if (ev.type === "text_delta" && ev.delta) fixText += ev.delta;
+            }
+            const candidate = fixText.trim();
+            parseResult = this.#outputSchema.safeParse(
+              (() => { try { return JSON.parse(candidate); } catch { return candidate; } })()
+            );
+            if (parseResult.success) {
+              parsedAnswer = parseResult.data;
+            }
+          }
+          if (!parseResult.success) {
+            yield {
+              traceId, parentTraceId, channel: "text", event: "error",
+              data: { error: `Output schema validation failed after ${this.#outputSchemaRetries} retries: ${parseResult.error.message}`, step },
+              timestampMs: Date.now(),
+            };
+            return;
+          }
+          parsedAnswer = parseResult.data;
+        }
+
+        // A1: output guardrail check before emitting final_answer.
+        const outputTripwire = await runOutputGuardrails(this.#outputGuardrails, parsedAnswer);
+        if (outputTripwire) {
+          yield {
+            traceId, parentTraceId, channel: "status", event: "guardrail_tripwire",
+            data: { guardrailName: outputTripwire.guardrailName, layer: "output" as const, ...(outputTripwire.result.metadata ? { metadata: outputTripwire.result.metadata } : {}) },
+            timestampMs: Date.now(),
+          };
+          yield {
+            traceId, parentTraceId, channel: "text", event: "error",
+            data: { error: `Output guardrail "${outputTripwire.guardrailName}" triggered`, step },
+            timestampMs: Date.now(),
+          };
+          return;
+        }
+
         yield {
           traceId,
           parentTraceId,
           channel: "text",
           event: "final_answer",
-          data: { answer },
+          data: { answer: parsedAnswer },
           timestampMs: Date.now(),
         };
         return;
@@ -313,6 +466,26 @@ export class ToolCallingAgent {
           data: { phase: "tool_executing", toolName: call.name, callId: call.id, step },
           timestampMs: Date.now(),
         };
+      }
+
+      // A1: tool guardrail check — runs before any tool is dispatched.
+      if (this.#toolGuardrails.length > 0) {
+        for (const call of pendingCalls) {
+          const toolTripwire = await runToolGuardrails(this.#toolGuardrails, call.name, call.input);
+          if (toolTripwire) {
+            yield {
+              traceId, parentTraceId, channel: "status", event: "guardrail_tripwire",
+              data: { guardrailName: toolTripwire.guardrailName, layer: "tool" as const, toolName: call.name, ...(toolTripwire.result.metadata ? { metadata: toolTripwire.result.metadata } : {}) },
+              timestampMs: Date.now(),
+            };
+            yield {
+              traceId, parentTraceId, channel: "text", event: "error",
+              data: { error: `Tool guardrail "${toolTripwire.guardrailName}" blocked tool "${call.name}"`, step },
+              timestampMs: Date.now(),
+            };
+            return;
+          }
+        }
       }
 
       // C1: per-tool human approval (needsApproval).
@@ -385,6 +558,13 @@ export class ToolCallingAgent {
         const depMap = deriveDependencies(pendingCalls.map((c) => ({ id: c.id, input: c.input })));
         const nodes: IRNode[] = pendingCalls.map((call) => {
           const toolDef = this.#tools.get(call.name);
+          // A4: resolve resourceKey (may be a function of input).
+          let resourceKey: string | undefined;
+          if (toolDef?.resourceKey) {
+            resourceKey = typeof toolDef.resourceKey === "function"
+              ? toolDef.resourceKey(call.input as never)
+              : toolDef.resourceKey;
+          }
           return {
             id: call.id,
             toolName: call.name,
@@ -392,6 +572,7 @@ export class ToolCallingAgent {
             dependsOn: depMap.get(call.id) ?? [],
             readOnly: toolDef?.readOnly ?? false,
             idempotent: toolDef?.idempotent ?? false,
+            ...(resourceKey ? { resourceKey } : {}),
           };
         });
         const ir = new SimpleIR(nodes);

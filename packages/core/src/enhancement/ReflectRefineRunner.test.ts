@@ -108,3 +108,112 @@ describe("ReflectRefineRunner", () => {
     expect(temps.length).toBe(3);
   });
 });
+
+// ── C1: output guardrails as quality signal ───────────────────────────────────
+
+import { forbiddenPhrases, type OutputGuardrail } from "../guardrails/index.js";
+
+describe("ReflectRefineRunner — C1: outputGuardrails as quality signal", () => {
+  it("stops early when no output guardrail tripwire fires (draft is acceptable)", async () => {
+    let callCount = 0;
+    const model: Model = {
+      providerId: "mock",
+      async *generate(): AsyncGenerator<StreamEvent> {
+        callCount++;
+        // First call (initial draft): returns a clean answer
+        yield { type: "text_delta", delta: "clean and safe answer" };
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    };
+    const runner = new ReflectRefineRunner({
+      maxCycles: 3,
+      outputGuardrails: [forbiddenPhrases(["harmful"])],
+    });
+    const result = await runner.run(model, [{ role: "user", content: "q" }]);
+    expect(result.answer).toBe("clean and safe answer");
+    // Only 1 call (initial draft) — guardrail passed so loop stopped immediately
+    expect(callCount).toBe(1);
+    expect(result.cyclesUsed).toBe(0);
+  });
+
+  it("continues refining when output guardrail triggers (draft is unsafe)", async () => {
+    let callCount = 0;
+    const model: Model = {
+      providerId: "mock",
+      async *generate(): AsyncGenerator<StreamEvent> {
+        callCount++;
+        if (callCount === 1) {
+          // Initial draft: contains forbidden phrase
+          yield { type: "text_delta", delta: "this contains harmful content" };
+        } else {
+          // All subsequent calls: return clean answer
+          yield { type: "text_delta", delta: "clean and safe answer" };
+        }
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    };
+    const runner = new ReflectRefineRunner({
+      maxCycles: 2,
+      outputGuardrails: [forbiddenPhrases(["harmful"])],
+    });
+    const result = await runner.run(model, [{ role: "user", content: "q" }]);
+    expect(result.answer).toBe("clean and safe answer");
+    expect(result.cyclesUsed).toBe(1);
+    // Initial draft + critique + refine = 3 calls minimum
+    expect(callCount).toBeGreaterThanOrEqual(3);
+  });
+
+  it("outputGuardrails takes priority over qualitySignal", async () => {
+    let qualitySignalCalled = false;
+    const model: Model = {
+      providerId: "mock",
+      async *generate(): AsyncGenerator<StreamEvent> {
+        yield { type: "text_delta", delta: "good answer" };
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    };
+    const runner = new ReflectRefineRunner({
+      maxCycles: 3,
+      outputGuardrails: [forbiddenPhrases(["bad"])],
+      qualitySignal: () => {
+        qualitySignalCalled = true;
+        return false;
+      },
+    });
+    await runner.run(model, [{ role: "user", content: "q" }]);
+    // qualitySignal should NOT be called when outputGuardrails are provided
+    expect(qualitySignalCalled).toBe(false);
+  });
+
+  it("custom output guardrail can encode domain-specific quality check", async () => {
+    let callCount = 0;
+    const model: Model = {
+      providerId: "mock",
+      async *generate(): AsyncGenerator<StreamEvent> {
+        callCount++;
+        // Return valid JSON on second pass
+        if (callCount === 1) {
+          yield { type: "text_delta", delta: "not json" };
+        } else {
+          yield { type: "text_delta", delta: '{"result": 42}' };
+        }
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    };
+    // Custom guardrail: tripwire fires when answer is not valid JSON
+    const jsonGuardrail: OutputGuardrail = {
+      name: "jsonCheck",
+      check(answer) {
+        try { JSON.parse(typeof answer === "string" ? answer : JSON.stringify(answer)); return { tripwireTriggered: false }; }
+        catch { return { tripwireTriggered: true }; }
+      },
+    };
+    const runner = new ReflectRefineRunner({
+      maxCycles: 3,
+      outputGuardrails: [jsonGuardrail],
+    });
+    const result = await runner.run(model, [{ role: "user", content: "q" }]);
+    expect(result.answer).toBe('{"result": 42}');
+    expect(result.cyclesUsed).toBe(1);
+  });
+});

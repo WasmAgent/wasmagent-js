@@ -165,3 +165,43 @@ describe("SelfConsistencyRunner — C1 answer extraction", () => {
     expect(result.answer.length).toBeGreaterThan("Final answer: yes".length);
   });
 });
+
+// ── C1: outputSchema structured voting tests ──────────────────────────────────
+
+import { z } from "zod";
+
+describe("SelfConsistencyRunner — C1: outputSchema voting", () => {
+  it("votes on parsed object keys when outputSchema is provided", async () => {
+    const schema = z.object({ answer: z.number() });
+    const runner = new SelfConsistencyRunner({
+      n: 3,
+      earlyStopThreshold: 1.0,
+      outputSchema: schema,
+    });
+    // Two candidates have same parsed value {answer: 42}; one has {answer: 99}
+    const model = mockModel([
+      JSON.stringify({ answer: 42 }),
+      JSON.stringify({ answer: 42 }),
+      JSON.stringify({ answer: 99 }),
+    ]);
+    const result = await runner.run(model, [{ role: "user", content: "q" }]);
+    // Winner should be the {answer: 42} variant
+    expect(result.votes).toBe(2);
+    // The answer returned is the original raw string of the winner
+    expect(result.answer).toContain("42");
+  });
+
+  it("falls back to string voting when parse fails", async () => {
+    const schema = z.object({ required: z.number() });
+    const runner = new SelfConsistencyRunner({
+      n: 3,
+      earlyStopThreshold: 1.0,
+      outputSchema: schema,
+    });
+    // All candidates are invalid JSON — should fall back to string comparison
+    const model = mockModel(["plain text", "plain text", "other text"]);
+    const result = await runner.run(model, [{ role: "user", content: "q" }]);
+    expect(result.answer).toBe("plain text");
+    expect(result.votes).toBe(2);
+  });
+});
