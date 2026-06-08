@@ -217,7 +217,7 @@ export class Scheduler {
       if (completedResults.has(node.id)) continue;
       if (node.dependsOn.includes(failedId)) {
         yield* this.#cascadeNodeFailure(node.id, ir, completedResults, remaining, rootError);
-        yield { type: "node_error", nodeId: node.id, error: undefined };
+        yield { type: "node_error", nodeId: node.id, error: rootError };
       }
     }
     // Now unblock any nodes that had failedId as a dep (they may have other deps too).

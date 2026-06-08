@@ -104,13 +104,15 @@ describe("AnthropicModel generate()", () => {
     expect(stop?.stopReason).toBe("end_turn");
   });
 
-  it("emits usage event from message_delta", async () => {
+  it("emits usage event from finalMessage (message_delta usage is not separately emitted to avoid double-counting)", async () => {
     const { streamEvents } = await collectEvents(
       [{ type: "message_delta", usage: { output_tokens: 12 } }],
       EMPTY_FINAL
     );
-    const usage = streamEvents.find((e) => e.type === "usage");
-    expect(usage?.usage?.outputTokens).toBe(12);
+    const usageEvents = streamEvents.filter((e) => e.type === "usage");
+    // Only one usage event should be emitted — from finalMessage.usage — not two.
+    expect(usageEvents.length).toBe(1);
+    expect(usageEvents[0]?.usage?.outputTokens).toBe(EMPTY_FINAL.usage.output_tokens);
   });
 
   it("emits final usage event from finalMessage.usage", async () => {
