@@ -254,6 +254,8 @@ export abstract class OpenAICompatModel implements Model {
           yield { type: "tool_call", toolCall: { type: "tool_use", id: tc.id, name: tc.name, input } };
         }
         yield { type: "stop", stopReason: "tool_use" };
+      } else if (choice?.finish_reason != null) {
+        yield { type: "stop", stopReason: "end_turn" };
       }
 
       if (chunk.usage) {
