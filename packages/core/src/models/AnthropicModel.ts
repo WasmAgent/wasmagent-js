@@ -458,6 +458,7 @@ interface AnthropicToolResultBlock {
   tool_use_id: string;
   content: string;
   is_error?: true;
+  cache_control?: AnthropicCacheControl;
 }
 
 type AnthropicBlock =
@@ -521,19 +522,10 @@ function convertMessages(messages: ModelMessage[], shouldCache: boolean, cacheMi
           .map((b) => b.text)
           .join("");
         if (estimateTokens(textContent) >= cacheMinTokens) {
-          const lastBlock = blocks[blocks.length - 1];
-          if (lastBlock && lastBlock.type === "text") {
-            const cc: AnthropicCacheControl = { type: "ephemeral" };
-            if (m.cacheBreakpoint.ttl) cc.ttl = m.cacheBreakpoint.ttl;
-            (lastBlock as AnthropicTextBlock).cache_control = cc;
-          } else {
-            const lastText = [...blocks].reverse().find((b): b is AnthropicTextBlock => b.type === "text");
-            if (lastText) {
-              const cc: AnthropicCacheControl = { type: "ephemeral" };
-              if (m.cacheBreakpoint.ttl) cc.ttl = m.cacheBreakpoint.ttl;
-              lastText.cache_control = cc;
-            }
-          }
+          const lastBlock = blocks[blocks.length - 1]!;
+          const cc: AnthropicCacheControl = { type: "ephemeral" };
+          if (m.cacheBreakpoint.ttl) cc.ttl = m.cacheBreakpoint.ttl;
+          (lastBlock as AnthropicTextBlock).cache_control = cc;
         }
       }
 

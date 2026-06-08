@@ -228,12 +228,13 @@ export function restoreFromSnapshot(
   assembler: MessageAssembler
 ): void {
   assembler.reset();
-  // Re-add seed user message.
+  // Re-add seed user message first, then all subsequent history steps (including
+  // any follow-up user_message steps from multi-turn human-in-the-loop runs).
   const seedStep: UserMessageStep = { type: "user_message", content: snapshot.task };
   assembler.addStep(seedStep);
-  // Re-add subsequent steps (skip the user_message if already present in history).
   for (const step of snapshot.history) {
-    if (step.type === "user_message") continue;
+    // Skip the initial user_message (already re-added as seedStep above).
+    if (step.type === "user_message" && step.content === snapshot.task) continue;
     assembler.addStep(step);
   }
 }
