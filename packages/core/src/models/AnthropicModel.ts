@@ -521,11 +521,18 @@ function convertMessages(messages: ModelMessage[], shouldCache: boolean, cacheMi
           .map((b) => b.text)
           .join("");
         if (estimateTokens(textContent) >= cacheMinTokens) {
-          const lastText = [...blocks].reverse().find((b): b is AnthropicTextBlock => b.type === "text");
-          if (lastText) {
+          const lastBlock = blocks[blocks.length - 1];
+          if (lastBlock && lastBlock.type === "text") {
             const cc: AnthropicCacheControl = { type: "ephemeral" };
             if (m.cacheBreakpoint.ttl) cc.ttl = m.cacheBreakpoint.ttl;
-            lastText.cache_control = cc;
+            (lastBlock as AnthropicTextBlock).cache_control = cc;
+          } else {
+            const lastText = [...blocks].reverse().find((b): b is AnthropicTextBlock => b.type === "text");
+            if (lastText) {
+              const cc: AnthropicCacheControl = { type: "ephemeral" };
+              if (m.cacheBreakpoint.ttl) cc.ttl = m.cacheBreakpoint.ttl;
+              lastText.cache_control = cc;
+            }
           }
         }
       }

@@ -215,12 +215,7 @@ export class CheckpointableRun {
   }
 
   #getHistory(): Step[] {
-    // Access assembler history via the public historyLength and internal state.
-    // Since MessageAssembler doesn't expose history directly, we use a workaround:
-    // the assembler's compact() signature accepts a model, but for snapshot purposes
-    // we serialize via a duck-typed accessor if available, else return [].
-    const assembler = this.#assembler as unknown as { _history?: Step[] };
-    return assembler._history ? [...assembler._history] : [];
+    return this.#assembler.steps;
   }
 }
 
