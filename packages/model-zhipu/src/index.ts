@@ -71,8 +71,8 @@ export class ZhipuModel extends OpenAICompatModel {
    * GLM self-hosted uses structured thinking object (same as Doubao/DeepSeek/Kimi).
    */
   protected override mapThinkingParams(opts: GenerateOptions): Record<string, unknown> {
+    if (!this.#defaultEnableThinking) return {};
     const enabled = this.thinkingEnabled(opts, this.#defaultEnableThinking);
-    if (!enabled && !this.#defaultEnableThinking) return {};
     return { extra_body: { thinking: { type: enabled ? "enabled" : "disabled" } } };
   }
 
