@@ -336,7 +336,7 @@ export class AnthropicModel implements Model {
         const thinkingDelta = (event.delta as unknown as Record<string, unknown>)["thinking"] as string | undefined;
         if (thinkingDelta) yield { type: "thinking_delta", delta: thinkingDelta };
       } else if (event.type === "message_stop") {
-        yield { type: "stop", stopReason: "end_turn" };
+        // Stop is deferred until after tool_call events are emitted from finalMessage below.
       }
     }
 
@@ -364,6 +364,12 @@ export class AnthropicModel implements Model {
         }
       }
     }
+
+    // Emit stop after tool_call events, using the real stop_reason from finalMessage.
+    const stopReason = finalMessage.stop_reason === "tool_use" ? "tool_use"
+      : finalMessage.stop_reason === "max_tokens" ? "max_tokens"
+      : "end_turn";
+    yield { type: "stop", stopReason };
 
     if (finalMessage.usage) {
       const u = finalMessage.usage;
