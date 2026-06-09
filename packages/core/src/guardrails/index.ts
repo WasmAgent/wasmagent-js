@@ -393,7 +393,8 @@ export function codeGuardrail(opts: CodeGuardrailOptions = {}): InputGuardrail {
       if (opts.allowedHosts !== undefined) {
         const fetchPattern = /fetch\s*\(\s*['"`](https?:\/\/[^'"`\s]+)/g;
         let match: RegExpExecArray | null;
-        while ((match = fetchPattern.exec(code)) !== null) {
+        match = fetchPattern.exec(code);
+        while (match !== null) {
           try {
             const url = new URL(match[1]!);
             if (!opts.allowedHosts.includes(url.hostname)) {
@@ -405,6 +406,7 @@ export function codeGuardrail(opts: CodeGuardrailOptions = {}): InputGuardrail {
           } catch {
             /* invalid URL — block it */
           }
+          match = fetchPattern.exec(code);
         }
       }
 

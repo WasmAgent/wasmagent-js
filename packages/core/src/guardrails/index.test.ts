@@ -191,6 +191,7 @@ describe("ToolCallingAgent integration with guardrails", () => {
 describe("B1 — classifierGuardrail onError behavior", () => {
   function makeThrowingModel(): { generate: () => AsyncGenerator<never> } {
     return {
+      // biome-ignore lint/correctness/useYield: test helper always throws
       async *generate() {
         throw new Error("classifier is down");
       },

@@ -510,6 +510,13 @@ function extractCode(response: string): string | null {
 }
 
 function extractFinalAnswer(response: string): string | null {
-  const match = /^\s*final answer\s*[:=]\s*(.+)/im.exec(response);
-  return match?.[1]?.trim() ?? null;
+  // Pattern 1: explicit "Final Answer: value" text
+  const explicitMatch = /^\s*final answer\s*[:=]\s*(.+)/im.exec(response);
+  if (explicitMatch?.[1]) return explicitMatch[1].trim();
+
+  // Pattern 2: __finalAnswer__ = value in plain text (model wrote sentinel outside code block)
+  const sentinelMatch = /__(?:final[Aa]nswer|finalAnswer)__\s*=\s*([^;\n]+)/m.exec(response);
+  if (sentinelMatch?.[1]) return sentinelMatch[1].trim().replace(/^['"]|['"]$/g, "");
+
+  return null;
 }
