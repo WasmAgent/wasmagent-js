@@ -184,7 +184,7 @@ export class SelfConsistencyRunner {
 function defaultExtractAnswer(text: string): string {
   // Tier 1: LaTeX \boxed{} — common in math reasoning traces
   const boxed = /\\boxed\{([^}]*)\}/.exec(text);
-  if (boxed) return boxed[1]?.trim();
+  if (boxed) return boxed[1]?.trim() ?? "";
 
   // Tier 2: last non-empty line — common in CoT where the answer is on the final line
   const lines = text

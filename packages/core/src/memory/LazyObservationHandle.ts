@@ -70,7 +70,7 @@ export class LazyObservationHandle {
     if (this.#error !== undefined) {
       throw this.#error;
     }
-    return this.#value!;
+    return this.#value ?? "";
   }
 
   /** Creates a pre-resolved handle wrapping an already-known string value. */

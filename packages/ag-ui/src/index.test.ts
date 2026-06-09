@@ -277,7 +277,7 @@ describe("toSseString", () => {
     expect(sse).toMatch(/\n\n$/);
     const dataLine = sse.split("\n").find((l) => l.startsWith("data:"));
     expect(dataLine).toBeDefined();
-    const parsed = JSON.parse(dataLine?.replace("data: ", ""));
+    const parsed = JSON.parse((dataLine ?? "").replace("data: ", ""));
     expect(parsed.type).toBe("RUN_STARTED");
   });
 });
