@@ -624,6 +624,17 @@ export class TokenBudget {
     this.calls += 1;
   }
 
+  /** Prompt cache hit rate: cacheReadTokens / (inputTokens + cacheReadTokens) */
+  get cacheHitRate(): number {
+    const total = this.inputTokens + this.cacheReadTokens;
+    return total > 0 ? this.cacheReadTokens / total : 0;
+  }
+
+  /** Estimated cost in USD using default Sonnet 4.x pricing (informational only). */
+  get estimatedUsd(): number {
+    return (this.inputTokens * 3 + this.outputTokens * 15) / 1_000_000;
+  }
+
   get total(): number {
     return this.inputTokens + this.outputTokens;
   }
