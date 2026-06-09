@@ -384,6 +384,24 @@ export class ToolCallingAgent {
         budget.estimateFallback(messages, fullText);
       }
 
+      // Emit model_done so the frontend TokenMeter can display live token stats.
+      const stats = budget.toStats();
+      yield {
+        traceId,
+        parentTraceId,
+        channel: "model" as const,
+        event: "model_done",
+        data: {
+          modelId: (this.#model as { modelId?: string }).modelId ?? "unknown",
+          step,
+          finishReason: "stop",
+          inputTokens: stats.inputTokens,
+          outputTokens: stats.outputTokens,
+          cacheReadTokens: stats.cacheReadTokens,
+        },
+        timestampMs: Date.now(),
+      };
+
       // No tool calls → model responded with text — treat as final answer.
       if (pendingCalls.length === 0) {
         let answer = fullText.trim() || "No answer provided";

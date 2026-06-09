@@ -606,19 +606,36 @@ export function estimateMessagesTokens(messages: ModelMessage[]): number {
 export class TokenBudget {
   inputTokens = 0;
   outputTokens = 0;
+  cacheReadTokens = 0;
+  cacheWriteTokens = 0;
+  calls = 0;
 
   recordUsage(usage: TokenUsage): void {
     this.inputTokens += usage.inputTokens;
     this.outputTokens += usage.outputTokens;
+    this.cacheReadTokens += usage.cacheReadTokens ?? 0;
+    this.cacheWriteTokens += usage.cacheWriteTokens ?? 0;
+    this.calls += 1;
   }
 
   estimateFallback(messages: ModelMessage[], responseText: string): void {
     this.inputTokens += estimateMessagesTokens(messages);
     this.outputTokens += estimateTokens(responseText);
+    this.calls += 1;
   }
 
   get total(): number {
     return this.inputTokens + this.outputTokens;
+  }
+
+  toStats() {
+    return {
+      inputTokens: this.inputTokens,
+      outputTokens: this.outputTokens,
+      cacheReadTokens: this.cacheReadTokens,
+      cacheWriteTokens: this.cacheWriteTokens,
+      calls: this.calls,
+    };
   }
 }
 

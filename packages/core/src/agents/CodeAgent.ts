@@ -15,9 +15,9 @@ import type { ToolDefinition } from "../tools/types.js";
 import type { ActionStep, AgentEvent, FinalAnswerStep } from "../types/events.js";
 import { extractTagContent, runPlanningStep } from "./prompts.js";
 
-const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant who can solve any task using code.
-To solve the task, you must plan forward to proceed in a series of steps.
-Think about the current step to be executed, then generate the JS code to perform it.
+const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant who solves tasks using code.
+When given a task, immediately write executable JavaScript code to solve it.
+Do not ask clarifying questions. Do not introduce yourself. Just solve the task with code.
 
 To signal a final answer, set: __finalAnswer__ = <your answer>;
 
@@ -131,13 +131,9 @@ export class CodeAgent {
     };
 
     this.#assembler.reset();
-    this.#assembler.addStep({
-      type: "action",
-      stepIndex: 0,
-      thoughts: `Task: ${task}`,
-      code: "",
-      observations: "",
-    });
+    // Use a user_message step so the task appears as the first user-role message,
+    // giving the model a clear instruction to respond to with code.
+    this.#assembler.addStep({ type: "user_message", content: task });
 
     // S3: input guardrail check on the task before any model call.
     if (this.#inputGuardrails.length > 0) {
@@ -261,6 +257,24 @@ export class CodeAgent {
         budget.estimateFallback(messages, fullResponse);
       }
 
+      // Emit model_done so the frontend TokenMeter can display live token stats.
+      const stats = budget.toStats();
+      yield {
+        traceId,
+        parentTraceId,
+        channel: "model",
+        event: "model_done",
+        data: {
+          modelId: (this.#model as { modelId?: string }).modelId ?? "unknown",
+          step,
+          finishReason: "stop",
+          inputTokens: stats.inputTokens,
+          outputTokens: stats.outputTokens,
+          cacheReadTokens: stats.cacheReadTokens,
+        },
+        timestampMs: Date.now(),
+      };
+
       // Parse code from model response.
       const code = extractCode(fullResponse);
       if (!code) {
@@ -268,6 +282,14 @@ export class CodeAgent {
         const directAnswer = extractFinalAnswer(fullResponse);
         if (directAnswer) {
           yield* this.#emitFinalAnswer(traceId, parentTraceId, directAnswer);
+          return;
+        }
+        // After the first step, a prose-only response (no code, no explicit marker) means
+        // the model has finished — treat it as the final answer rather than retrying.
+        // This handles cases like large file generation where the model writes code via
+        // a write_file tool call and then summarises in plain text.
+        if (step > 1 && isProseSummary(fullResponse)) {
+          yield* this.#emitFinalAnswer(traceId, parentTraceId, fullResponse.trim());
           return;
         }
         // No code and no final answer — ask the model once more to produce code.
@@ -498,9 +520,11 @@ function extractThoughts(response: string): string {
 }
 
 function extractCode(response: string): string | null {
+  // Match fenced code blocks where the closing ``` appears at the START of a line.
+  // This prevents false matches when template literals inside the code contain backticks.
   const match =
     /<code>([\s\S]*?)<\/code>/.exec(response) ??
-    /```(?:js|javascript|python|py|ts|typescript)?\n([\s\S]*?)```/.exec(response);
+    /```(?:js|javascript|python|py|ts|typescript)?\n([\s\S]*?)(?:^|\n)```/m.exec(response);
   if (!match) {
     // Log a truncated snippet to aid debugging without flooding output with large responses.
     const snippet = response.length > 200 ? `${response.slice(0, 200)}…` : response;
@@ -519,4 +543,20 @@ function extractFinalAnswer(response: string): string | null {
   if (sentinelMatch?.[1]) return sentinelMatch[1].trim().replace(/^['"]|['"]$/g, "");
 
   return null;
+}
+
+/**
+ * Returns true when the response is a prose summary with no executable code —
+ * i.e. the model has finished and is explaining what it did rather than doing more.
+ * Used to treat a no-code response as an implicit final answer after prior steps.
+ */
+function isProseSummary(response: string): boolean {
+  const t = response.trim();
+  if (!t) return false;
+  // Must not contain any code fences or XML code tags
+  if (/```|<code>/i.test(t)) return false;
+  // Reject generic greeting/intro/request phrases — model didn't understand the task
+  if (/\b(ready to help|provide a task|what (would you like|can i help)|please (provide|give|tell|share)|how can i (help|assist)|hello!|hi!|sure!|of course|i'd be happy|i can help|let me know)\b/i.test(t)) return false;
+  // Heuristic: completion phrases the model uses when summarising finished work
+  return /\b(here['']?s|here is|i['']?ve (created|written|built|implemented|completed|finished)|the (game|code|file|function|implementation|solution|output) (is|has been|was)|done|complete|finished|created successfully)\b/i.test(t);
 }
