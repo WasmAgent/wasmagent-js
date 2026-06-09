@@ -71,7 +71,7 @@ export class FallbackModel implements Model {
   constructor(models: Model[]) {
     if (models.length === 0) throw new Error("FallbackModel requires at least one model");
     this.#models = models;
-    this.#lastProviderId = models[0]?.providerId;
+    this.#lastProviderId = models[0]!.providerId;
     // Pre-compute merged capabilities.
     const caps: ModelCapabilities = {};
     for (const m of models) {
@@ -94,7 +94,7 @@ export class FallbackModel implements Model {
 
   /** Primary model's providerId (for interface compliance). */
   get providerId(): string {
-    return this.#models[0]?.providerId;
+    return this.#models[0]!.providerId;
   }
 
   /** The providerId of the model that successfully responded on the last generate() call. */

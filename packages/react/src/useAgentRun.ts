@@ -186,8 +186,11 @@ export function useAgentRun(
                   },
                 ]);
               } else if (ev.event === "tool_result" && ev.channel === "tool") {
-                const d = (ev as { data: { toolName: string; callId: string; output?: unknown; error?: unknown } })
-                  .data;
+                const d = (
+                  ev as {
+                    data: { toolName: string; callId: string; output?: unknown; error?: unknown };
+                  }
+                ).data;
                 const isError = !!d.error;
                 // Show tool output when available (e.g. "OK: written 371 chars to src/App.tsx")
                 const outputStr = String(d.output ?? "").trim();

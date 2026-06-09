@@ -556,7 +556,14 @@ function isProseSummary(response: string): boolean {
   // Must not contain any code fences or XML code tags
   if (/```|<code>/i.test(t)) return false;
   // Reject generic greeting/intro/request phrases — model didn't understand the task
-  if (/\b(ready to help|provide a task|what (would you like|can i help)|please (provide|give|tell|share)|how can i (help|assist)|hello!|hi!|sure!|of course|i'd be happy|i can help|let me know)\b/i.test(t)) return false;
+  if (
+    /\b(ready to help|provide a task|what (would you like|can i help)|please (provide|give|tell|share)|how can i (help|assist)|hello!|hi!|sure!|of course|i'd be happy|i can help|let me know)\b/i.test(
+      t
+    )
+  )
+    return false;
   // Heuristic: completion phrases the model uses when summarising finished work
-  return /\b(here['']?s|here is|i['']?ve (created|written|built|implemented|completed|finished)|the (game|code|file|function|implementation|solution|output) (is|has been|was)|done|complete|finished|created successfully)\b/i.test(t);
+  return /\b(here['']?s|here is|i['']?ve (created|written|built|implemented|completed|finished)|the (game|code|file|function|implementation|solution|output) (is|has been|was)|done|complete|finished|created successfully)\b/i.test(
+    t
+  );
 }
