@@ -88,6 +88,12 @@ export type AgentEvent =
         outputTokens?: number;
         thinkingTokens?: number;
         cacheReadTokens?: number;
+        /** Derived: cacheReadTokens / (inputTokens + cacheReadTokens) */
+        cacheHitRate?: number;
+        /** Derived: estimated USD cost at default Sonnet 4.x pricing */
+        estimatedUsd?: number;
+        /** Total model calls in this run so far */
+        calls?: number;
       };
     })
   /**

@@ -271,6 +271,9 @@ export class CodeAgent {
           inputTokens: stats.inputTokens,
           outputTokens: stats.outputTokens,
           cacheReadTokens: stats.cacheReadTokens,
+          cacheHitRate: budget.cacheHitRate,
+          estimatedUsd: budget.estimatedUsd,
+          calls: stats.calls,
         },
         timestampMs: Date.now(),
       };
@@ -293,12 +296,13 @@ export class CodeAgent {
           return;
         }
         // No code and no final answer — ask the model once more to produce code.
+        // The retry prompt adapts to the system prompt language (Python vs JS).
+        const isPython = this.#assembler.build()[0]?.content?.toString().includes("Python") ?? false;
+        const langHint = isPython
+          ? "Please provide your answer as executable Python inside ```python ... ``` or set __finalAnswer__ = <value>."
+          : "Please provide your answer as executable JavaScript inside ```js ... ``` or set __finalAnswer__ = <value>.";
         const retryMessages = this.#assembler.build();
-        retryMessages.push({
-          role: "user",
-          content:
-            "Please provide your answer as executable JavaScript inside ```js ... ``` or set __finalAnswer__ = <value>.",
-        });
+        retryMessages.push({ role: "user", content: langHint });
         let retryResponse = "";
         let retryReceivedUsage = false;
         try {

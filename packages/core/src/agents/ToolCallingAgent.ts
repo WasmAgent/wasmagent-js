@@ -398,6 +398,10 @@ export class ToolCallingAgent {
           inputTokens: stats.inputTokens,
           outputTokens: stats.outputTokens,
           cacheReadTokens: stats.cacheReadTokens,
+          // Include derived metrics for richer frontend display
+          cacheHitRate: budget.cacheHitRate,
+          estimatedUsd: budget.estimatedUsd,
+          calls: stats.calls,
         },
         timestampMs: Date.now(),
       };
