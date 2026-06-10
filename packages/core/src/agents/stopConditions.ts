@@ -31,7 +31,7 @@ export function stepCountIs(n: number): StopCondition {
  * fingerprints (same tool names and arguments), indicating no progress.
  * A "step" with no tool calls (i.e. a final-answer step) never triggers this.
  */
-export function noProgress(k: number): StopCondition {
+export function noProgress(k = 3): StopCondition {
   return (ctx) => {
     const history = ctx.callHistory;
     if (history.length < k) return false;
