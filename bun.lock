@@ -356,6 +356,19 @@
         "react": ">=18.0.0",
       },
     },
+    "packages/tools-rag": {
+      "name": "@agentkit-js/tools-rag",
+      "version": "0.1.0",
+      "dependencies": {
+        "@agentkit-js/core": "workspace:*",
+        "zod": "^3.23.0",
+      },
+      "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.7.0",
+        "vitest": "^2.1.0",
+      },
+    },
     "packages/tools-web": {
       "name": "@agentkit-js/tools-web",
       "version": "0.1.0",
@@ -448,6 +461,8 @@
     "@agentkit-js/otel-exporter": ["@agentkit-js/otel-exporter@workspace:packages/otel-exporter"],
 
     "@agentkit-js/react": ["@agentkit-js/react@workspace:packages/react"],
+
+    "@agentkit-js/tools-rag": ["@agentkit-js/tools-rag@workspace:packages/tools-rag"],
 
     "@agentkit-js/tools-web": ["@agentkit-js/tools-web@workspace:packages/tools-web"],
 
