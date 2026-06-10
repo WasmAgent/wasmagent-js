@@ -237,4 +237,11 @@ export {
   FileTreeManager,
   globalFileTree,
 } from "./workspace/FileTreeManager.js";
-export type { FileEntry, FileTreeSummary, ScoredFile } from "./workspace/FileTreeManager.js";
+export type { FileEntry, FileTreeSummary, ScoredFile, FileVersion } from "./workspace/FileTreeManager.js";
+
+// File locking — bolt.new "protect file" pattern
+export {
+  FileLockManager,
+  globalFileLock,
+} from "./workspace/FileLockManager.js";
+export type { LockedFile, LockLevel } from "./workspace/FileLockManager.js";

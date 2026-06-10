@@ -47,10 +47,24 @@ export interface ScoredFile {
   hash: string;
 }
 
+// ── Version history ────────────────────────────────────────────────────────
+
+export interface FileVersion {
+  version: number;
+  hash: string;
+  content: string;
+  savedAtMs: number;
+  /** Brief description of what changed (first 80 chars of the new content diff) */
+  label?: string;
+}
+
 // ── FileTreeManager ───────────────────────────────────────────────────────────
 
 export class FileTreeManager {
   readonly #files = new Map<string, FileEntry>();
+  /** v0.dev checkpoint system: stores last N versions per file */
+  readonly #versions = new Map<string, FileVersion[]>();
+  static readonly MAX_VERSIONS = 10; // keep last 10 versions per file
 
   /**
    * Update the in-memory state from a bulk file list.
@@ -65,11 +79,40 @@ export class FileTreeManager {
   /**
    * Record a newly written file (called after write_file tool result).
    * Returns the new hash so callers can confirm consistency.
+   * Also snapshots a version entry (v0.dev checkpoint pattern).
    */
   recordWrite(path: string, content: string): string {
     const entry = this.#makeEntry(path, content);
     this.#files.set(path, entry);
+
+    // Push version snapshot
+    const history = this.#versions.get(path) ?? [];
+    const newVersion: FileVersion = {
+      version: (history.at(-1)?.version ?? 0) + 1,
+      hash: entry.hash,
+      content,
+      savedAtMs: entry.lastModifiedMs,
+    };
+    history.push(newVersion);
+    // Cap history length
+    if (history.length > FileTreeManager.MAX_VERSIONS) history.shift();
+    this.#versions.set(path, history);
+
     return entry.hash;
+  }
+
+  /** Get version history for a file (newest last). */
+  getVersions(path: string): FileVersion[] {
+    return [...(this.#versions.get(path) ?? [])];
+  }
+
+  /** Roll back a file to a specific version number. Returns rolled-back content. */
+  rollback(path: string, versionNumber: number): string | null {
+    const history = this.#versions.get(path);
+    const target = history?.find((v) => v.version === versionNumber);
+    if (!target) return null;
+    this.recordWrite(path, target.content);
+    return target.content;
   }
 
   /**
