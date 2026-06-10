@@ -1,0 +1,14 @@
+{
+  "name": "example-eval-suite",
+  "version": "0.1.0",
+  "private": true,
+  "description": "End-to-end agentkit-js eval suite — multi-scorer benchmark with markdown report",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*",
+    "@agentkit-js/model-anthropic": "workspace:*"
+  }
+}
