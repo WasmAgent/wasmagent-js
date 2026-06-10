@@ -1,0 +1,16 @@
+{
+  "name": "example-tool-search-rag",
+  "version": "0.1.0",
+  "private": true,
+  "description": "End-to-end RAG agent using @agentkit-js/tools-web (Tavily) + @agentkit-js/tools-rag (HttpEmbedder + InMemoryVectorStore)",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*",
+    "@agentkit-js/tools-rag": "workspace:*",
+    "@agentkit-js/tools-web": "workspace:*",
+    "@agentkit-js/model-anthropic": "workspace:*"
+  }
+}

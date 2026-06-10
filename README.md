@@ -323,6 +323,12 @@ The Worker exposes a POST `/run` endpoint. Session state is stored in KV for cos
 |---------|-------------|
 | `@agentkit-js/core` | Agent runtime, kernels, models, tools, quality runners, evals, observability, checkpointing |
 | `@agentkit-js/react` | `useAgentRun()` React hook for streaming SSE agent output |
+| `@agentkit-js/ui-cards` | Parser for `\`\`\`card:*` fenced blocks in AI replies (Markdown / D2 / extensible) |
+| `@agentkit-js/ui-cards-react` | React components: MarkdownCard, D2Card, CardRenderer, ChatMessage |
+| `@agentkit-js/agent-prompts` | Composable prompt fragments + `composePrompt()` (reasoning, sandboxes, output contracts, card rules) |
+| `@agentkit-js/tools-web` | Web search adapters: Tavily, Brave, Perplexity (LRU-cached, readOnly+idempotent) |
+| `@agentkit-js/tools-rag` | `HttpEmbedder` + `ragTool` + Pinecone / Qdrant / in-memory connectors |
+| `@agentkit-js/tools-browser` | Browser automation: Playwright session + CDP-bridge session, 5 tools (navigate/click/fill/screenshot/extract) |
 | `@agentkit-js/cli` | `agentkit run` CLI |
 | `@agentkit-js/kernel-pyodide` | CPython-in-WASM (Pyodide) |
 | `@agentkit-js/kernel-quickjs` | QuickJS WASM kernel |

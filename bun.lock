@@ -21,6 +21,18 @@
         "@anthropic-ai/sdk": "^0.37.0",
       },
     },
+    "examples/browser-screenshot": {
+      "name": "example-browser-screenshot",
+      "version": "0.1.0",
+      "dependencies": {
+        "@agentkit-js/core": "workspace:*",
+        "@agentkit-js/model-anthropic": "workspace:*",
+        "@agentkit-js/tools-browser": "workspace:*",
+      },
+      "devDependencies": {
+        "playwright": "^1.40.0",
+      },
+    },
     "examples/chat-cards": {
       "name": "chat-cards",
       "version": "0.1.0",
@@ -49,6 +61,16 @@
         "@agentkit-js/core": "workspace:*",
         "@anthropic-ai/sdk": "^0.37.0",
         "zod": "^3.23.0",
+      },
+    },
+    "examples/tool-search-rag": {
+      "name": "example-tool-search-rag",
+      "version": "0.1.0",
+      "dependencies": {
+        "@agentkit-js/core": "workspace:*",
+        "@agentkit-js/model-anthropic": "workspace:*",
+        "@agentkit-js/tools-rag": "workspace:*",
+        "@agentkit-js/tools-web": "workspace:*",
       },
     },
     "packages/a2a": {
@@ -1149,6 +1171,10 @@
     "eventsource": ["eventsource@3.0.7", "https://registry.npmmirror.com/eventsource/-/eventsource-3.0.7.tgz", { "dependencies": { "eventsource-parser": "3.1.0" } }, "sha512-CRT1WTyuQoD771GW56XEZFQ/ZoSfWid1alKGDYMmkt2yl8UXrVR4pspqWNEcqKvVIzg6PAltWjxcSSPrboA4iA=="],
 
     "eventsource-parser": ["eventsource-parser@3.1.0", "https://registry.npmmirror.com/eventsource-parser/-/eventsource-parser-3.1.0.tgz", {}, "sha512-kJezFj9YFAMLeORyi7aCLxLbD5/qWMQnoMVlVPyHIll7lgRJCc3JVln9Vgl9nwQi0YkMnhdGTMNn7CkRRAptMg=="],
+
+    "example-browser-screenshot": ["example-browser-screenshot@workspace:examples/browser-screenshot"],
+
+    "example-tool-search-rag": ["example-tool-search-rag@workspace:examples/tool-search-rag"],
 
     "exit-hook": ["exit-hook@2.2.1", "https://registry.npmmirror.com/exit-hook/-/exit-hook-2.2.1.tgz", {}, "sha512-eNTPlAD67BmP31LDINZ3U7HSF8l57TxOY2PmBJ1shpCvpnxBF93mWCE8YHBnXs8qiUZJc9WDcWIeC3a2HIAMfw=="],
 
