@@ -18,7 +18,12 @@
  * The fence opener is /^```card:([\w-]+)(\s.*)?$/ and the closer is /^```\s*$/.
  * Inner fences (e.g. nested code blocks inside a card) are preserved as content
  * using a depth counter.
+ *
+ * Pair with {@link upgradeCardSyntax} as a pre-processor to be resilient
+ * against agents that emit bare D2 / Markdown without card fences.
  */
+
+export { upgradeCardSyntax } from "./upgradeCardSyntax.js";
 
 /** Known first-party card types. Open string type for future extension. */
 export type CardType = "markdown" | "d2" | string;

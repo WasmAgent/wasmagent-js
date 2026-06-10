@@ -1,0 +1,61 @@
+{
+  "name": "@agentkit-js/ui-cards-react",
+  "version": "0.1.0",
+  "description": "React components to render @agentkit-js/ui-cards card blocks (Markdown, D2 diagrams, ChatMessage)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist .turbo"
+  },
+  "peerDependencies": {
+    "@terrastruct/d2": ">=0.1.0",
+    "docx": ">=9.0.0",
+    "react": ">=18.0.0",
+    "react-markdown": ">=9.0.0",
+    "remark-gfm": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@terrastruct/d2": {
+      "optional": true
+    },
+    "docx": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@agentkit-js/ui-cards": "workspace:*"
+  },
+  "devDependencies": {
+    "@terrastruct/d2": "^0.1.33",
+    "@types/react": "^18.0.0",
+    "docx": "^9.7.1",
+    "jsdom": "^29.1.1",
+    "react": "^18.0.0",
+    "react-markdown": "^9.0.0",
+    "remark-gfm": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "agentkit",
+    "react",
+    "cards",
+    "markdown",
+    "d2",
+    "ui"
+  ],
+  "license": "Apache-2.0"
+}
