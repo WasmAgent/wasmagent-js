@@ -34,7 +34,7 @@ function makeStream(events: AnthropicEvent[], finalMsg: FinalMessage) {
       let i = 0;
       return {
         async next() {
-          if (i < events.length) return { value: events[i++]!, done: false };
+          if (i < events.length) return { value: events[i++] as AnthropicEvent, done: false };
           return { value: undefined as unknown as AnthropicEvent, done: true };
         },
       };

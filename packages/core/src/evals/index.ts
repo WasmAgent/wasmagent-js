@@ -278,7 +278,7 @@ REASONING: <one sentence explanation>`;
 
   const scoreMatch = /SCORE:\s*(0\.0|0\.5|1\.0|0|1)/.exec(responseText);
   const reasoningMatch = /REASONING:\s*(.+)/.exec(responseText);
-  const score = scoreMatch ? parseFloat(scoreMatch[1]!) : 0;
+  const score = scoreMatch ? parseFloat(scoreMatch[1] as string) : 0;
   const reasoning = reasoningMatch
     ? (reasoningMatch[1]?.trim() ?? "")
     : responseText.trim().slice(0, 200);

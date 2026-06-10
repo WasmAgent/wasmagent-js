@@ -431,7 +431,7 @@ export class OpenAIModel implements Model {
               arguments: "",
             });
           }
-          const accum = toolCallAccum.get(idx)!;
+          const accum = toolCallAccum.get(idx) as { id: string; name: string; arguments: string };
           if (tc.id) accum.id = tc.id;
           if (tc.function?.name) accum.name = tc.function.name;
           if (tc.function?.arguments) accum.arguments += tc.function.arguments;

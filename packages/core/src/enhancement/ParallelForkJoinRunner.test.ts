@@ -60,7 +60,7 @@ describe("ParallelForkJoinRunner", () => {
     ];
     const runner = new ParallelForkJoinRunner({
       branches: 2,
-      aggregation: (r) => r[0]!,
+      aggregation: (r) => r[0] as string,
       branchPrompt,
     });
     await runner.run(model, Q);
@@ -96,7 +96,7 @@ describe("ParallelForkJoinRunner", () => {
     const runner = new ParallelForkJoinRunner({
       branches: 4,
       concurrency: 2,
-      aggregation: (r) => r[0]!,
+      aggregation: (r) => r[0] as string,
     });
     await runner.run(model, Q);
     expect(maxConcurrent).toBeLessThanOrEqual(2);
@@ -139,7 +139,7 @@ describe("ParallelForkJoinRunner", () => {
         yield { type: "stop", stopReason: "end_turn" };
       },
     };
-    const runner = new ParallelForkJoinRunner({ branches: 1, aggregation: (r) => r[0]! });
+    const runner = new ParallelForkJoinRunner({ branches: 1, aggregation: (r) => r[0] as string });
     await runner.run(model, Q, { temperature: 0.5 });
     expect((capturedOpts[0] as { temperature: number }).temperature).toBe(0.5);
   });

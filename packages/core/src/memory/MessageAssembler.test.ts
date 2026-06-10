@@ -791,7 +791,7 @@ describe("D1 — systemPrefixTtl", () => {
   it("default (no option): system message cacheBreakpoint has type=ephemeral and no ttl", () => {
     const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [] });
     const msgs = a.build();
-    const sys = msgs[0]!;
+    const sys = msgs[0] as (typeof msgs)[number];
     expect(sys.cacheBreakpoint?.type).toBe("ephemeral");
     expect(sys.cacheBreakpoint?.ttl).toBeUndefined();
   });
@@ -799,7 +799,7 @@ describe("D1 — systemPrefixTtl", () => {
   it("systemPrefixTtl='5m': behaves the same as default (no ttl field)", () => {
     const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [], systemPrefixTtl: "5m" });
     const msgs = a.build();
-    const sys = msgs[0]!;
+    const sys = msgs[0] as (typeof msgs)[number];
     expect(sys.cacheBreakpoint?.type).toBe("ephemeral");
     expect(sys.cacheBreakpoint?.ttl).toBeUndefined();
   });
@@ -807,7 +807,7 @@ describe("D1 — systemPrefixTtl", () => {
   it("systemPrefixTtl='1h': system message cacheBreakpoint has ttl='1h'", () => {
     const a = new MessageAssembler({ systemPrompt: "sys", toolsSchema: [], systemPrefixTtl: "1h" });
     const msgs = a.build();
-    const sys = msgs[0]!;
+    const sys = msgs[0] as (typeof msgs)[number];
     expect(sys.cacheBreakpoint?.type).toBe("ephemeral");
     expect(sys.cacheBreakpoint?.ttl).toBe("1h");
   });

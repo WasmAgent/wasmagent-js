@@ -37,8 +37,8 @@ function collectRefs(value: unknown, callIds: Set<string>, selfId: string): stri
   function walk(v: unknown): void {
     if (typeof v === "string") {
       const m = /^\$(.+)$/.exec(v);
-      if (m && m[1] !== selfId && callIds.has(m[1]!)) {
-        found.add(m[1]!);
+      if (m && m[1] !== selfId && callIds.has(m[1] as string)) {
+        found.add(m[1] as string);
       }
     } else if (Array.isArray(v)) {
       for (const item of v) walk(item);
@@ -61,8 +61,8 @@ function collectRefs(value: unknown, callIds: Set<string>, selfId: string): stri
 export function resolveRefs(value: unknown, completed: Map<string, unknown>): unknown {
   if (typeof value === "string") {
     const m = /^\$(.+)$/.exec(value);
-    if (m && completed.has(m[1]!)) {
-      return completed.get(m[1]!);
+    if (m && completed.has(m[1] as string)) {
+      return completed.get(m[1] as string);
     }
     return value;
   }
@@ -104,7 +104,7 @@ function detectCycles(deps: Map<string, string[]>): void {
 
   let processed = 0;
   while (queue.length > 0) {
-    const node = queue.shift()!;
+    const node = queue.shift() as string;
     processed++;
     for (const neighbor of revAdj.get(node) ?? []) {
       const newDeg = (inDegree.get(neighbor) ?? 1) - 1;

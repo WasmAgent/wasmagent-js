@@ -396,7 +396,7 @@ export function codeGuardrail(opts: CodeGuardrailOptions = {}): InputGuardrail {
         match = fetchPattern.exec(code);
         while (match !== null) {
           try {
-            const url = new URL(match[1]!);
+            const url = new URL(match[1] as string);
             if (!opts.allowedHosts.includes(url.hostname)) {
               return {
                 tripwireTriggered: true,

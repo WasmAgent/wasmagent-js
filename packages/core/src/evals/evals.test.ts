@@ -23,7 +23,14 @@ function makeTrace(finalAnswer: string | null, toolNames: string[] = []) {
       parentTraceId: null,
       channel: "tool",
       event: "tool_call",
-      data: { toolName: toolNames[i]!, args: {}, callId, batchId: "b", batchSize: 1, stepIndex: i },
+      data: {
+        toolName: toolNames[i] as string,
+        args: {},
+        callId,
+        batchId: "b",
+        batchSize: 1,
+        stepIndex: i,
+      },
       timestampMs: 0,
     });
     events.push({
@@ -32,7 +39,7 @@ function makeTrace(finalAnswer: string | null, toolNames: string[] = []) {
       channel: "tool",
       event: "tool_result",
       data: {
-        toolName: toolNames[i]!,
+        toolName: toolNames[i] as string,
         callId,
         output: "ok",
         batchId: "b",

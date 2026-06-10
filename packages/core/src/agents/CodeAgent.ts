@@ -3,13 +3,13 @@ import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
 import { ParallelForkJoinRunner } from "../enhancement/ParallelForkJoinRunner.js";
 import { ReflectRefineRunner } from "../enhancement/ReflectRefineRunner.js";
 import { SelfConsistencyRunner } from "../enhancement/SelfConsistencyRunner.js";
-import { createKernel } from "../executor/factory.js";
 import {
-  ErrorRecoveryStrategy,
-  MAX_REFINEMENT_STEPS,
   buildFixRetryMessage,
   classifyExecutionError,
+  ErrorRecoveryStrategy,
+  MAX_REFINEMENT_STEPS,
 } from "../executor/ErrorClassifier.js";
+import { createKernel } from "../executor/factory.js";
 import type { KernelResult, WasmKernel } from "../executor/types.js";
 import type { InputGuardrail, OutputGuardrail } from "../guardrails/index.js";
 import { runInputGuardrails, runOutputGuardrails } from "../guardrails/index.js";
@@ -304,13 +304,15 @@ export class CodeAgent {
         // No code and no final answer — ask the model once more to produce code.
         // GPT-Engineer pattern: provide structured error context in retry, not just a generic prompt.
         // This gives the model specific information about what was missing, improving retry success.
-        const isPython = this.#assembler.build()[0]?.content?.toString().includes("Python") ?? false;
+        const isPython =
+          this.#assembler.build()[0]?.content?.toString().includes("Python") ?? false;
         const langHint = isPython
           ? "Please provide your answer as executable Python inside ```python ... ``` or set __finalAnswer__ = <value>."
           : "Please provide your answer as executable JavaScript inside ```js ... ``` or set __finalAnswer__ = <value>.";
-        const previousResponseSnippet = fullResponse.length > 0
-          ? `\n\nYour previous response did not contain a code block:\n---\n${fullResponse.slice(0, 300)}\n---`
-          : "";
+        const previousResponseSnippet =
+          fullResponse.length > 0
+            ? `\n\nYour previous response did not contain a code block:\n---\n${fullResponse.slice(0, 300)}\n---`
+            : "";
         const retryMessages = this.#assembler.build();
         retryMessages.push({ role: "user", content: `${langHint}${previousResponseSnippet}` });
         let retryResponse = "";
@@ -363,7 +365,7 @@ export class CodeAgent {
       }
 
       // Execute code in the kernel (A1 stateful execution).
-      let codeToRun = extractCode(fullResponse)!;
+      let codeToRun = extractCode(fullResponse) as string;
 
       // S3: code guardrail scan before kernel execution.
       if (this.#codeGuardrails.length > 0) {
@@ -398,16 +400,16 @@ export class CodeAgent {
       let kernelResult: KernelResult;
       let kernelAttempt = 0;
       // GPT-Engineer improve_loop: bounded retry for INFRASTRUCTURE errors.
-      // User code errors (throw new Error()) are passed as observations to the assembler,
-      // not retried here — the model will handle them in the next step.
-      // biome-ignore lint/suspicious/noInfiniteLoop: bounded by MAX_REFINEMENT_STEPS
+      // User code errors are passed as observations; bounded by MAX_REFINEMENT_STEPS break.
       while (true) {
         try {
           kernelResult = await kernel.run(codeToRun);
           break; // success
         } catch (err) {
           const errMsg = err instanceof Error ? err.message : String(err);
-          const classification = classifyExecutionError(err instanceof Error ? err : new Error(errMsg));
+          const classification = classifyExecutionError(
+            err instanceof Error ? err : new Error(errMsg)
+          );
 
           // User-code throws are infrastructure errors when the kernel wraps them.
           // We distinguish: if the error looks like deliberate user code (contains "Error:")
@@ -443,7 +445,10 @@ export class CodeAgent {
           };
 
           // FAIL_FAST: surface immediately and stop
-          if (classification.strategy === ErrorRecoveryStrategy.FAIL_FAST || kernelAttempt >= MAX_REFINEMENT_STEPS) {
+          if (
+            classification.strategy === ErrorRecoveryStrategy.FAIL_FAST ||
+            kernelAttempt >= MAX_REFINEMENT_STEPS
+          ) {
             yield {
               traceId,
               parentTraceId,
@@ -476,7 +481,10 @@ export class CodeAgent {
               parentTraceId,
               channel: "text",
               event: "error",
-              data: { step, error: `Could not recover: ${err instanceof Error ? err.message : String(err)}` },
+              data: {
+                step,
+                error: `Could not recover: ${err instanceof Error ? err.message : String(err)}`,
+              },
               timestampMs: Date.now(),
             };
             return;

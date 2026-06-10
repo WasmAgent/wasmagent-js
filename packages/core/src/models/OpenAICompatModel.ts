@@ -238,7 +238,7 @@ export abstract class OpenAICompatModel implements Model {
               arguments: "",
             });
           }
-          const accum = toolCallAccum.get(idx)!;
+          const accum = toolCallAccum.get(idx) as { id: string; name: string; arguments: string };
           if (tc.id) accum.id = tc.id;
           if (tc.function?.name) accum.name = tc.function.name;
           if (tc.function?.arguments) accum.arguments += tc.function.arguments;
@@ -254,7 +254,7 @@ export abstract class OpenAICompatModel implements Model {
         if (!toolCallAccum.has(0)) {
           toolCallAccum.set(0, { id: "fn-0", name: fc.name ?? "", arguments: "" });
         }
-        const accum = toolCallAccum.get(0)!;
+        const accum = toolCallAccum.get(0) as { id: string; name: string; arguments: string };
         if (fc.name) accum.name = fc.name;
         if (fc.arguments) accum.arguments += fc.arguments;
       }

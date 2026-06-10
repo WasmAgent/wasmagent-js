@@ -38,7 +38,7 @@ export interface ErrorClassification {
  */
 export function classifyExecutionError(
   error: Error | string,
-  context?: { toolName?: string; step?: number; attempt?: number }
+  _context?: { toolName?: string; step?: number; attempt?: number }
 ): ErrorClassification {
   const msg = typeof error === "string" ? error : (error.message ?? String(error));
 
@@ -122,16 +122,14 @@ export function classifyExecutionError(
     return {
       strategy: ErrorRecoveryStrategy.RETRY_WITH_FIX,
       errorType: "missing_dependency",
-      fixHint:
-        `Missing dependency. Add it to package.json dependencies and npm install will run automatically.`,
+      fixHint: `Missing dependency. Add it to package.json dependencies and npm install will run automatically.`,
     };
   }
   if (/timeout|timed out|execution exceeded/i.test(msg)) {
     return {
       strategy: ErrorRecoveryStrategy.RETRY_WITH_FIX,
       errorType: "timeout",
-      fixHint:
-        `Execution timed out. Simplify the algorithm or reduce the input size.`,
+      fixHint: `Execution timed out. Simplify the algorithm or reduce the input size.`,
     };
   }
   if (/assertion|AssertionError|expect.*received/i.test(msg)) {
@@ -164,10 +162,7 @@ export function buildFixRetryMessage(
   attempt: number
 ): string {
   const attemptLabel = attempt > 1 ? ` (attempt ${attempt}/${MAX_REFINEMENT_STEPS})` : "";
-  const codeSnippet =
-    originalCode.length > 400
-      ? `${originalCode.slice(0, 400)}…`
-      : originalCode;
+  const codeSnippet = originalCode.length > 400 ? `${originalCode.slice(0, 400)}…` : originalCode;
 
   return [
     `Execution failed${attemptLabel}.`,

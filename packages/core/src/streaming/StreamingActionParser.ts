@@ -155,7 +155,7 @@ export class StreamingActionParser {
 
   private tryCloseAction(): ParsedAction | null {
     const buf = this.state.remainder;
-    const action = this.state.currentAction!;
+    const action = this.state.currentAction as ParsedAction;
 
     if (action.type === "file" || action.type === "shell") {
       const closeIdx = buf.indexOf("</boltAction>");
@@ -179,9 +179,7 @@ export class StreamingActionParser {
         action.content += buf.slice(0, contentEnd);
         action.content = action.content.trim();
         action.isComplete = true;
-        this.state.remainder = buf.slice(
-          closeFenceMatch.index + closeFenceMatch[0].length
-        );
+        this.state.remainder = buf.slice(closeFenceMatch.index + closeFenceMatch[0].length);
         return action;
       }
     }

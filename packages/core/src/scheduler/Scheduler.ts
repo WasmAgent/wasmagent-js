@@ -139,7 +139,7 @@ export class Scheduler {
             this.#unblockDependents(node.id, remaining);
           } else {
             // Use the pre-captured index to identify exactly which node rejected.
-            const failedId = speculativeEntries[i]![0];
+            const failedId = speculativeEntries[i]?.[0] ?? "";
             const reason = settled.reason;
             const isAbort = reason instanceof Error && reason.name === "AbortError";
             if (!isAbort) {
@@ -180,7 +180,7 @@ export class Scheduler {
             yield { type: "node_done", nodeId: node.id, result };
             this.#unblockDependents(node.id, remaining);
           } else {
-            const failedNode = readyWriting[i]!;
+            const failedNode = readyWriting[i] as IRNode;
             const reason = settled.reason;
             const isAbort = reason instanceof Error && reason.name === "AbortError";
             if (!isAbort) {
@@ -216,7 +216,7 @@ export class Scheduler {
             yield { type: "node_done", nodeId: node.id, result };
             this.#unblockDependents(node.id, remaining);
           } else {
-            const failedId = speculativeEntries[i]![0];
+            const failedId = speculativeEntries[i]?.[0] ?? "";
             const reason = settled.reason;
             const isAbort = reason instanceof Error && reason.name === "AbortError";
             if (!isAbort) {

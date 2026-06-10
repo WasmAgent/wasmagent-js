@@ -32,7 +32,16 @@ async function run() {
   console.log("[smoke] Starting wrangler dev --local ...");
   const wrangler = spawn(
     "pnpm",
-    ["--filter", "@agentkit-js/cloudflare-worker", "exec", "wrangler", "dev", "--local", "--port", String(PORT)],
+    [
+      "--filter",
+      "@agentkit-js/cloudflare-worker",
+      "exec",
+      "wrangler",
+      "dev",
+      "--local",
+      "--port",
+      String(PORT),
+    ],
     { stdio: ["ignore", "pipe", "pipe"] }
   );
 
@@ -101,4 +110,7 @@ async function run() {
   }
 }
 
-run().catch((e) => { console.error("[smoke] Uncaught:", e); process.exit(1); });
+run().catch((e) => {
+  console.error("[smoke] Uncaught:", e);
+  process.exit(1);
+});

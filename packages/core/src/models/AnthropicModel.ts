@@ -91,7 +91,7 @@ const _LEGACY_BUDGET_TOKENS_MODELS = new Set([
 function isAdaptiveThinkingModel(modelId: string): boolean {
   // claude-*-4-7 and later support adaptive thinking.
   const match = modelId.match(/claude-\w+-4-(\d+)/);
-  if (match) return parseInt(match[1]!, 10) >= 7;
+  if (match) return parseInt(match[1] as string, 10) >= 7;
   return false;
 }
 
@@ -154,7 +154,8 @@ export class AnthropicModel implements Model {
   }
 
   get cacheMinTokens(): number {
-    if (CACHE_MIN_TOKENS[this.modelId] !== undefined) return CACHE_MIN_TOKENS[this.modelId]!;
+    if (CACHE_MIN_TOKENS[this.modelId] !== undefined)
+      return CACHE_MIN_TOKENS[this.modelId] as number;
     const id = this.modelId.toLowerCase();
     if (id.includes("opus")) return 4096;
     if (id.includes("haiku")) return 2048;
@@ -318,7 +319,7 @@ export class AnthropicModel implements Model {
       }
 
       for (let i = 0; i < allTools.length; i++) {
-        const t = allTools[i]!;
+        const t = allTools[i] as Record<string, unknown>;
         const isDeferred = t.deferLoading === true;
         const { deferLoading: _dl, ...rest } = t;
         const wire: Record<string, unknown> = { ...rest };
@@ -561,7 +562,7 @@ function convertMessages(
         const textBlocks = blocks.filter((b): b is AnthropicTextBlock => b.type === "text");
         const textContent = textBlocks.map((b) => b.text).join("");
         if (textBlocks.length > 0 && estimateTokens(textContent) >= cacheMinTokens) {
-          const lastTextBlock = textBlocks[textBlocks.length - 1]!;
+          const lastTextBlock = textBlocks[textBlocks.length - 1] as AnthropicTextBlock;
           const cc: AnthropicCacheControl = { type: "ephemeral" };
           if (m.cacheBreakpoint.ttl) cc.ttl = m.cacheBreakpoint.ttl;
           lastTextBlock.cache_control = cc;

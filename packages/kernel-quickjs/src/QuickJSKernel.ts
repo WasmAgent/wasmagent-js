@@ -183,7 +183,9 @@ export class QuickJSKernel implements WasmKernel {
     let jsonResult: ReturnType<QuickJSContext["unwrapResult"]>;
     try {
       jsonResult = scope.manage(
-        ctx.unwrapResult(ctx.callFunction(this.#stringify!, ctx.global, handle))
+        ctx.unwrapResult(
+          ctx.callFunction(this.#stringify as QHandle & { dispose(): void }, ctx.global, handle)
+        )
       );
     } catch (err) {
       // JSON.stringify throws inside QuickJS for circular references.

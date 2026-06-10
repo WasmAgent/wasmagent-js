@@ -521,7 +521,7 @@ export const ModelRegistry: Record<string, ModelMeta> = {
  * Falls back to heuristics for unknown models.
  */
 export function getModelMeta(modelId: string): ModelMeta {
-  if (ModelRegistry[modelId]) return ModelRegistry[modelId]!;
+  if (ModelRegistry[modelId]) return ModelRegistry[modelId] as ModelMeta;
   const id = modelId.toLowerCase();
   if (/^o\d/.test(id)) {
     return {

@@ -191,7 +191,7 @@ function defaultExtractAnswer(text: string): string {
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
-  if (lines.length > 0) return lines[lines.length - 1]!;
+  if (lines.length > 0) return lines[lines.length - 1] as string;
 
   // Tier 3: full text (same as original behavior)
   return text;
