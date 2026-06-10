@@ -1,0 +1,57 @@
+name: Notify bscode of agentkit-js changes
+
+# When agentkit-js main branch updates, dispatch a repository_dispatch
+# event to bscode so it can run its CI against the latest agentkit-js.
+# This is a lightweight alternative to publishing to npm — bscode uses
+# workspace:* protocol pointing at sibling agentkit-js checkout, so it
+# automatically picks up changes when its own CI runs.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/**/package.json"
+      - "packages/**/src/**"
+
+jobs:
+  notify-bscode:
+    name: Trigger bscode CI
+    runs-on: ubuntu-latest
+    # Only run if a PAT secret has been configured in repo settings.
+    # Without BSCODE_DISPATCH_TOKEN, this job becomes a no-op.
+    steps:
+      - name: Check for token
+        id: gate
+        run: |
+          if [ -z "${{ secrets.BSCODE_DISPATCH_TOKEN }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "BSCODE_DISPATCH_TOKEN secret not set; skipping dispatch."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dispatch repository event to bscode
+        if: steps.gate.outputs.skip == 'false'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.BSCODE_DISPATCH_TOKEN }}
+          repository: WasmAgent/bscode
+          event-type: agentkit-js-updated
+          client-payload: |
+            {
+              "agentkit_sha": "${{ github.sha }}",
+              "agentkit_ref": "${{ github.ref }}"
+            }
+
+  bump-bscode-deps:
+    name: Auto-bump bscode dependency versions (placeholder)
+    runs-on: ubuntu-latest
+    # This job will activate when agentkit-js starts publishing to npm.
+    # For now (workspace:* protocol, no published versions yet), it's a
+    # no-op. When publishing begins:
+    #   1. Trigger on tag push or release event
+    #   2. Read new version from packages/*/package.json
+    #   3. Checkout bscode, run bump script, open PR
+    if: false
+    steps:
+      - run: echo "Placeholder — activate when agentkit-js publishes to npm"
