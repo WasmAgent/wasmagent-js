@@ -74,6 +74,14 @@ export {
   toolCallAccuracy,
   trajectoryValidity,
 } from "./evals/index.js";
+export type { ErrorClassification } from "./executor/ErrorClassifier.js";
+// Error classification — GPT-Engineer improve_loop pattern
+export {
+  buildFixRetryMessage,
+  classifyExecutionError,
+  ErrorRecoveryStrategy,
+  MAX_REFINEMENT_STEPS,
+} from "./executor/ErrorClassifier.js";
 export type {
   ActionLanguage,
   CapabilityManifest,
@@ -180,6 +188,13 @@ export { InMemorySpanExporter, OtelBridge, withOtel } from "./observability/inde
 export type { ActionIR, CallDescriptor, IRNode, SchedulerEvent } from "./scheduler/index.js";
 // Scheduler
 export { deriveDependencies, Scheduler, SimpleIR } from "./scheduler/index.js";
+export type { ParsedAction, ParsedActionType } from "./streaming/StreamingActionParser.js";
+
+// Streaming — bolt.diy StreamingMessageParser pattern
+export {
+  extractActionsFromResponse,
+  StreamingActionParser,
+} from "./streaming/StreamingActionParser.js";
 export type {
   AgentPrincipal,
   McpAuthOptions,
@@ -202,7 +217,6 @@ export {
   toStrictJsonSchema,
   zodToJsonSchema,
 } from "./tools/index.js";
-
 // Types
 export type {
   ActionStep,
@@ -215,33 +229,20 @@ export type {
   ToolUseStep,
   UserMessageStep,
 } from "./types/index.js";
-
-// Streaming — bolt.diy StreamingMessageParser pattern
-export {
-  StreamingActionParser,
-  extractActionsFromResponse,
-} from "./streaming/StreamingActionParser.js";
-export type { ParsedAction, ParsedActionType } from "./streaming/StreamingActionParser.js";
-
-// Error classification — GPT-Engineer improve_loop pattern
-export {
-  ErrorRecoveryStrategy,
-  MAX_REFINEMENT_STEPS,
-  classifyExecutionError,
-  buildFixRetryMessage,
-} from "./executor/ErrorClassifier.js";
-export type { ErrorClassification } from "./executor/ErrorClassifier.js";
-
-// Workspace — Lovable / bolt.diy file state tracking
-export {
-  FileTreeManager,
-  globalFileTree,
-} from "./workspace/FileTreeManager.js";
-export type { FileEntry, FileTreeSummary, ScoredFile, FileVersion } from "./workspace/FileTreeManager.js";
-
+export type { LockedFile, LockLevel } from "./workspace/FileLockManager.js";
 // File locking — bolt.new "protect file" pattern
 export {
   FileLockManager,
   globalFileLock,
 } from "./workspace/FileLockManager.js";
-export type { LockedFile, LockLevel } from "./workspace/FileLockManager.js";
+export type {
+  FileEntry,
+  FileTreeSummary,
+  FileVersion,
+  ScoredFile,
+} from "./workspace/FileTreeManager.js";
+// Workspace — Lovable / bolt.diy file state tracking
+export {
+  FileTreeManager,
+  globalFileTree,
+} from "./workspace/FileTreeManager.js";

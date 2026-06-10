@@ -31,7 +31,7 @@ describe("convertCompatMessages", () => {
     ];
     const result = convertCompatMessages(messages) as Array<Record<string, unknown>>;
     expect(result).toHaveLength(1);
-    const msg = result[0]!;
+    const msg = result[0] as Record<string, unknown>;
     expect(msg.reasoning_content).toBeUndefined();
     expect(msg.content).toBe("answer");
   });
@@ -48,7 +48,7 @@ describe("convertCompatMessages", () => {
     ];
     const result = convertCompatMessages(messages, true) as Array<Record<string, unknown>>;
     expect(result).toHaveLength(1);
-    const msg = result[0]!;
+    const msg = result[0] as Record<string, unknown>;
     expect(msg.reasoning_content).toBe("deep thought");
     expect(msg.content).toBe("answer");
   });

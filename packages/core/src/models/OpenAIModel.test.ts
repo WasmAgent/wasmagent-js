@@ -31,7 +31,7 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
       return {
         async next() {
           if (i < chunks.length) {
-            return { value: chunks[i++]!, done: false };
+            return { value: chunks[i++] as OAIChunk, done: false };
           }
           return { value: undefined as unknown as OAIChunk, done: true };
         },

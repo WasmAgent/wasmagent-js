@@ -9,12 +9,12 @@
     "ignoreUnknown": true,
     "includes": [
       "**",
-      "!**/dist/**",
-      "!**/node_modules/**",
-      "!**/.wrangler/**",
-      "!**/coverage/**",
-      "!**/.next/**",
-      "!**/examples/**"
+      "!**/dist",
+      "!**/node_modules",
+      "!**/.wrangler",
+      "!**/coverage",
+      "!**/.next",
+      "!**/examples"
     ]
   },
   "formatter": {

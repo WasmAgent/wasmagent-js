@@ -898,8 +898,8 @@ export class ToolCallingAgent {
 
         const outputs = await Promise.all(handles.map((h) => h.handle.resolve()));
         for (let i = 0; i < handles.length; i++) {
-          const { call, getIsError, getIsUntrusted } = handles[i]!;
-          const toolOutput = outputs[i]!;
+          const { call, getIsError, getIsUntrusted } = handles[i] as (typeof handles)[number];
+          const toolOutput = outputs[i] as string;
           const isError = getIsError();
           const isUntrusted = getIsUntrusted();
           yield {
@@ -947,7 +947,7 @@ export class ToolCallingAgent {
       // Store in history: single call → ToolUseStep (backward compat);
       // multiple calls → ParallelToolUseStep (correct Anthropic multi-turn format).
       if (resolvedCalls.length === 1) {
-        const c = resolvedCalls[0]!;
+        const c = resolvedCalls[0] as ParallelToolUseCall;
         const singleStep: ToolUseStep = {
           type: "tool_use",
           stepIndex: step,

@@ -57,7 +57,9 @@ describe("buildSandboxFetch", () => {
   });
 
   it("throws CapabilityDenied for disallowed host", async () => {
-    const sandboxFetch = buildSandboxFetch(["api.example.com"])!;
+    const sandboxFetch = buildSandboxFetch(["api.example.com"]) as NonNullable<
+      ReturnType<typeof buildSandboxFetch>
+    >;
     await expect(sandboxFetch("https://evil.com/steal")).rejects.toThrow(/CapabilityDenied/);
   });
 });

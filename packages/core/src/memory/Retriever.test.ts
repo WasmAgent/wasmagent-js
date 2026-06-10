@@ -38,8 +38,8 @@ describe("InMemoryVectorStore", () => {
     await store.add("z", "unrelated content here");
 
     const results = await store.search("hello world foo bar", 3);
-    expect(results[0]!.score).toBeGreaterThanOrEqual(results[1]!.score);
-    expect(results[1]!.score).toBeGreaterThanOrEqual(results[2]!.score);
+    expect(results[0]?.score ?? 0).toBeGreaterThanOrEqual(results[1]?.score ?? 0);
+    expect(results[1]?.score ?? 0).toBeGreaterThanOrEqual(results[2]?.score ?? 0);
   });
 
   it("stores metadata and returns it with results", async () => {

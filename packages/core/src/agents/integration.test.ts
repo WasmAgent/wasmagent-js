@@ -101,8 +101,7 @@ describe("CodeAgent integration", () => {
     // New behavior: user code errors become observations; agent continues to step 2
     // and can produce a final_answer. Either an error event or a final_answer is acceptable.
     const hasOutcome =
-      events.some((e) => e.event === "error") ||
-      events.some((e) => e.event === "final_answer");
+      events.some((e) => e.event === "error") || events.some((e) => e.event === "final_answer");
     expect(hasOutcome).toBe(true);
   });
 

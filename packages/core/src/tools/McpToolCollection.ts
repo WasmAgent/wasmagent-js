@@ -479,7 +479,7 @@ function buildOAuthProvider(
     ...(auth.resourceIndicator
       ? {
           async validateResourceURL(_serverUrl: string | URL, _resource?: string) {
-            return new URL(auth.resourceIndicator!);
+            return new URL(auth.resourceIndicator as string);
           },
         }
       : {}),

@@ -139,7 +139,7 @@ describe("SelfConsistencyRunner — C1 answer extraction", () => {
     // Extract only the number from "Answer: 42"
     const extractAnswer = (text: string) => {
       const m = /Answer:\s*(\d+)/.exec(text);
-      return m ? m[1]! : text;
+      return m ? (m[1] as string) : text;
     };
     const runner = new SelfConsistencyRunner({ n: 3, earlyStopThreshold: 1.0, extractAnswer });
     const model = mockModel([

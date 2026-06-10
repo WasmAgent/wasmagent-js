@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import type { ReadableSpan } from "../observability/index.js";
 import { InMemorySpanExporter, OtelBridge, withOtel } from "../observability/index.js";
 import type { AgentEvent } from "../types/events.js";
 
@@ -31,7 +32,14 @@ function makeRunEvents(tid: string, toolNames: string[] = []): AgentEvent[] {
       parentTraceId: null,
       channel: "tool",
       event: "tool_call",
-      data: { toolName: toolNames[i]!, args: {}, callId, batchId: "b", batchSize: 1, stepIndex: 1 },
+      data: {
+        toolName: toolNames[i] as string,
+        args: {},
+        callId,
+        batchId: "b",
+        batchSize: 1,
+        stepIndex: 1,
+      },
       timestampMs: 120,
     });
     events.push({
@@ -40,7 +48,7 @@ function makeRunEvents(tid: string, toolNames: string[] = []): AgentEvent[] {
       channel: "tool",
       event: "tool_result",
       data: {
-        toolName: toolNames[i]!,
+        toolName: toolNames[i] as string,
         callId,
         output: "ok",
         batchId: "b",
@@ -88,7 +96,7 @@ describe("OtelBridge C2 — invoke_agent root span (both/stable mode)", () => {
     const tid = traceId();
     for (const ev of makeRunEvents(tid)) bridge.record(ev);
     bridge.flush();
-    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent")!;
+    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent") as ReadableSpan;
     expect(runSpan.attributes["gen_ai.operation.name"]).toBe("invoke_agent");
   });
 
@@ -212,7 +220,7 @@ describe("OtelBridge C2 — OTEL_SEMCONV_STABILITY_OPT_IN env detection", () => 
     const tid = traceId();
     for (const ev of makeRunEvents(tid)) bridge.record(ev);
     bridge.flush();
-    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent")!;
+    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent") as ReadableSpan;
     // In stable mode: gen_ai.* present, legacy absent.
     expect(runSpan.attributes["gen_ai.agent.task"]).toBe("test task");
     expect(runSpan.attributes.task).toBeUndefined();
@@ -230,10 +238,10 @@ describe("OtelBridge — semconv modes", () => {
     const tid = traceId();
     for (const ev of makeRunEvents(tid, ["search"])) bridge.record(ev);
     bridge.flush();
-    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent")!;
+    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent") as ReadableSpan;
     expect(runSpan.attributes["gen_ai.agent.task"]).toBe("test task");
     expect(runSpan.attributes.task).toBeUndefined();
-    const toolSpan = exporter.spans.find((s) => s.name === "execute_tool")!;
+    const toolSpan = exporter.spans.find((s) => s.name === "execute_tool") as ReadableSpan;
     expect(toolSpan.attributes["gen_ai.tool.name"]).toBe("search");
     expect(toolSpan.attributes["tool.name"]).toBeUndefined();
   });
@@ -244,11 +252,11 @@ describe("OtelBridge — semconv modes", () => {
     const tid = traceId();
     for (const ev of makeRunEvents(tid, ["calc"])) bridge.record(ev);
     bridge.flush();
-    const runSpan = exporter.spans.find((s) => s.name === "agent.run")!;
+    const runSpan = exporter.spans.find((s) => s.name === "agent.run") as ReadableSpan;
     expect(runSpan).toBeDefined();
     expect(runSpan.attributes.task).toBe("test task");
     expect(runSpan.attributes["gen_ai.agent.task"]).toBeUndefined();
-    const toolSpan = exporter.spans.find((s) => s.name === "tool.calc")!;
+    const toolSpan = exporter.spans.find((s) => s.name === "tool.calc") as ReadableSpan;
     expect(toolSpan).toBeDefined();
     expect(toolSpan.attributes["tool.name"]).toBe("calc");
     expect(toolSpan.attributes["gen_ai.tool.name"]).toBeUndefined();
@@ -260,7 +268,7 @@ describe("OtelBridge — semconv modes", () => {
     const tid = traceId();
     for (const ev of makeRunEvents(tid, ["my_tool"])) bridge.record(ev);
     bridge.flush();
-    const toolSpan = exporter.spans.find((s) => s.name === "execute_tool")!;
+    const toolSpan = exporter.spans.find((s) => s.name === "execute_tool") as ReadableSpan;
     expect(toolSpan.attributes["gen_ai.operation.name"]).toBe("execute_tool");
   });
 
@@ -296,7 +304,7 @@ describe("OtelBridge — semconv modes", () => {
       timestampMs: 2,
     });
     bridge.flush();
-    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent")!;
+    const runSpan = exporter.spans.find((s) => s.name === "invoke_agent") as ReadableSpan;
     expect(runSpan.attributes["gen_ai.usage.cache_read_input_tokens_1h"]).toBe(75);
     expect(runSpan.attributes["usage.cacheReadTokens1h"]).toBe(75);
   });
@@ -417,7 +425,7 @@ describe("OtelBridge E1 — GenAI inference/chat span", () => {
     });
     bridge.flush();
 
-    const chatSpan = exporter.spans.find((s) => s.name === "chat")!;
+    const chatSpan = exporter.spans.find((s) => s.name === "chat") as ReadableSpan;
     expect(chatSpan.attributes["gen_ai.request.model"]).toBe("claude-sonnet-4-6");
     expect(chatSpan.attributes["gen_ai.response.model"]).toBe("claude-sonnet-4-6");
     expect(chatSpan.attributes["gen_ai.system"]).toBe("anthropic");
@@ -474,8 +482,8 @@ describe("OtelBridge E1 — GenAI inference/chat span", () => {
     });
     bridge.flush();
 
-    const stepSpan = exporter.spans.find((s) => s.name === "agent.step.1")!;
-    const chatSpan = exporter.spans.find((s) => s.name === "chat")!;
+    const stepSpan = exporter.spans.find((s) => s.name === "agent.step.1") as ReadableSpan;
+    const chatSpan = exporter.spans.find((s) => s.name === "chat") as ReadableSpan;
     expect(chatSpan.parentSpanId).toBe(stepSpan.spanId);
   });
 

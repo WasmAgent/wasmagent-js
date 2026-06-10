@@ -178,16 +178,12 @@ export class FileTreeManager {
     const lines: string[] = [`${sorted.length} file(s):`];
     let lastDir = "";
     for (const f of sorted) {
-      const dir = f.path.includes("/")
-        ? f.path.slice(0, f.path.lastIndexOf("/"))
-        : ".";
+      const dir = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/")) : ".";
       if (dir !== lastDir) {
         lines.push(`  ${dir}/`);
         lastDir = dir;
       }
-      const name = f.path.includes("/")
-        ? f.path.slice(f.path.lastIndexOf("/") + 1)
-        : f.path;
+      const name = f.path.includes("/") ? f.path.slice(f.path.lastIndexOf("/") + 1) : f.path;
       lines.push(`    ${name}  (${f.lines} lines)`);
     }
     return lines.join("\n");
@@ -205,17 +201,21 @@ export class FileTreeManager {
    * Based on bscode's getRelevantFileContents() — improved with path scoring.
    */
   getRelevantFiles(task: string, maxFiles = 5, maxContentBytes = 2000): ScoredFile[] {
-    const keywords = task
-      .toLowerCase()
-      .match(/\b[a-zA-Z一-龥]{2,}\b/g) // ASCII words + CJK
-      ?? [];
+    const keywords =
+      task.toLowerCase().match(/\b[a-zA-Z一-龥]{2,}\b/g) ?? // ASCII words + CJK
+      [];
 
     if (keywords.length === 0) {
       // No keywords — return most recently modified files
       return Array.from(this.#files.values())
         .sort((a, b) => b.lastModifiedMs - a.lastModifiedMs)
         .slice(0, maxFiles)
-        .map((e) => ({ path: e.path, content: e.content.slice(0, maxContentBytes), score: 0, hash: e.hash }));
+        .map((e) => ({
+          path: e.path,
+          content: e.content.slice(0, maxContentBytes),
+          score: 0,
+          hash: e.hash,
+        }));
     }
 
     const now = Date.now();
@@ -248,9 +248,7 @@ export class FileTreeManager {
       }
     }
 
-    return scored
-      .sort((a, b) => b.score - a.score)
-      .slice(0, maxFiles);
+    return scored.sort((a, b) => b.score - a.score).slice(0, maxFiles);
   }
 
   /** Number of files currently tracked. */

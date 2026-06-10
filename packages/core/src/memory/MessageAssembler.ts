@@ -115,7 +115,7 @@ export class MessageAssembler {
     messages[idx++] = this.#systemMsg;
 
     if (fewShot) {
-      for (const m of this.#config.fewShotExamples!) messages[idx++] = m;
+      for (const m of this.#config.fewShotExamples as ModelMessage[]) messages[idx++] = m;
     }
 
     if (this.#scratchpad !== null) {
@@ -126,13 +126,13 @@ export class MessageAssembler {
     }
 
     for (let i = 0; i < this.#msgCache.length; i++) {
-      const stepMsgs = this.#msgCache[i]!;
+      const stepMsgs = this.#msgCache[i] as ModelMessage[];
       if (stepMsgs.length === 0) continue;
 
       if (this.#sealedAt.has(i)) {
-        for (let j = 0; j < stepMsgs.length - 1; j++) messages[idx++] = stepMsgs[j]!;
+        for (let j = 0; j < stepMsgs.length - 1; j++) messages[idx++] = stepMsgs[j] as ModelMessage;
         messages[idx++] = {
-          ...stepMsgs.at(-1)!,
+          ...(stepMsgs.at(-1) as ModelMessage),
           cacheBreakpoint: { type: "ephemeral" },
         };
       } else {
@@ -152,7 +152,7 @@ export class MessageAssembler {
   async buildAsync(): Promise<ModelMessage[]> {
     // Resolve any pending lazy handles in the history before building.
     for (let i = 0; i < this.#history.length; i++) {
-      const step = this.#history[i]!;
+      const step = this.#history[i] as Step;
       if (step.type === "tool_use" && isLazyHandle(step.toolOutput)) {
         const resolved = await (step.toolOutput as unknown as LazyObservationHandle).resolve();
         const updatedStep = { ...step, toolOutput: resolved };
@@ -232,7 +232,7 @@ export class MessageAssembler {
     // Collect eligible tool steps (oldest first, excluding keepRecent most recent).
     const toolStepIndices: number[] = [];
     for (let i = 0; i < this.#history.length; i++) {
-      const step = this.#history[i]!;
+      const step = this.#history[i] as Step;
       if (step.type === "tool_use" || step.type === "parallel_tool_use") {
         toolStepIndices.push(i);
       }
@@ -249,7 +249,7 @@ export class MessageAssembler {
     let truncated = 0;
 
     for (const idx of editableIndices) {
-      const step = this.#history[idx]!;
+      const step = this.#history[idx] as Step;
       if (step.type === "tool_use" && step.toolOutput && step.toolOutput.length > 0) {
         const currentTokens = estimateTokens(step.toolOutput);
         if (currentTokens > maxTokens / editableIndices.length) {
@@ -353,7 +353,7 @@ export class MessageAssembler {
       if (chunkSize > 0) {
         let actionCount = 0;
         for (let i = 0; i < this.#history.length; i++) {
-          if (this.#isChunkableStep(this.#history[i]!)) {
+          if (this.#isChunkableStep(this.#history[i] as Step)) {
             actionCount++;
             if (actionCount % chunkSize === 0) this.#sealedAt.add(i);
           }

@@ -61,7 +61,7 @@ describe("McpToolCollection (D4)", () => {
     );
     const collection = await MTC.fromStdio("echo", []);
 
-    const tool = collection.list()[0]!;
+    const tool = collection.list()[0] as ReturnType<typeof collection.list>[number];
     expect(tool.readOnly).toBe(false);
     expect(tool.idempotent).toBe(false);
   });
@@ -78,7 +78,7 @@ describe("McpToolCollection (D4)", () => {
     );
     const collection = await MTC.fromStdio("echo", []);
 
-    const tool = collection.list()[0]!;
+    const tool = collection.list()[0] as ReturnType<typeof collection.list>[number];
     const result = await tool.forward({ name: "Alice" } as never);
     expect(result).toBe("Hello, world!");
     expect(mockClient.callTool).toHaveBeenCalledWith({
@@ -114,7 +114,7 @@ describe("McpToolCollection (D4)", () => {
       "../tools/McpToolCollection.js?t=" + Date.now() + "5"
     );
     const collection = await MTC.fromStdio("echo", []);
-    const tool = collection.list()[0]!;
+    const tool = collection.list()[0] as ReturnType<typeof collection.list>[number];
     const result = await tool.forward({} as never);
     expect(result).toBe("line one\nline two");
   });
@@ -127,7 +127,7 @@ describe("McpToolCollection (D4)", () => {
       "../tools/McpToolCollection.js?t=" + Date.now() + "6"
     );
     const collection = await MTC.fromStdio("echo", []);
-    const tool = collection.list()[0]!;
+    const tool = collection.list()[0] as ReturnType<typeof collection.list>[number];
     expect(tool.description).toBe("");
   });
 
@@ -141,7 +141,7 @@ describe("McpToolCollection (D4)", () => {
     const collection = await MTC.fromSse("https://example.com/mcp/sse");
 
     expect(collection.size).toBe(1);
-    const tool = collection.list()[0]!;
+    const tool = collection.list()[0] as ReturnType<typeof collection.list>[number];
     expect(tool.name).toBe("sse-tool");
     expect(tool.description).toBe("From SSE server");
     expect(tool.readOnly).toBe(false);
@@ -495,7 +495,7 @@ describe("A1 — McpAuthOptions / McpAuthError", () => {
     await MTC.fromHttp("https://api.example.com/mcp", undefined, undefined, auth);
 
     expect(capturedProviders.length).toBeGreaterThan(0);
-    const provider = capturedProviders[0]!;
+    const provider = capturedProviders[0] as Record<string, unknown>;
     const tokens = await (provider.tokens as () => Promise<{ access_token: string } | undefined>)();
     expect(tokens?.access_token).toBe("my-access-token");
     expect(tokenProvider).toHaveBeenCalled();

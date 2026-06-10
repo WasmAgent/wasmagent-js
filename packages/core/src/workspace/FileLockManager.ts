@@ -13,7 +13,7 @@
 export type LockLevel = "hard" | "warn";
 
 export interface LockedFile {
-  pattern: string;       // glob-style pattern or exact path
+  pattern: string; // glob-style pattern or exact path
   level: LockLevel;
   reason: string;
 }
@@ -25,9 +25,9 @@ export interface LockedFile {
 const DEFAULT_LOCKS: LockedFile[] = [
   // Auto-generated lock files — managed by package managers, not the agent
   { pattern: "package-lock.json", level: "hard", reason: "managed by npm — do not write directly" },
-  { pattern: "yarn.lock",         level: "hard", reason: "managed by yarn — do not write directly" },
-  { pattern: "pnpm-lock.yaml",    level: "hard", reason: "managed by pnpm — do not write directly" },
-  { pattern: "bun.lock",          level: "hard", reason: "managed by bun — do not write directly" },
+  { pattern: "yarn.lock", level: "hard", reason: "managed by yarn — do not write directly" },
+  { pattern: "pnpm-lock.yaml", level: "hard", reason: "managed by pnpm — do not write directly" },
+  { pattern: "bun.lock", level: "hard", reason: "managed by bun — do not write directly" },
 ];
 
 export class FileLockManager {
@@ -66,7 +66,7 @@ export class FileLockManager {
     if (lock.level === "hard") {
       throw new Error(
         `🔒 File "${filePath}" is protected (${lock.reason}). ` +
-        `The agent must not modify this file. Use a different approach.`
+          `The agent must not modify this file. Use a different approach.`
       );
     }
 

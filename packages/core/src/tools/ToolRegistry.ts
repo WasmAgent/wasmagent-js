@@ -68,7 +68,7 @@ function strictifySchema(schema: Record<string, unknown>, depth: number): Record
   const allKeys = Object.keys(props);
 
   for (const key of allKeys) {
-    const propSchema = props[key]!;
+    const propSchema = props[key] as Record<string, unknown>;
     const isOptional = !existingRequiredSet.has(key);
 
     let strictProp = strictifySchema(propSchema, depth + 1);

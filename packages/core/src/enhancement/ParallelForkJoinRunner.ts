@@ -116,7 +116,7 @@ export class ParallelForkJoinRunner {
     }
 
     if (completed.length === 1) {
-      return { answer: completed[0]!, branches: completed, branchesCompleted: 1 };
+      return { answer: completed[0] as string, branches: completed, branchesCompleted: 1 };
     }
 
     const finalAnswer = await this.#joinResults(model, messages, completed);
