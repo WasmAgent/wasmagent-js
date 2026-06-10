@@ -123,6 +123,17 @@ export class FileTreeManager {
   }
 
   /**
+   * Remove a file *and* drop its version history. Use this when the
+   * caller wants the file to be entirely forgotten (e.g. workspace
+   * delete) — `recordDelete` only removes the live entry but leaves
+   * old versions queryable, which can leak content into rollbacks.
+   */
+  remove(path: string): void {
+    this.#files.delete(path);
+    this.#versions.delete(path);
+  }
+
+  /**
    * Get full content + hash for a single file.
    * Returns null if not tracked.
    */

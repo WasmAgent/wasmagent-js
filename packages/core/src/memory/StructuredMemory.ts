@@ -104,9 +104,16 @@ export interface DecayResult {
  */
 export class StructuredMemory {
   readonly #backend: StructuredKvBackend;
+  readonly #onError: (msg: string, err: unknown) => void;
 
-  constructor(backend: StructuredKvBackend) {
+  constructor(
+    backend: StructuredKvBackend,
+    opts: { onError?: (msg: string, err: unknown) => void } = {}
+  ) {
     this.#backend = backend;
+    // Default: surface to console.warn so silent corruption is visible
+    // in logs. Production callers should pass their structured logger.
+    this.#onError = opts.onError ?? ((msg, err) => console.warn(`[StructuredMemory] ${msg}`, err));
   }
 
   async set<T>(key: string, value: T, opts: SetOptions<T> = {}): Promise<void> {
@@ -141,7 +148,8 @@ export class StructuredMemory {
     let record: MemoryRecord<T>;
     try {
       record = JSON.parse(raw) as MemoryRecord<T>;
-    } catch {
+    } catch (e) {
+      this.#onError(`get: corrupted record at "${namespace}/${key}", returning null`, e);
       return null;
     }
     // TTL check
@@ -152,8 +160,11 @@ export class StructuredMemory {
     // Update access metadata
     record.metadata.lastAccessedAt = Date.now();
     record.metadata.accessCount++;
-    // Best-effort write-back; don't block reads on failure.
-    void this.#backend.set(backendKey(namespace, key), JSON.stringify(record)).catch(() => {});
+    // Best-effort write-back; don't block reads on failure but DO log
+    // — silent write-back failures hide cache-coherence bugs.
+    void this.#backend.set(backendKey(namespace, key), JSON.stringify(record)).catch((e) => {
+      this.#onError(`get: write-back of access metadata failed at "${namespace}/${key}"`, e);
+    });
     return record.value;
   }
 
@@ -176,7 +187,8 @@ export class StructuredMemory {
         let record: MemoryRecord<T>;
         try {
           record = JSON.parse(raw) as MemoryRecord<T>;
-        } catch {
+        } catch (e) {
+          this.#onError(`query: corrupted record at "${fullKey}", skipping`, e);
           continue;
         }
         // TTL filter
@@ -233,8 +245,9 @@ export class StructuredMemory {
         let record: MemoryRecord;
         try {
           record = JSON.parse(raw) as MemoryRecord;
-        } catch {
-          // unparseable entry — purge it
+        } catch (e) {
+          // unparseable entry — log and purge it
+          this.#onError(`decay: corrupted record at "${fullKey}", purging`, e);
           if (!dryRun) await this.#backend.delete(fullKey);
           result.purged++;
           result.purgedKeys.push(stripPrefix(fullKey));

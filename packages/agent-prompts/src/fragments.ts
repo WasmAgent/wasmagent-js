@@ -2,14 +2,14 @@
  * Reusable prompt fragments — atomic building blocks an agent author can
  * combine via {@link composePrompt} into a full system prompt.
  *
- * Fragments have NO bscode-specific or product-specific content. They
- * encode patterns the field has converged on (reasoning-first, output
- * contracts, error recovery) without prescribing a particular agent
- * persona or tool surface.
+ * Fragments are intentionally product-agnostic. They encode patterns the
+ * field has converged on (reasoning-first, output contracts, error
+ * recovery) without prescribing a particular agent persona, sandbox
+ * convention, or tool surface.
  *
- * If you want bscode-style prompts (`<boltThinking>` tags, WebContainers
- * conventions, etc.), build them in your own product code by composing
- * these fragments with your product-specific instructions.
+ * To embed product-specific instructions (custom planning tags, framework
+ * file conventions, persona declarations), compose these fragments with
+ * your own text via {@link composePrompt} in your product code.
  */
 
 // ── Reasoning preambles ──────────────────────────────────────────────────────
