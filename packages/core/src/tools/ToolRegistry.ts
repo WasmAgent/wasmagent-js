@@ -263,14 +263,18 @@ export class ToolRegistry {
     // Validate input with zod (D2 — replaces AgentParsingError retry loop).
     const parsed = tool.inputSchema.safeParse(toolCall.args);
     if (!parsed.success) {
+      const fieldErrors = parsed.error.flatten().fieldErrors;
+      const missingFields = Object.keys(fieldErrors).join(", ");
       return {
         callId: toolCall.callId,
         toolName: toolCall.toolName,
         output: null,
         error: {
           code: "validation_error",
-          message: parsed.error.message,
-          retryHint: `Fix the arguments: ${JSON.stringify(parsed.error.flatten().fieldErrors)}`,
+          message: `Tool "${toolCall.toolName}" called with missing/invalid arguments. Required fields: ${missingFields}. ` +
+            `Fix: call ${toolCall.toolName} again with all required arguments filled in. ` +
+            `Details: ${JSON.stringify(fieldErrors)}`,
+          retryHint: `Call ${toolCall.toolName} again with all required arguments: ${missingFields}`,
         },
       };
     }
