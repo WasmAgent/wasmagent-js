@@ -563,6 +563,27 @@ export class ToolCallingAgent {
       const batchId = randomUUID();
       const batchSize = pendingCalls.length;
 
+      // F2: action_proposed events — Vercel AI SDK pattern for observability.
+      // Emitted before tool_call so frontends can show "about to call X" indicators.
+      for (const call of pendingCalls) {
+        const proposedData: { actionId: string; type: string; path?: string; reason?: string } = {
+          actionId: call.id,
+          type: call.name,
+        };
+        const callPath = (call.input as Record<string, unknown>)?.path;
+        if (typeof callPath === "string") proposedData.path = callPath;
+        const reason = fullText.slice(0, 150);
+        if (reason) proposedData.reason = reason;
+        yield {
+          traceId,
+          parentTraceId,
+          channel: "action",
+          event: "action_proposed",
+          data: proposedData,
+          timestampMs: Date.now(),
+        };
+      }
+
       for (const call of pendingCalls) {
         yield {
           traceId,
@@ -589,6 +610,15 @@ export class ToolCallingAgent {
           channel: "status" as const,
           event: "status" as const,
           data: { phase: "tool_executing", toolName: call.name, callId: call.id, step },
+          timestampMs: Date.now(),
+        };
+        // F2: action_executing — records actual start time for latency tracking.
+        yield {
+          traceId,
+          parentTraceId,
+          channel: "action",
+          event: "action_executing",
+          data: { actionId: call.id, startedAtMs: Date.now() },
           timestampMs: Date.now(),
         };
       }
@@ -800,6 +830,20 @@ export class ToolCallingAgent {
                   batchSize,
                   stepIndex: step,
                 },
+            timestampMs: Date.now(),
+          };
+          // F2: action_completed — outcome for frontend/observability dashboards.
+          yield {
+            traceId,
+            parentTraceId,
+            channel: "action",
+            event: "action_completed",
+            data: {
+              actionId: call.id,
+              durationMs: 0, // caller can compute from action_executing.startedAtMs
+              success: !res.isError,
+              ...(res.isError ? { error: res.output } : {}),
+            },
             timestampMs: Date.now(),
           };
           resolvedCalls.push({
