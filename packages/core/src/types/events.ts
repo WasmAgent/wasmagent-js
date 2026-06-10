@@ -117,6 +117,102 @@ export type AgentEvent =
       channel: "status";
       event: "handoff";
       data: { targetAgentName: string; step: number };
+    })
+  /**
+   * F1: Streaming artifact events — bolt.diy / v0.dev pattern.
+   * Emitted as the agent streams structured file content incrementally,
+   * enabling progressive rendering in the frontend before generation completes.
+   *
+   * artifact_stream_start: opens a new artifact (file/component) being streamed.
+   * artifact_delta: incremental content chunk for a streaming artifact.
+   * artifact_stream_end: artifact fully received; includes content hash.
+   */
+  | (AgentEventBase & {
+      channel: "artifact";
+      event: "artifact_stream_start";
+      data: {
+        artifactId: string;
+        type: "file" | "component" | "code";
+        /** File path for "file" artifacts */
+        path?: string;
+        /** Human-readable label for display */
+        label?: string;
+      };
+    })
+  | (AgentEventBase & {
+      channel: "artifact";
+      event: "artifact_delta";
+      data: {
+        artifactId: string;
+        /** Incremental content chunk */
+        delta: string;
+        /** Cumulative byte offset (for ordering/dedup) */
+        offset?: number;
+      };
+    })
+  | (AgentEventBase & {
+      channel: "artifact";
+      event: "artifact_stream_end";
+      data: {
+        artifactId: string;
+        /** SHA-256 of final content (first 16 hex chars) for cache/dedup */
+        contentHash: string;
+        /** Total bytes received */
+        totalBytes: number;
+      };
+    })
+  /**
+   * F2: Action lifecycle events — enable fine-grained observability (Vercel AI SDK pattern).
+   * Emitted around tool execution for tracing dashboards and frontend progress indicators.
+   *
+   * action_proposed: agent has decided to take an action (before execution).
+   * action_executing: action has started executing.
+   * action_completed: action finished (success or error).
+   */
+  | (AgentEventBase & {
+      channel: "action";
+      event: "action_proposed";
+      data: {
+        actionId: string;
+        /** Tool name or action type */
+        type: string;
+        /** File path for file-write actions */
+        path?: string;
+        /** Brief rationale extracted from model's explanation */
+        reason?: string;
+      };
+    })
+  | (AgentEventBase & {
+      channel: "action";
+      event: "action_executing";
+      data: { actionId: string; startedAtMs: number };
+    })
+  | (AgentEventBase & {
+      channel: "action";
+      event: "action_completed";
+      data: {
+        actionId: string;
+        durationMs: number;
+        /** Whether the action succeeded */
+        success: boolean;
+        /** Error message if failed */
+        error?: string;
+      };
+    })
+  /**
+   * F3: Error recovery events — GPT-Engineer improve_loop pattern.
+   * Emitted when the agent classifies an error and decides on a recovery strategy.
+   */
+  | (AgentEventBase & {
+      channel: "status";
+      event: "error_recovery";
+      data: {
+        strategy: "retry" | "backoff" | "fail_fast";
+        errorType: string;
+        attempt: number;
+        maxAttempts: number;
+        fixHint?: string;
+      };
     });
 
 /** Structured step types mirroring smolagents' ActionStep / PlanningStep / FinalAnswerStep. */

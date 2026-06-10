@@ -215,3 +215,19 @@ export type {
   ToolUseStep,
   UserMessageStep,
 } from "./types/index.js";
+
+// Streaming — bolt.diy StreamingMessageParser pattern
+export {
+  StreamingActionParser,
+  extractActionsFromResponse,
+} from "./streaming/StreamingActionParser.js";
+export type { ParsedAction, ParsedActionType } from "./streaming/StreamingActionParser.js";
+
+// Error classification — GPT-Engineer improve_loop pattern
+export {
+  ErrorRecoveryStrategy,
+  MAX_REFINEMENT_STEPS,
+  classifyExecutionError,
+  buildFixRetryMessage,
+} from "./executor/ErrorClassifier.js";
+export type { ErrorClassification } from "./executor/ErrorClassifier.js";

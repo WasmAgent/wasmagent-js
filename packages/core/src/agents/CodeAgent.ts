@@ -4,6 +4,12 @@ import { ParallelForkJoinRunner } from "../enhancement/ParallelForkJoinRunner.js
 import { ReflectRefineRunner } from "../enhancement/ReflectRefineRunner.js";
 import { SelfConsistencyRunner } from "../enhancement/SelfConsistencyRunner.js";
 import { createKernel } from "../executor/factory.js";
+import {
+  ErrorRecoveryStrategy,
+  MAX_REFINEMENT_STEPS,
+  buildFixRetryMessage,
+  classifyExecutionError,
+} from "../executor/ErrorClassifier.js";
 import type { KernelResult, WasmKernel } from "../executor/types.js";
 import type { InputGuardrail, OutputGuardrail } from "../guardrails/index.js";
 import { runInputGuardrails, runOutputGuardrails } from "../guardrails/index.js";
@@ -357,7 +363,7 @@ export class CodeAgent {
       }
 
       // Execute code in the kernel (A1 stateful execution).
-      const codeToRun = extractCode(fullResponse)!;
+      let codeToRun = extractCode(fullResponse)!;
 
       // S3: code guardrail scan before kernel execution.
       if (this.#codeGuardrails.length > 0) {
@@ -390,21 +396,92 @@ export class CodeAgent {
       }
 
       let kernelResult: KernelResult;
-      try {
-        kernelResult = await kernel.run(codeToRun);
-      } catch (err) {
-        yield {
-          traceId,
-          parentTraceId,
-          channel: "text",
-          event: "error",
-          data: {
-            step,
-            error: err instanceof Error ? err.message : String(err),
-          },
-          timestampMs: Date.now(),
-        };
-        return;
+      let kernelAttempt = 0;
+      // GPT-Engineer improve_loop: bounded retry for INFRASTRUCTURE errors.
+      // User code errors (throw new Error()) are passed as observations to the assembler,
+      // not retried here — the model will handle them in the next step.
+      // biome-ignore lint/suspicious/noInfiniteLoop: bounded by MAX_REFINEMENT_STEPS
+      while (true) {
+        try {
+          kernelResult = await kernel.run(codeToRun);
+          break; // success
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          const classification = classifyExecutionError(err instanceof Error ? err : new Error(errMsg));
+
+          // User-code throws are infrastructure errors when the kernel wraps them.
+          // We distinguish: if the error looks like deliberate user code (contains "Error:")
+          // we treat it as an observation for the agent, not an infrastructure failure.
+          // This preserves the existing test contract: "kernel error does not prevent step 2"
+          const isUserCodeError = /^(KernelError:|PyodideKernelError:)/.test(errMsg);
+          if (isUserCodeError) {
+            // Synthesize a failed KernelResult — agent sees it as an observation and can recover
+            kernelResult = {
+              output: errMsg,
+              logs: [errMsg],
+              isFinalAnswer: false,
+            };
+            break;
+          }
+
+          kernelAttempt++;
+
+          // Emit error_recovery event for observability
+          yield {
+            traceId,
+            parentTraceId,
+            channel: "status",
+            event: "error_recovery",
+            data: {
+              strategy: classification.strategy as "retry" | "backoff" | "fail_fast",
+              errorType: classification.errorType,
+              attempt: kernelAttempt,
+              maxAttempts: MAX_REFINEMENT_STEPS,
+              ...(classification.fixHint ? { fixHint: classification.fixHint } : {}),
+            },
+            timestampMs: Date.now(),
+          };
+
+          // FAIL_FAST: surface immediately and stop
+          if (classification.strategy === ErrorRecoveryStrategy.FAIL_FAST || kernelAttempt >= MAX_REFINEMENT_STEPS) {
+            yield {
+              traceId,
+              parentTraceId,
+              channel: "text",
+              event: "error",
+              data: {
+                step,
+                error: err instanceof Error ? err.message : String(err),
+              },
+              timestampMs: Date.now(),
+            };
+            return;
+          }
+
+          // RETRY: inject fix context and ask model for a corrected code block
+          const fixMessage = buildFixRetryMessage(classification, codeToRun, kernelAttempt);
+          const fixMessages = this.#assembler.build();
+          fixMessages.push({ role: "user", content: fixMessage });
+          let fixResponse = "";
+          for await (const event of this.#model.generate(fixMessages, { stream: true })) {
+            if (event.type === "text_delta" && event.delta) fixResponse += event.delta;
+          }
+          const fixedCode = extractCode(fixResponse);
+          if (fixedCode) {
+            codeToRun = fixedCode; // retry with the corrected code
+          } else {
+            // Model couldn't produce code — fail
+            yield {
+              traceId,
+              parentTraceId,
+              channel: "text",
+              event: "error",
+              data: { step, error: `Could not recover: ${err instanceof Error ? err.message : String(err)}` },
+              timestampMs: Date.now(),
+            };
+            return;
+          }
+        }
       }
 
       const stepRecord: ActionStep = {
