@@ -1,16 +1,13 @@
 /**
  * FileLockManager — bolt.new "protect file" pattern.
  *
- * Marks files the agent must not overwrite, preventing accidental corruption
- * of critical project files (lock files, .env, build configs, etc.).
- *
- * Integration:
- * - ToolCallingAgent: check before executing write_file / patch_file / delete_file
- * - CodeAgent: not applicable (operates on kernel, not FS)
+ * Marks files the agent must not overwrite.
+ * By default only auto-generated package-manager lock files are blocked;
+ * callers may add extra locks (e.g. secrets) via the constructor.
  *
  * Levels:
- * - "hard": block with error (default for secrets, lock files)
- * - "warn": allow but emit guardrail_tripwire warning (for config files)
+ * - "hard": block with error
+ * - "warn": allow but return a warning string to surface to the agent
  */
 
 export type LockLevel = "hard" | "warn";
@@ -21,22 +18,16 @@ export interface LockedFile {
   reason: string;
 }
 
-// Default locked patterns — covers the most common accidentally-overwritten files
+// Default locked patterns — minimal set: only files that are never safe for an agent to touch.
+// tsconfig.json, .env, package.json, etc. are intentionally NOT locked here because agents
+// in framework mode need to write them to scaffold a complete project.
+// Callers (e.g. bscode worker) may add extra locks via the constructor.
 const DEFAULT_LOCKS: LockedFile[] = [
-  // Secrets and environment — never touch
-  { pattern: ".env",              level: "hard", reason: "environment secrets" },
-  { pattern: ".env.local",        level: "hard", reason: "local environment secrets" },
-  { pattern: ".env.production",   level: "hard", reason: "production secrets" },
-  { pattern: ".env.*.local",      level: "hard", reason: "local environment secrets" },
-  { pattern: ".dev.vars",         level: "hard", reason: "Wrangler dev secrets" },
-  // Package lock files — let npm/bun manage these
-  { pattern: "package-lock.json", level: "hard", reason: "managed by npm" },
-  { pattern: "yarn.lock",         level: "hard", reason: "managed by yarn" },
-  { pattern: "pnpm-lock.yaml",    level: "hard", reason: "managed by pnpm" },
-  { pattern: "bun.lock",          level: "hard", reason: "managed by bun" },
-  // Build configs — warn but allow override
-  { pattern: "tsconfig.json",     level: "warn", reason: "TypeScript config" },
-  { pattern: ".gitignore",        level: "warn", reason: "git ignore rules" },
+  // Auto-generated lock files — managed by package managers, not the agent
+  { pattern: "package-lock.json", level: "hard", reason: "managed by npm — do not write directly" },
+  { pattern: "yarn.lock",         level: "hard", reason: "managed by yarn — do not write directly" },
+  { pattern: "pnpm-lock.yaml",    level: "hard", reason: "managed by pnpm — do not write directly" },
+  { pattern: "bun.lock",          level: "hard", reason: "managed by bun — do not write directly" },
 ];
 
 export class FileLockManager {
