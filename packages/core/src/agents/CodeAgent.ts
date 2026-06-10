@@ -296,13 +296,17 @@ export class CodeAgent {
           return;
         }
         // No code and no final answer — ask the model once more to produce code.
-        // The retry prompt adapts to the system prompt language (Python vs JS).
+        // GPT-Engineer pattern: provide structured error context in retry, not just a generic prompt.
+        // This gives the model specific information about what was missing, improving retry success.
         const isPython = this.#assembler.build()[0]?.content?.toString().includes("Python") ?? false;
         const langHint = isPython
           ? "Please provide your answer as executable Python inside ```python ... ``` or set __finalAnswer__ = <value>."
           : "Please provide your answer as executable JavaScript inside ```js ... ``` or set __finalAnswer__ = <value>.";
+        const previousResponseSnippet = fullResponse.length > 0
+          ? `\n\nYour previous response did not contain a code block:\n---\n${fullResponse.slice(0, 300)}\n---`
+          : "";
         const retryMessages = this.#assembler.build();
-        retryMessages.push({ role: "user", content: langHint });
+        retryMessages.push({ role: "user", content: `${langHint}${previousResponseSnippet}` });
         let retryResponse = "";
         let retryReceivedUsage = false;
         try {
@@ -526,9 +530,16 @@ function extractThoughts(response: string): string {
 function extractCode(response: string): string | null {
   // Match fenced code blocks where the closing ``` appears at the START of a line.
   // This prevents false matches when template literals inside the code contain backticks.
+  // Also supports bolt.new-style <boltAction type="file"> and <code> tags.
   const match =
+    // bolt.new artifact format: <boltAction type="file" filePath="...">code</boltAction>
+    /<boltAction[^>]*type="file"[^>]*>\s*([\s\S]*?)\s*<\/boltAction>/.exec(response) ??
+    // XML <code> tag
     /<code>([\s\S]*?)<\/code>/.exec(response) ??
-    /```(?:js|javascript|python|py|ts|typescript)?\n([\s\S]*?)(?:^|\n)```/m.exec(response);
+    // Standard fenced code block (closing ``` must be on its own line)
+    /```(?:js|javascript|python|py|ts|typescript)?\n([\s\S]*?)(?:^|\n)```/m.exec(response) ??
+    // Unlabelled code block as fallback
+    /```\n([\s\S]*?)(?:^|\n)```/m.exec(response);
   if (!match) {
     // Log a truncated snippet to aid debugging without flooding output with large responses.
     const snippet = response.length > 200 ? `${response.slice(0, 200)}…` : response;
