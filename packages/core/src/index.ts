@@ -231,3 +231,10 @@ export {
   buildFixRetryMessage,
 } from "./executor/ErrorClassifier.js";
 export type { ErrorClassification } from "./executor/ErrorClassifier.js";
+
+// Workspace — Lovable / bolt.diy file state tracking
+export {
+  FileTreeManager,
+  globalFileTree,
+} from "./workspace/FileTreeManager.js";
+export type { FileEntry, FileTreeSummary, ScoredFile } from "./workspace/FileTreeManager.js";
