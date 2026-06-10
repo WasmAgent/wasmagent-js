@@ -11,6 +11,7 @@ export default defineConfig({
       "packages/core/src/**/*.test.ts",
       "packages/cli/src/**/*.test.ts",
       "packages/cloudflare-worker/src/**/*.test.ts",
+      "tests/integration/**/*.test.ts",
     ],
     // Exclude Pyodide from module transformation — it uses dynamic WASM loading
     // that breaks under Vite/vitest's module rewriting.

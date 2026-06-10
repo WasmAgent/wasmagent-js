@@ -470,6 +470,17 @@
         "docx",
       ],
     },
+    "tests/integration": {
+      "name": "@agentkit-js/integration-tests",
+      "version": "0.0.0",
+      "dependencies": {
+        "@agentkit-js/agent-prompts": "workspace:*",
+        "@agentkit-js/ui-cards": "workspace:*",
+      },
+      "devDependencies": {
+        "vitest": "^2.1.0",
+      },
+    },
   },
   "packages": {
     "@agentkit-js/a2a": ["@agentkit-js/a2a@workspace:packages/a2a"],
@@ -483,6 +494,8 @@
     "@agentkit-js/cloudflare-worker": ["@agentkit-js/cloudflare-worker@workspace:packages/cloudflare-worker"],
 
     "@agentkit-js/core": ["@agentkit-js/core@workspace:packages/core"],
+
+    "@agentkit-js/integration-tests": ["@agentkit-js/integration-tests@workspace:tests/integration"],
 
     "@agentkit-js/kernel-pyodide": ["@agentkit-js/kernel-pyodide@workspace:packages/kernel-pyodide"],
 
