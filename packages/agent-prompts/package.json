@@ -1,0 +1,36 @@
+{
+  "name": "@agentkit-js/agent-prompts",
+  "version": "0.1.0",
+  "description": "Reusable system prompt templates for agentkit-js — code/tool/framework prompts with D2 + Markdown card conventions",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist .turbo"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "agentkit",
+    "prompts",
+    "system-prompt",
+    "code-agent",
+    "framework"
+  ],
+  "license": "Apache-2.0"
+}
