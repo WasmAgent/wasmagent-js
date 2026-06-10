@@ -356,3 +356,19 @@ export async function guardrailComplianceAsync(
         : "All guardrails passed",
   };
 }
+
+// ── M4.3 — extended scorers (efficiency, constraint, recovery, composite, faithfulness, relevance) ──
+
+export type { WeightedScorer } from "./CompositeScorer.js";
+export { compositeScorer } from "./CompositeScorer.js";
+
+export type { Constraints } from "./ConstraintScorer.js";
+export { constraintScorer } from "./ConstraintScorer.js";
+export type { EfficiencyConstraints } from "./EfficiencyScorer.js";
+export { efficiencyScorer } from "./EfficiencyScorer.js";
+export type { FaithfulnessOpts } from "./FaithfulnessScorer.js";
+export { faithfulnessScorer, faithfulnessScorerAsync } from "./FaithfulnessScorer.js";
+export { recoveryScorer } from "./RecoveryScorer.js";
+
+export type { RelevanceOpts } from "./RelevanceScorer.js";
+export { relevanceScorer, relevanceScorerAsync } from "./RelevanceScorer.js";
