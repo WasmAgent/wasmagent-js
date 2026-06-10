@@ -396,3 +396,24 @@ function attributesToOtlp(attrs: SpanAttributes): OtlpKeyValue[] {
       return { key: k, value };
     });
 }
+
+// ── M5.3 — sampler / redactor / baggage / fine-grained metrics ──
+
+export type { Baggage } from "./BaggagePropagator.js";
+export {
+  extractBaggage,
+  injectBaggage,
+  parseBaggageHeader,
+  serializeBaggage,
+} from "./BaggagePropagator.js";
+export type { MetricsSnapshot, StepMetric, ToolErrorMetric } from "./FineGrainedMetrics.js";
+export { FineGrainedMetrics } from "./FineGrainedMetrics.js";
+export type { Sampler } from "./Sampler.js";
+export {
+  AlwaysOffSampler,
+  AlwaysOnSampler,
+  ProbabilisticSampler,
+  RateLimitingSampler,
+} from "./Sampler.js";
+export type { TraceRedactorOpts } from "./TraceRedactor.js";
+export { TraceRedactor } from "./TraceRedactor.js";
