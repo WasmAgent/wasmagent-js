@@ -271,7 +271,8 @@ export class ToolRegistry {
         output: null,
         error: {
           code: "validation_error",
-          message: `Tool "${toolCall.toolName}" called with missing/invalid arguments. Required fields: ${missingFields}. ` +
+          message:
+            `Tool "${toolCall.toolName}" called with missing/invalid arguments. Required fields: ${missingFields}. ` +
             `Fix: call ${toolCall.toolName} again with all required arguments filled in. ` +
             `Details: ${JSON.stringify(fieldErrors)}`,
           retryHint: `Call ${toolCall.toolName} again with all required arguments: ${missingFields}`,
