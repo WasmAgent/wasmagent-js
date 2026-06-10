@@ -14,3 +14,13 @@ export {
   makeRetrievalTool,
   TfidfEmbedder,
 } from "./Retriever.js";
+export type {
+  DecayOptions,
+  DecayResult,
+  MemoryEntry,
+  MemoryNamespace,
+  QueryFilter,
+  SetOptions,
+  StructuredKvBackend,
+} from "./StructuredMemory.js";
+export { InMemoryStructuredKv, StructuredMemory } from "./StructuredMemory.js";

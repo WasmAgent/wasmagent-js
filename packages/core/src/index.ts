@@ -127,13 +127,20 @@ export {
 export type {
   AssemblerConfig,
   Bm25Match,
+  DecayOptions,
+  DecayResult,
   EditToolResultsOptions,
   Embedder,
   EmbedResult,
   HybridRetrieverOpts,
+  MemoryEntry,
+  MemoryNamespace,
   MemoryToolOptions,
+  QueryFilter,
   Retriever,
   SearchResult,
+  SetOptions,
+  StructuredKvBackend,
 } from "./memory/index.js";
 // Memory
 export {
@@ -142,12 +149,14 @@ export {
   createMemoryTool,
   HybridRetriever,
   hybridRetriever,
+  InMemoryStructuredKv,
   InMemoryVectorStore,
   KvBackendVectorStore,
   LazyObservationHandle,
   MapKvBackend,
   MessageAssembler,
   makeRetrievalTool,
+  StructuredMemory,
   TfidfEmbedder,
 } from "./memory/index.js";
 export type {
