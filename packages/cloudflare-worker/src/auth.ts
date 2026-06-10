@@ -110,9 +110,30 @@ export async function verifyJwt(token: string, key: JwtVerifierKey): Promise<Jwt
   const ok = await crypto.subtle.verify(algorithm, cryptoKey, sigBuf, data);
   if (!ok) throw new Error("verifyJwt: signature verification failed");
 
-  const payload = JSON.parse(base64UrlDecodeText(p)) as JwtPayload;
-  if (payload.exp !== undefined && payload.exp < Math.floor(Date.now() / 1000)) {
+  let payload: JwtPayload;
+  try {
+    payload = JSON.parse(base64UrlDecodeText(p)) as JwtPayload;
+  } catch (e) {
+    throw new Error(
+      `verifyJwt: payload is not valid JSON: ${e instanceof Error ? e.message : String(e)}`
+    );
+  }
+
+  // Validate required claims at runtime — the `as JwtPayload` cast above is
+  // structurally unchecked; without this guard a token like `{"sub": null}`
+  // produces userId=null downstream, silently merging unrelated callers in
+  // KV / D1 keys.
+  if (typeof payload.sub !== "string" || payload.sub.length === 0) {
+    throw new Error("verifyJwt: token is missing required 'sub' (subject) claim");
+  }
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (payload.exp !== undefined && payload.exp < nowSec) {
     throw new Error("verifyJwt: token expired");
+  }
+  // `nbf` (Not Before) — token not yet valid.
+  if (typeof payload.nbf === "number" && payload.nbf > nowSec + 60) {
+    throw new Error("verifyJwt: token not yet valid (nbf)");
   }
   return payload;
 }

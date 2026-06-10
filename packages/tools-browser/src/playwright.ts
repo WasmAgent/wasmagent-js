@@ -89,6 +89,7 @@ export async function openPlaywrightSession(
     },
     async extract(selectors: Record<string, string>) {
       const out: Record<string, string> = {};
+      const errors: string[] = [];
       for (const [label, selector] of Object.entries(selectors)) {
         try {
           out[label] = await page.$$eval(selector, (els) =>
@@ -97,9 +98,21 @@ export async function openPlaywrightSession(
               .join("\n")
               .trim()
           );
-        } catch {
+        } catch (e) {
+          // Surface evaluation failures as part of the result instead of
+          // silently returning "" — the agent would otherwise infer the
+          // page has no matches when actually the evaluation crashed.
+          const msg = e instanceof Error ? e.message : String(e);
           out[label] = "";
+          errors.push(`${label} (${selector}): ${msg}`);
         }
+      }
+      if (errors.length > 0) {
+        // Throw with a structured message — the agent's error path will
+        // pick this up and can retry / adjust selectors.
+        throw new Error(
+          `playwright extract failed for ${errors.length} selector(s): ${errors.join("; ")}`
+        );
       }
       return out;
     },

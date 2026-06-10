@@ -56,9 +56,26 @@ export async function checkRateLimit(
   if (raw) {
     try {
       const parsed = JSON.parse(raw) as number[];
-      if (Array.isArray(parsed)) timestamps = parsed.filter((t) => t > cutoff);
+      if (!Array.isArray(parsed)) {
+        // Wrong shape — treat as a corrupted record. Fail closed
+        // for one window to prevent a drive-by quota reset attack.
+        return {
+          allowed: false,
+          retryAtMs: now + windowMs,
+          remaining: 0,
+        };
+      }
+      timestamps = parsed.filter((t) => typeof t === "number" && t > cutoff);
     } catch {
-      timestamps = [];
+      // Parse failure → fail closed for one window. The alternative
+      // (silently resetting to 0) lets a malicious or buggy writer
+      // erase the rate limiter, so we refuse the request and let the
+      // next put() above re-establish a clean record.
+      return {
+        allowed: false,
+        retryAtMs: now + windowMs,
+        remaining: 0,
+      };
     }
   }
 

@@ -48,6 +48,25 @@ describe("checkRateLimit", () => {
     expect(r.allowed).toBe(true);
     expect(r.remaining).toBe(4);
   });
+
+  it("fails closed when KV value is malformed JSON", async () => {
+    const b = new MemBackend();
+    // A drive-by attacker (or storage corruption) writes garbage to the
+    // limiter's key. Old behaviour silently reset to 0; we now refuse
+    // requests for one window so the bypass attack fails.
+    await b.put("k", "not-json{");
+    const r = await checkRateLimit(b, "k", { rpm: 5 });
+    expect(r.allowed).toBe(false);
+    expect(r.remaining).toBe(0);
+  });
+
+  it("fails closed when KV value is the wrong shape", async () => {
+    const b = new MemBackend();
+    await b.put("k", JSON.stringify({ not: "an array" }));
+    const r = await checkRateLimit(b, "k", { rpm: 5 });
+    expect(r.allowed).toBe(false);
+    expect(r.remaining).toBe(0);
+  });
 });
 
 describe("rateLimitedResponse", () => {

@@ -168,4 +168,35 @@ describe("generic-foundation principle", () => {
     expect(allFragments).not.toContain("You are BSCode");
     expect(allFragments).not.toMatch(/<bolt[A-Z]/); // <boltThinking>, <boltAction>
   });
+
+  it("source files (including doc comments) are product-agnostic", async () => {
+    // Scan the actual source files of this package to catch product-specific
+    // tokens that may have leaked into doc comments or example strings —
+    // the runtime fragment check above only sees the exported strings, not
+    // the surrounding comments.
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const url = await import("node:url");
+    const here = path.dirname(url.fileURLToPath(import.meta.url));
+    const files = ["fragments.ts", "diagrams.ts", "composePrompt.ts", "index.ts"];
+    for (const f of files) {
+      const text = await fs.readFile(path.join(here, f), "utf8");
+      for (const banned of [
+        "BSCode",
+        "Lovable",
+        "v0.dev",
+        "WebContainers",
+        "boltThinking",
+        "bolt.new",
+      ]) {
+        if (text.includes(banned)) {
+          throw new Error(`source file ${f} contains banned token "${banned}"`);
+        }
+      }
+      // case-insensitive bscode check
+      if (/bscode/i.test(text)) {
+        throw new Error(`source file ${f} contains "bscode" (case-insensitive)`);
+      }
+    }
+  });
 });

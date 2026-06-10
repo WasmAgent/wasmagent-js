@@ -22,27 +22,58 @@ interface CdpRequest {
  */
 class CdpClient {
   readonly #ws: WebSocket;
+  readonly #defaultTimeoutMs: number;
   #nextId = 1;
+  #closed = false;
   readonly #pending = new Map<
     number,
-    { resolve: (v: unknown) => void; reject: (e: Error) => void }
+    {
+      resolve: (v: unknown) => void;
+      reject: (e: Error) => void;
+      timeoutId: ReturnType<typeof setTimeout>;
+    }
   >();
 
-  constructor(wsEndpoint: string) {
+  constructor(wsEndpoint: string, defaultTimeoutMs = 30_000) {
     this.#ws = new WebSocket(wsEndpoint);
+    this.#defaultTimeoutMs = defaultTimeoutMs;
+
     this.#ws.addEventListener("message", (ev) => {
-      const data = JSON.parse(String(ev.data)) as {
-        id?: number;
-        result?: unknown;
-        error?: { message: string };
-      };
+      let data: { id?: number; result?: unknown; error?: { message: string } };
+      try {
+        data = JSON.parse(String(ev.data));
+      } catch (err) {
+        // Don't throw inside an event listener — that would crash the WS
+        // pipeline and leak every pending RPC indefinitely.
+        // biome-ignore lint/suspicious/noConsole: intentional warn for malformed message
+        console.warn("[CdpClient] dropping malformed message", {
+          sample: String(ev.data).slice(0, 200),
+          error: err,
+        });
+        return;
+      }
       if (typeof data.id !== "number") return;
       const handler = this.#pending.get(data.id);
       if (!handler) return;
       this.#pending.delete(data.id);
+      clearTimeout(handler.timeoutId);
       if (data.error) handler.reject(new Error(data.error.message));
       else handler.resolve(data.result);
     });
+
+    // When the underlying WS dies, every in-flight RPC must be rejected
+    // — otherwise callers hang forever waiting for a response that will
+    // never arrive.
+    const rejectAllPending = (reason: string) => {
+      this.#closed = true;
+      for (const { reject, timeoutId } of this.#pending.values()) {
+        clearTimeout(timeoutId);
+        reject(new Error(`CdpClient: ${reason}`));
+      }
+      this.#pending.clear();
+    };
+    this.#ws.addEventListener("close", () => rejectAllPending("WebSocket closed"));
+    this.#ws.addEventListener("error", () => rejectAllPending("WebSocket error"));
   }
 
   async ready(): Promise<void> {
@@ -62,16 +93,47 @@ class CdpClient {
   }
 
   send<T = unknown>(method: string, params?: Record<string, unknown>): Promise<T> {
+    if (this.#closed) {
+      return Promise.reject(new Error("CdpClient: cannot send on closed connection"));
+    }
     return new Promise((resolve, reject) => {
       const id = this.#nextId++;
       const req: CdpRequest = params ? { id, method, params } : { id, method };
-      this.#pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
-      this.#ws.send(JSON.stringify(req));
+      // Per-request timeout — without this, a stuck remote browser hangs
+      // the call forever.
+      const timeoutId = setTimeout(() => {
+        if (this.#pending.delete(id)) {
+          reject(new Error(`CdpClient: ${method} timed out after ${this.#defaultTimeoutMs}ms`));
+        }
+      }, this.#defaultTimeoutMs);
+      this.#pending.set(id, {
+        resolve: resolve as (v: unknown) => void,
+        reject,
+        timeoutId,
+      });
+      try {
+        this.#ws.send(JSON.stringify(req));
+      } catch (e) {
+        clearTimeout(timeoutId);
+        this.#pending.delete(id);
+        reject(e instanceof Error ? e : new Error(String(e)));
+      }
     });
   }
 
   close(): void {
-    this.#ws.close();
+    if (this.#closed) return;
+    this.#closed = true;
+    for (const { reject, timeoutId } of this.#pending.values()) {
+      clearTimeout(timeoutId);
+      reject(new Error("CdpClient: connection closed by user"));
+    }
+    this.#pending.clear();
+    try {
+      this.#ws.close();
+    } catch {
+      // already closed — safe to ignore
+    }
   }
 }
 
@@ -85,11 +147,25 @@ class CdpClient {
  * isn't installed, this is the lighter path.
  */
 export async function openCdpSession(opts: CdpSessionOpts): Promise<BrowserSession> {
-  const cdp = new CdpClient(opts.wsEndpoint);
+  const cdp = new CdpClient(opts.wsEndpoint, opts.timeoutMs);
   await cdp.ready();
   await cdp.send("Page.enable");
   await cdp.send("Runtime.enable");
   await cdp.send("DOM.enable");
+
+  // Helper: run a JS expression in the page and surface CDP exceptions
+  // explicitly. Without this, `r.result.value` is silently `undefined`
+  // when the evaluation throws (CDP populates `exceptionDetails` instead).
+  const evaluate = async <T = string>(expression: string): Promise<T> => {
+    const r = (await cdp.send("Runtime.evaluate", { expression })) as {
+      result: { value?: T };
+      exceptionDetails?: { text: string };
+    };
+    if (r.exceptionDetails) {
+      throw new Error(`CDP eval threw: ${r.exceptionDetails.text}`);
+    }
+    return r.result.value as T;
+  };
 
   return {
     async navigate(url: string) {
@@ -98,24 +174,16 @@ export async function openCdpSession(opts: CdpSessionOpts): Promise<BrowserSessi
       const start = Date.now();
       const timeoutMs = opts.timeoutMs ?? 30_000;
       while (Date.now() - start < timeoutMs) {
-        const r = (await cdp.send("Runtime.evaluate", {
-          expression: "document.readyState",
-        })) as { result: { value: string } };
-        if (r.result.value === "complete") break;
+        const state = await evaluate<string>("document.readyState");
+        if (state === "complete") break;
         await new Promise((res) => setTimeout(res, 100));
       }
-      const titleR = (await cdp.send("Runtime.evaluate", { expression: "document.title" })) as {
-        result: { value: string };
-      };
-      const domR = (await cdp.send("Runtime.evaluate", {
-        expression: "document.documentElement.outerHTML",
-      })) as { result: { value: string } };
-      return { title: titleR.result.value, dom: domR.result.value };
+      const title = await evaluate<string>("document.title");
+      const dom = await evaluate<string>("document.documentElement.outerHTML");
+      return { title, dom };
     },
     async click(selector: string) {
-      await cdp.send("Runtime.evaluate", {
-        expression: `document.querySelector(${JSON.stringify(selector)})?.click()`,
-      });
+      await evaluate<void>(`document.querySelector(${JSON.stringify(selector)})?.click()`);
     },
     async fill(selector: string, value: string) {
       const expr = `(() => {
@@ -126,7 +194,7 @@ export async function openCdpSession(opts: CdpSessionOpts): Promise<BrowserSessi
         el.dispatchEvent(new Event('change', { bubbles: true }));
         return true;
       })()`;
-      await cdp.send("Runtime.evaluate", { expression: expr });
+      await evaluate<void>(expr);
     },
     async screenshot(screenshotOpts?: { fullPage?: boolean }) {
       const r = (await cdp.send("Page.captureScreenshot", {
@@ -140,10 +208,10 @@ export async function openCdpSession(opts: CdpSessionOpts): Promise<BrowserSessi
       for (const [label, selector] of Object.entries(selectors)) {
         const expr = `Array.from(document.querySelectorAll(${JSON.stringify(selector)}))
           .map(e => e.innerText ?? e.textContent ?? '').join('\\n').trim()`;
-        const r = (await cdp.send("Runtime.evaluate", { expression: expr })) as {
-          result: { value?: string };
-        };
-        out[label] = r.result.value ?? "";
+        // Let evaluate() throw on CDP exceptions — extract should not
+        // silently return "" when the page evaluation crashes; the agent
+        // would otherwise see "no matches" and infer a wrong fact.
+        out[label] = (await evaluate<string>(expr)) ?? "";
       }
       return out;
     },
