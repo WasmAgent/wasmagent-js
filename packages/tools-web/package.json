@@ -1,0 +1,41 @@
+{
+  "name": "@agentkit-js/tools-web",
+  "version": "0.1.0",
+  "description": "Web search tools for agentkit-js — Tavily, Brave, Perplexity adapters",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "agentkit",
+    "tools",
+    "web-search",
+    "tavily",
+    "brave",
+    "perplexity"
+  ],
+  "license": "Apache-2.0"
+}
