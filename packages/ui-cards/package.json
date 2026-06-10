@@ -1,0 +1,36 @@
+{
+  "name": "@agentkit-js/ui-cards",
+  "version": "0.1.0",
+  "description": "Card block parser for agentkit-js — extracts ```card:* fenced blocks from AI reply text",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist .turbo"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "agentkit",
+    "cards",
+    "markdown",
+    "d2",
+    "parser"
+  ],
+  "license": "Apache-2.0"
+}
