@@ -54,6 +54,14 @@
         "vite": "^6.0.0",
       },
     },
+    "examples/eval-suite": {
+      "name": "example-eval-suite",
+      "version": "0.1.0",
+      "dependencies": {
+        "@agentkit-js/core": "workspace:*",
+        "@agentkit-js/model-anthropic": "workspace:*",
+      },
+    },
     "examples/tool-calling-agent": {
       "name": "tool-calling-agent-example",
       "version": "0.1.0",
@@ -1173,6 +1181,8 @@
     "eventsource-parser": ["eventsource-parser@3.1.0", "https://registry.npmmirror.com/eventsource-parser/-/eventsource-parser-3.1.0.tgz", {}, "sha512-kJezFj9YFAMLeORyi7aCLxLbD5/qWMQnoMVlVPyHIll7lgRJCc3JVln9Vgl9nwQi0YkMnhdGTMNn7CkRRAptMg=="],
 
     "example-browser-screenshot": ["example-browser-screenshot@workspace:examples/browser-screenshot"],
+
+    "example-eval-suite": ["example-eval-suite@workspace:examples/eval-suite"],
 
     "example-tool-search-rag": ["example-tool-search-rag@workspace:examples/tool-search-rag"],
 
