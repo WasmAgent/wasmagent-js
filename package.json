@@ -8,7 +8,8 @@
   "packageManager": "bun@1.3.14",
   "workspaces": [
     "packages/*",
-    "examples/*"
+    "examples/*",
+    "tests/integration"
   ],
   "engines": {
     "node": ">=20.0.0",

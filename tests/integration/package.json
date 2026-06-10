@@ -1,0 +1,16 @@
+{
+  "name": "@agentkit-js/integration-tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agentkit-js/agent-prompts": "workspace:*",
+    "@agentkit-js/ui-cards": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}
