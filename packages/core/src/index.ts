@@ -126,16 +126,22 @@ export {
 } from "./guardrails/index.js";
 export type {
   AssemblerConfig,
+  Bm25Match,
   EditToolResultsOptions,
   Embedder,
   EmbedResult,
+  HybridRetrieverOpts,
   MemoryToolOptions,
   Retriever,
   SearchResult,
 } from "./memory/index.js";
 // Memory
 export {
+  Bm25Indexer,
+  bm25Tokenize,
   createMemoryTool,
+  HybridRetriever,
+  hybridRetriever,
   InMemoryVectorStore,
   KvBackendVectorStore,
   LazyObservationHandle,

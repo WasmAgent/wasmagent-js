@@ -1,3 +1,7 @@
+export type { Bm25Match } from "./Bm25Indexer.js";
+export { Bm25Indexer, tokenize as bm25Tokenize } from "./Bm25Indexer.js";
+export type { HybridRetrieverOpts } from "./HybridRetriever.js";
+export { HybridRetriever, hybridRetriever } from "./HybridRetriever.js";
 export { LazyObservationHandle } from "./LazyObservationHandle.js";
 export type { MemoryToolOptions } from "./MemoryTool.js";
 export { createMemoryTool, MapKvBackend } from "./MemoryTool.js";
