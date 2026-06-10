@@ -91,6 +91,11 @@ export interface ToolCallingAgentOptions {
    * Default: 2.
    */
   outputSchemaRetries?: number;
+  /**
+   * Max output tokens per model call. Default: 8192.
+   * Increase for framework/file-generation tasks where tool call JSON can be large.
+   */
+  maxTokensPerStep?: number;
 }
 
 /**
@@ -121,6 +126,7 @@ export class ToolCallingAgent {
   // biome-ignore lint/suspicious/noExplicitAny: intentional
   readonly #outputSchema: ZodSchema<any> | undefined;
   readonly #outputSchemaRetries: number;
+  readonly #maxTokensPerStep: number;
 
   constructor(opts: ToolCallingAgentOptions) {
     this.#tools = new ToolRegistry();
@@ -140,6 +146,7 @@ export class ToolCallingAgent {
     this.#toolGuardrails = opts.toolGuardrails ?? [];
     this.#outputSchema = opts.outputSchema;
     this.#outputSchemaRetries = opts.outputSchemaRetries ?? 2;
+    this.#maxTokensPerStep = opts.maxTokensPerStep ?? 8192;
     this.#toolsSchema = this.#tools.toJsonSchema();
     this.#assembler =
       opts.assembler ??
@@ -312,6 +319,8 @@ export class ToolCallingAgent {
           for await (const event of this.#model.generate(messages, {
             stream: true,
             tools: this.#toolsSchema,
+            maxTokens: this.#maxTokensPerStep,
+            disableParallelToolUse: true,
             ...(outputResponseFormat ? { responseFormat: outputResponseFormat } : {}),
           })) {
             if (event.type === "text_delta" && event.delta) {
@@ -333,6 +342,8 @@ export class ToolCallingAgent {
         for await (const event of this.#model.generate(messages, {
           stream: true,
           tools: this.#toolsSchema,
+          maxTokens: this.#maxTokensPerStep,
+          disableParallelToolUse: true,
           ...(outputResponseFormat ? { responseFormat: outputResponseFormat } : {}),
         })) {
           if (event.type === "text_delta" && event.delta) {

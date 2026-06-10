@@ -255,6 +255,13 @@ export class AnthropicModel implements Model {
         type: "tool",
         name: structuredOutputToolName,
       };
+    } else if (opts.disableParallelToolUse) {
+      // Prevent parallel tool calls — model calls one tool at a time.
+      // Fixes empty-args bug where batched parallel calls have truncated JSON.
+      (streamParams as unknown as Record<string, unknown>).tool_choice = {
+        type: "auto",
+        disable_parallel_tool_use: true,
+      };
     } else if (opts.responseFormat?.type === "json_object") {
       // R4: Anthropic has no native json_object mode. Use system instruction + assistant pre-fill.
       // Callers should prefer json_schema for reliable output.
