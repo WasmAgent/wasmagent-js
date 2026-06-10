@@ -76,6 +76,15 @@
         "vitest": "^2.1.0",
       },
     },
+    "packages/agent-prompts": {
+      "name": "@agentkit-js/agent-prompts",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.7.0",
+        "vitest": "^2.1.0",
+      },
+    },
     "packages/cli": {
       "name": "@agentkit-js/cli",
       "version": "0.1.0",
@@ -361,6 +370,8 @@
     "@agentkit-js/a2a": ["@agentkit-js/a2a@workspace:packages/a2a"],
 
     "@agentkit-js/ag-ui": ["@agentkit-js/ag-ui@workspace:packages/ag-ui"],
+
+    "@agentkit-js/agent-prompts": ["@agentkit-js/agent-prompts@workspace:packages/agent-prompts"],
 
     "@agentkit-js/cli": ["@agentkit-js/cli@workspace:packages/cli"],
 
