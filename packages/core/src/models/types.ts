@@ -119,6 +119,13 @@ export interface GenerateOptions {
    * "low" = terse; "medium" = default; "high" = detailed.
    */
   verbosity?: "low" | "medium" | "high";
+  /**
+   * When true, instructs the model to call tools one at a time (sequential).
+   * Prevents the parallel-batch empty-args bug where one call in a batch
+   * has path=undefined/content=undefined due to streaming truncation.
+   * Anthropic: maps to tool_choice.disable_parallel_tool_use=true.
+   */
+  disableParallelToolUse?: boolean;
 }
 
 export type ResponseFormat =
