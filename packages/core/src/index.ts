@@ -30,11 +30,19 @@ export type {
 } from "./checkpoint/index.js";
 // Checkpoint / durable workflows
 export {
+  applyHumanResponse,
   CheckpointableRun,
   InMemoryCheckpointer,
   KvCheckpointer,
   restoreFromSnapshot,
+  resumeFromHuman,
 } from "./checkpoint/index.js";
+export type {
+  RedisClientLike,
+  RedisClientOptions,
+  RedisRestOptions,
+} from "./checkpoint/redis.js";
+export { RedisKvBackend, RedisRestKvBackend } from "./checkpoint/redis.js";
 export type {
   BudgetForcingOptions,
   BudgetForcingResult,
@@ -216,6 +224,9 @@ export { InMemorySpanExporter, OtelBridge, withOtel } from "./observability/inde
 export type { ActionIR, CallDescriptor, IRNode, SchedulerEvent } from "./scheduler/index.js";
 // Scheduler
 export { deriveDependencies, Scheduler, SimpleIR } from "./scheduler/index.js";
+export type { EventLogOptions, LoggedEvent } from "./streaming/EventLog.js";
+// A2 — durable SSE streaming with Last-Event-ID resume
+export { EventLog, formatSseFrame } from "./streaming/EventLog.js";
 export type { ParsedAction, ParsedActionType } from "./streaming/StreamingActionParser.js";
 
 // Streaming — bolt.diy StreamingMessageParser pattern

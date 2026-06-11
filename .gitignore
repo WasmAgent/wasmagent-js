@@ -7,3 +7,4 @@ dist/
 .wrangler/
 coverage/
 *.log
+examples/benchmarks/report-*.md

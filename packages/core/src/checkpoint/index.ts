@@ -4,9 +4,10 @@
  * Enables saving agent state after each step and resuming from a checkpoint
  * after process restarts or human-in-the-loop pauses.
  *
- * Interface is storage-agnostic. Two built-in implementations:
+ * Interface is storage-agnostic. Built-in implementations:
  *  - InMemoryCheckpointer (tests, single-process)
- *  - (future) KV-backed checkpointer for Cloudflare Workers / Redis
+ *  - KvCheckpointer (any KvBackend — paired with adapters in core, the
+ *    Cloudflare Workers package, and Redis transports below)
  *
  * Human-in-the-loop flow:
  *   1. Agent emits "await_human_input" event with a promptId.
@@ -113,10 +114,28 @@ export class InMemoryCheckpointer implements Checkpointer {
  *     delete: async (k) => { kv.delete(k); },
  *   });
  */
+/**
+ * Single canonical KV contract used by checkpointing, StructuredMemory,
+ * MemoryTool, and KvBackendVectorStore.
+ *
+ * Implementations: `MapKvBackend` (in-memory, includes list), `CloudflareKvBackend`,
+ * `RedisKvBackend`, `DurableObjectKvBackend`. Adapters wrapping foreign stores
+ * (e.g. Cloudflare Workers KV's `KVNamespace`) should implement this interface
+ * directly — do NOT introduce a parallel KV abstraction.
+ *
+ * `list(prefix)` is OPTIONAL because some legacy backends (raw key/value caches)
+ * cannot enumerate. Consumers that need enumeration must check for it
+ * (e.g. `if (!backend.list) throw new Error("list required")`).
+ */
 export interface KvBackend {
   get(key: string): Promise<string | null>;
   put(key: string, value: string): Promise<void>;
   delete(key: string): Promise<void>;
+  /**
+   * Optional: list all keys with the given prefix. Required by
+   * StructuredMemory.query/decay/count and KvBackendVectorStore index loads.
+   */
+  list?(prefix: string): Promise<string[]>;
 }
 
 export class KvCheckpointer implements Checkpointer {
@@ -213,6 +232,26 @@ export class CheckpointableRun {
         }
       }
 
+      // A3 — human-in-the-loop suspend: persist a snapshot tagged with the
+      // pending prompt and stop iterating. The parent process can now exit
+      // (Cloudflare Worker recycle, container restart, audit-wait of hours/
+      // days) and the run is fully resumable from the snapshot. The agent
+      // generator is *abandoned*, not awaited — that is intentional, since
+      // resume happens in a fresh process via `restoreFromSnapshot()`.
+      if (ev.event === "await_human_input") {
+        const stepIndex = (ev as { data: { step: number } }).data.step;
+        const prompt = (ev as { data: { prompt: string; promptId: string } }).data;
+        await this.#checkpointer.save(traceId, {
+          traceId,
+          task,
+          history: this.#getHistory(),
+          stepIndex,
+          savedAtMs: ev.timestampMs,
+          pendingHumanInput: { promptId: prompt.promptId, prompt: prompt.prompt },
+        });
+        return;
+      }
+
       // Delete checkpoint on successful completion.
       if (ev.event === "final_answer") {
         await this.#checkpointer.delete(traceId);
@@ -240,4 +279,49 @@ export function restoreFromSnapshot(snapshot: AgentSnapshot, assembler: MessageA
     if (step.type === "user_message" && step.content === snapshot.task) continue;
     assembler.addStep(step);
   }
+}
+
+/**
+ * A3 — Stateless HITL resume. Submits a human response for a paused run.
+ *
+ * 1. The caller (typically an HTTP `POST /resume` handler) verifies that
+ *    a snapshot exists for `traceId` and is in the awaiting state.
+ * 2. The response is persisted via {@link Checkpointer.respond}.
+ * 3. The function returns `true` if the snapshot was successfully marked
+ *    ready for resume, or `false` if the trace doesn't exist / isn't paused.
+ *
+ * The actual agent re-spawn (load snapshot → restore assembler → continue)
+ * is performed by the host application (worker route, queue worker, etc.)
+ * — this helper does NOT itself spin up an agent, because doing so would
+ * require knowledge of the model/tools/kernel that core cannot have.
+ */
+export async function resumeFromHuman(
+  checkpointer: Checkpointer,
+  traceId: string,
+  promptId: string,
+  response: string
+): Promise<boolean> {
+  const snap = await checkpointer.load(traceId);
+  if (!snap) return false;
+  if (!snap.pendingHumanInput) return false;
+  if (snap.pendingHumanInput.promptId !== promptId) return false;
+  await checkpointer.respond(traceId, promptId, response);
+  return true;
+}
+
+/**
+ * Inject a human response into a restored assembler as a user_message step,
+ * so the next agent invocation sees the response in its message history.
+ *
+ * Call after {@link restoreFromSnapshot} when continuing a paused run.
+ */
+export function applyHumanResponse(
+  snapshot: AgentSnapshot,
+  assembler: MessageAssembler
+): void {
+  const resp = snapshot.humanResponse;
+  if (!resp) return;
+  // Inject as a plain user_message — the assembler will render it as
+  // `{ role: "user", content: response }` on the next build().
+  assembler.addStep({ type: "user_message", content: resp.response });
 }
