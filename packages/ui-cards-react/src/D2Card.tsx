@@ -324,7 +324,15 @@ export function D2Card({ content, meta, onRenderD2, className, style, fillHeight
       )}
 
       {/* Render SVG in an iframe to isolate its styles from the host page.
-          srcDoc preserves UTF-8 encoding; data: URI would default to Latin-1. */}
+          srcDoc preserves UTF-8 encoding; data: URI would default to Latin-1.
+
+          SECURITY: sandbox is `allow-scripts` only — no `allow-same-origin`,
+          no `allow-forms`. The compiled D2 SVG is static markup; the only
+          script we run inside is a tiny postMessage call that reports the
+          rendered height back to the host. With a `null` origin and no
+          form/modal capability, even a maliciously-crafted D2 source can't
+          read host cookies, localStorage, or top-frame DOM. Do not relax
+          this sandbox without re-reviewing the threat model. */}
       {state.status === "ok" && svgSrcDoc && (
         <iframe
           ref={iframeRef}
