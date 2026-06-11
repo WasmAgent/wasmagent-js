@@ -2,7 +2,7 @@
   "name": "agentkit-js",
   "version": "0.1.0",
   "private": true,
-  "description": "TypeScript + WASM agent runtime \u2014 a high-efficiency reimagination of smolagents",
+  "description": "TypeScript + WASM agent runtime — a high-efficiency reimagination of smolagents",
   "license": "Apache-2.0",
   "type": "module",
   "packageManager": "bun@1.3.14",
@@ -24,14 +24,25 @@
     "dev": "turbo run dev --parallel",
     "lint:fix": "biome check --write packages/",
     "format": "biome format --write packages/",
-    "bench": "node examples/benchmarks/run-all.mjs"
+    "bench": "node examples/benchmarks/run-all.mjs",
+    "fixup:packages": "node scripts/fixup-package-metadata.mjs && node scripts/fixup-tsconfig-exclude.mjs",
+    "fixup:packages:check": "node scripts/fixup-package-metadata.mjs --check",
+    "publish:check": "node scripts/publish-check.mjs",
+    "release:version": "changeset version",
+    "release:publish": "changeset publish",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
+    "@changesets/changelog-github": "^0.7.0",
+    "@changesets/cli": "^2.31.0",
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^2.1.9",
     "turbo": "^2.3.0",
     "typescript": "^5.7.0",
+    "vitepress": "^1.6.4",
     "vitest": "^2.1.0"
   }
 }

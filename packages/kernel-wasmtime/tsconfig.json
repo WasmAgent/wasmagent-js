@@ -7,5 +7,6 @@
     "lib": ["ES2022"],
     "types": ["node"]
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["**/*.spec.ts", "**/*.test.ts", "**/*.test.tsx", "dist", "node_modules"]
 }

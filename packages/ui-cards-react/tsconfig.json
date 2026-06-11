@@ -8,5 +8,10 @@
     "lib": ["ES2022", "DOM"]
   },
   "include": ["src/**/*"],
-  "references": [{ "path": "../ui-cards" }]
+  "references": [
+    {
+      "path": "../ui-cards"
+    }
+  ],
+  "exclude": ["**/*.spec.ts", "**/*.test.ts", "**/*.test.tsx", "dist", "node_modules"]
 }
