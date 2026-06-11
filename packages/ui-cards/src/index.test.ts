@@ -102,4 +102,31 @@ describe("parseCardBlocks", () => {
     expect(new Set(ids).size).toBe(3);
     expect(ids).toEqual(["card-0", "card-1", "card-2"]);
   });
+
+  it("recovers when the model escapes the inner closing fence", () => {
+    // Some models emit \``` instead of ``` for the inner code-block
+    // close inside a card. Without recovery the card never terminates
+    // and the whole rest of the message is captured as card content.
+    const text = [
+      "```card:markdown",
+      "## Heading",
+      "```js",
+      "function foo() { return 1; }",
+      "\\```",
+      "End of card",
+      "```",
+      "trailing text",
+    ].join("\n");
+    const result = parseCardBlocks(text);
+    expect(result.cards.length).toBe(1);
+    expect(result.cards[0]?.type).toBe("markdown");
+    // The content should include the unescaped inner closer so the
+    // markdown renderer sees a valid code block.
+    expect(result.cards[0]?.content).toContain("```");
+    expect(result.cards[0]?.content).not.toContain("\\```");
+    // The trailing text is OUTSIDE the card.
+    const lastSeg = result.segments.at(-1);
+    expect(lastSeg?.kind).toBe("text");
+    expect((lastSeg as { content: string }).content).toContain("trailing text");
+  });
 });
