@@ -63,6 +63,10 @@ export interface ParsedMessage {
 const CARD_OPENER = /^```card:([\w-]+)(?:\s+(.*))?$/;
 const FENCE_CLOSER = /^```\s*$/;
 const INNER_FENCE_OPENER = /^```/;
+// Some models escape the inner closing fence as \``` (backslash-fence)
+// when emitting nested code blocks inside a card. Treat that as a
+// regular inner-fence close so the outer card still terminates.
+const ESCAPED_FENCE_CLOSER = /^\\```\s*$/;
 
 /**
  * Parse card blocks from an AI reply text.
@@ -126,6 +130,14 @@ export function parseCardBlocks(text: string): ParsedMessage {
         cardLines = [];
       } else {
         // Track inner fence depth so nested ``` don't close the card prematurely.
+        if (ESCAPED_FENCE_CLOSER.test(line)) {
+          // The model escaped the closer — treat as a regular close
+          // and emit the unescaped form into the card content so the
+          // user-facing markdown renders correctly.
+          innerDepth = Math.max(0, innerDepth - 1);
+          cardLines.push(line.replace(/^\\/, ""));
+          continue;
+        }
         if (INNER_FENCE_OPENER.test(line)) {
           if (FENCE_CLOSER.test(line)) {
             innerDepth = Math.max(0, innerDepth - 1);
