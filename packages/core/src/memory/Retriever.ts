@@ -233,10 +233,14 @@ export function makeRetrievalTool(
       opts.description ?? "Search the knowledge base for relevant documents given a query.",
     inputSchema: z.object({
       query: z.string().describe("The search query"),
+      // Use .min(1) instead of .positive(): zod-to-json-schema's openApi3
+      // target emits draft-04-style `exclusiveMinimum: true` for .positive(),
+      // which Anthropic's draft 2020-12 validator rejects with 400
+      // "tools.N.custom.input_schema: JSON schema is invalid".
       topK: z
         .number()
         .int()
-        .positive()
+        .min(1)
         .optional()
         .describe("Number of results to return (default 3)"),
     }),

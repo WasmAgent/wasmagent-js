@@ -267,6 +267,48 @@ describe("zodToJsonSchema additional branches", () => {
     expect(zodToJsonSchema(z.any())).toEqual({});
   });
 
+  // Regression: zod-to-json-schema's openApi3 target emits draft-04-style
+  // `exclusiveMinimum: true` for `.positive()`, which Anthropic's draft 2020-12
+  // schema validator rejects with HTTP 400. The wrapper must canonicalise.
+  it(".positive() — exclusiveMinimum normalised to numeric (draft 2020-12)", () => {
+    const schema = z.object({
+      n: z.number().int().positive(),
+    });
+    const result = zodToJsonSchema(schema) as Record<string, unknown>;
+    const props = result.properties as Record<string, Record<string, unknown>>;
+    const n = props.n!;
+    // Must NOT carry boolean exclusiveMinimum.
+    expect(n.exclusiveMinimum).not.toBe(true);
+    // Either numeric exclusiveMinimum (preferred) or plain minimum is fine.
+    if ("exclusiveMinimum" in n) {
+      expect(typeof n.exclusiveMinimum).toBe("number");
+    } else {
+      expect(typeof n.minimum).toBe("number");
+    }
+  });
+
+  it(".gt() / .lt() — exclusive bounds normalised to numeric form", () => {
+    const result = zodToJsonSchema(
+      z.object({ n: z.number().gt(5).lt(10) })
+    ) as Record<string, unknown>;
+    const props = result.properties as Record<string, Record<string, unknown>>;
+    const n = props.n!;
+    expect(n.exclusiveMinimum).not.toBe(true);
+    expect(n.exclusiveMaximum).not.toBe(true);
+  });
+
+  it(".min() / .max() — non-exclusive bounds untouched", () => {
+    const result = zodToJsonSchema(
+      z.object({ n: z.number().min(1).max(50) })
+    ) as Record<string, unknown>;
+    const props = result.properties as Record<string, Record<string, unknown>>;
+    const n = props.n!;
+    expect(n.minimum).toBe(1);
+    expect(n.maximum).toBe(50);
+    expect(n.exclusiveMinimum).toBeUndefined();
+    expect(n.exclusiveMaximum).toBeUndefined();
+  });
+
   it("ZodUnknown → {} (empty schema)", () => {
     expect(zodToJsonSchema(z.unknown())).toEqual({});
   });
