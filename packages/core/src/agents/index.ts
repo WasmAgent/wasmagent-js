@@ -1,3 +1,14 @@
+export type {
+  AgentTeamFactory,
+  AgentTeamMember,
+  AgentTeamMemberResult,
+  AgentTeamOptions,
+  AgentTeamResult,
+  AgentTeamScorer,
+  AgentTeamScorerInput,
+  AgentTeamSpawnContext,
+} from "./AgentTeam.js";
+export { AgentTeam, longestAnswerScorer } from "./AgentTeam.js";
 export type { CodeAgentOptions } from "./CodeAgent.js";
 export { CodeAgent } from "./CodeAgent.js";
 export type { HandoffAgent, HandoffOptions, HandoffResult } from "./Handoff.js";

@@ -1,0 +1,41 @@
+{
+  "name": "@agentkit-js/mcp-server",
+  "version": "0.1.0",
+  "description": "Expose any agentkit-js agent as a Model Context Protocol (MCP) server — sync tools/call + 2025-11-25 Tasks for long-running agent work",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "zod": "^3.22.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "agent",
+    "tasks",
+    "elicitation",
+    "agentkit"
+  ],
+  "license": "Apache-2.0"
+}
