@@ -208,7 +208,22 @@ export function useAgentRun(
                 );
               } else if (ev.event === "final_answer" && ev.channel === "text") {
                 flushText(setMessages);
-                const answer = String((ev as { data: { answer: unknown } }).data.answer ?? "");
+                const raw = (ev as { data: { answer: unknown } }).data.answer;
+                // Coerce to a renderable string. String(arr/object) gives
+                // "[object Object]" or comma-joined "[object Object],..."
+                // — useless. JSON-stringify gives readable structure.
+                const answer =
+                  raw == null
+                    ? ""
+                    : typeof raw === "string"
+                      ? raw
+                      : ((): string => {
+                          try {
+                            return JSON.stringify(raw, null, 2) ?? String(raw);
+                          } catch {
+                            return String(raw);
+                          }
+                        })();
                 setFinalAnswer(answer);
                 setMessages((prev) => [
                   ...prev,
