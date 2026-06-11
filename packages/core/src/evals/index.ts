@@ -372,3 +372,19 @@ export { recoveryScorer } from "./RecoveryScorer.js";
 
 export type { RelevanceOpts } from "./RelevanceScorer.js";
 export { relevanceScorer, relevanceScorerAsync } from "./RelevanceScorer.js";
+
+// ── A4 — LLM-as-judge scorer + built-in domain judges ──
+export type {
+  JudgeBreakdown,
+  JudgeCriterion,
+  JudgeScorerOptions,
+  JudgeScorerResult,
+} from "./JudgeScorer.js";
+export {
+  ANSWER_COMPLETENESS_CRITERIA,
+  answerCompletenessJudge,
+  judgeScorer,
+  runJudgeScorer,
+  TRAJECTORY_QUALITY_CRITERIA,
+  trajectoryQualityJudge,
+} from "./JudgeScorer.js";

@@ -1,0 +1,12 @@
+{
+  "name": "agentkit-example-devtools-replay",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*",
+    "@agentkit-js/devtools": "workspace:*"
+  }
+}

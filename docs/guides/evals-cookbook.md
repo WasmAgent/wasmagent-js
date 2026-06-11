@@ -18,7 +18,10 @@ grade benchmarking.
 | `recoveryScorer` | sync | Recovery rate from tool failures |
 | `compositeScorer` | sync | Weighted blend of sub-scorers |
 | `guardrailCompliance` | sync | Output guardrail trip-wires |
-| `llmJudge` | async | Custom LLM-judged rubric |
+| `llmJudge` | async | Custom LLM-judged rubric (coarse 0/0.5/1 scale) |
+| `judgeScorer` (A4) | async | Multi-criterion LLM judge with weighted breakdown |
+| `trajectoryQualityJudge` (A4) | async | Built-in: efficiency + tool-fit + self-correction |
+| `answerCompletenessJudge` (A4) | async | Built-in: coverage + actionability + honesty |
 | `faithfulnessScorer` | async | Hallucination detection vs. tool outputs |
 | `relevanceScorer` | async | Embedding cosine vs. expected answer |
 
@@ -159,3 +162,68 @@ const benchmark = compositeScorer(
 
 Run async scorers (faithfulness, relevance) separately and fold their
 results in manually if you need the full async path.
+
+## A4 — multi-criterion LLM judges
+
+`judgeScorer` is the richer sibling of `llmJudge`. It accepts a list of
+criteria, each with optional weights, and returns a per-criterion
+breakdown alongside the composite score. Two built-in domain judges
+(`trajectoryQualityJudge`, `answerCompletenessJudge`) ship with
+sensible defaults so you can start grading without authoring rubrics.
+
+```ts
+import {
+  answerCompletenessJudge,
+  runJudgeScorer,
+  trajectoryQualityJudge,
+} from "@agentkit-js/core";
+
+// Cheap judge — Haiku / Doubao / DeepSeek all work; the agent stays on Sonnet.
+const judgeModel = new HaikuModel({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+const completeness = await runJudgeScorer(
+  trace,
+  answerCompletenessJudge(judgeModel),
+);
+
+console.log(completeness.score);             // 0..1 weighted composite
+console.log(completeness.breakdown);         // per-criterion raw + normalized + reasoning
+```
+
+### Custom criteria
+
+Pass `criteria` to override the defaults. Weights are optional and
+normalised so they always sum to 1; zero-weight criteria are graded
+but excluded from the composite.
+
+```ts
+const reviewerJudge = judgeScorer({
+  name: "code-review",
+  model: judgeModel,
+  scale: 5,                            // 0–5 scoring instead of 0–10
+  systemPersona: "You are a senior reviewer at FinCorp.",
+  generateOpts: { temperature: 0 },
+  criteria: [
+    { id: "correctness",  description: "Does the patch fix the bug?",       weight: 4 },
+    { id: "tests",        description: "Did the patch add or update tests?", weight: 2 },
+    { id: "style",        description: "Does the patch follow the repo conventions?", weight: 1 },
+  ],
+});
+```
+
+### Why a separate type from `llmJudge`?
+
+`llmJudge` returns a 0/0.5/1 verdict. That's enough for binary
+"passed/failed" decisions but loses signal — an answer that's 70%
+correct collapses to the same bucket as 49%. JudgeScorer keeps the
+nuance via per-criterion grading and a configurable scale. Pick
+`llmJudge` for smoke tests, `judgeScorer` for production benchmarks.
+
+### Pairing rule-based and judge scorers
+
+The two complement each other. Rule-based scorers are cheap,
+deterministic, and anchor the dashboard. Judges add nuance the rules
+can't pattern-match (eg "the answer mentions every required topic but
+glosses over half of them"). The
+[`judge-scorer-demo`](../../examples/judge-scorer-demo/) example shows
+the divergence on a synthetic trace.
