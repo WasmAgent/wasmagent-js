@@ -64,6 +64,13 @@ jobs:
       - name: Test kernel-pyodide (no cache)
         run: bun run --filter @agentkit-js/kernel-pyodide test
 
+      # C1 DoD ② — reproducible benchmarks gate every README percentage.
+      # `pnpm bench` (mapped to `bun run bench`) runs all four offline scripts
+      # in examples/benchmarks/ and exits non-zero if any number drifts outside
+      # its tolerance. Effectively makes "differentiated" claims un-bit-rotable.
+      - name: Reproducible benchmarks (C1)
+        run: bun run bench
+
   deploy-worker:
     name: Deploy Cloudflare Worker (main only)
     runs-on: ubuntu-latest
