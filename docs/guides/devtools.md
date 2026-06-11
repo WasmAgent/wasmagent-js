@@ -114,7 +114,12 @@ intact; the fork is whatever the host page does with the returned
 
 `packages/devtools/src/EventLogReplay.test.ts` covers 9 scenarios incl.
 zero-step traces, out-of-range cursor clamping, defensive copies, and
-the fork metadata shape. Run with `pnpm --filter @agentkit-js/devtools test`.
+the fork metadata shape. `packages/devtools/src/react/DevTools.test.tsx`
+adds 8 jsdom-driven render tests covering initial cursor placement,
+step navigation (`aria-pressed` toggling), prelude events, the Fork
+panel's task/model/note overrides, empty-overrides defaulting, and
+zero-step / empty-trace edge cases. Run with
+`pnpm --filter @agentkit-js/devtools test`.
 
 ## Reference
 
