@@ -1,0 +1,11 @@
+{
+  "name": "agentkit-example-judge-scorer-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*"
+  }
+}

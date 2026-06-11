@@ -68,6 +68,10 @@ export type {
   EvalRunResult,
   EvalSample,
   FaithfulnessOpts,
+  JudgeBreakdown,
+  JudgeCriterion,
+  JudgeScorerOptions,
+  JudgeScorerResult,
   LlmJudgeScorerResult,
   RelevanceOpts,
   Scorer,
@@ -76,6 +80,8 @@ export type {
 } from "./evals/index.js";
 // Evals
 export {
+  ANSWER_COMPLETENESS_CRITERIA,
+  answerCompletenessJudge,
   collectTrace,
   compositeScorer,
   constraintScorer,
@@ -86,13 +92,17 @@ export {
   finalAnswerLength,
   guardrailCompliance,
   guardrailComplianceAsync,
+  judgeScorer,
   llmJudge,
   llmJudgeAsync,
   recoveryScorer,
   relevanceScorer,
   relevanceScorerAsync,
   runEval,
+  runJudgeScorer,
   toolCallAccuracy,
+  TRAJECTORY_QUALITY_CRITERIA,
+  trajectoryQualityJudge,
   trajectoryValidity,
 } from "./evals/index.js";
 export type { ErrorClassification } from "./executor/ErrorClassifier.js";
@@ -131,6 +141,8 @@ export type {
   OutputGuardrail,
   ToolGuardrail,
   ToolGuardrailContext,
+  ToolPostHook,
+  ToolPostHookContext,
 } from "./guardrails/index.js";
 // Guardrails (A1 / S1-S4)
 export {
@@ -141,10 +153,21 @@ export {
   intentAlignmentGuardrail,
   llamaGuardAdapter,
   maxInputLength,
+  redactPostHook,
   runInputGuardrails,
   runOutputGuardrails,
   runToolGuardrails,
+  runToolPostHooks,
+  truncatePostHook,
 } from "./guardrails/index.js";
+export type {
+  ActivationResult,
+  Skill,
+  SkillBody,
+  SkillManifest,
+  SkillTrigger,
+} from "./skills/index.js";
+export { SkillRegistry } from "./skills/index.js";
 export type {
   AssemblerConfig,
   Bm25Match,
@@ -157,6 +180,9 @@ export type {
   MemoryEntry,
   MemoryNamespace,
   MemoryToolOptions,
+  Observation,
+  ObservationalMemoryOptions,
+  ObservationPriority,
   QueryFilter,
   Retriever,
   SearchResult,
@@ -177,6 +203,7 @@ export {
   MapKvBackend,
   MessageAssembler,
   makeRetrievalTool,
+  ObservationalMemory,
   StructuredMemory,
   TfidfEmbedder,
 } from "./memory/index.js";

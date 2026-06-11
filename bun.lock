@@ -54,6 +54,13 @@
         "vite": "^6.0.0",
       },
     },
+    "examples/devtools-replay": {
+      "name": "agentkit-example-devtools-replay",
+      "dependencies": {
+        "@agentkit-js/core": "workspace:*",
+        "@agentkit-js/devtools": "workspace:*",
+      },
+    },
     "examples/durable-runtime": {
       "name": "agentkit-example-durable-runtime",
       "dependencies": {
@@ -66,6 +73,18 @@
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
         "@agentkit-js/model-anthropic": "workspace:*",
+      },
+    },
+    "examples/judge-scorer-demo": {
+      "name": "agentkit-example-judge-scorer-demo",
+      "dependencies": {
+        "@agentkit-js/core": "workspace:*",
+      },
+    },
+    "examples/skills-demo": {
+      "name": "agentkit-example-skills-demo",
+      "dependencies": {
+        "@agentkit-js/core": "workspace:*",
       },
     },
     "examples/tool-calling-agent": {
@@ -173,6 +192,25 @@
       },
       "optionalPeers": [
         "@modelcontextprotocol/sdk",
+      ],
+    },
+    "packages/devtools": {
+      "name": "@agentkit-js/devtools",
+      "version": "0.1.0",
+      "dependencies": {
+        "@agentkit-js/core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/react": "^18.0.0",
+        "react": "^18.0.0",
+        "typescript": "^5.0.0",
+        "vitest": "^2.0.0",
+      },
+      "peerDependencies": {
+        "react": ">=18.0.0",
+      },
+      "optionalPeers": [
+        "react",
       ],
     },
     "packages/kernel-pyodide": {
@@ -500,6 +538,8 @@
     "@agentkit-js/cloudflare-worker": ["@agentkit-js/cloudflare-worker@workspace:packages/cloudflare-worker"],
 
     "@agentkit-js/core": ["@agentkit-js/core@workspace:packages/core"],
+
+    "@agentkit-js/devtools": ["@agentkit-js/devtools@workspace:packages/devtools"],
 
     "@agentkit-js/integration-tests": ["@agentkit-js/integration-tests@workspace:tests/integration"],
 
@@ -969,7 +1009,13 @@
 
     "agentkeepalive": ["agentkeepalive@4.6.0", "https://registry.npmmirror.com/agentkeepalive/-/agentkeepalive-4.6.0.tgz", { "dependencies": { "humanize-ms": "1.2.1" } }, "sha512-kja8j7PjmncONqaTsB8fQ+wE2mSU2DJ9D4XKoJ5PFWIdRMa6SLSN1ff4mOr4jCbfRSsxR4keIiySJU0N9T5hIQ=="],
 
+    "agentkit-example-devtools-replay": ["agentkit-example-devtools-replay@workspace:examples/devtools-replay"],
+
     "agentkit-example-durable-runtime": ["agentkit-example-durable-runtime@workspace:examples/durable-runtime"],
+
+    "agentkit-example-judge-scorer-demo": ["agentkit-example-judge-scorer-demo@workspace:examples/judge-scorer-demo"],
+
+    "agentkit-example-skills-demo": ["agentkit-example-skills-demo@workspace:examples/skills-demo"],
 
     "ajv": ["ajv@8.20.0", "https://registry.npmmirror.com/ajv/-/ajv-8.20.0.tgz", { "dependencies": { "fast-deep-equal": "3.1.3", "fast-uri": "3.1.2", "json-schema-traverse": "1.0.0", "require-from-string": "2.0.2" } }, "sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA=="],
 

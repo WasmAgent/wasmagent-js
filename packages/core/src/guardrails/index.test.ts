@@ -6,10 +6,14 @@ import {
   type InputGuardrail,
   maxInputLength,
   type OutputGuardrail,
+  redactPostHook,
   runInputGuardrails,
   runOutputGuardrails,
   runToolGuardrails,
+  runToolPostHooks,
   type ToolGuardrail,
+  type ToolPostHook,
+  truncatePostHook,
 } from "./index.js";
 
 describe("maxInputLength guardrail", () => {
@@ -227,5 +231,86 @@ describe("B1 — classifierGuardrail onError behavior", () => {
     const g = classifierGuardrail({ model: safeModel, onError: "closed" });
     const result = await g.check("safe content");
     expect(result.tripwireTriggered).toBe(false);
+  });
+});
+
+// ── A3 — Lifecycle post-hook tests ───────────────────────────────────────
+describe("runToolPostHooks", () => {
+  const baseCtx = { input: { x: 1 }, durationMs: 5 };
+
+  it("returns the initial output unchanged when there are no hooks", async () => {
+    const out = await runToolPostHooks([], "tool", "hello", baseCtx);
+    expect(out).toBe("hello");
+  });
+
+  it("returns the output unchanged when hooks only audit (no rewrite)", async () => {
+    const seen: string[] = [];
+    const audit: ToolPostHook = {
+      name: "audit",
+      after(toolName, ctx) {
+        seen.push(`${toolName}:${String(ctx.output)}`);
+      },
+    };
+    const out = await runToolPostHooks([audit], "read_file", "contents", baseCtx);
+    expect(out).toBe("contents");
+    expect(seen).toEqual(["read_file:contents"]);
+  });
+
+  it("applies a rewrite from a hook to the next hook in the chain", async () => {
+    const upper: ToolPostHook = {
+      name: "upper",
+      after(_toolName, ctx) {
+        return { rewrite: String(ctx.output).toUpperCase() };
+      },
+    };
+    const exclaim: ToolPostHook = {
+      name: "exclaim",
+      after(_toolName, ctx) {
+        return { rewrite: `${String(ctx.output)}!` };
+      },
+    };
+    const out = await runToolPostHooks([upper, exclaim], "t", "hi", baseCtx);
+    expect(out).toBe("HI!");
+  });
+
+  it("redactPostHook replaces matches with a sentinel", async () => {
+    const hook = redactPostHook({ pattern: /sk-[a-z0-9]{6,}/gi });
+    const raw = "key=sk-abcdef123 in config";
+    const out = await runToolPostHooks([hook], "t", raw, baseCtx);
+    expect(out).toBe("key=[REDACTED] in config");
+  });
+
+  it("redactPostHook leaves unrelated outputs untouched", async () => {
+    const hook = redactPostHook({ pattern: /sk-[a-z0-9]{6,}/gi });
+    const out = await runToolPostHooks([hook], "t", "no secrets here", baseCtx);
+    expect(out).toBe("no secrets here");
+  });
+
+  it("truncatePostHook keeps short outputs and tail-truncates long ones", async () => {
+    const hook = truncatePostHook({ maxChars: 10 });
+    const short = await runToolPostHooks([hook], "t", "short", baseCtx);
+    expect(short).toBe("short");
+    const longInput = "abcdefghijklmnopqrstuvwxyz";
+    const long = await runToolPostHooks([hook], "t", longInput, baseCtx);
+    expect(typeof long).toBe("string");
+    expect((long as string).endsWith("qrstuvwxyz")).toBe(true);
+    expect((long as string)).toContain("truncated");
+  });
+
+  it("hook errors are swallowed and do not break the chain", async () => {
+    const bad: ToolPostHook = {
+      name: "bad",
+      after() {
+        throw new Error("oops");
+      },
+    };
+    const trail: ToolPostHook = {
+      name: "trail",
+      after(_t, ctx) {
+        return { rewrite: `${String(ctx.output)} (trailed)` };
+      },
+    };
+    const out = await runToolPostHooks([bad, trail], "t", "input", baseCtx);
+    expect(out).toBe("input (trailed)");
   });
 });

@@ -464,3 +464,92 @@ export async function runToolGuardrails(
   }
   return null;
 }
+
+// ── A3 — Lifecycle hooks (pre/post-tool observation & rewrite) ─────────────
+
+/**
+ * Post-tool hook context. Mirrors {@link ToolGuardrailContext} for the
+ * pre-tool side, plus the actual tool result.
+ */
+export interface ToolPostHookContext extends ToolGuardrailContext {
+  /** The same input that was sent to the tool. */
+  input: unknown;
+  /** The raw output the tool returned. May be a string, JSON, or an Error. */
+  output: unknown;
+  /** True when the tool threw or returned a value indicating failure. */
+  error?: unknown;
+  /** Wall-clock duration of the tool call in milliseconds. */
+  durationMs: number;
+}
+
+/**
+ * Hook invoked AFTER a tool runs. Unlike {@link ToolGuardrail}, post-hooks
+ * cannot block — the tool already executed. They return either:
+ *   - `undefined` to leave the output unchanged (audit/logging case), or
+ *   - `{ rewrite: <newOutput> }` to substitute the value the agent sees.
+ *
+ * Common uses: redaction (replace API keys with `***`), normalisation
+ * (trim huge stdout to last 4KB), telemetry (push spans to OTel).
+ */
+export interface ToolPostHook {
+  readonly name: string;
+  after(
+    toolName: string,
+    ctx: ToolPostHookContext,
+  ): Promise<void | { rewrite: unknown }> | void | { rewrite: unknown };
+}
+
+/**
+ * Run every post-hook in registration order. Hooks may rewrite the output;
+ * the rewrite from hook N is the input for hook N+1, so the chain composes.
+ *
+ * Returns the (possibly rewritten) final output. Errors thrown by a hook
+ * are logged but do NOT propagate — a misbehaving hook should not break
+ * the agent run.
+ */
+export async function runToolPostHooks(
+  hooks: ToolPostHook[],
+  toolName: string,
+  initialOutput: unknown,
+  ctx: Omit<ToolPostHookContext, "output">,
+): Promise<unknown> {
+  let current = initialOutput;
+  for (const hook of hooks) {
+    try {
+      const result = await hook.after(toolName, { ...ctx, output: current });
+      if (result && typeof result === "object" && "rewrite" in result) {
+        current = (result as { rewrite: unknown }).rewrite;
+      }
+    } catch (err) {
+      console.warn(`[hooks] post-hook ${hook.name} threw:`, err);
+    }
+  }
+  return current;
+}
+
+/** Built-in post-hook — redact substrings matching a regex with a sentinel. */
+export function redactPostHook(opts: { pattern: RegExp; replacement?: string; name?: string }): ToolPostHook {
+  const replacement = opts.replacement ?? "[REDACTED]";
+  return {
+    name: opts.name ?? "redact",
+    after(_toolName, ctx) {
+      if (typeof ctx.output !== "string") return;
+      const rewritten = ctx.output.replace(opts.pattern, replacement);
+      if (rewritten === ctx.output) return;
+      return { rewrite: rewritten };
+    },
+  };
+}
+
+/** Built-in post-hook — truncate string outputs longer than `maxChars` to a tail of `maxChars`. */
+export function truncatePostHook(opts: { maxChars: number; name?: string }): ToolPostHook {
+  return {
+    name: opts.name ?? `truncate(${opts.maxChars})`,
+    after(_toolName, ctx) {
+      if (typeof ctx.output !== "string") return;
+      if (ctx.output.length <= opts.maxChars) return;
+      const tail = ctx.output.slice(-opts.maxChars);
+      return { rewrite: `…[truncated ${ctx.output.length - opts.maxChars} chars]…\n${tail}` };
+    },
+  };
+}

@@ -7,6 +7,12 @@ export type { MemoryToolOptions } from "./MemoryTool.js";
 export { createMemoryTool, MapKvBackend } from "./MemoryTool.js";
 export type { AssemblerConfig, EditToolResultsOptions } from "./MessageAssembler.js";
 export { MessageAssembler } from "./MessageAssembler.js";
+export type {
+  Observation,
+  ObservationalMemoryOptions,
+  ObservationPriority,
+} from "./ObservationalMemory.js";
+export { ObservationalMemory } from "./ObservationalMemory.js";
 export type { Embedder, EmbedResult, Retriever, SearchResult } from "./Retriever.js";
 export {
   InMemoryVectorStore,
