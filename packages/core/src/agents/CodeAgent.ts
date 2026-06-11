@@ -265,20 +265,21 @@ export class CodeAgent {
 
       // Emit model_done so the frontend TokenMeter can display live token stats.
       const stats = budget.toStats();
+      const modelId = (this.#model as { modelId?: string }).modelId ?? "unknown";
       yield {
         traceId,
         parentTraceId,
         channel: "model",
         event: "model_done",
         data: {
-          modelId: (this.#model as { modelId?: string }).modelId ?? "unknown",
+          modelId,
           step,
           finishReason: "stop",
           inputTokens: stats.inputTokens,
           outputTokens: stats.outputTokens,
           cacheReadTokens: stats.cacheReadTokens,
           cacheHitRate: budget.cacheHitRate,
-          estimatedUsd: budget.estimatedUsd,
+          estimatedUsd: budget.estimatedUsdFor(modelId),
           calls: stats.calls,
         },
         timestampMs: Date.now(),

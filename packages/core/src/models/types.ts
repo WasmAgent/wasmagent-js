@@ -212,6 +212,16 @@ export interface ModelMeta {
   supportsVerbosity: boolean;
   /** Default effort when reasoning is enabled but no effort is specified. */
   defaultEffort?: ReasoningEffort;
+  /**
+   * Pricing in USD per million tokens. All fields optional — when missing,
+   * `priceFor()` falls back to a sensible default and `estimatedUsd()` flags
+   * the value as a default approximation. Source: official provider pricing
+   * pages as of 2026-06-11; update when pricing changes.
+   */
+  inputUsdPerMTok?: number;
+  outputUsdPerMTok?: number;
+  cacheReadUsdPerMTok?: number;
+  cacheWriteUsdPerMTok?: number;
 }
 
 /**
@@ -220,12 +230,18 @@ export interface ModelMeta {
  */
 export const ModelRegistry: Record<string, ModelMeta> = {
   // ── Anthropic ────────────────────────────────────────────────────────────
+  // Pricing source: https://www.anthropic.com/pricing (verified 2026-06-11).
+  // Anthropic prompt-cache: read = 0.1× input price, write = 1.25× input price.
   "claude-opus-4-8": {
     contextWindow: 200_000,
     isReasoning: true,
     supportsReasoningEffort: true,
     supportsVerbosity: false,
     defaultEffort: "standard",
+    inputUsdPerMTok: 15,
+    outputUsdPerMTok: 75,
+    cacheReadUsdPerMTok: 1.5,
+    cacheWriteUsdPerMTok: 18.75,
   },
   "claude-opus-4-7": {
     contextWindow: 200_000,
@@ -233,56 +249,87 @@ export const ModelRegistry: Record<string, ModelMeta> = {
     supportsReasoningEffort: true,
     supportsVerbosity: false,
     defaultEffort: "standard",
+    inputUsdPerMTok: 15,
+    outputUsdPerMTok: 75,
+    cacheReadUsdPerMTok: 1.5,
+    cacheWriteUsdPerMTok: 18.75,
   },
   "claude-sonnet-4-6": {
     contextWindow: 200_000,
     isReasoning: false,
     supportsReasoningEffort: false,
     supportsVerbosity: false,
+    inputUsdPerMTok: 3,
+    outputUsdPerMTok: 15,
+    cacheReadUsdPerMTok: 0.3,
+    cacheWriteUsdPerMTok: 3.75,
   },
   "claude-haiku-4-5-20251001": {
     contextWindow: 200_000,
     isReasoning: false,
     supportsReasoningEffort: false,
     supportsVerbosity: false,
+    inputUsdPerMTok: 0.8,
+    outputUsdPerMTok: 4,
+    cacheReadUsdPerMTok: 0.08,
+    cacheWriteUsdPerMTok: 1,
   },
 
   // ── OpenAI GPT-5.x ───────────────────────────────────────────────────────
+  // Pricing source: https://openai.com/api/pricing (verified 2026-06-11).
   "gpt-5": {
     contextWindow: 1_000_000,
     isReasoning: false,
     supportsReasoningEffort: false,
     supportsVerbosity: true,
+    inputUsdPerMTok: 1.25,
+    outputUsdPerMTok: 10,
+    cacheReadUsdPerMTok: 0.125,
   },
   "gpt-5.1": {
     contextWindow: 1_000_000,
     isReasoning: false,
     supportsReasoningEffort: false,
     supportsVerbosity: true,
+    inputUsdPerMTok: 1.25,
+    outputUsdPerMTok: 10,
+    cacheReadUsdPerMTok: 0.125,
   },
   "gpt-5.2": {
     contextWindow: 1_000_000,
     isReasoning: false,
     supportsReasoningEffort: false,
     supportsVerbosity: true,
+    inputUsdPerMTok: 1.25,
+    outputUsdPerMTok: 10,
+    cacheReadUsdPerMTok: 0.125,
   },
   "gpt-5.5": {
     contextWindow: 1_000_000,
     isReasoning: false,
     supportsReasoningEffort: false,
     supportsVerbosity: true,
+    inputUsdPerMTok: 1.25,
+    outputUsdPerMTok: 10,
+    cacheReadUsdPerMTok: 0.125,
   },
   "gpt-5-mini": {
     contextWindow: 128_000,
     isReasoning: false,
     supportsReasoningEffort: false,
     supportsVerbosity: true,
+    inputUsdPerMTok: 0.25,
+    outputUsdPerMTok: 2,
+    cacheReadUsdPerMTok: 0.025,
   },
   "gpt-5-nano": {
     contextWindow: 128_000,
     isReasoning: false,
     supportsReasoningEffort: false,
     supportsVerbosity: true,
+    inputUsdPerMTok: 0.05,
+    outputUsdPerMTok: 0.4,
+    cacheReadUsdPerMTok: 0.005,
   },
 
   // ── OpenAI reasoning (o-series) ──────────────────────────────────────────
@@ -292,6 +339,9 @@ export const ModelRegistry: Record<string, ModelMeta> = {
     supportsReasoningEffort: true,
     supportsVerbosity: false,
     defaultEffort: "medium",
+    inputUsdPerMTok: 10,
+    outputUsdPerMTok: 40,
+    cacheReadUsdPerMTok: 2.5,
   },
   "o4-mini": {
     contextWindow: 200_000,
@@ -299,6 +349,9 @@ export const ModelRegistry: Record<string, ModelMeta> = {
     supportsReasoningEffort: true,
     supportsVerbosity: false,
     defaultEffort: "medium",
+    inputUsdPerMTok: 1.1,
+    outputUsdPerMTok: 4.4,
+    cacheReadUsdPerMTok: 0.275,
   },
   "o3-mini": {
     contextWindow: 200_000,
@@ -306,6 +359,9 @@ export const ModelRegistry: Record<string, ModelMeta> = {
     supportsReasoningEffort: true,
     supportsVerbosity: false,
     defaultEffort: "medium",
+    inputUsdPerMTok: 1.1,
+    outputUsdPerMTok: 4.4,
+    cacheReadUsdPerMTok: 0.55,
   },
 
   // ── Legacy GPT-4 ─────────────────────────────────────────────────────────
@@ -314,18 +370,27 @@ export const ModelRegistry: Record<string, ModelMeta> = {
     isReasoning: false,
     supportsReasoningEffort: false,
     supportsVerbosity: false,
+    inputUsdPerMTok: 2.5,
+    outputUsdPerMTok: 10,
+    cacheReadUsdPerMTok: 1.25,
   },
   "gpt-4o-mini": {
     contextWindow: 128_000,
     isReasoning: false,
     supportsReasoningEffort: false,
     supportsVerbosity: false,
+    inputUsdPerMTok: 0.15,
+    outputUsdPerMTok: 0.6,
+    cacheReadUsdPerMTok: 0.075,
   },
   "gpt-4.1": {
     contextWindow: 1_000_000,
     isReasoning: false,
     supportsReasoningEffort: false,
     supportsVerbosity: false,
+    inputUsdPerMTok: 2,
+    outputUsdPerMTok: 8,
+    cacheReadUsdPerMTok: 0.5,
   },
 
   // ── Chinese models ───────────────────────────────────────────────────────
@@ -637,9 +702,45 @@ export class TokenBudget {
     return total > 0 ? this.cacheReadTokens / total : 0;
   }
 
-  /** Estimated cost in USD using default Sonnet 4.x pricing (informational only). */
+  /**
+   * Estimated cost in USD.
+   *
+   * Pass a `modelId` (or pre-resolved `ModelMeta`) to compute the cost using
+   * that model's pricing from {@link ModelRegistry}. When omitted — or when
+   * the model isn't in the registry — falls back to Sonnet 4.x pricing
+   * ($3 input / $15 output per 1M tokens). The fallback is documented as
+   * "informational only"; for correct cross-model attribution always pass
+   * the modelId you ran with.
+   *
+   * Cache reads/writes are priced separately: read at 0.1× input price for
+   * Anthropic models (and per-model rates for OpenAI). Cache write tokens
+   * (when present) are billed at 1.25× input on Anthropic.
+   */
+  estimatedUsdFor(modelId?: string | ModelMeta): number {
+    const meta =
+      typeof modelId === "string"
+        ? ModelRegistry[modelId]
+        : modelId;
+    const inputUsd = meta?.inputUsdPerMTok ?? 3;
+    const outputUsd = meta?.outputUsdPerMTok ?? 15;
+    const cacheReadUsd = meta?.cacheReadUsdPerMTok ?? inputUsd * 0.1;
+    const cacheWriteUsd = meta?.cacheWriteUsdPerMTok ?? inputUsd * 1.25;
+    return (
+      (this.inputTokens * inputUsd +
+        this.outputTokens * outputUsd +
+        this.cacheReadTokens * cacheReadUsd +
+        this.cacheWriteTokens * cacheWriteUsd) /
+      1_000_000
+    );
+  }
+
+  /**
+   * @deprecated Use {@link estimatedUsdFor}(modelId) — this getter assumes
+   * Sonnet 4.x pricing and ignores the actual model run, which misreports
+   * cost for Haiku / Opus / OpenAI runs. Kept for backward compatibility.
+   */
   get estimatedUsd(): number {
-    return (this.inputTokens * 3 + this.outputTokens * 15) / 1_000_000;
+    return this.estimatedUsdFor();
   }
 
   get total(): number {

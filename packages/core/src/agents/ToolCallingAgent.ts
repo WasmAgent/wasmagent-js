@@ -397,13 +397,14 @@ export class ToolCallingAgent {
 
       // Emit model_done so the frontend TokenMeter can display live token stats.
       const stats = budget.toStats();
+      const modelId = (this.#model as { modelId?: string }).modelId ?? "unknown";
       yield {
         traceId,
         parentTraceId,
         channel: "model" as const,
         event: "model_done",
         data: {
-          modelId: (this.#model as { modelId?: string }).modelId ?? "unknown",
+          modelId,
           step,
           finishReason: "stop",
           inputTokens: stats.inputTokens,
@@ -411,7 +412,7 @@ export class ToolCallingAgent {
           cacheReadTokens: stats.cacheReadTokens,
           // Include derived metrics for richer frontend display
           cacheHitRate: budget.cacheHitRate,
-          estimatedUsd: budget.estimatedUsd,
+          estimatedUsd: budget.estimatedUsdFor(modelId),
           calls: stats.calls,
         },
         timestampMs: Date.now(),
