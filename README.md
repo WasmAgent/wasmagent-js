@@ -1,16 +1,23 @@
 # agentkit-js
 
+[![npm version](https://img.shields.io/npm/v/@agentkit-js/core.svg?label=%40agentkit-js%2Fcore)](https://www.npmjs.com/package/@agentkit-js/core)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
+[![CI](https://github.com/telleroutlook/agentkit-js/actions/workflows/ci.yml/badge.svg)](https://github.com/telleroutlook/agentkit-js/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-vitepress-brightgreen.svg)](https://telleroutlook.github.io/agentkit-js/)
+
 **TypeScript agent runtime with WASM sandboxing, prompt-cache optimization, and parallel quality runners.**
 
 Build production-grade AI agents in TypeScript — code-execution agents, tool-calling agents, or multi-path reasoning pipelines — with built-in cost controls and Cloudflare Workers deployment.
 
 ```bash
 # For Anthropic (Claude)
-pnpm add @agentkit-js/core @anthropic-ai/sdk
+npm add @agentkit-js/core @anthropic-ai/sdk
 
 # For OpenAI / compatible endpoints (Ollama, vLLM, etc.)
-pnpm add @agentkit-js/core openai
+npm add @agentkit-js/core openai
 ```
+
+> 📚 **Docs site:** <https://telleroutlook.github.io/agentkit-js/> · **Getting started in 5 min:** [docs/guides/getting-started.md](./docs/guides/getting-started.md) · **Benchmarks:** [docs/benchmarks.md](./docs/benchmarks.md)
 
 ---
 
@@ -33,7 +40,7 @@ There are several mature TypeScript agent frameworks. Here is an honest assessme
 | **Cloudflare Workers** | ⚠️ partial | ✅ | ⚠️ experimental | ⚠️ alpha | ✅ native | ✅ |
 | **UI hooks (React/Next.js)** | ✅ best-in-class | ❌ | ❌ | ⚠️ via AI SDK | ⚠️ | ✅ useAgentRun |
 | **Provider integrations** | 40+ | 300+ | OpenAI-primary | 40+ | CF Workers AI | Anthropic · OpenAI · Doubao · DeepSeek · Kimi · Qwen · GLM · MiniMax |
-| **Evals framework** | ❌ | ⚠️ LangSmith | ❌ | ✅ 12+ scorers | ❌ | ✅ 4 built-in scorers |
+| **Evals framework** | ❌ | ⚠️ LangSmith | ❌ | ✅ 12+ scorers | ❌ | ✅ **16 scorers** + 2 multi-criterion judges |
 | **Observability (OTel)** | ⚠️ LangSmith | ⚠️ LangSmith | ❌ | ✅ | ❌ | ✅ OtelBridge + GenAI semconv |
 | **Retry / resilience** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ RetryPolicy |
 | **Durable workflows / checkpointing** | ✅ DurableAgent (AI SDK 6) | ✅ LangGraph | ❌ (Assistants API retiring 2026-08-26) | ⚠️ partial | ✅ Durable Objects | ✅ Checkpointer + 4 backends (CF KV / DO / Redis / Upstash) |
@@ -97,7 +104,7 @@ agentkit-js is early-stage. The differentiating features (code execution kernels
 - **DAG scheduling** — independent tool calls execute concurrently via `Scheduler`; read-only tools speculatively pre-execute ahead of write barriers; `$<callId>` dependency syntax in system prompt enables true data-dependency ordering; wired into `ToolCallingAgent` by default
 - **Long-history compaction** — `agent.assembler.compact(model, keepRecentSteps)` summarises old steps; inject a custom `MessageAssembler` via `assembler` option
 - **Production resilience** — automatic exponential backoff + jitter retry for 429 / 5xx / network errors on all model adapters; configurable via `RetryPolicy`
-- **Evals framework** — `runEval()` with built-in `exactMatch`, `toolCallAccuracy`, `trajectoryValidity`, `finalAnswerLength` scorers
+- **Evals framework** — `runEval()` with 16 built-in scorers covering correctness (`exactMatch`, `toolCallAccuracy`, `trajectoryValidity`, `finalAnswerLength`, `guardrailCompliance`), faithfulness, relevance, recovery, efficiency, constraints, plus two multi-criterion `JudgeScorer` judges (`trajectoryQualityJudge`, `answerCompletenessJudge`)
 - **Observability** — `OtelBridge` maps `AgentEvent` streams to OTel-compatible spans; emits `gen_ai.*` semantic convention attributes (Datadog/Honeycomb/Grafana GenAI view compatible) with `semconvMode: "both" | "stable" | "legacy"`
 - **Durable runtime** — `KvCheckpointer` with four production backends: `CloudflareKvBackend`, `DurableObjectKvBackend`, `RedisKvBackend` (ioredis-style), `RedisRestKvBackend` (Upstash REST, edge-safe). `CheckpointableRun` saves state after every step; `await_human_input` persists `pendingHumanInput` and exits the iterator so the worker can recycle while a human reviews.
 - **SSE Last-Event-ID resume** — `EventLog` tags every event with a monotonic id, persists to the same `KvBackend`, and replays only the missing tail when a client reconnects. The reference Cloudflare Worker honors `Last-Event-ID` natively; `useAgentRun({ resume: { maxAttempts } })` retries automatically.

@@ -9,3 +9,6 @@ coverage/
 *.log
 examples/benchmarks/report-*.md
 .tmp/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+*.tgz

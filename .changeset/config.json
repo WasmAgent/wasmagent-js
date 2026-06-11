@@ -1,0 +1,11 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+  "changelog": ["@changesets/changelog-github", { "repo": "telleroutlook/agentkit-js" }],
+  "commit": false,
+  "fixed": [],
+  "linked": [["@agentkit-js/*"]],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": ["@agentkit-js/cloudflare-worker"]
+}

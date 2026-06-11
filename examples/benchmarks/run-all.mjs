@@ -14,6 +14,7 @@ const benchmarks = [
   "defer-loading.mjs",
   "input-examples.mjs",
   "context-editing.mjs",
+  "parallel-agents.mjs",
 ];
 
 let failed = 0;

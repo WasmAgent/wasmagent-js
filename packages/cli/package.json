@@ -19,5 +19,33 @@
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
     "typescript": "^5.7.0"
-  }
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/cli#readme",
+  "bugs": {
+    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "agentkit",
+    "agent",
+    "ai",
+    "llm"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "author": "agentkit-js contributors"
 }

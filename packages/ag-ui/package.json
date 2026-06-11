@@ -36,5 +36,23 @@
     "sse",
     "agentkit"
   ],
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "directory": "packages/ag-ui"
+  },
+  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/ag-ui#readme",
+  "bugs": {
+    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "author": "agentkit-js contributors"
 }
