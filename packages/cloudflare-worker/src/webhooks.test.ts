@@ -62,8 +62,11 @@ describe("sendWebhook", () => {
     });
     const keys = [...dlqStore.keys()];
     expect(keys.length).toBe(1);
-    expect(keys[0]).toMatch(/^dlq:r1:/);
-    const stored = JSON.parse(dlqStore.get(keys[0]!)!);
+    const firstKey = keys[0];
+    expect(firstKey).toMatch(/^dlq:r1:/);
+    const raw = firstKey ? dlqStore.get(firstKey) : undefined;
+    expect(raw).toBeDefined();
+    const stored = JSON.parse(raw as string);
     expect(stored.lastStatus).toBe(500);
   });
 });

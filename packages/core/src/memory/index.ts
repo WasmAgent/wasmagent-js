@@ -29,4 +29,8 @@ export type {
   SetOptions,
   StructuredKvBackend,
 } from "./StructuredMemory.js";
-export { adaptStructuredKvBackend, InMemoryStructuredKv, StructuredMemory } from "./StructuredMemory.js";
+export {
+  adaptStructuredKvBackend,
+  InMemoryStructuredKv,
+  StructuredMemory,
+} from "./StructuredMemory.js";

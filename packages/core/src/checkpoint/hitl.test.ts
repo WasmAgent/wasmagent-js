@@ -15,8 +15,8 @@ import {
   applyHumanResponse,
   CheckpointableRun,
   KvCheckpointer,
-  resumeFromHuman,
   restoreFromSnapshot,
+  resumeFromHuman,
 } from "../index.js";
 import { MapKvBackend } from "../memory/MemoryTool.js";
 import { MessageAssembler } from "../memory/MessageAssembler.js";
@@ -84,7 +84,9 @@ describe("A3 — HITL persisted suspend/resume", () => {
     const asm1 = new MessageAssembler({ systemPrompt: "test", toolsSchema: [] });
     asm1.addStep({ type: "user_message", content: "task" });
     const run1 = new CheckpointableRun({ checkpointer: cp1 }, asm1);
-    for await (const _ of run1.run(paused(), "task", "trace-A3")) { /* drain */ }
+    for await (const _ of run1.run(paused(), "task", "trace-A3")) {
+      /* drain */
+    }
 
     // ── Drop everything but sharedKv to model a process boundary. ──────────
 

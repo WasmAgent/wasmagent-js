@@ -9,8 +9,8 @@
  *   - finalAnswer is surfaced when present in the prefix
  */
 
-import { describe, expect, it } from "vitest";
 import type { AgentEvent } from "@agentkit-js/core";
+import { describe, expect, it } from "vitest";
 import { EventLogReplay, type LoggedEvent } from "./EventLogReplay.js";
 
 let seq = 0;
@@ -87,7 +87,10 @@ describe("EventLogReplay", () => {
 
   it("forkAt returns the prefix + meta with a fork point", () => {
     const r = new EventLogReplay(makeTrace(), { traceId: "abc" });
-    const fork = r.forkAt(2, { task: "redo step 3 with claude-haiku", modelId: "claude-haiku-4-5" });
+    const fork = r.forkAt(2, {
+      task: "redo step 3 with claude-haiku",
+      modelId: "claude-haiku-4-5",
+    });
     expect(fork.forkedAtStep).toBe(2);
     expect(fork.prefixEvents.length).toBe(6);
     expect(fork.meta.task).toContain("redo step 3");
@@ -107,10 +110,7 @@ describe("EventLogReplay", () => {
 
   it("handles a trace with zero step_start events", () => {
     seq = 0;
-    const events: LoggedEvent[] = [
-      logged({ event: "run_start" }),
-      logged({ event: "model_done" }),
-    ];
+    const events: LoggedEvent[] = [logged({ event: "run_start" }), logged({ event: "model_done" })];
     const r = new EventLogReplay(events);
     expect(r.stepCount).toBe(0);
     const cur = r.select(0);

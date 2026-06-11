@@ -38,10 +38,10 @@ export interface ComposePromptInput {
  */
 export function composePrompt(input: ComposePromptInput): string {
   const parts: string[] = [];
-  if (input.persona && input.persona.trim()) parts.push(input.persona.trim());
+  if (input.persona?.trim()) parts.push(input.persona.trim());
   for (const f of input.fragments ?? []) {
-    if (f && f.trim()) parts.push(f.trim());
+    if (f?.trim()) parts.push(f.trim());
   }
-  if (input.trailing && input.trailing.trim()) parts.push(input.trailing.trim());
+  if (input.trailing?.trim()) parts.push(input.trailing.trim());
   return parts.join("\n\n");
 }

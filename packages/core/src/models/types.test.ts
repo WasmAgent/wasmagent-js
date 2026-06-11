@@ -261,8 +261,8 @@ describe("TokenBudget — model-aware estimatedUsdFor", () => {
     for (const id of required) {
       const meta = ModelRegistry[id];
       expect(meta, `missing ${id} in ModelRegistry`).toBeDefined();
-      expect(meta!.inputUsdPerMTok, `missing inputUsdPerMTok on ${id}`).toBeGreaterThan(0);
-      expect(meta!.outputUsdPerMTok, `missing outputUsdPerMTok on ${id}`).toBeGreaterThan(0);
+      expect(meta?.inputUsdPerMTok, `missing inputUsdPerMTok on ${id}`).toBeGreaterThan(0);
+      expect(meta?.outputUsdPerMTok, `missing outputUsdPerMTok on ${id}`).toBeGreaterThan(0);
     }
   });
 });

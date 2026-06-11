@@ -74,9 +74,7 @@ export class EventLog {
 
   constructor(kv: KvBackend) {
     if (!kv.list) {
-      throw new Error(
-        "EventLog: KvBackend must implement list(prefix) — required for replay()"
-      );
+      throw new Error("EventLog: KvBackend must implement list(prefix) — required for replay()");
     }
     this.#kv = kv as Required<KvBackend>;
   }

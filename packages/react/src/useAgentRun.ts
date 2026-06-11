@@ -159,10 +159,16 @@ export function useAgentRun(
           };
           if (lastEventId) reqHeaders["Last-Event-ID"] = lastEventId;
 
+          // On retry the server uses `resumeTraceId` to skip starting a new
+          // agent and replay-only the missing tail. Always set on retries so
+          // a worker that crashed mid-run can be resumed by a different
+          // worker instance — both share KV-persisted EventLog.
+          const reqBody = traceId ? { ...payload, resumeTraceId: traceId } : payload;
+
           const resp = await fetch(endpoint, {
             method: "POST",
             headers: reqHeaders,
-            body: JSON.stringify(payload),
+            body: JSON.stringify(reqBody),
             signal: ac.signal,
           });
 
@@ -357,12 +363,14 @@ export function useAgentRun(
           setStatus("error");
           setMessages((prev) => [...prev, { id: nextId(), role: "error", content: String(e) }]);
         }
-        // suppress unused-variable warning for traceId — exposed via debugger/onEvent.
+        // suppress unused-variable warning for traceId — read on retries via
+        // closure inside attemptStream() (resumeTraceId in body) and surfaced
+        // via the X-Agentkit-Trace-Id response header for debuggers.
         void traceId;
       })();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [endpoint, status, resolvedOpts.onEvent, resolvedOpts.headers]
+    [endpoint, status, resolvedOpts.onEvent, resolvedOpts.headers, resolvedOpts.resume]
   );
 
   return {

@@ -11,9 +11,9 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import type { ToolDefinition } from "../tools/types.js";
 import { SkillRegistry } from "./Skill.js";
-import { z } from "zod";
 
 function fakeTool(name: string): ToolDefinition {
   return {
@@ -122,7 +122,7 @@ describe("SkillRegistry", () => {
     const registry = new SkillRegistry();
     registry.register({ name: "a", description: "x", load: () => ({ instructions: "" }) });
     expect(() =>
-      registry.register({ name: "a", description: "y", load: () => ({ instructions: "" }) }),
+      registry.register({ name: "a", description: "y", load: () => ({ instructions: "" }) })
     ).toThrow(/already registered/);
   });
 
@@ -146,14 +146,12 @@ describe("SkillRegistry", () => {
         tools: [fakeTool("inline_tailwind"), fakeTool("scan_classes")],
       }),
     });
-    const resolved = await registry.resolveForTask(
-      "Make a React form with Tailwind v3",
-    );
+    const resolved = await registry.resolveForTask("Make a React form with Tailwind v3");
     expect(resolved).not.toBeNull();
-    expect(resolved!.activated).toEqual(["react-build", "tailwind-style"]);
-    expect(resolved!.instructions).toContain("Skill: react-build");
-    expect(resolved!.instructions).toContain("Skill: tailwind-style");
-    expect(resolved!.tools.map((t) => t.name)).toEqual([
+    expect(resolved?.activated).toEqual(["react-build", "tailwind-style"]);
+    expect(resolved?.instructions).toContain("Skill: react-build");
+    expect(resolved?.instructions).toContain("Skill: tailwind-style");
+    expect(resolved?.tools.map((t) => t.name)).toEqual([
       "scaffold_react",
       "inline_tailwind",
       "scan_classes",

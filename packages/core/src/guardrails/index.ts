@@ -495,8 +495,8 @@ export interface ToolPostHook {
   readonly name: string;
   after(
     toolName: string,
-    ctx: ToolPostHookContext,
-  ): Promise<void | { rewrite: unknown }> | void | { rewrite: unknown };
+    ctx: ToolPostHookContext
+  ): Promise<undefined | { rewrite: unknown }> | undefined | { rewrite: unknown };
 }
 
 /**
@@ -511,7 +511,7 @@ export async function runToolPostHooks(
   hooks: ToolPostHook[],
   toolName: string,
   initialOutput: unknown,
-  ctx: Omit<ToolPostHookContext, "output">,
+  ctx: Omit<ToolPostHookContext, "output">
 ): Promise<unknown> {
   let current = initialOutput;
   for (const hook of hooks) {
@@ -528,7 +528,11 @@ export async function runToolPostHooks(
 }
 
 /** Built-in post-hook — redact substrings matching a regex with a sentinel. */
-export function redactPostHook(opts: { pattern: RegExp; replacement?: string; name?: string }): ToolPostHook {
+export function redactPostHook(opts: {
+  pattern: RegExp;
+  replacement?: string;
+  name?: string;
+}): ToolPostHook {
   const replacement = opts.replacement ?? "[REDACTED]";
   return {
     name: opts.name ?? "redact",

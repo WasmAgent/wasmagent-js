@@ -15,10 +15,10 @@ import type { AgentTrace } from "./index.js";
 import {
   ANSWER_COMPLETENESS_CRITERIA,
   answerCompletenessJudge,
-  TRAJECTORY_QUALITY_CRITERIA,
-  trajectoryQualityJudge,
   judgeScorer,
   runJudgeScorer,
+  TRAJECTORY_QUALITY_CRITERIA,
+  trajectoryQualityJudge,
 } from "./JudgeScorer.js";
 
 function mockModel(reply: string): Model {

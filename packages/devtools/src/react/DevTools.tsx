@@ -38,7 +38,7 @@ export interface DevToolsProps {
 export function DevTools({ events, traceId, onFork }: DevToolsProps) {
   const replay = useMemo(
     () => new EventLogReplay(events, traceId !== undefined ? { traceId } : {}),
-    [events, traceId],
+    [events, traceId]
   );
   const [step, setStep] = useState(replay.stepCount);
   const [taskOverride, setTaskOverride] = useState("");
@@ -57,7 +57,10 @@ export function DevTools({ events, traceId, onFork }: DevToolsProps) {
   };
 
   return (
-    <div data-testid="agentkit-devtools" style={{ fontFamily: "ui-sans-serif, system-ui", fontSize: 13 }}>
+    <div
+      data-testid="agentkit-devtools"
+      style={{ fontFamily: "ui-sans-serif, system-ui", fontSize: 13 }}
+    >
       <header style={{ marginBottom: 8 }}>
         <strong>Agent DevTools</strong>
         <span style={{ color: "#888", marginLeft: 8 }}>
@@ -117,7 +120,9 @@ export function DevTools({ events, traceId, onFork }: DevToolsProps) {
 
           <div style={{ marginBottom: 8 }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>Events in prefix</div>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, maxHeight: 200, overflow: "auto" }}>
+            <ul
+              style={{ listStyle: "none", padding: 0, margin: 0, maxHeight: 200, overflow: "auto" }}
+            >
               {cursor.prefixEvents.map((le) => (
                 <li
                   key={le.eventId}

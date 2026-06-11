@@ -315,10 +315,7 @@ export async function resumeFromHuman(
  *
  * Call after {@link restoreFromSnapshot} when continuing a paused run.
  */
-export function applyHumanResponse(
-  snapshot: AgentSnapshot,
-  assembler: MessageAssembler
-): void {
+export function applyHumanResponse(snapshot: AgentSnapshot, assembler: MessageAssembler): void {
   const resp = snapshot.humanResponse;
   if (!resp) return;
   // Inject as a plain user_message — the assembler will render it as

@@ -138,3 +138,71 @@ describe("useAgentRun event accumulation state machine (B2)", () => {
     expect(state.messages[0]?.content).toBe("max steps exceeded");
   });
 });
+
+// ── C1 — Last-Event-ID resume request shaping ────────────────────────────────
+//
+// The hook tracks `traceId` and `lastEventId` across attempts inside its
+// closure. We mirror that behavior here against the same shaping rule the
+// hook uses: on retries, the request body must carry `resumeTraceId` and
+// the request headers must carry `Last-Event-ID`. Pure function so we can
+// test it without React.
+
+interface AttemptInputs {
+  payload: Record<string, unknown>;
+  traceId: string | null;
+  lastEventId: string | null;
+  baseHeaders?: Record<string, string>;
+}
+function shapeRequest({ payload, traceId, lastEventId, baseHeaders = {} }: AttemptInputs) {
+  const reqHeaders: Record<string, string> = { "Content-Type": "application/json", ...baseHeaders };
+  if (lastEventId) reqHeaders["Last-Event-ID"] = lastEventId;
+  const reqBody = traceId ? { ...payload, resumeTraceId: traceId } : payload;
+  return { reqHeaders, reqBody };
+}
+
+describe("useAgentRun resume request shaping (C1)", () => {
+  it("first attempt: no Last-Event-ID header, body matches payload exactly", () => {
+    const { reqHeaders, reqBody } = shapeRequest({
+      payload: { task: "hello" },
+      traceId: null,
+      lastEventId: null,
+    });
+    expect(reqHeaders["Last-Event-ID"]).toBeUndefined();
+    expect(reqBody).toEqual({ task: "hello" });
+    // The hook must not invent a resumeTraceId before the server has issued one.
+    expect("resumeTraceId" in reqBody).toBe(false);
+  });
+
+  it("retry after seeing trace id but no events yet: body carries resumeTraceId, header omits Last-Event-ID", () => {
+    const { reqHeaders, reqBody } = shapeRequest({
+      payload: { task: "hello" },
+      traceId: "run-abc-1",
+      lastEventId: null,
+    });
+    expect(reqHeaders["Last-Event-ID"]).toBeUndefined();
+    expect(reqBody).toEqual({ task: "hello", resumeTraceId: "run-abc-1" });
+  });
+
+  it("retry after seeing some events: both Last-Event-ID and resumeTraceId are sent", () => {
+    const { reqHeaders, reqBody } = shapeRequest({
+      payload: { task: "hello", agentMode: "tool" },
+      traceId: "run-abc-1",
+      lastEventId: "000000000007",
+    });
+    expect(reqHeaders["Last-Event-ID"]).toBe("000000000007");
+    expect(reqBody).toEqual({ task: "hello", agentMode: "tool", resumeTraceId: "run-abc-1" });
+  });
+
+  it("preserves caller-supplied headers verbatim and does not overwrite Content-Type", () => {
+    const { reqHeaders } = shapeRequest({
+      payload: { task: "hello" },
+      traceId: "run-abc-1",
+      lastEventId: "000000000003",
+      baseHeaders: { Authorization: "Bearer xyz", "X-Session-Id": "s1" },
+    });
+    expect(reqHeaders["Content-Type"]).toBe("application/json");
+    expect(reqHeaders.Authorization).toBe("Bearer xyz");
+    expect(reqHeaders["X-Session-Id"]).toBe("s1");
+    expect(reqHeaders["Last-Event-ID"]).toBe("000000000003");
+  });
+});

@@ -6,9 +6,9 @@
  * the agent and kernel because we don't want to call out to a real model.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentEvent } from "@agentkit-js/core";
-import { CloudflareKvBackend, type CloudflareKVNamespace } from "./kvAdapters.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type CloudflareKVNamespace, CloudflareKvBackend } from "./kvAdapters.js";
 
 // ── Agent + kernel mocks (model-free) ─────────────────────────────────────────
 let mockAgentEvents: AgentEvent[] = [];
@@ -72,7 +72,7 @@ class FakeKVNamespace implements CloudflareKVNamespace {
 
 // ── Test rig ─────────────────────────────────────────────────────────────────
 
-function ev(step: number, channel: "thinking" | "text" = "thinking"): AgentEvent {
+function ev(step: number): AgentEvent {
   if (step < 0) {
     return {
       traceId: "t",
@@ -87,7 +87,7 @@ function ev(step: number, channel: "thinking" | "text" = "thinking"): AgentEvent
     traceId: "t",
     parentTraceId: null,
     timestampMs: 1000 + step,
-    channel,
+    channel: "thinking",
     event: "step_start",
     data: { step },
   };
@@ -107,10 +107,7 @@ async function readBody(res: Response): Promise<string> {
   return await res.text();
 }
 
-function runPost(
-  env: Record<string, unknown>,
-  headers: Record<string, string> = {}
-) {
+function runPost(env: Record<string, unknown>, headers: Record<string, string> = {}) {
   return import("./index.js").then(({ default: worker }) =>
     worker.fetch(
       new Request("http://localhost/run", {

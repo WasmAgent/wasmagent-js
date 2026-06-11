@@ -10,9 +10,9 @@
  *   - empty / zero-step traces render without throwing
  */
 
+import type { AgentEvent } from "@agentkit-js/core";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { AgentEvent } from "@agentkit-js/core";
 import type { Fork, LoggedEvent } from "../EventLogReplay.js";
 import { DevTools } from "./DevTools.js";
 
@@ -71,10 +71,11 @@ describe("<DevTools /> render", () => {
     // Find the button labeled "1 · …events" — that's step 1.
     const step1 = stepButtons.find((b) => /^1\s+·/.test(b.textContent ?? ""));
     expect(step1).toBeTruthy();
-    fireEvent.click(step1!);
+    if (!step1) return; // narrow for TS — assertion above already failed test
+    fireEvent.click(step1);
     expect(screen.getByText(/Cursor: step 1 \/ 3/)).toBeTruthy();
     // The clicked button is now aria-pressed=true.
-    expect(step1!.getAttribute("aria-pressed")).toBe("true");
+    expect(step1.getAttribute("aria-pressed")).toBe("true");
     // No final answer at step 1.
     expect(screen.queryByText("FINAL ANSWER")).toBeNull();
   });
@@ -85,7 +86,10 @@ describe("<DevTools /> render", () => {
     fireEvent.click(preludeBtn);
     expect(screen.getByText(/Cursor: step 0 \/ 3/)).toBeTruthy();
     // Only run_start should appear in the events list.
-    const eventList = screen.getByText(/Events in prefix/i).parentElement!;
+    const eventListLabel = screen.getByText(/Events in prefix/i);
+    const eventList = eventListLabel.parentElement;
+    expect(eventList).not.toBeNull();
+    if (!eventList) return;
     expect(within(eventList).getAllByText("run_start").length).toBeGreaterThan(0);
     expect(within(eventList).queryByText("step_start")).toBeNull();
   });
@@ -114,7 +118,9 @@ describe("<DevTools /> render", () => {
     fireEvent.click(screen.getByRole("button", { name: /Fork & re-run/i }));
 
     expect(onFork).toHaveBeenCalledTimes(1);
-    const fork = onFork.mock.calls[0]![0];
+    const fork = onFork.mock.calls[0]?.[0];
+    expect(fork).toBeDefined();
+    if (!fork) return;
     expect(fork.forkedAtStep).toBe(2);
     // Step 1's 3 events + Step 2's 2 events + the run_start preamble = 6.
     expect(fork.prefixEvents.length).toBe(6);
@@ -132,7 +138,9 @@ describe("<DevTools /> render", () => {
     fireEvent.click(summary);
     fireEvent.click(screen.getByRole("button", { name: /Fork & re-run/i }));
 
-    const fork = onFork.mock.calls[0]![0];
+    const fork = onFork.mock.calls[0]?.[0];
+    expect(fork).toBeDefined();
+    if (!fork) return;
     // Default position is end-of-trace (step 3).
     expect(fork.forkedAtStep).toBe(3);
     expect(fork.meta.task).toBeUndefined();

@@ -73,7 +73,7 @@ describe("StructuredMemory.query", () => {
 
   it("filters by time range", async () => {
     const m = newMem();
-    const t = Date.now();
+    const _t = Date.now();
     await m.set("a", 1);
     await new Promise((r) => setTimeout(r, 5));
     const cut = Date.now();

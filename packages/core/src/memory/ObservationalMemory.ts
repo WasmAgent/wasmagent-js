@@ -290,7 +290,7 @@ export class ObservationalMemory {
   }
 
   async #summariseMessages(
-    messages: ModelMessage[],
+    messages: ModelMessage[]
   ): Promise<{ text: string; priority: ObservationPriority }> {
     const userBody = messages
       .map((m, i) => {
@@ -304,9 +304,7 @@ export class ObservationalMemory {
     return this.#callObserver(userBody);
   }
 
-  async #callObserver(
-    userBody: string,
-  ): Promise<{ text: string; priority: ObservationPriority }> {
+  async #callObserver(userBody: string): Promise<{ text: string; priority: ObservationPriority }> {
     const prompt: ModelMessage[] = [
       { role: "system", content: OBSERVER_SYSTEM },
       {
