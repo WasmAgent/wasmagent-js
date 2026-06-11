@@ -534,7 +534,19 @@ export class CodeAgent {
     // Apply enhancement runners when configured (mirrors ToolCallingAgent).
     let refined: unknown = answer;
     const messages = this.#assembler.build();
-    const answerStr = typeof answer === "string" ? answer : String(answer);
+    // String() on a plain object gives "[object Object]" — never useful as
+    // a final answer to render. Coerce non-strings via JSON instead so the
+    // user sees real content. Strings pass through unchanged.
+    const answerStr =
+      typeof answer === "string"
+        ? answer
+        : ((): string => {
+            try {
+              return JSON.stringify(answer, null, 2) ?? String(answer);
+            } catch {
+              return String(answer);
+            }
+          })();
     if (this.#policy?.budgetForcing?.enabled && this.#model.capabilities?.supportsBudgetForcing) {
       const result = await new BudgetForcingRunner().run(this.#model, messages);
       refined = result.answer || answerStr;
