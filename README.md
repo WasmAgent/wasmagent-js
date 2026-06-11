@@ -56,11 +56,22 @@ There are several mature TypeScript agent frameworks. Here is an honest assessme
 - **Anthropic prompt-cache optimization** — Framework actively manages `cache_control` breakpoint placement across multi-turn history, supports the 1-hour extended TTL (`ttl:"1h"`), and reports per-TTL cache usage. Competitors pass through or validate limits but do not optimise placement.
 - **Speculative tool execution** — Read-only, idempotent tools are pre-executed ahead of write barriers within a DAG step. The scheduler is awakened by `$<callId>` dependency references in the system prompt, enabling true parallel + ordered hybrid scheduling. No competitor implements this.
 - **GenAI semantic conventions** — `OtelBridge` emits standard `gen_ai.*` attributes (Datadog / Honeycomb / Grafana GenAI view compatible) alongside legacy names, switchable via `semconvMode`.
-- **Reproducible benchmarks** — Every percentage in this README (`−37%`, `72→90%`, `−85%`, `−84%`) is verified by an offline benchmark in [`examples/benchmarks/`](examples/benchmarks/). Run `pnpm bench` to reproduce.
+- **Reproducible benchmarks** — Every percentage in this README (`−37%`, `72→90%`, `−85%`, `−84%`) is verified by an offline benchmark in [`examples/benchmarks/`](examples/benchmarks/). Run `pnpm bench` to reproduce. CI fails the PR if any number drifts outside its tolerance.
 
 ### Honest caveats
 
 agentkit-js is early-stage. The differentiating features (code execution kernels, durable runtime, quality runners, speculative scheduling) are technically novel but also niche — most teams pick a framework based on ecosystem breadth and documentation volume, where the mature options above win. Choose agentkit-js when sandboxed code execution, durable agent runs, prompt-cache cost control, or output quality runners are first-order concerns.
+
+### Verified status
+
+| | Number | Verified by |
+|---|---|---|
+| Tests passing | **710** | `bun run test` (CI matrix on every push) |
+| README percentages reproducible | **4 / 4** | `bun run bench` — runs in CI; non-zero exit blocks the PR |
+| Cross-process kill-and-resume (A1 DoD ①) | ✓ Redis + ✓ Cloudflare KV + ✓ Durable Object | `redis.test.ts` + `kvAdapters.test.ts` |
+| SSE Last-Event-ID gap-free replay (A2 DoD ①) | ✓ | `EventLog.test.ts` round-trip test |
+| Stateless HITL resume (A3 DoD ①) | ✓ | `hitl.test.ts` — three simulated processes |
+| `(future) KV-backed checkpointer` TODO | ✓ removed | `git grep` returns empty |
 
 ---
 

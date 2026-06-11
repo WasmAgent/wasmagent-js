@@ -174,3 +174,14 @@ The plan requires:
 - Every PR shipping a new persistence backend must include a kill-and-resume
   integration test (see `packages/core/src/checkpoint/redis.test.ts` and
   `packages/cloudflare-worker/src/kvAdapters.test.ts` for the shape).
+
+## What's verified today
+
+| Claim | Test | Notes |
+|---|---|---|
+| Snapshot survives across two adapter instances (Redis) | `packages/core/src/checkpoint/redis.test.ts` → "kill and resume" | Two REST clients sharing one map; second loads what the first saved. |
+| Snapshot survives across two adapter instances (CF KV) | `packages/cloudflare-worker/src/kvAdapters.test.ts` → "snapshot survives across adapter instances" | Same but with `CloudflareKvBackend` against a fake `KVNamespace`. |
+| Snapshot survives across two adapter instances (DO storage) | `packages/cloudflare-worker/src/kvAdapters.test.ts` → "DurableObjectKvBackend: snapshot survives" | Strong-consistency variant. |
+| `Last-Event-ID` replay is gap- and duplicate-free | `packages/core/src/streaming/EventLog.test.ts` → "the kill-and-replay round trip is gap- and duplicate-free" | Combined live + replay sequence is monotonic + unique. |
+| HITL pause / resume across three processes | `packages/core/src/checkpoint/hitl.test.ts` → "resumeFromHuman in a fresh process marks the snapshot ready" | Process 1 pauses → drops; process 2 submits response; process 3 reads + continues. |
+| Same contract holds in bscode after `createApp()` recycle | `bscode/apps/worker/src/app.test.ts` → "snapshot saved via one createApp() instance is readable by a fresh instance" | Production-shape worker, one shared `MemKvStore`. |
