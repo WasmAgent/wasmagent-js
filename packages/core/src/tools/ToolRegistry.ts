@@ -1,9 +1,46 @@
 import { zodToJsonSchema as zodToJsonSchemaLib } from "zod-to-json-schema";
 import type { AgentPrincipal, ToolCall, ToolDefinition, ToolResult } from "./types.js";
 
+/**
+ * Walk a JSON Schema tree and rewrite draft-04-style boolean
+ * `exclusiveMinimum` / `exclusiveMaximum` into draft 2020-12 numeric form.
+ *
+ * Why: zod-to-json-schema's `target: "openApi3"` emits the draft-04 shape
+ * (`{ minimum: 0, exclusiveMinimum: true }`) for `.positive()` / `.gt()` /
+ * `.negative()` / `.lt()`. Anthropic's API validates against draft 2020-12
+ * and rejects boolean exclusiveMinimum with HTTP 400 "tools.N.custom.input_schema:
+ * JSON schema is invalid". Rather than forbid `.positive()` everywhere, we
+ * canonicalise the output here so any consumer is safe by default.
+ */
+function normaliseExclusiveBounds(node: unknown): unknown {
+  if (Array.isArray(node)) {
+    for (const item of node) normaliseExclusiveBounds(item);
+    return node;
+  }
+  if (node && typeof node === "object") {
+    const obj = node as Record<string, unknown>;
+    if (obj.exclusiveMinimum === true && typeof obj.minimum === "number") {
+      obj.exclusiveMinimum = obj.minimum;
+      delete obj.minimum;
+    } else if (obj.exclusiveMinimum === false) {
+      // false is the default; just drop it.
+      delete obj.exclusiveMinimum;
+    }
+    if (obj.exclusiveMaximum === true && typeof obj.maximum === "number") {
+      obj.exclusiveMaximum = obj.maximum;
+      delete obj.maximum;
+    } else if (obj.exclusiveMaximum === false) {
+      delete obj.exclusiveMaximum;
+    }
+    for (const v of Object.values(obj)) normaliseExclusiveBounds(v);
+  }
+  return node;
+}
+
 /** Converts a Zod schema to a JSON Schema object (OpenAPI 3.0 compatible). */
 export function zodToJsonSchema(schema: import("zod").ZodSchema): object {
-  return zodToJsonSchemaLib(schema, { target: "openApi3", $refStrategy: "none" });
+  const raw = zodToJsonSchemaLib(schema, { target: "openApi3", $refStrategy: "none" });
+  return normaliseExclusiveBounds(raw) as object;
 }
 
 /**

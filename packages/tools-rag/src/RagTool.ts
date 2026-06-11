@@ -30,7 +30,9 @@ export function ragTool(
 ): ToolDefinition<{ query: string; topK?: number }, SearchResult[]> {
   const inputSchema = z.object({
     query: z.string().min(1).describe("Natural-language query to retrieve relevant chunks for."),
-    topK: z.number().int().positive().max(50).optional().describe("Number of results to return."),
+    // .min(1) — not .positive() — to avoid `exclusiveMinimum: true` which
+    // Anthropic's draft 2020-12 schema validator rejects as invalid.
+    topK: z.number().int().min(1).max(50).optional().describe("Number of results to return."),
   }) as unknown as z.ZodType<{ query: string; topK?: number }>;
 
   return {
