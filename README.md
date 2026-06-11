@@ -44,7 +44,7 @@ There are several mature TypeScript agent frameworks. Here is an honest assessme
 
 - **Vercel AI SDK** — If you're building a chat UI with Next.js, use this. The React hooks (`useChat`, `useAgent`), `DurableAgent` for stateful/resumable workflows (AI SDK 6), native MCP support, and DevTools panel are all best-in-class. 57M monthly downloads.
 - **LangChain/LangGraph.js** — If you need 300+ integrations (vector stores, document loaders, obscure providers) or graph-based durable workflows with checkpointing and human-in-the-loop, LangGraph is battle-tested at LinkedIn, Uber, and GitLab scale.
-- **Mastra** — Best eval framework (12+ built-in scorers including trajectory and tool accuracy). "Observational memory" (background LLM reflection on history) is genuinely novel. Strong developer onboarding.
+- **Mastra** — Best eval framework (12+ built-in scorers including trajectory and tool accuracy). Strong developer onboarding. Their "Observational memory" pattern was first-mover; agentkit-js now ships an equivalent (`ObservationalMemory`) plus extra prompt-cache-aware compression — see [docs/guides/observational-memory.md](docs/guides/observational-memory.md).
 - **Cloudflare Agents SDK** — If you're building on Cloudflare specifically, Durable Objects give you stateful agents with persistent scheduling that nothing else matches natively.
 - **OpenAI Agents JS** — If your stack is OpenAI-only and you want first-party support, the cleanest path.
 
@@ -56,6 +56,10 @@ There are several mature TypeScript agent frameworks. Here is an honest assessme
 - **Anthropic prompt-cache optimization** — Framework actively manages `cache_control` breakpoint placement across multi-turn history, supports the 1-hour extended TTL (`ttl:"1h"`), and reports per-TTL cache usage. Competitors pass through or validate limits but do not optimise placement.
 - **Speculative tool execution** — Read-only, idempotent tools are pre-executed ahead of write barriers within a DAG step. The scheduler is awakened by `$<callId>` dependency references in the system prompt, enabling true parallel + ordered hybrid scheduling. No competitor implements this.
 - **GenAI semantic conventions** — `OtelBridge` emits standard `gen_ai.*` attributes (Datadog / Honeycomb / Grafana GenAI view compatible) alongside legacy names, switchable via `semconvMode`.
+- **Observational Memory + cache-stable prefix (A1)** — Background "observer" model continuously compresses history into ranked observation paragraphs. The compressed prefix is byte-stable so Anthropic prompt cache hits stay hot across observations — Mastra's reference work has no equivalent. ~22% of baseline tokens on a 50-turn synthetic trace; see [`examples/benchmarks/observational-memory.mjs`](examples/benchmarks/observational-memory.mjs).
+- **Time-travel debugger (A2)** — `@agentkit-js/devtools` exposes the existing `EventLog` + `Checkpointer` data through a navigable step timeline + "fork from any step" UI. LangGraph Studio's headline feature, shipped as a tiny opt-in package (logic core ~250 LOC, React UI optional).
+- **Skills + lifecycle hooks (A3)** — `SkillRegistry` for progressive instruction/tool disclosure (Claude Agent SDK / CrewAI v1.12 convention). `ToolPostHook` chain (redact, truncate, audit) sits beside the existing `ToolGuardrail` — pre/post symmetry without confusing block vs transform semantics.
+- **Multi-criterion LLM judges (A4)** — `judgeScorer` extends `llmJudge` with weighted criterion-level scoring + configurable scale. Two built-in judges (`trajectoryQualityJudge`, `answerCompletenessJudge`) work with any cheap Model adapter so judges run on Haiku/Doubao while the agent stays on Sonnet/Opus.
 - **Reproducible benchmarks** — Every percentage in this README (`−37%`, `72→90%`, `−85%`, `−84%`) is verified by an offline benchmark in [`examples/benchmarks/`](examples/benchmarks/). Run `pnpm bench` to reproduce. CI fails the PR if any number drifts outside its tolerance.
 
 ### Honest caveats
@@ -66,11 +70,15 @@ agentkit-js is early-stage. The differentiating features (code execution kernels
 
 | | Number | Verified by |
 |---|---|---|
-| Tests passing | **710** | `bun run test` (CI matrix on every push) |
-| README percentages reproducible | **4 / 4** | `bun run bench` — runs in CI; non-zero exit blocks the PR |
+| Tests passing (all packages) | **1059** | `bun run test` (CI matrix on every push) — `@agentkit-js/core` 641 · `@agentkit-js/devtools` 17 · others 401 |
+| README percentages reproducible | **5 / 5** | `bun run bench` — runs in CI; non-zero exit blocks the PR (incl. A1 ≤25% target) |
 | Cross-process kill-and-resume (A1 DoD ①) | ✓ Redis + ✓ Cloudflare KV + ✓ Durable Object | `redis.test.ts` + `kvAdapters.test.ts` |
 | SSE Last-Event-ID gap-free replay (A2 DoD ①) | ✓ | `EventLog.test.ts` round-trip test |
 | Stateless HITL resume (A3 DoD ①) | ✓ | `hitl.test.ts` — three simulated processes |
+| Observational memory ≥4× compression (A1) | ✓ 22% of baseline | `examples/benchmarks/observational-memory.mjs` |
+| Step-fork bundle (A2 DevTools) | ✓ 9 unit + 8 jsdom render tests | `packages/devtools/src/EventLogReplay.test.ts` + `react/DevTools.test.tsx` |
+| Skill lazy-load + post-hook chain (A3) | ✓ | `packages/core/src/skills/Skill.test.ts` + `guardrails/index.test.ts` |
+| Judge scorer weighted breakdown (A4) | ✓ | `packages/core/src/evals/JudgeScorer.test.ts` |
 | `(future) KV-backed checkpointer` TODO | ✓ removed | `git grep` returns empty |
 
 ---
@@ -338,7 +346,8 @@ The Worker exposes a POST `/run` endpoint. Session state is stored in KV for cos
 
 | Package | Description |
 |---------|-------------|
-| `@agentkit-js/core` | Agent runtime, kernels, models, tools, quality runners, evals, observability, checkpointing |
+| `@agentkit-js/core` | Agent runtime, kernels, models, tools, quality runners, evals, observability, checkpointing, **observational memory (A1)**, **skills + lifecycle hooks (A3)**, **judge scorers (A4)** |
+| `@agentkit-js/devtools` | **Time-travel debugger (A2)** — `EventLogReplay` engine + opt-in `<DevTools />` React UI for step-replay and fork-from-checkpoint |
 | `@agentkit-js/react` | `useAgentRun()` React hook for streaming SSE agent output |
 | `@agentkit-js/ui-cards` | Parser for `\`\`\`card:*` fenced blocks in AI replies (Markdown / D2 / extensible) |
 | `@agentkit-js/ui-cards-react` | React components: MarkdownCard, D2Card, CardRenderer, ChatMessage |
@@ -614,13 +623,20 @@ cd packages/cloudflare-worker && wrangler dev
 | `examples/benchmarks/` | Reproducible verification of every README percentage |
 | `examples/cf-production/` | Production-style Worker deployment |
 | `examples/otel-jaeger/` | OTel bridge with Jaeger backend |
+| `examples/observational-memory/` (in benchmarks) | **A1** — measure compression ratio of `ObservationalMemory` vs baseline |
+| `examples/devtools-replay/` | **A2** — synthetic event trace + `EventLogReplay` fork-from-step demo (offline) |
+| `examples/skills-demo/` | **A3** — three lazily-loaded skills + post-hook chain (redact + truncate) |
+| `examples/judge-scorer-demo/` | **A4** — code-based vs LLM-judge scorer divergence on a synthetic trace |
 
 ### Documentation
 
 - [docs/guides/durable-runtime.md](docs/guides/durable-runtime.md) — checkpoints, SSE Last-Event-ID resume, HITL
 - [docs/kernels/comparison.md](docs/kernels/comparison.md) — kernel selection decision tree
-- [docs/guides/evals-cookbook.md](docs/guides/evals-cookbook.md) — eval design patterns
+- [docs/guides/evals-cookbook.md](docs/guides/evals-cookbook.md) — eval design patterns (incl. A4 multi-criterion judges)
 - [docs/guides/memory-patterns.md](docs/guides/memory-patterns.md) — memory namespace + decay patterns
+- [docs/guides/observational-memory.md](docs/guides/observational-memory.md) — **A1** background-observer compression
+- [docs/guides/devtools.md](docs/guides/devtools.md) — **A2** time-travel debugger + fork-from-step
+- [docs/guides/skills-and-hooks.md](docs/guides/skills-and-hooks.md) — **A3** progressive disclosure + post-tool hooks
 
 ### Environment Variables
 
