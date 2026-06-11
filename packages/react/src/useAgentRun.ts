@@ -129,11 +129,26 @@ export function useAgentRun(
           });
 
           if (!resp.ok || !resp.body) {
+            // Try to extract the worker's structured error message —
+            // a bare "HTTP 400" tells the user nothing. The worker
+            // typically returns {"error": "<reason>"} JSON. Fall back
+            // to a status-only message only when the body isn't JSON.
+            let errorMsg = `HTTP ${resp.status}`;
+            try {
+              const ct = resp.headers.get("content-type") ?? "";
+              if (ct.includes("application/json")) {
+                const body = (await resp.json()) as { error?: string; message?: string };
+                if (body.error) errorMsg = `${errorMsg}: ${body.error}`;
+                else if (body.message) errorMsg = `${errorMsg}: ${body.message}`;
+              } else {
+                const text = (await resp.text()).trim();
+                if (text && text.length < 200) errorMsg = `${errorMsg}: ${text}`;
+              }
+            } catch {
+              // Body already consumed or unreadable — use the bare status.
+            }
             setStatus("error");
-            setMessages((prev) => [
-              ...prev,
-              { id: nextId(), role: "error", content: `HTTP ${resp.status}` },
-            ]);
+            setMessages((prev) => [...prev, { id: nextId(), role: "error", content: errorMsg }]);
             return;
           }
 
