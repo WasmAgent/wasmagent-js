@@ -8,15 +8,15 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  type AgentEvent,
+  type AgentSnapshot,
   CheckpointableRun,
   InMemoryCheckpointer,
   KvCheckpointer,
-  type AgentEvent,
-  type AgentSnapshot,
   type RedisClientLike,
 } from "../index.js";
-import { RedisKvBackend, RedisRestKvBackend } from "./redis.js";
 import { MessageAssembler } from "../memory/MessageAssembler.js";
+import { RedisKvBackend, RedisRestKvBackend } from "./redis.js";
 
 // ── REST transport ────────────────────────────────────────────────────────────
 
@@ -173,7 +173,7 @@ describe("KvCheckpointer + Redis adapter — kill and resume", () => {
       set: (async (k: string, v: string) => {
         sharedKv.set(k, v);
         return "OK";
-      // biome-ignore lint/suspicious/noExplicitAny: matches overload contract
+        // biome-ignore lint/suspicious/noExplicitAny: matches overload contract
       }) as any,
       del: async (k) => (sharedKv.delete(k) ? 1 : 0),
       scan: async (_cursor, _matchKw, pattern) => {
@@ -205,20 +205,24 @@ describe("KvCheckpointer + Redis adapter — kill and resume", () => {
     // shared map across two processes); the assertion is that a snapshot
     // saved by process 1 is loadable by process 2.
     const sharedKv = new Map<string, string>();
-    const makeAdapter = () =>
-      new RedisKvBackend({
+    const makeAdapter = () => {
+      const client: RedisClientLike = {
         get: async (k) => sharedKv.get(k) ?? null,
-        // biome-ignore lint/suspicious/noExplicitAny: matches overload contract
-        set: (async (k: string, v: string) => {
+        // The two-arg + four-arg overloads collapse to one runtime impl: the
+        // adapter only ever calls the no-TTL form here, so the trailing
+        // (`mode`, `seconds`) overload is unused.
+        set: async (k: string, v: string, ..._rest: unknown[]) => {
           sharedKv.set(k, v);
           return "OK";
-        }) as any,
+        },
         del: async (k) => (sharedKv.delete(k) ? 1 : 0),
         scan: async (_c, _m, pat) => {
           const prefix = String(pat ?? "").replace(/\*$/, "");
           return ["0", [...sharedKv.keys()].filter((k) => k.startsWith(prefix))];
         },
-      });
+      };
+      return new RedisKvBackend(client);
+    };
 
     async function* fakeStream(steps: number): AsyncGenerator<AgentEvent> {
       for (let i = 0; i < steps; i++) {
@@ -288,18 +292,19 @@ describe("KvCheckpointer + Redis adapter — kill and resume", () => {
     await memCp.save("t", snap);
 
     const sharedKv = new Map<string, string>();
-    const redisCp = new KvCheckpointer(
-      new RedisKvBackend({
-        get: async (k) => sharedKv.get(k) ?? null,
-        // biome-ignore lint/suspicious/noExplicitAny: matches overload contract
-        set: (async (k: string, v: string) => {
-          sharedKv.set(k, v);
-          return "OK";
-        }) as any,
-        del: async (k) => (sharedKv.delete(k) ? 1 : 0),
-        scan: async () => ["0", []],
-      })
-    );
+    const client: RedisClientLike = {
+      get: async (k) => sharedKv.get(k) ?? null,
+      set: async (k: string, v: string, ..._rest: unknown[]) => {
+        sharedKv.set(k, v);
+        return "OK";
+      },
+      del: async (k) => (sharedKv.delete(k) ? 1 : 0),
+      scan: async (_c, _m, pat) => {
+        const prefix = String(pat ?? "").replace(/\*$/, "");
+        return ["0", [...sharedKv.keys()].filter((k) => k.startsWith(prefix))];
+      },
+    };
+    const redisCp = new KvCheckpointer(new RedisKvBackend(client));
     await redisCp.save("t", snap);
 
     expect(await redisCp.load("t")).toEqual(await memCp.load("t"));

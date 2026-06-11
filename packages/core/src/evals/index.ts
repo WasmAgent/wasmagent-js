@@ -368,11 +368,6 @@ export type { EfficiencyConstraints } from "./EfficiencyScorer.js";
 export { efficiencyScorer } from "./EfficiencyScorer.js";
 export type { FaithfulnessOpts } from "./FaithfulnessScorer.js";
 export { faithfulnessScorer, faithfulnessScorerAsync } from "./FaithfulnessScorer.js";
-export { recoveryScorer } from "./RecoveryScorer.js";
-
-export type { RelevanceOpts } from "./RelevanceScorer.js";
-export { relevanceScorer, relevanceScorerAsync } from "./RelevanceScorer.js";
-
 // ── A4 — LLM-as-judge scorer + built-in domain judges ──
 export type {
   JudgeBreakdown,
@@ -388,3 +383,6 @@ export {
   TRAJECTORY_QUALITY_CRITERIA,
   trajectoryQualityJudge,
 } from "./JudgeScorer.js";
+export { recoveryScorer } from "./RecoveryScorer.js";
+export type { RelevanceOpts } from "./RelevanceScorer.js";
+export { relevanceScorer, relevanceScorerAsync } from "./RelevanceScorer.js";

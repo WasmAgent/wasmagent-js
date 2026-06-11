@@ -50,7 +50,9 @@ describe("EventLog", () => {
   it("replay returns the full log when Last-Event-ID is absent", async () => {
     const kv = new MapKvBackend();
     const log = new EventLog(kv);
-    for await (const _ of log.tap(generate(3), "t")) { /* drain */ }
+    for await (const _ of log.tap(generate(3), "t")) {
+      /* drain */
+    }
 
     const replayed = [];
     for await (const r of log.replay("t")) replayed.push(r.event.data);
@@ -78,7 +80,9 @@ describe("EventLog", () => {
   it("Last-Event-ID strictly greater than all stored ids yields nothing", async () => {
     const kv = new MapKvBackend();
     const log = new EventLog(kv);
-    for await (const _ of log.tap(generate(3), "t")) { /* drain */ }
+    for await (const _ of log.tap(generate(3), "t")) {
+      /* drain */
+    }
     const replayed = [];
     for await (const r of log.replay("t", "999999999999")) replayed.push(r);
     expect(replayed).toEqual([]);
@@ -87,7 +91,9 @@ describe("EventLog", () => {
   it("malformed Last-Event-ID is treated as 'deliver everything'", async () => {
     const kv = new MapKvBackend();
     const log = new EventLog(kv);
-    for await (const _ of log.tap(generate(2), "t")) { /* drain */ }
+    for await (const _ of log.tap(generate(2), "t")) {
+      /* drain */
+    }
     const replayed = [];
     for await (const r of log.replay("t", "not-a-number")) replayed.push(r);
     expect(replayed.length).toBe(2);
@@ -96,7 +102,9 @@ describe("EventLog", () => {
   it("highWaterMark / nextSeq let a fresh process continue numbering", async () => {
     const kv = new MapKvBackend();
     const log = new EventLog(kv);
-    for await (const _ of log.tap(generate(3), "t")) { /* drain */ }
+    for await (const _ of log.tap(generate(3), "t")) {
+      /* drain */
+    }
 
     expect(await log.highWaterMark("t")).toBe("000000000002");
     expect(await log.nextSeq("t")).toBe(3);
@@ -112,8 +120,12 @@ describe("EventLog", () => {
   it("purge clears only the targeted trace", async () => {
     const kv = new MapKvBackend();
     const log = new EventLog(kv);
-    for await (const _ of log.tap(generate(2), "trace-A")) { /* drain */ }
-    for await (const _ of log.tap(generate(3), "trace-B")) { /* drain */ }
+    for await (const _ of log.tap(generate(2), "trace-A")) {
+      /* drain */
+    }
+    for await (const _ of log.tap(generate(3), "trace-B")) {
+      /* drain */
+    }
 
     await log.purge("trace-A");
 

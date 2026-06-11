@@ -179,13 +179,7 @@ export class RedisKvBackend implements Required<KvBackend> {
     let cursor: string | number = "0";
     const HARD_CAP = 10_000;
     do {
-      const [next, keys] = await this.#client.scan(
-        cursor,
-        "MATCH",
-        `${prefix}*`,
-        "COUNT",
-        1000
-      );
+      const [next, keys] = await this.#client.scan(cursor, "MATCH", `${prefix}*`, "COUNT", 1000);
       cursor = next;
       for (const k of keys) out.push(k);
       if (out.length >= HARD_CAP) break;

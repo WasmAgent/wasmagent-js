@@ -154,7 +154,7 @@ export async function requireAuth(
   opts: RequireAuthOpts
 ): Promise<AuthContext> {
   const auth = request.headers.get("Authorization") ?? request.headers.get("authorization");
-  if (!auth || !auth.startsWith("Bearer ")) {
+  if (!auth?.startsWith("Bearer ")) {
     throw new Error("requireAuth: missing Bearer token");
   }
   const token = auth.slice("Bearer ".length).trim();

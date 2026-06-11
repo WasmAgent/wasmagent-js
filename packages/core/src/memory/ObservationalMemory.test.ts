@@ -12,10 +12,10 @@
  */
 
 import { afterEach, describe, expect, it } from "vitest";
+import type { Model, ModelMessage, StreamEvent } from "../models/types.js";
+import { MapKvBackend } from "./MemoryTool.js";
 import { MessageAssembler } from "./MessageAssembler.js";
 import { ObservationalMemory } from "./ObservationalMemory.js";
-import { MapKvBackend } from "./MemoryTool.js";
-import type { Model, ModelMessage, StreamEvent } from "../models/types.js";
 
 /** Build a tiny test assembler — system prompt is short so token math is predictable. */
 function makeAssembler(): MessageAssembler {
@@ -77,9 +77,7 @@ describe("ObservationalMemory", () => {
     const assembler = makeAssembler();
     // Add many user messages to push token estimate above threshold.
     for (let i = 0; i < 12; i++) assembler.addStep(userStep(`msg ${i} ${"x".repeat(200)}`));
-    const { model, calls } = mockObserver([
-      '{"priority":"high","text":"discussed several xs"}',
-    ]);
+    const { model, calls } = mockObserver(['{"priority":"high","text":"discussed several xs"}']);
     const kv = new MapKvBackend();
     mem = new ObservationalMemory({
       assembler,
@@ -154,6 +152,10 @@ describe("ObservationalMemory", () => {
     const failingModel: Model = {
       providerId: "mock/fail",
       async *generate(): AsyncGenerator<StreamEvent> {
+        // This generator intentionally throws before yielding to simulate an
+        // observer outage; the unreachable yield below satisfies lint while
+        // keeping the throw-first behaviour the test relies on.
+        if (false as boolean) yield { type: "text_delta", delta: "" } as StreamEvent;
         throw new Error("simulated observer outage");
       },
     };
@@ -164,7 +166,7 @@ describe("ObservationalMemory", () => {
       tokenThreshold: 100,
     });
     // Should not throw synchronously…
-    expect(() => mem!.noteStep()).not.toThrow();
+    expect(() => mem?.noteStep()).not.toThrow();
     // …or asynchronously.
     await mem.flush();
     expect(mem.getLastError()).toMatch(/simulated observer outage/);

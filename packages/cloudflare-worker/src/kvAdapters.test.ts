@@ -5,14 +5,11 @@
  * instances using the same underlying namespace/storage.
  */
 
+import { type AgentSnapshot, KvCheckpointer } from "@agentkit-js/core";
 import { describe, expect, it } from "vitest";
 import {
-  KvCheckpointer,
-  type AgentSnapshot,
-} from "@agentkit-js/core";
-import {
-  CloudflareKvBackend,
   type CloudflareKVNamespace,
+  CloudflareKvBackend,
   DurableObjectKvBackend,
   type DurableObjectStorageLike,
 } from "./kvAdapters.js";

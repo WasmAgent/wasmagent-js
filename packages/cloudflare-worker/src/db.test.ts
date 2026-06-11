@@ -84,7 +84,8 @@ class FakeStmt {
       const last = this.args[this.args.length - 1] as string;
       const idx = this.rows.findIndex((r) => r.id === last);
       if (idx >= 0) {
-        const row = this.rows[idx]!;
+        const row = this.rows[idx];
+        if (!row) return Promise.resolve({ success: true, meta: { changes: 0 } });
         const [
           status,
           finalAnswer,

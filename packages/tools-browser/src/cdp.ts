@@ -45,7 +45,6 @@ class CdpClient {
       } catch (err) {
         // Don't throw inside an event listener — that would crash the WS
         // pipeline and leak every pending RPC indefinitely.
-        // biome-ignore lint/suspicious/noConsole: intentional warn for malformed message
         console.warn("[CdpClient] dropping malformed message", {
           sample: String(ev.data).slice(0, 200),
           error: err,

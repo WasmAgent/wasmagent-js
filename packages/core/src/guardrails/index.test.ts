@@ -249,6 +249,7 @@ describe("runToolPostHooks", () => {
       name: "audit",
       after(toolName, ctx) {
         seen.push(`${toolName}:${String(ctx.output)}`);
+        return undefined;
       },
     };
     const out = await runToolPostHooks([audit], "read_file", "contents", baseCtx);
@@ -294,7 +295,7 @@ describe("runToolPostHooks", () => {
     const long = await runToolPostHooks([hook], "t", longInput, baseCtx);
     expect(typeof long).toBe("string");
     expect((long as string).endsWith("qrstuvwxyz")).toBe(true);
-    expect((long as string)).toContain("truncated");
+    expect(long as string).toContain("truncated");
   });
 
   it("hook errors are swallowed and do not break the chain", async () => {

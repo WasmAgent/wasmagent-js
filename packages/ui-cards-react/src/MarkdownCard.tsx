@@ -104,13 +104,14 @@ async function exportDocx(content: string, meta?: string) {
   let i = 0;
 
   while (i < lines.length) {
-    const line = lines[i]!;
+    const line = lines[i] ?? "";
 
     // Heading
     const headingMatch = /^(#{1,6})\s+(.+)$/.exec(line);
     if (headingMatch) {
-      const level = headingMatch[1]!.length;
-      const text = headingMatch[2]!.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1");
+      const level = headingMatch[1]?.length ?? 1;
+      const text =
+        headingMatch[2]?.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1") ?? "";
       const headingLevels: Record<number, (typeof HeadingLevel)[keyof typeof HeadingLevel]> = {
         1: HeadingLevel.HEADING_1,
         2: HeadingLevel.HEADING_2,
@@ -137,12 +138,13 @@ async function exportDocx(content: string, meta?: string) {
         .map((c) => c.trim());
       i += 2; // skip header + separator
       const bodyRows: string[][] = [];
-      while (i < lines.length && lines[i]!.startsWith("|")) {
-        bodyRows.push(
-          lines[i]!.split("|")
+      while (i < lines.length && lines[i]?.startsWith("|")) {
+        const cells =
+          lines[i]
+            ?.split("|")
             .filter((c) => c.trim())
-            .map((c) => c.trim())
-        );
+            .map((c) => c.trim()) ?? [];
+        bodyRows.push(cells);
         i++;
       }
       const makeRow = (cells: string[], isHeader = false) =>

@@ -717,10 +717,7 @@ export class TokenBudget {
    * (when present) are billed at 1.25× input on Anthropic.
    */
   estimatedUsdFor(modelId?: string | ModelMeta): number {
-    const meta =
-      typeof modelId === "string"
-        ? ModelRegistry[modelId]
-        : modelId;
+    const meta = typeof modelId === "string" ? ModelRegistry[modelId] : modelId;
     const inputUsd = meta?.inputUsdPerMTok ?? 3;
     const outputUsd = meta?.outputUsdPerMTok ?? 15;
     const cacheReadUsd = meta?.cacheReadUsdPerMTok ?? inputUsd * 0.1;

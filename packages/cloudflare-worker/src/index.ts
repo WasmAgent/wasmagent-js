@@ -53,8 +53,8 @@ import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
 // CloudflareKvBackend, DurableObjectKvBackend } from
 // "@agentkit-js/cloudflare-worker"`.
 export type {
-  CloudflareKvBackendOptions,
   CloudflareKVNamespace,
+  CloudflareKvBackendOptions,
   DurableObjectStorageLike,
 } from "./kvAdapters.js";
 export { CloudflareKvBackend, DurableObjectKvBackend } from "./kvAdapters.js";
@@ -247,11 +247,7 @@ async function handleResume(
   const checkpointer = new KvCheckpointer(new CloudflareKvBackendImpl(env.AGENTKIT_CHECKPOINTS));
   const ok = await resumeFromHuman(checkpointer, b.traceId, b.promptId, b.response);
   if (!ok) {
-    return jsonError(
-      "No paused run found for the supplied traceId/promptId",
-      404,
-      corsHeaders
-    );
+    return jsonError("No paused run found for the supplied traceId/promptId", 404, corsHeaders);
   }
   return Response.json({ status: "resumed", traceId: b.traceId }, { headers: corsHeaders });
 }
@@ -389,9 +385,7 @@ async function handleRun(
 
   const baseRun = codeAgent.run(task);
   if (env.AGENTKIT_CHECKPOINTS) {
-    const checkpointer = new KvCheckpointer(
-      new CloudflareKvBackendImpl(env.AGENTKIT_CHECKPOINTS)
-    );
+    const checkpointer = new KvCheckpointer(new CloudflareKvBackendImpl(env.AGENTKIT_CHECKPOINTS));
     // Reuse the same traceId we'll assign for the event log below.
     const checkpointTraceId = agUiRunId ?? kvKey ?? crypto.randomUUID();
     const wrapper = new CheckpointableRun({ checkpointer }, codeAgent.assembler);

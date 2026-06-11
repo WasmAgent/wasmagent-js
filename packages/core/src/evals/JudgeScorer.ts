@@ -72,14 +72,8 @@ const CRITERION_LINE = /^\s*([A-Za-z0-9-]+)\s*:\s*([0-9]+(?:\.[0-9]+)?)\s*(?:\((
 const REASONING_HEADER = /^\s*REASONING\b/im;
 const SCORES_HEADER = /^\s*SCORES\b/im;
 
-function buildPrompt(
-  trace: AgentTrace,
-  criteria: JudgeCriterion[],
-  scale: number,
-): string {
-  const criteriaList = criteria
-    .map((c, i) => `${i + 1}. ${c.id} — ${c.description}`)
-    .join("\n");
+function buildPrompt(trace: AgentTrace, criteria: JudgeCriterion[], scale: number): string {
+  const criteriaList = criteria.map((c, i) => `${i + 1}. ${c.id} — ${c.description}`).join("\n");
   const exampleId = criteria[0]?.id ?? "criterion-1";
   return `Task: ${trace.task}
 Final answer: ${trace.finalAnswer ?? "(no answer)"}
@@ -102,17 +96,13 @@ REASONING
 <two-sentence summary of why the composite landed where it did>`;
 }
 
-function parseJudgeReply(
-  raw: string,
-  criteria: JudgeCriterion[],
-  scale: number,
-): JudgeBreakdown[] {
+function parseJudgeReply(raw: string, criteria: JudgeCriterion[], scale: number): JudgeBreakdown[] {
   // Pull each criterionId line out of the SCORES block.
   const scoresStart = raw.search(SCORES_HEADER);
   const reasoningStart = raw.search(REASONING_HEADER);
   const scoreBlock = raw.slice(
     scoresStart === -1 ? 0 : scoresStart,
-    reasoningStart === -1 ? raw.length : reasoningStart,
+    reasoningStart === -1 ? raw.length : reasoningStart
   );
   const lines = scoreBlock.split(/\r?\n/);
   const breakdown: JudgeBreakdown[] = [];
@@ -140,7 +130,7 @@ function parseJudgeReply(
         raw: 0,
         normalized: 0,
         reasoning: "(judge did not score this criterion)",
-      },
+      }
     );
   }
   return breakdown;
@@ -150,7 +140,8 @@ function compositeOf(breakdown: JudgeBreakdown[], criteria: JudgeCriterion[]): n
   let totalWeight = 0;
   let weighted = 0;
   for (let i = 0; i < criteria.length; i++) {
-    const c = criteria[i]!;
+    const c = criteria[i];
+    if (!c) continue;
     const weight = c.weight ?? 1;
     if (weight <= 0) continue;
     totalWeight += weight;
@@ -166,7 +157,7 @@ function compositeOf(breakdown: JudgeBreakdown[], criteria: JudgeCriterion[]): n
  */
 export async function runJudgeScorer(
   trace: AgentTrace,
-  opts: JudgeScorerOptions,
+  opts: JudgeScorerOptions
 ): Promise<JudgeScorerResult> {
   const scale = opts.scale ?? 10;
   const messages: ModelMessage[] = [];
@@ -191,9 +182,7 @@ export async function runJudgeScorer(
     score: Math.max(0, Math.min(1, composite)),
     rawComposite: composite,
     breakdown,
-    detail: breakdown
-      .map((b) => `${b.criterionId}=${b.raw}/${scale}`)
-      .join(", "),
+    detail: breakdown.map((b) => `${b.criterionId}=${b.raw}/${scale}`).join(", "),
   };
 }
 
@@ -218,9 +207,19 @@ export function judgeScorer(opts: JudgeScorerOptions): Scorer {
 
 /** Default criteria for `trajectoryQualityJudge`. */
 export const TRAJECTORY_QUALITY_CRITERIA: JudgeCriterion[] = [
-  { id: "efficiency", description: "Did the agent use the minimum tool calls necessary? Penalise retries and dead ends." },
-  { id: "tool-fit", description: "Did the agent pick appropriate tools for each step? No 'guessing' tool inputs." },
-  { id: "self-correction", description: "When the agent saw an error, did it fix the cause rather than retry blindly?" },
+  {
+    id: "efficiency",
+    description:
+      "Did the agent use the minimum tool calls necessary? Penalise retries and dead ends.",
+  },
+  {
+    id: "tool-fit",
+    description: "Did the agent pick appropriate tools for each step? No 'guessing' tool inputs.",
+  },
+  {
+    id: "self-correction",
+    description: "When the agent saw an error, did it fix the cause rather than retry blindly?",
+  },
 ];
 
 /**
@@ -230,7 +229,7 @@ export const TRAJECTORY_QUALITY_CRITERIA: JudgeCriterion[] = [
  */
 export function trajectoryQualityJudge(
   model: Model,
-  override: Partial<Omit<JudgeScorerOptions, "model">> = {},
+  override: Partial<Omit<JudgeScorerOptions, "model">> = {}
 ): JudgeScorerOptions {
   return {
     name: "trajectoryQuality",
@@ -244,9 +243,20 @@ export function trajectoryQualityJudge(
 
 /** Default criteria for `answerCompletenessJudge`. */
 export const ANSWER_COMPLETENESS_CRITERIA: JudgeCriterion[] = [
-  { id: "coverage", description: "Did the answer address every part of the task? Penalise sub-questions left unanswered." },
-  { id: "actionability", description: "Is the answer concrete enough for the user to act on without follow-up?" },
-  { id: "honesty", description: "When the answer is uncertain, does it say so? Penalise overconfident hand-waving." },
+  {
+    id: "coverage",
+    description:
+      "Did the answer address every part of the task? Penalise sub-questions left unanswered.",
+  },
+  {
+    id: "actionability",
+    description: "Is the answer concrete enough for the user to act on without follow-up?",
+  },
+  {
+    id: "honesty",
+    description:
+      "When the answer is uncertain, does it say so? Penalise overconfident hand-waving.",
+  },
 ];
 
 /**
@@ -257,7 +267,7 @@ export const ANSWER_COMPLETENESS_CRITERIA: JudgeCriterion[] = [
  */
 export function answerCompletenessJudge(
   model: Model,
-  override: Partial<Omit<JudgeScorerOptions, "model">> = {},
+  override: Partial<Omit<JudgeScorerOptions, "model">> = {}
 ): JudgeScorerOptions {
   return {
     name: "answerCompleteness",

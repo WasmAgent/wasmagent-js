@@ -104,9 +104,7 @@ export class SkillRegistry {
   /** Render the registry as a markdown bullet list — handy for system prompts. */
   describe(): string {
     if (this.#skills.size === 0) return "(no skills registered)";
-    return [...this.#skills.values()]
-      .map((s) => `- **${s.name}** — ${s.description}`)
-      .join("\n");
+    return [...this.#skills.values()].map((s) => `- **${s.name}** — ${s.description}`).join("\n");
   }
 
   /**
@@ -121,7 +119,11 @@ export class SkillRegistry {
       if (!skill.trigger) continue;
       try {
         if (await skill.trigger(task)) {
-          out.push({ name: skill.name, description: skill.description, ...(skill.tags ? { tags: skill.tags } : {}) });
+          out.push({
+            name: skill.name,
+            description: skill.description,
+            ...(skill.tags ? { tags: skill.tags } : {}),
+          });
         }
       } catch (err) {
         // A flaky trigger should not crash the run; treat as no-match.
@@ -144,7 +146,11 @@ export class SkillRegistry {
       this.#cache.set(name, body);
     }
     return {
-      manifest: { name: skill.name, description: skill.description, ...(skill.tags ? { tags: skill.tags } : {}) },
+      manifest: {
+        name: skill.name,
+        description: skill.description,
+        ...(skill.tags ? { tags: skill.tags } : {}),
+      },
       body,
     };
   }
@@ -155,7 +161,7 @@ export class SkillRegistry {
    * default prompt + tools).
    */
   async resolveForTask(
-    task: string,
+    task: string
   ): Promise<{ instructions: string; tools: ToolDefinition[]; activated: string[] } | null> {
     const matched = await this.match(task);
     if (matched.length === 0) return null;

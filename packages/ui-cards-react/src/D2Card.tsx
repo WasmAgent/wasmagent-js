@@ -159,7 +159,8 @@ async function exportPng(svgString: string, meta?: string) {
       const canvas = document.createElement("canvas");
       canvas.width = exportW;
       canvas.height = exportH;
-      const ctx = canvas.getContext("2d")!;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, exportW, exportH);
       ctx.drawImage(img, 0, 0, exportW, exportH);

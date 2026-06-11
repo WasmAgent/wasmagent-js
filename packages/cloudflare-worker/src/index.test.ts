@@ -49,8 +49,6 @@ vi.mock("@agentkit-js/core", () => {
     // so the EventLog constructor is only ever invoked when the integration
     // wires it up; tests pass the format helper through unchanged.
     EventLog: class {
-      // biome-ignore lint/suspicious/noExplicitAny: matches the real shape
-      constructor(_kv: any) {}
       async *replay(): AsyncGenerator<unknown> {
         // no persisted events in mocked tests
       }
@@ -103,14 +101,12 @@ vi.mock("@agentkit-js/core", () => {
       response: string
     ) => {
       const snap = await cp.load(traceId);
-      if (!snap || !snap.pendingHumanInput) return false;
+      if (!snap?.pendingHumanInput) return false;
       if (snap.pendingHumanInput.promptId !== promptId) return false;
       await cp.respond(traceId, promptId, response);
       return true;
     },
     CheckpointableRun: class {
-      // biome-ignore lint/suspicious/noExplicitAny: matches real shape
-      constructor(_opts: any, _asm: any) {}
       run<T>(source: AsyncGenerator<T>) {
         return source;
       }

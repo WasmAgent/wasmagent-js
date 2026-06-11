@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { type JwtPayload, requireAuth, verifyJwt } from "./auth.js";
 
 const SECRET = "test-secret-key-please-change";

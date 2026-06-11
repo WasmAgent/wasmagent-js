@@ -237,12 +237,7 @@ export function makeRetrievalTool(
       // target emits draft-04-style `exclusiveMinimum: true` for .positive(),
       // which Anthropic's draft 2020-12 validator rejects with 400
       // "tools.N.custom.input_schema: JSON schema is invalid".
-      topK: z
-        .number()
-        .int()
-        .min(1)
-        .optional()
-        .describe("Number of results to return (default 3)"),
+      topK: z.number().int().min(1).optional().describe("Number of results to return (default 3)"),
     }),
     outputSchema: z.object({
       results: z.array(

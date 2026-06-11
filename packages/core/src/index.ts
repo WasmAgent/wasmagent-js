@@ -100,8 +100,8 @@ export {
   relevanceScorerAsync,
   runEval,
   runJudgeScorer,
-  toolCallAccuracy,
   TRAJECTORY_QUALITY_CRITERIA,
+  toolCallAccuracy,
   trajectoryQualityJudge,
   trajectoryValidity,
 } from "./evals/index.js";
@@ -160,14 +160,6 @@ export {
   runToolPostHooks,
   truncatePostHook,
 } from "./guardrails/index.js";
-export type {
-  ActivationResult,
-  Skill,
-  SkillBody,
-  SkillManifest,
-  SkillTrigger,
-} from "./skills/index.js";
-export { SkillRegistry } from "./skills/index.js";
 export type {
   AssemblerConfig,
   Bm25Match,
@@ -251,6 +243,14 @@ export { InMemorySpanExporter, OtelBridge, withOtel } from "./observability/inde
 export type { ActionIR, CallDescriptor, IRNode, SchedulerEvent } from "./scheduler/index.js";
 // Scheduler
 export { deriveDependencies, Scheduler, SimpleIR } from "./scheduler/index.js";
+export type {
+  ActivationResult,
+  Skill,
+  SkillBody,
+  SkillManifest,
+  SkillTrigger,
+} from "./skills/index.js";
+export { SkillRegistry } from "./skills/index.js";
 export type { EventLogOptions, LoggedEvent } from "./streaming/EventLog.js";
 // A2 — durable SSE streaming with Last-Event-ID resume
 export { EventLog, formatSseFrame } from "./streaming/EventLog.js";

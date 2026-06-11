@@ -113,14 +113,13 @@ export class EventLogReplay {
     const clamped = Math.max(0, Math.min(this.#steps.length, step));
     let prefix: LoggedEvent[];
     if (clamped === 0) {
-      prefix = this.#steps.length > 0
-        ? this.#events.slice(0, this.#steps[0]!.fromIndex)
-        : [...this.#events];
+      prefix =
+        this.#steps.length > 0
+          ? this.#events.slice(0, this.#steps[0]?.fromIndex)
+          : [...this.#events];
     } else {
       const stepEntry = this.#steps[clamped - 1];
-      prefix = stepEntry
-        ? this.#events.slice(0, stepEntry.toIndex + 1)
-        : [...this.#events];
+      prefix = stepEntry ? this.#events.slice(0, stepEntry.toIndex + 1) : [...this.#events];
     }
     const finalAnswer = findFinalAnswer(prefix);
     return {
@@ -159,7 +158,9 @@ export class EventLogReplay {
   stepForEventId(eventId: string): number {
     let lastMatch = 0;
     for (let i = 0; i < this.#steps.length; i++) {
-      if (this.#steps[i]!.startEventId <= eventId) {
+      const step = this.#steps[i];
+      if (!step) break;
+      if (step.startEventId <= eventId) {
         lastMatch = i + 1;
       } else {
         break;
@@ -174,7 +175,8 @@ export class EventLogReplay {
     const out: ReplayStep[] = [];
     let stepIndex = 0;
     for (let i = 0; i < this.#events.length; i++) {
-      const ev = this.#events[i]!;
+      const ev = this.#events[i];
+      if (!ev) continue;
       if (ev.event.event === "step_start") {
         // Close out the previous step (if any) before opening this one.
         const prev = out[out.length - 1];
@@ -202,7 +204,8 @@ export class EventLogReplay {
 
 function findFinalAnswer(events: LoggedEvent[]): string | null {
   for (let i = events.length - 1; i >= 0; i--) {
-    const e = events[i]!.event;
+    const e = events[i]?.event;
+    if (!e) continue;
     if (e.event === "final_answer") {
       const data = (e as { data?: { answer?: unknown } }).data;
       if (data && typeof data.answer === "string") return data.answer;
