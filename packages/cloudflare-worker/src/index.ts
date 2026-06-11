@@ -33,17 +33,57 @@
 import type { RunAgentInput } from "@agentkit-js/ag-ui";
 import { fromRunAgentInput, toAgUiSseStream, wantsAgUiSse } from "@agentkit-js/ag-ui";
 import type { AgentEvent } from "@agentkit-js/core";
-import { AnthropicModel, AnthropicModels, CodeAgent, ToolCallingAgent } from "@agentkit-js/core";
+import {
+  AnthropicModel,
+  AnthropicModels,
+  CheckpointableRun,
+  CodeAgent,
+  EventLog,
+  formatSseFrame,
+  KvCheckpointer,
+  resumeFromHuman,
+  ToolCallingAgent,
+} from "@agentkit-js/core";
 import type { QuickJSKernelOptions } from "@agentkit-js/kernel-quickjs";
 import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
 import cfVariant from "@jitl/quickjs-wasmfile-release-sync";
 import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
+
+// A1 — KvBackend adapters re-exported so consumers can `import {
+// CloudflareKvBackend, DurableObjectKvBackend } from
+// "@agentkit-js/cloudflare-worker"`.
+export type {
+  CloudflareKvBackendOptions,
+  CloudflareKVNamespace,
+  DurableObjectStorageLike,
+} from "./kvAdapters.js";
+export { CloudflareKvBackend, DurableObjectKvBackend } from "./kvAdapters.js";
+
+import { CloudflareKvBackend as CloudflareKvBackendImpl } from "./kvAdapters.js";
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
   AGENTKIT_LOG_LEVEL?: string;
   /** Optional KV namespace for session result caching (C4). */
   AGENTKIT_SESSIONS?: KVNamespace;
+  /**
+   * Optional KV namespace for the durable SSE event log (A2).
+   * When bound, every emitted event is persisted under
+   * `evlog:<traceId>:<paddedId>` so a reconnecting client can resume
+   * by sending `Last-Event-ID`.
+   *
+   * The log is independent of AGENTKIT_SESSIONS — sessions cache full
+   * runs by content hash for warm replays; the event log captures the
+   * partial event stream of an in-flight run for fault tolerance.
+   */
+  AGENTKIT_EVENT_LOG?: KVNamespace;
+  /**
+   * Optional KV namespace for run checkpoints (A1/A3).
+   * When bound, agent state is persisted after every step and on
+   * `await_human_input`, so a paused run survives worker recycle and
+   * can be continued in a fresh process via POST /resume.
+   */
+  AGENTKIT_CHECKPOINTS?: KVNamespace;
   /**
    * Optional Bearer token that POST /run callers must supply in the
    * Authorization header. When absent the endpoint is effectively public —
@@ -103,6 +143,10 @@ export default {
       return handleRun(request, env, ctx, corsHeaders);
     }
 
+    if (url.pathname === "/resume" && request.method === "POST") {
+      return handleResume(request, env, corsHeaders);
+    }
+
     return jsonError("Not Found", 404, corsHeaders);
   },
 } satisfies ExportedHandler<Env>;
@@ -149,6 +193,67 @@ function timingSafeEqual(a: string, b: string): boolean {
   let diff = aB.length ^ bB.length;
   for (let i = 0; i < len; i++) diff |= (aB[i] ?? 0) ^ (bB[i] ?? 0);
   return diff === 0;
+}
+
+/**
+ * A3 — Stateless HITL resume endpoint.
+ *
+ * POST /resume body: { traceId, promptId, response }
+ *
+ * Validates that AGENTKIT_CHECKPOINTS is bound and that a paused snapshot
+ * exists for the trace, then writes the human response into the snapshot.
+ * The next worker invocation that loads the trace can call
+ * `restoreFromSnapshot` + `applyHumanResponse` to continue the run.
+ *
+ * Crucially, this endpoint holds NO long-running connection: the operator
+ * can submit the response hours or days after the original pause and the
+ * worker that handles the resume need not be the same one that paused.
+ */
+async function handleResume(
+  request: Request,
+  env: Env,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  if (env.AGENTKIT_CLIENT_TOKEN) {
+    const auth = request.headers.get("Authorization") ?? "";
+    if (!timingSafeEqual(auth, `Bearer ${env.AGENTKIT_CLIENT_TOKEN}`)) {
+      return jsonError("Unauthorized", 401, corsHeaders);
+    }
+  }
+  if (!env.AGENTKIT_CHECKPOINTS) {
+    return jsonError("AGENTKIT_CHECKPOINTS KV namespace is not bound", 503, corsHeaders);
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError("Invalid JSON body", 400, corsHeaders);
+  }
+
+  const b = body as Partial<{ traceId: string; promptId: string; response: string }>;
+  if (
+    typeof b.traceId !== "string" ||
+    typeof b.promptId !== "string" ||
+    typeof b.response !== "string"
+  ) {
+    return jsonError(
+      'Body must be { "traceId": string, "promptId": string, "response": string }',
+      400,
+      corsHeaders
+    );
+  }
+
+  const checkpointer = new KvCheckpointer(new CloudflareKvBackendImpl(env.AGENTKIT_CHECKPOINTS));
+  const ok = await resumeFromHuman(checkpointer, b.traceId, b.promptId, b.response);
+  if (!ok) {
+    return jsonError(
+      "No paused run found for the supplied traceId/promptId",
+      404,
+      corsHeaders
+    );
+  }
+  return Response.json({ status: "resumed", traceId: b.traceId }, { headers: corsHeaders });
 }
 
 async function handleRun(
@@ -253,6 +358,11 @@ async function handleRun(
 
   const model = new AnthropicModel(MODEL_ID, env.ANTHROPIC_API_KEY);
 
+  // A3 — When CheckpointableRun wraps the agent, we want it to use the same
+  // trace id as the event log; the binding below is set inside that block
+  // so the event log path can pick it up.
+  let explicitEventLogTraceId: string | null = null;
+
   const quickJSKernel = new QuickJSKernel({
     timeoutMs: 10_000,
     variant: cfVariant as unknown,
@@ -261,15 +371,36 @@ async function handleRun(
     >,
   } satisfies QuickJSKernelOptions);
 
-  const agentRun: AsyncGenerator<AgentEvent> =
+  // ── A1/A3: optional persistent checkpoint wrapper ─────────────────────────
+  // When AGENTKIT_CHECKPOINTS is bound, every step + every await_human_input
+  // is persisted to Workers KV so a paused / crashed run can be resumed.
+  // `traceId` is reused from the SSE event log, so the same id navigates the
+  // checkpoint store, event log, and (if used) session cache.
+  let agentRun: AsyncGenerator<AgentEvent>;
+  const codeAgent =
     agentType === "tool-calling"
-      ? new ToolCallingAgent({ tools: [], model, maxSteps: clampedMaxSteps }).run(task)
+      ? new ToolCallingAgent({ tools: [], model, maxSteps: clampedMaxSteps })
       : new CodeAgent({
           tools: [],
           model,
           maxSteps: clampedMaxSteps,
           kernel: quickJSKernel,
-        }).run(task);
+        });
+
+  const baseRun = codeAgent.run(task);
+  if (env.AGENTKIT_CHECKPOINTS) {
+    const checkpointer = new KvCheckpointer(
+      new CloudflareKvBackendImpl(env.AGENTKIT_CHECKPOINTS)
+    );
+    // Reuse the same traceId we'll assign for the event log below.
+    const checkpointTraceId = agUiRunId ?? kvKey ?? crypto.randomUUID();
+    const wrapper = new CheckpointableRun({ checkpointer }, codeAgent.assembler);
+    agentRun = wrapper.run(baseRun, task, checkpointTraceId);
+    // Stash for the event-log section so it picks the same trace id.
+    explicitEventLogTraceId = checkpointTraceId;
+  } else {
+    agentRun = baseRun;
+  }
 
   // AG3: Respond with AG-UI SSE when the client requests it.
   if (useAgUiSse) {
@@ -341,19 +472,51 @@ async function handleRun(
     });
   }
 
-  // Legacy raw AgentEvent SSE stream.
+  // Legacy raw AgentEvent SSE stream — A2: wraps the agent stream in an
+  // EventLog so reconnects can resume via Last-Event-ID.
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const encoder = new TextEncoder();
+
+  // traceId for the durable event log: prefer the checkpoint trace id (set
+  // when AGENTKIT_CHECKPOINTS is bound, so checkpoints + events share an id),
+  // then the AG-UI runId, then the content-hash session key (stable across
+  // retries of the same task), and fall back to a fresh UUID for one-off runs.
+  const eventLogTraceId = explicitEventLogTraceId ?? agUiRunId ?? kvKey ?? crypto.randomUUID();
+  const eventLog = env.AGENTKIT_EVENT_LOG
+    ? new EventLog(new CloudflareKvBackendImpl(env.AGENTKIT_EVENT_LOG))
+    : null;
+  const lastEventId = request.headers.get("Last-Event-ID");
 
   ctx.waitUntil(
     (async () => {
       const allEvents: AgentEvent[] = [];
       let ranSuccessfully = false;
       try {
-        for await (const event of agentRun) {
-          const line = `data: ${JSON.stringify(event)}\n\n`;
-          await writer.write(encoder.encode(line));
+        // ── Resume path: replay any persisted events the client missed. ──
+        if (eventLog && lastEventId !== null) {
+          for await (const logged of eventLog.replay(eventLogTraceId, lastEventId)) {
+            await writer.write(encoder.encode(formatSseFrame(logged)));
+          }
+        }
+
+        // Compute starting sequence so newly tapped events continue numbering
+        // past the last persisted id (no gap, no duplicate id).
+        const startSeq = eventLog ? await eventLog.nextSeq(eventLogTraceId) : 0;
+
+        // ── Live path: tap + persist + emit. ─────────────────────────────
+        const liveSource = eventLog
+          ? eventLog.tap(agentRun, eventLogTraceId, { startSeq })
+          : (async function* () {
+              let i = startSeq;
+              for await (const ev of agentRun) {
+                yield { eventId: String(i++).padStart(12, "0"), event: ev };
+              }
+            })();
+
+        for await (const logged of liveSource) {
+          await writer.write(encoder.encode(formatSseFrame(logged)));
+          const event = logged.event;
           if (kvKey && env.AGENTKIT_SESSIONS) {
             if (event.event === "final_answer" || allEvents.length < MAX_KV_EVENTS) {
               allEvents.push(event);
@@ -362,6 +525,19 @@ async function handleRun(
           if (event.event === "final_answer") ranSuccessfully = true;
         }
         await writer.write(encoder.encode("data: [DONE]\n\n"));
+
+        // On clean completion, the run-level event log is no longer needed —
+        // session cache (if enabled) is the long-lived artifact.
+        if (eventLog && ranSuccessfully) {
+          try {
+            await eventLog.purge(eventLogTraceId);
+          } catch (err) {
+            console.error(
+              "[agentkit-worker] EventLog purge failed:",
+              err instanceof Error ? err.message : String(err)
+            );
+          }
+        }
 
         if (kvKey && env.AGENTKIT_SESSIONS && ranSuccessfully && allEvents.length > 0) {
           try {
@@ -395,6 +571,9 @@ async function handleRun(
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
+      // Echo back the traceId so clients that lose their cookie can resume
+      // explicitly; pair with Last-Event-ID on reconnect.
+      "X-Agentkit-Trace-Id": eventLogTraceId,
       ...corsHeaders,
     },
   });

@@ -36,7 +36,9 @@ There are several mature TypeScript agent frameworks. Here is an honest assessme
 | **Evals framework** | ❌ | ⚠️ LangSmith | ❌ | ✅ 12+ scorers | ❌ | ✅ 4 built-in scorers |
 | **Observability (OTel)** | ⚠️ LangSmith | ⚠️ LangSmith | ❌ | ✅ | ❌ | ✅ OtelBridge + GenAI semconv |
 | **Retry / resilience** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ RetryPolicy |
-| **Durable workflows / checkpointing** | ✅ DurableAgent (AI SDK 6) | ✅ LangGraph | ❌ (Assistants API retiring 2026-08-26) | ⚠️ partial | ✅ Durable Objects | ✅ Checkpointer |
+| **Durable workflows / checkpointing** | ✅ DurableAgent (AI SDK 6) | ✅ LangGraph | ❌ (Assistants API retiring 2026-08-26) | ⚠️ partial | ✅ Durable Objects | ✅ Checkpointer + 4 backends (CF KV / DO / Redis / Upstash) |
+| **SSE Last-Event-ID resume** | ⚠️ via DurableAgent | ✅ runtime | ❌ | ❌ | ❌ | ✅ EventLog primitive + worker-native |
+| **HITL persisted suspend/resume** | ✅ | ✅ | ❌ | ⚠️ partial | ⚠️ via DO | ✅ stateless `/resume` endpoint, hours-to-days durations |
 
 ### Where competitors are stronger
 
@@ -48,15 +50,17 @@ There are several mature TypeScript agent frameworks. Here is an honest assessme
 
 ### Where agentkit-js is differentiated
 
-- **Code execution kernels — three isolation tiers**: `VmKernel` (in-process node:vm, dev/low-trust), true WASM kernels (`@agentkit-js/kernel-quickjs`, `kernel-pyodide`, `kernel-wasmtime` — language-level isolation, edge-safe), and external microVM via `RemoteSandboxKernel` (E2B / Cloudflare Sandbox, full process isolation). No other framework ships all three tiers as a composable interface.
+- **Code execution kernels — three isolation tiers**: `VmKernel` (in-process node:vm, dev/low-trust), true WASM kernels (`@agentkit-js/kernel-quickjs`, `kernel-pyodide`, `kernel-wasmtime` — language-level isolation, edge-safe), and external microVM via `RemoteSandboxKernel` (E2B / Cloudflare Sandbox, full process isolation). No other framework ships all three tiers as a composable interface. See [docs/kernels/comparison.md](docs/kernels/comparison.md) for the decision tree.
+- **Durable runtime** — Same `KvBackend` powers checkpoints, the SSE event log, and structured memory. Four production backends ship out of the box (Cloudflare KV / Durable Objects / Redis / Upstash REST). A paused `await_human_input` survives worker recycle for hours/days; `POST /resume` is stateless. See [docs/guides/durable-runtime.md](docs/guides/durable-runtime.md).
 - **Quality runners** — Self-consistency with answer extraction (boxed / last-line / custom), reflect-refine, budget forcing ("Wait" prefill), and parallel fork-join are not shipped as first-class APIs by any competitor.
 - **Anthropic prompt-cache optimization** — Framework actively manages `cache_control` breakpoint placement across multi-turn history, supports the 1-hour extended TTL (`ttl:"1h"`), and reports per-TTL cache usage. Competitors pass through or validate limits but do not optimise placement.
 - **Speculative tool execution** — Read-only, idempotent tools are pre-executed ahead of write barriers within a DAG step. The scheduler is awakened by `$<callId>` dependency references in the system prompt, enabling true parallel + ordered hybrid scheduling. No competitor implements this.
 - **GenAI semantic conventions** — `OtelBridge` emits standard `gen_ai.*` attributes (Datadog / Honeycomb / Grafana GenAI view compatible) alongside legacy names, switchable via `semconvMode`.
+- **Reproducible benchmarks** — Every percentage in this README (`−37%`, `72→90%`, `−85%`, `−84%`) is verified by an offline benchmark in [`examples/benchmarks/`](examples/benchmarks/). Run `pnpm bench` to reproduce.
 
 ### Honest caveats
 
-agentkit-js is early-stage. The differentiating features (code execution kernels, quality runners, speculative scheduling) are technically novel but also niche — most teams pick a framework based on ecosystem breadth and documentation volume, where the mature options above win. Choose agentkit-js when sandboxed code execution, prompt-cache cost control, or output quality runners are first-order concerns.
+agentkit-js is early-stage. The differentiating features (code execution kernels, durable runtime, quality runners, speculative scheduling) are technically novel but also niche — most teams pick a framework based on ecosystem breadth and documentation volume, where the mature options above win. Choose agentkit-js when sandboxed code execution, durable agent runs, prompt-cache cost control, or output quality runners are first-order concerns.
 
 ---
 
@@ -76,7 +80,9 @@ agentkit-js is early-stage. The differentiating features (code execution kernels
 - **Production resilience** — automatic exponential backoff + jitter retry for 429 / 5xx / network errors on all model adapters; configurable via `RetryPolicy`
 - **Evals framework** — `runEval()` with built-in `exactMatch`, `toolCallAccuracy`, `trajectoryValidity`, `finalAnswerLength` scorers
 - **Observability** — `OtelBridge` maps `AgentEvent` streams to OTel-compatible spans; emits `gen_ai.*` semantic convention attributes (Datadog/Honeycomb/Grafana GenAI view compatible) with `semconvMode: "both" | "stable" | "legacy"`
-- **Checkpointing** — `InMemoryCheckpointer` (and interface for KV/Redis backends); `CheckpointableRun` saves state after each step; `await_human_input` pause events
+- **Durable runtime** — `KvCheckpointer` with four production backends: `CloudflareKvBackend`, `DurableObjectKvBackend`, `RedisKvBackend` (ioredis-style), `RedisRestKvBackend` (Upstash REST, edge-safe). `CheckpointableRun` saves state after every step; `await_human_input` persists `pendingHumanInput` and exits the iterator so the worker can recycle while a human reviews.
+- **SSE Last-Event-ID resume** — `EventLog` tags every event with a monotonic id, persists to the same `KvBackend`, and replays only the missing tail when a client reconnects. The reference Cloudflare Worker honors `Last-Event-ID` natively; `useAgentRun({ resume: { maxAttempts } })` retries automatically.
+- **Stateless human-in-the-loop** — `resumeFromHuman(checkpointer, traceId, promptId, response)` writes the human's reply into a paused snapshot. Because there is no in-memory state, the worker that pauses and the worker that resumes can be different processes (and different days). See `examples/durable-runtime/`.
 - **React hooks** — `@agentkit-js/react` provides `useAgentRun()` for streaming SSE agent events in Next.js / React apps
 - **Multi-model** — Anthropic (Claude) and OpenAI-compatible endpoints (Ollama, vLLM, llama.cpp)
 - **MCP support** — `McpToolCollection` wraps any MCP server's tools as first-class agentkit tools
@@ -381,20 +387,65 @@ for await (const ev of withOtel(agent.run(task), bridge)) {
 bridge.flush();
 ```
 
-### Checkpointing / Durable Workflows (B4)
+### Durable runtime — Checkpoints, SSE resume, HITL
+
+Pick **one** `KvBackend` and use it for checkpoints, the SSE event log, and structured memory — there is one canonical contract.
 
 ```ts
-import { InMemoryCheckpointer, CheckpointableRun } from "@agentkit-js/core";
+import {
+  CheckpointableRun,
+  EventLog,
+  KvCheckpointer,
+  resumeFromHuman,
+  applyHumanResponse,
+  restoreFromSnapshot,
+} from "@agentkit-js/core";
+// Pick a backend that matches your runtime.
+import { CloudflareKvBackend } from "@agentkit-js/cloudflare-worker";
+// Other options: DurableObjectKvBackend (CF), RedisKvBackend (Node/Bun),
+// RedisRestKvBackend (Upstash, edge-safe), MapKvBackend (tests).
 
-const checkpointer = new InMemoryCheckpointer();
+const kv = new CloudflareKvBackend(env.MY_KV);
+const checkpointer = new KvCheckpointer(kv);
+const log = new EventLog(kv); // SSE Last-Event-ID resume
 const wrapper = new CheckpointableRun({ checkpointer }, agent.assembler);
-for await (const ev of wrapper.run(agent.run(task), task, traceId)) {
-  if (ev.event === "await_human_input") {
-    // Pause and wait for human input…
-    await checkpointer.respond(traceId, ev.data.promptId, "yes");
+
+// Stream + persist + tag every event with a monotonic id.
+for await (const { eventId, event } of log.tap(
+  wrapper.run(agent.run(task), task, traceId),
+  traceId,
+)) {
+  // emit `id: ${eventId}\nevent: ${event.event}\ndata: ${...}\n\n` over SSE
+  if (event.event === "await_human_input") {
+    // Snapshot is already persisted; the worker is free to exit.
+    return;
   }
 }
 ```
+
+**Resume after a worker recycle** (different process, possibly different machine):
+
+```ts
+const lastId = req.headers.get("Last-Event-ID");
+for await (const { eventId, event } of log.replay(traceId, lastId)) { /* re-emit */ }
+const startSeq = await log.nextSeq(traceId);
+for await (const { eventId, event } of log.tap(agent.run(task, traceId), traceId, { startSeq })) { /* live tail */ }
+```
+
+**Resume after human approval** (could be hours/days later):
+
+```ts
+// In the /resume HTTP handler — stateless, returns immediately.
+await resumeFromHuman(checkpointer, traceId, promptId, response);
+
+// Later, when a worker picks up the trace:
+const snap = await checkpointer.load(traceId);
+restoreFromSnapshot(snap, agent.assembler);
+applyHumanResponse(snap, agent.assembler); // injects user_message into history
+// Then continue with `wrapper.run(agent.run(snap.task, traceId), ...)`.
+```
+
+The reference Cloudflare Worker (`@agentkit-js/cloudflare-worker`) wires all of this for you — bind `AGENTKIT_EVENT_LOG` and `AGENTKIT_CHECKPOINTS` in `wrangler.toml` and you get `Last-Event-ID` resume + a `POST /resume` endpoint out of the box. Full guide: [docs/guides/durable-runtime.md](docs/guides/durable-runtime.md).
 
 ### React Hook (B2)
 
@@ -533,9 +584,32 @@ pnpm build
 pnpm test
 pnpm typecheck
 
+# Reproduce every percentage in the "Differentiated" section above.
+pnpm bench
+
 # Cloudflare Worker local dev
 cd packages/cloudflare-worker && wrangler dev
 ```
+
+### Examples
+
+| Example | What it shows |
+|---|---|
+| `examples/basic-agent/` | Minimal `CodeAgent` end-to-end |
+| `examples/tool-calling-agent/` | `ToolCallingAgent` with tools |
+| `examples/tool-search-rag/` | RAG-style retrieval tool |
+| `examples/durable-runtime/` | Checkpoint + SSE resume + HITL across three simulated processes (no model needed) |
+| `examples/eval-suite/` | Composite scorer over a small dataset |
+| `examples/benchmarks/` | Reproducible verification of every README percentage |
+| `examples/cf-production/` | Production-style Worker deployment |
+| `examples/otel-jaeger/` | OTel bridge with Jaeger backend |
+
+### Documentation
+
+- [docs/guides/durable-runtime.md](docs/guides/durable-runtime.md) — checkpoints, SSE Last-Event-ID resume, HITL
+- [docs/kernels/comparison.md](docs/kernels/comparison.md) — kernel selection decision tree
+- [docs/guides/evals-cookbook.md](docs/guides/evals-cookbook.md) — eval design patterns
+- [docs/guides/memory-patterns.md](docs/guides/memory-patterns.md) — memory namespace + decay patterns
 
 ### Environment Variables
 

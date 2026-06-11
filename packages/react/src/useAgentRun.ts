@@ -38,6 +38,20 @@ export interface UseAgentRunOptions {
   headers?: Record<string, string>;
   /** Called whenever a new AgentEvent is received. */
   onEvent?: (event: AgentEvent) => void;
+  /**
+   * A2 — Auto-retry policy for transient SSE disconnects (network blip,
+   * Workers cold-start kick). When enabled the hook reconnects with the
+   * `Last-Event-ID` header set to the highest id received so far, so the
+   * server replays only the missing tail.
+   *
+   * @default { maxAttempts: 0 }  // off — caller must opt in
+   */
+  resume?: {
+    /** Max retry attempts after a stream ends without final_answer. 0 disables. */
+    maxAttempts?: number;
+    /** Backoff in ms between attempts. Default: 1000. */
+    delayMs?: number;
+  };
 }
 
 export interface UseAgentRunReturn {
@@ -119,20 +133,40 @@ export function useAgentRun(
         textMsgIdRef.current = null;
       };
 
+      // ── A2: Last-Event-ID resume state ─────────────────────────────────────
+      // Reset across run() invocations; mutated as the worker streams events.
+      let lastEventId: string | null = null;
+      let traceId: string | null = null;
+      let receivedFinalAnswer = false;
+      const resumeOpts = resolvedOpts.resume ?? {};
+      const maxAttempts = resumeOpts.maxAttempts ?? 0;
+      const delayMs = resumeOpts.delayMs ?? 1000;
+
       (async () => {
-        try {
+        // attemptStream returns:
+        //   { kind: "complete" }   — saw final_answer or "[DONE]" line; success
+        //   { kind: "error", msg } — server returned non-2xx or threw
+        //   { kind: "interrupted" }— stream ended without final_answer (resume opportunity)
+        type AttemptOutcome =
+          | { kind: "complete" }
+          | { kind: "error"; msg: string }
+          | { kind: "interrupted" };
+        const attemptStream = async (): Promise<AttemptOutcome> => {
+          // Build headers, including Last-Event-ID on retries.
+          const reqHeaders: Record<string, string> = {
+            "Content-Type": "application/json",
+            ...resolvedOpts.headers,
+          };
+          if (lastEventId) reqHeaders["Last-Event-ID"] = lastEventId;
+
           const resp = await fetch(endpoint, {
             method: "POST",
-            headers: { "Content-Type": "application/json", ...resolvedOpts.headers },
+            headers: reqHeaders,
             body: JSON.stringify(payload),
             signal: ac.signal,
           });
 
           if (!resp.ok || !resp.body) {
-            // Try to extract the worker's structured error message —
-            // a bare "HTTP 400" tells the user nothing. The worker
-            // typically returns {"error": "<reason>"} JSON. Fall back
-            // to a status-only message only when the body isn't JSON.
             let errorMsg = `HTTP ${resp.status}`;
             try {
               const ct = resp.headers.get("content-type") ?? "";
@@ -147,14 +181,21 @@ export function useAgentRun(
             } catch {
               // Body already consumed or unreadable — use the bare status.
             }
-            setStatus("error");
-            setMessages((prev) => [...prev, { id: nextId(), role: "error", content: errorMsg }]);
-            return;
+            return { kind: "error", msg: errorMsg };
           }
+
+          // Capture trace id from server so subsequent retries point at
+          // the same persisted event log.
+          const t = resp.headers.get("X-Agentkit-Trace-Id");
+          if (t) traceId = t;
 
           const reader = resp.body.getReader();
           const decoder = new TextDecoder();
           let buf = "";
+          // Track the last `id:` line within the current SSE event block —
+          // emitted only on flush (blank-line terminator).
+          let pendingId: string | null = null;
+          let sawDone = false;
 
           while (true) {
             const { done, value } = await reader.read();
@@ -163,12 +204,27 @@ export function useAgentRun(
             const lines = buf.split("\n");
             buf = lines.pop() ?? "";
             for (const line of lines) {
+              if (line.startsWith("id: ")) {
+                pendingId = line.slice(4).trim();
+                continue;
+              }
+              if (line === "") {
+                // End of SSE event — commit pending id as the new high-water mark.
+                if (pendingId) {
+                  lastEventId = pendingId;
+                  pendingId = null;
+                }
+                continue;
+              }
               if (!line.startsWith("data: ")) continue;
-              const payload = line.slice(6).trim();
-              if (payload === "[DONE]") break;
+              const payloadLine = line.slice(6).trim();
+              if (payloadLine === "[DONE]") {
+                sawDone = true;
+                break;
+              }
               let ev: AgentEvent;
               try {
-                ev = JSON.parse(payload) as AgentEvent;
+                ev = JSON.parse(payloadLine) as AgentEvent;
               } catch {
                 continue;
               }
@@ -223,6 +279,7 @@ export function useAgentRun(
                 );
               } else if (ev.event === "final_answer" && ev.channel === "text") {
                 flushText(setMessages);
+                receivedFinalAnswer = true;
                 const raw = (ev as { data: { answer: unknown } }).data.answer;
                 // Coerce to a renderable string. String(arr/object) gives
                 // "[object Object]" or comma-joined "[object Object],..."
@@ -254,6 +311,43 @@ export function useAgentRun(
                 setStatus("error");
               }
             }
+            if (sawDone) break;
+          }
+          if (sawDone || receivedFinalAnswer) return { kind: "complete" };
+          // Stream ended without final_answer or [DONE] — caller may retry.
+          return { kind: "interrupted" };
+        };
+
+        try {
+          let attempts = 0;
+          // First attempt + up to maxAttempts retries on interruption.
+          while (true) {
+            const outcome = await attemptStream();
+            if (outcome.kind === "complete") break;
+            if (outcome.kind === "error") {
+              setStatus("error");
+              setMessages((prev) => [
+                ...prev,
+                { id: nextId(), role: "error", content: outcome.msg },
+              ]);
+              return;
+            }
+            // outcome.kind === "interrupted"
+            if (attempts >= maxAttempts) break;
+            attempts++;
+            // Wait before retry; abort signal short-circuits the wait.
+            await new Promise<void>((resolve) => {
+              const t = setTimeout(resolve, delayMs);
+              ac.signal.addEventListener(
+                "abort",
+                () => {
+                  clearTimeout(t);
+                  resolve();
+                },
+                { once: true }
+              );
+            });
+            if (ac.signal.aborted) return;
           }
           if (status !== "complete" && status !== "error") {
             setStatus("idle");
@@ -263,6 +357,8 @@ export function useAgentRun(
           setStatus("error");
           setMessages((prev) => [...prev, { id: nextId(), role: "error", content: String(e) }]);
         }
+        // suppress unused-variable warning for traceId — exposed via debugger/onEvent.
+        void traceId;
       })();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },

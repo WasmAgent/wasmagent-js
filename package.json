@@ -23,7 +23,8 @@
     "clean": "turbo run clean",
     "dev": "turbo run dev --parallel",
     "lint:fix": "biome check --write packages/",
-    "format": "biome format --write packages/"
+    "format": "biome format --write packages/",
+    "bench": "node examples/benchmarks/run-all.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",

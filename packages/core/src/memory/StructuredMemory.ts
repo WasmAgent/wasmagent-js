@@ -8,23 +8,54 @@
  *   explicitly deleted
  * - **procedural**: how-to / skill memory (default 30-day TTL)
  *
- * Backed by any KV-style store (in-memory, CF KV, Redis). Stores rich
+ * Backed by the canonical {@link KvBackend} contract (in-memory, CF KV, Redis,
+ * Durable Objects). `list()` is required by query/decay/count. Stores rich
  * metadata (createdAt, lastAccessedAt, accessCount, ttlMs, tags) so a
  * `decay()` pass can prune stale entries.
  */
 
 import type { ZodSchema } from "zod";
+import type { KvBackend } from "../checkpoint/index.js";
 
 /** Memory namespaces with distinct retention defaults. */
 export type MemoryNamespace = "episodic" | "semantic" | "procedural";
 
-/** Backing store interface — any KV impl works. */
+/**
+ * @deprecated Use {@link KvBackend} directly. Kept as a structural alias for
+ * pre-2026-06 callers; new code should consume `KvBackend` from
+ * `../checkpoint/index.js` so checkpoint, StructuredMemory, MemoryTool, and
+ * Retriever all share one contract.
+ *
+ * The legacy alias renames `put` → `set` for historical reasons; if you are
+ * passing a legacy `StructuredKvBackend` (with `set`), wrap it via
+ * {@link adaptStructuredKvBackend} before passing to `StructuredMemory`.
+ */
 export interface StructuredKvBackend {
   get(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<void>;
   delete(key: string): Promise<void>;
-  /** List keys with the given prefix. */
   list(prefix: string): Promise<string[]>;
+}
+
+/**
+ * Adapter: wrap a legacy `StructuredKvBackend` (set-based) as the canonical
+ * `KvBackend` (put-based). One-line migration helper.
+ */
+export function adaptStructuredKvBackend(legacy: StructuredKvBackend): Required<KvBackend> {
+  return {
+    get: (k) => legacy.get(k),
+    put: (k, v) => legacy.set(k, v),
+    delete: (k) => legacy.delete(k),
+    list: (p) => legacy.list(p),
+  };
+}
+
+/** Detect whether the supplied backend is the legacy set-based shape. */
+function isLegacyStructured(b: KvBackend | StructuredKvBackend): b is StructuredKvBackend {
+  return (
+    typeof (b as StructuredKvBackend).set === "function" &&
+    typeof (b as KvBackend).put !== "function"
+  );
 }
 
 /** Internal record shape. */
@@ -103,14 +134,26 @@ export interface DecayResult {
  * based queries.
  */
 export class StructuredMemory {
-  readonly #backend: StructuredKvBackend;
+  readonly #backend: Required<KvBackend>;
   readonly #onError: (msg: string, err: unknown) => void;
 
   constructor(
-    backend: StructuredKvBackend,
+    backend: KvBackend | StructuredKvBackend,
     opts: { onError?: (msg: string, err: unknown) => void } = {}
   ) {
-    this.#backend = backend;
+    // Accept both canonical KvBackend and legacy StructuredKvBackend (set-based).
+    // Normalise to a backend that exposes `put` and `list`.
+    const normalised: Required<KvBackend> = isLegacyStructured(backend)
+      ? adaptStructuredKvBackend(backend)
+      : ((): Required<KvBackend> => {
+          if (!backend.list) {
+            throw new Error(
+              "StructuredMemory: backend must implement list(prefix) — required for query/decay/count"
+            );
+          }
+          return backend as Required<KvBackend>;
+        })();
+    this.#backend = normalised;
     // Default: surface to console.warn so silent corruption is visible
     // in logs. Production callers should pass their structured logger.
     this.#onError = opts.onError ?? ((msg, err) => console.warn(`[StructuredMemory] ${msg}`, err));
@@ -139,7 +182,7 @@ export class StructuredMemory {
         ...(opts.tags !== undefined && { tags: opts.tags }),
       },
     };
-    await this.#backend.set(backendKey(ns, key), JSON.stringify(record));
+    await this.#backend.put(backendKey(ns, key), JSON.stringify(record));
   }
 
   async get<T>(key: string, namespace: MemoryNamespace = "episodic"): Promise<T | null> {
@@ -162,7 +205,7 @@ export class StructuredMemory {
     record.metadata.accessCount++;
     // Best-effort write-back; don't block reads on failure but DO log
     // — silent write-back failures hide cache-coherence bugs.
-    void this.#backend.set(backendKey(namespace, key), JSON.stringify(record)).catch((e) => {
+    void this.#backend.put(backendKey(namespace, key), JSON.stringify(record)).catch((e) => {
       this.#onError(`get: write-back of access metadata failed at "${namespace}/${key}"`, e);
     });
     return record.value;
@@ -283,13 +326,24 @@ export class StructuredMemory {
   }
 }
 
-/** Simple in-memory backend for tests and prototypes. */
-export class InMemoryStructuredKv implements StructuredKvBackend {
+/**
+ * Simple in-memory backend for tests and prototypes.
+ *
+ * Implements both the canonical {@link KvBackend} (`put`) and the legacy
+ * {@link StructuredKvBackend} (`set`) so existing test code continues to compile.
+ * New code should use {@link MapKvBackend} from `./MemoryTool.js`, which
+ * implements only the canonical contract.
+ */
+export class InMemoryStructuredKv implements StructuredKvBackend, Required<KvBackend> {
   readonly #map = new Map<string, string>();
   async get(key: string): Promise<string | null> {
     return this.#map.get(key) ?? null;
   }
   async set(key: string, value: string): Promise<void> {
+    this.#map.set(key, value);
+  }
+  /** Canonical KvBackend write — alias of set(). */
+  async put(key: string, value: string): Promise<void> {
     this.#map.set(key, value);
   }
   async delete(key: string): Promise<void> {

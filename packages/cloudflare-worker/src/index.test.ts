@@ -45,6 +45,76 @@ vi.mock("@agentkit-js/core", () => {
       SONNET_LATEST: "claude-sonnet-4-6",
       HAIKU_LATEST: "claude-haiku-4-5-20251001",
     },
+    // A2 — EventLog + formatSseFrame: tests run without an event log binding,
+    // so the EventLog constructor is only ever invoked when the integration
+    // wires it up; tests pass the format helper through unchanged.
+    EventLog: class {
+      // biome-ignore lint/suspicious/noExplicitAny: matches the real shape
+      constructor(_kv: any) {}
+      async *replay(): AsyncGenerator<unknown> {
+        // no persisted events in mocked tests
+      }
+      async *tap<T>(source: AsyncGenerator<T>): AsyncGenerator<{ eventId: string; event: T }> {
+        let i = 0;
+        for await (const ev of source) {
+          yield { eventId: String(i++).padStart(12, "0"), event: ev };
+        }
+      }
+      async nextSeq() {
+        return 0;
+      }
+      async purge() {
+        // no-op in tests
+      }
+    },
+    formatSseFrame: (logged: { eventId: string; event: { event: string } }) =>
+      `id: ${logged.eventId}\nevent: ${logged.event.event}\ndata: ${JSON.stringify(logged.event)}\n\n`,
+    // A3 — KvCheckpointer + resumeFromHuman pass through to a tiny in-test
+    // implementation so /resume tests can hit them without spinning up the
+    // real core module.
+    KvCheckpointer: class TestKvCheckpointer {
+      // biome-ignore lint/suspicious/noExplicitAny: matches real shape
+      constructor(public kv: any) {}
+      async load(traceId: string) {
+        const raw = await this.kv.get(traceId);
+        return raw ? JSON.parse(raw) : null;
+      }
+      async save(traceId: string, snap: unknown) {
+        await this.kv.put(traceId, JSON.stringify(snap));
+      }
+      async delete(traceId: string) {
+        await this.kv.delete(traceId);
+      }
+      async respond(traceId: string, promptId: string, response: string) {
+        const snap = await this.load(traceId);
+        if (!snap) throw new Error(`no snapshot ${traceId}`);
+        if (snap.pendingHumanInput?.promptId !== promptId) {
+          throw new Error("promptId mismatch");
+        }
+        snap.humanResponse = { promptId, response };
+        await this.save(traceId, snap);
+      }
+    },
+    resumeFromHuman: async (
+      // biome-ignore lint/suspicious/noExplicitAny: matches real shape
+      cp: any,
+      traceId: string,
+      promptId: string,
+      response: string
+    ) => {
+      const snap = await cp.load(traceId);
+      if (!snap || !snap.pendingHumanInput) return false;
+      if (snap.pendingHumanInput.promptId !== promptId) return false;
+      await cp.respond(traceId, promptId, response);
+      return true;
+    },
+    CheckpointableRun: class {
+      // biome-ignore lint/suspicious/noExplicitAny: matches real shape
+      constructor(_opts: any, _asm: any) {}
+      run<T>(source: AsyncGenerator<T>) {
+        return source;
+      }
+    },
   };
 });
 
@@ -342,5 +412,116 @@ describe("POST /run — KV session caching", () => {
     expect(res.status).toBe(500);
     const json = (await res.json()) as { error: string };
     expect(json.error).toContain("corrupted");
+  });
+});
+
+// ── A3: POST /resume ─────────────────────────────────────────────────────────
+
+describe("POST /resume — HITL persisted resume (A3)", () => {
+  /** Build an in-memory KV namespace that satisfies the worker's KV usage. */
+  function fakeCheckpointKv() {
+    const map = new Map<string, string>();
+    return {
+      map,
+      get: vi.fn(async (k: string) => map.get(k) ?? null),
+      put: vi.fn(async (k: string, v: string) => {
+        map.set(k, v);
+      }),
+      delete: vi.fn(async (k: string) => {
+        map.delete(k);
+      }),
+      list: vi.fn(async (opts: { prefix?: string }) => ({
+        keys: [...map.keys()]
+          .filter((k) => k.startsWith(opts?.prefix ?? ""))
+          .map((name) => ({ name })),
+        list_complete: true,
+      })),
+    };
+  }
+
+  async function postResume(body: unknown, env: Record<string, unknown>) {
+    return import("./index.js").then(({ default: worker }) =>
+      worker.fetch(
+        new Request("http://localhost/resume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }),
+        env as never,
+        mockCtx as never
+      )
+    );
+  }
+
+  it("503 when AGENTKIT_CHECKPOINTS is not bound", async () => {
+    const res = await postResume({ traceId: "t", promptId: "p", response: "r" }, makeEnv());
+    expect(res.status).toBe(503);
+  });
+
+  it("400 when body is missing required fields", async () => {
+    const kv = fakeCheckpointKv();
+    const res = await postResume({ traceId: "t" }, makeEnv({ AGENTKIT_CHECKPOINTS: kv }));
+    expect(res.status).toBe(400);
+  });
+
+  it("404 when no paused snapshot exists", async () => {
+    const kv = fakeCheckpointKv();
+    const res = await postResume(
+      { traceId: "missing", promptId: "p", response: "r" },
+      makeEnv({ AGENTKIT_CHECKPOINTS: kv })
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("succeeds when a paused snapshot exists and writes humanResponse back", async () => {
+    const kv = fakeCheckpointKv();
+    // Seed a paused snapshot directly into KV.
+    kv.map.set(
+      "trace-paused",
+      JSON.stringify({
+        traceId: "trace-paused",
+        task: "task",
+        history: [],
+        stepIndex: 0,
+        savedAtMs: 0,
+        pendingHumanInput: { promptId: "p1", prompt: "Approve?" },
+      })
+    );
+    const res = await postResume(
+      { traceId: "trace-paused", promptId: "p1", response: "approve" },
+      makeEnv({ AGENTKIT_CHECKPOINTS: kv })
+    );
+    expect(res.status).toBe(200);
+    const snapAfter = JSON.parse(kv.map.get("trace-paused") ?? "{}");
+    expect(snapAfter.humanResponse).toEqual({ promptId: "p1", response: "approve" });
+  });
+
+  it("rejects mismatched promptId", async () => {
+    const kv = fakeCheckpointKv();
+    kv.map.set(
+      "t",
+      JSON.stringify({
+        traceId: "t",
+        task: "t",
+        history: [],
+        stepIndex: 0,
+        savedAtMs: 0,
+        pendingHumanInput: { promptId: "expected", prompt: "?" },
+      })
+    );
+    const res = await postResume(
+      { traceId: "t", promptId: "wrong", response: "x" },
+      makeEnv({ AGENTKIT_CHECKPOINTS: kv })
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("requires Bearer auth when AGENTKIT_CLIENT_TOKEN is set", async () => {
+    const kv = fakeCheckpointKv();
+    const res = await postResume(
+      { traceId: "t", promptId: "p", response: "r" },
+      makeEnv({ AGENTKIT_CHECKPOINTS: kv, AGENTKIT_CLIENT_TOKEN: "secret" })
+    );
+    expect(res.status).toBe(401);
   });
 });
