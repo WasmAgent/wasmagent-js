@@ -225,6 +225,7 @@ export type {
   EnhancementPolicy,
   FallbackModelOptions,
   GenerateOptions,
+  ImageBlock,
   Model,
   ModelCapabilities,
   ModelMessage,
