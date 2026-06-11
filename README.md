@@ -70,7 +70,7 @@ agentkit-js is early-stage. The differentiating features (code execution kernels
 
 | | Number | Verified by |
 |---|---|---|
-| Tests passing (all packages) | **1059** | `bun run test` (CI matrix on every push) — `@agentkit-js/core` 641 · `@agentkit-js/devtools` 17 · others 401 |
+| Tests passing (all packages) | **1148+** | `bun run test` (CI matrix on every push) — `@agentkit-js/core` 705 · `@agentkit-js/mcp-server` 25 · `@agentkit-js/devtools` 17 · others 401 |
 | README percentages reproducible | **5 / 5** | `bun run bench` — runs in CI; non-zero exit blocks the PR (incl. A1 ≤25% target) |
 | Cross-process kill-and-resume (A1 DoD ①) | ✓ Redis + ✓ Cloudflare KV + ✓ Durable Object | `redis.test.ts` + `kvAdapters.test.ts` |
 | SSE Last-Event-ID gap-free replay (A2 DoD ①) | ✓ | `EventLog.test.ts` round-trip test |

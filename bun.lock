@@ -286,6 +286,19 @@
         "vitest": "^2.1.0",
       },
     },
+    "packages/mcp-server": {
+      "name": "@agentkit-js/mcp-server",
+      "version": "0.1.0",
+      "dependencies": {
+        "@agentkit-js/core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.7.0",
+        "vitest": "^2.1.0",
+        "zod": "^3.22.0",
+      },
+    },
     "packages/model-anthropic": {
       "name": "@agentkit-js/model-anthropic",
       "version": "0.1.0",
@@ -554,6 +567,8 @@
     "@agentkit-js/kernel-remote": ["@agentkit-js/kernel-remote@workspace:packages/kernel-remote"],
 
     "@agentkit-js/kernel-wasmtime": ["@agentkit-js/kernel-wasmtime@workspace:packages/kernel-wasmtime"],
+
+    "@agentkit-js/mcp-server": ["@agentkit-js/mcp-server@workspace:packages/mcp-server"],
 
     "@agentkit-js/model-anthropic": ["@agentkit-js/model-anthropic@workspace:packages/model-anthropic"],
 

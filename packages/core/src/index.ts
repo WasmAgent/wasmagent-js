@@ -1,6 +1,14 @@
 // Agents
 
 export type {
+  AgentTeamFactory,
+  AgentTeamMember,
+  AgentTeamMemberResult,
+  AgentTeamOptions,
+  AgentTeamResult,
+  AgentTeamScorer,
+  AgentTeamScorerInput,
+  AgentTeamSpawnContext,
   AsToolOptions,
   CodeAgentOptions,
   HandoffAgent,
@@ -12,16 +20,27 @@ export type {
   ToolCallingAgentOptions,
 } from "./agents/index.js";
 export {
+  AgentTeam,
   asTool,
   CodeAgent,
   callFingerprint,
   costBudget,
   handoff,
   handoffGenerator,
+  longestAnswerScorer,
   noProgress,
   stepCountIs,
   ToolCallingAgent,
 } from "./agents/index.js";
+// F5 — AG-UI inbound channel: frontend tools + JSON-Patch state deltas
+export type {
+  ApplyStateDeltaOptions,
+  BuildFrontendToolsOptions,
+  FrontendToolDispatcher,
+  FrontendToolSpec,
+  StateDeltaOp,
+} from "./agui/frontendTools.js";
+export { applyStateDelta, buildFrontendTools } from "./agui/frontendTools.js";
 export type {
   AgentSnapshot,
   CheckpointableAgentOptions,
@@ -245,17 +264,25 @@ export type { ActionIR, CallDescriptor, IRNode, SchedulerEvent } from "./schedul
 export { deriveDependencies, Scheduler, SimpleIR } from "./scheduler/index.js";
 export type {
   ActivationResult,
+  AgentsMdLoader,
+  ProjectInstructionsOptions,
+  ResolvedInstructions,
   Skill,
   SkillBody,
   SkillManifest,
   SkillTrigger,
 } from "./skills/index.js";
-export { SkillRegistry } from "./skills/index.js";
+export {
+  AGENTS_MD_FILENAME,
+  makeKvAgentsMdLoader,
+  makeNodeAgentsMdLoader,
+  ProjectInstructions,
+  SkillRegistry,
+} from "./skills/index.js";
 export type { EventLogOptions, LoggedEvent } from "./streaming/EventLog.js";
 // A2 — durable SSE streaming with Last-Event-ID resume
 export { EventLog, formatSseFrame } from "./streaming/EventLog.js";
 export type { ParsedAction, ParsedActionType } from "./streaming/StreamingActionParser.js";
-
 // Streaming — bolt.diy StreamingMessageParser pattern
 export {
   extractActionsFromResponse,
@@ -295,6 +322,18 @@ export type {
   ToolUseStep,
   UserMessageStep,
 } from "./types/index.js";
+// F3 — BranchableWorkspace: git-worktree-equivalent isolation for parallel agents
+export type {
+  BranchMeta,
+  FileChange,
+  MergeConflict,
+  MergeResult,
+  MergeStrategy,
+} from "./workspace/BranchableWorkspace.js";
+export {
+  BranchableWorkspace,
+  openOrCreateRoot,
+} from "./workspace/BranchableWorkspace.js";
 export type { LockedFile, LockLevel } from "./workspace/FileLockManager.js";
 // File locking — bolt.new "protect file" pattern
 export {
