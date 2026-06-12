@@ -5,10 +5,17 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "agentkit-mcp-server": "./dist/stdio.js"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./stdio": {
+      "import": "./dist/stdio.js",
+      "types": "./dist/stdio.d.ts"
     }
   },
   "scripts": {

@@ -16,6 +16,32 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`@agentkit-js/mcp-server` stdio entry point — response to
+  `awesome-mcp-servers#7910`'s Glama listing requirement.** New
+  `packages/mcp-server/src/stdio.ts` wires the existing
+  transport-agnostic `McpAgentServer.handle()` to a
+  spec-conformant MCP stdio transport (newline-delimited JSON
+  per the 2025-11-25 spec § stdio: stdout for responses, stderr
+  for logs, no embedded newlines, notifications get no reply).
+  `package.json` adds the `agentkit-mcp-server` bin and a
+  `./stdio` subpath export. New `packages/mcp-server/Dockerfile.glama`
+  ships the Glama health-check image. 6 new unit tests
+  (`stdio.test.ts`) cover the framing rules. README rewritten to
+  document the three transports (stdio / HTTP / direct `handle()`).
+  Action queue for follow-up steps (Glama submission, PR
+  amendment) lives at
+  `docs/strategy/upstream-prs/action-queue-2026-06-12.md`.
+- **Upstream-PR maintainer-response log — first responses in.**
+  `docs/strategy/upstream-prs/README.md` now records the three
+  responses received on 2026-06-12: `awesome-mcp-servers#7910`
+  is conditionally accepted (Glama listing + badge), Mastra
+  `#17884` is **closed** by `@roaminro` with "we're not adding
+  any new third-party projects to that section at the moment"
+  (logged as a falsifiability data point — re-pitch is gated on
+  a public benchmark number per Direction 2, draft is *not*
+  prepared in advance to avoid premature re-open), and
+  `vercel/ai#16063` is open with no response yet (waiting per
+  the 30-day-then-bump-once etiquette).
 - **bscode reverse-funnel page — Direction 6 of the 2026-06-12
   optimization brief.** New page in the bscode demo repo,
   `docs/their-framework-our-kernel.md`, documents five recipes
