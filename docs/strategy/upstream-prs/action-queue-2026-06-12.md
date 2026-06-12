@@ -155,15 +155,27 @@ Then resume waiting. Do not bump twice.
 
 ## 4. `cloudflare/agents` — pre-submission gate
 
-Status: not yet submitted.
+Status: 🟢 **gate cleared 2026-06-13.**
 
-Pre-submission gate (per
-[`cloudflare-codemode-byo-executor.md`](cloudflare-codemode-byo-executor.md)):
-land `agentkitCodemodeExecutor` shim in `@agentkit-js/aisdk` so
-the recipe in the draft actually runs.
+The pre-submission requirement (`agentkitCodemodeExecutor` shim in
+`@agentkit-js/aisdk` so the recipe in
+[`cloudflare-codemode-byo-executor.md`](cloudflare-codemode-byo-executor.md)
+actually runs) is now met. The shim ships in
+`packages/aisdk/src/codemodeExecutor.ts` with 14 unit tests
+covering construction validation, flat-Record providers, namespaced
+`ResolvedProvider[]`, positional vs object args, `console.*`
+capture, tool-throw surfacing, unknown-tool fail-fast, and
+`maxIterations` bounds. Conforms to the cloudflare codemode
+`Executor` contract structurally (no `@cloudflare/codemode` import,
+to keep the aisdk package consumer-bundle-clean).
 
-Action: the next ship in this strand is **the shim**, not the
-PR. The draft sits in this directory until the shim is on npm.
+Next concrete action: file the recipe-page PR against
+`cloudflare/agents`. The PR body uses the draft text in
+[`cloudflare-codemode-byo-executor.md`](cloudflare-codemode-byo-executor.md);
+the only change before submission is to update the import in the
+example from "shim is in flight" to "shipping in
+`@agentkit-js/aisdk@0.1.x` on npm" (verify version on npm at PR
+time).
 
 ## How this file is updated
 

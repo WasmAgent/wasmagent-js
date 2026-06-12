@@ -148,3 +148,16 @@ export function codeModeTool(
     },
   };
 }
+
+// ── Cloudflare codemode adapter (Direction 1) ───────────────────────────────
+// Re-exported so consumers can import the public surface from the package
+// root. The implementation lives in `./codemodeExecutor` and is currently
+// at part-1-of-3 (types + signature only — see that file's docblock).
+export {
+  agentkitCodemodeExecutor,
+  type AgentkitCodemodeExecutorOptions,
+  type CodemodeExecuteResult,
+  type CodemodeExecutor,
+  type CodemodeProvidersOrFns,
+  type CodemodeResolvedProvider,
+} from "./codemodeExecutor.js";
