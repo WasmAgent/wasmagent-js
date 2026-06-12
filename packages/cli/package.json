@@ -14,7 +14,8 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*"
+    "@agentkit-js/core": "workspace:*",
+    "@agentkit-js/devtools": "workspace:*"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

@@ -44,6 +44,12 @@ export abstract class OpenAICompatModel implements Model {
       supportsVerbosity: false,
       cacheStrategy: opts.cacheStrategy ?? "auto-prefix",
       contextWindow: meta.contextWindow,
+      // First merge any extras the caller declared in opts, then merge the
+      // subclass-overridden extraCapabilities() — that ordering means a
+      // subclass that overrides extraCapabilities() always wins, while a
+      // plain caller using GenericOpenAICompatModel still gets to set caps
+      // without subclassing (A5, 2026-06).
+      ...(opts.extraCapabilities ?? {}),
       ...this.extraCapabilities(),
     };
     if (opts.reasoningContentField !== undefined) {
@@ -303,6 +309,90 @@ export abstract class OpenAICompatModel implements Model {
   }
 }
 
+/**
+ * A5 (S-strategic, 2026-06): canonical concrete entry point for any
+ * OpenAI-compatible /chat/completions endpoint.
+ *
+ * The historical pattern in this repo was: every new provider got its own
+ * tiny `model-*` package that subclassed `OpenAICompatModel`. The package
+ * count climbed faster than the value added — 8 packages, all overriding
+ * one or two of the same hooks. Mastra's 94-provider router (March 2026)
+ * showed how that race ends if you commit to it: an endless adapter
+ * factory that we cannot win.
+ *
+ * Instead, treat `GenericOpenAICompatModel` as the recommended path going
+ * forward: it accepts a base URL, a model id, and an options bag, and
+ * surfaces every hook that varies between providers as **runtime config**
+ * rather than a subclass override. New "providers" become README recipes
+ * (one for OpenRouter, one for AI Gateway, one for Ollama, one for
+ * Together, one for Groq…) — see `docs/guides/openai-compat-recipes.md`.
+ *
+ * The existing `model-*` packages keep working exactly as before. They are
+ * preserved as **presets** for users who want named imports for their
+ * provider, not because the abstract hierarchy needs them.
+ */
+export class GenericOpenAICompatModel extends OpenAICompatModel {
+  // Subclass options stash. We use a per-instance plain field rather than a
+  // private name because `super()` calls some override hooks before the
+  // subclass's field initialisers run; reading from a public-but-non-enumerable
+  // bag set inside the constructor body is the simplest way to be order-safe.
+  // Hooks that fire during super-construction (e.g. `extraCapabilities`) read
+  // from the base's `opts.extraCapabilities` instead — see the base merge.
+  declare readonly _generic: GenericOpenAICompatModelOptions;
+
+  constructor(modelId: string, baseUrl: string, opts: GenericOpenAICompatModelOptions = {}) {
+    super(modelId, baseUrl, opts);
+    Object.defineProperty(this, "_generic", { value: opts, enumerable: false });
+  }
+
+  // Base constructor reads `opts.extraCapabilities` directly via the base
+  // merge added in the same A5 commit, so we don't need to override
+  // `extraCapabilities()` here. The remaining overrides only fire AFTER
+  // super() finishes — by then `_generic` is set.
+
+  protected override mapReasoningField(
+    rawChunk: Record<string, unknown>,
+    opts: GenerateOptions
+  ): string | undefined {
+    const field = this._generic?.reasoningContentField;
+    if (field) {
+      const choice = (rawChunk.choices as Array<Record<string, unknown>> | undefined)?.[0];
+      const delta = choice?.delta as Record<string, unknown> | undefined;
+      const v = delta?.[field];
+      if (typeof v === "string" && v.length > 0) return v;
+    }
+    return super.mapReasoningField(rawChunk, opts);
+  }
+
+  protected override mapRequestParams(opts: GenerateOptions): Record<string, unknown> {
+    return { ...super.mapRequestParams(opts), ...(this._generic?.extraRequestParams ?? {}) };
+  }
+
+  protected override mapThinkingParams(opts: GenerateOptions): Record<string, unknown> {
+    return { ...super.mapThinkingParams(opts), ...(this._generic?.extraThinkingParams ?? {}) };
+  }
+
+  protected override reasoningRoundTripPolicy(): "never" | "tool-turns-only" | "always" {
+    return this._generic?.reasoningRoundTrip ?? "never";
+  }
+}
+
+export interface GenericOpenAICompatModelOptions extends OpenAICompatModelOptions {
+  /** Extra params merged into every /chat/completions request. */
+  extraRequestParams?: Record<string, unknown>;
+  /** Extra params merged into thinking-mode requests. */
+  extraThinkingParams?: Record<string, unknown>;
+  /**
+   * How aggressively to echo `reasoning_content` back on subsequent assistant
+   * turns. Default `"never"` matches OpenAI's plain Chat Completions surface;
+   * set `"tool-turns-only"` for DeepSeek-style models that need it on tool
+   * round-trips.
+   */
+  reasoningRoundTrip?: "never" | "tool-turns-only" | "always";
+  /** Extra capability flags merged into the discovered capabilities. */
+  extraCapabilities?: Partial<ModelCapabilities>;
+}
+
 export interface OpenAICompatModelOptions {
   apiKey?: string;
   defaultHeaders?: Record<string, string>;
@@ -319,6 +409,16 @@ export interface OpenAICompatModelOptions {
   cacheStrategy?: import("./types.js").CacheStrategy;
   /** Whether this adapter supports per-request reasoning effort control. */
   supportsReasoningEffort?: boolean;
+  /**
+   * Extra capability flags merged into the base capabilities at construction.
+   * Set fields that the model genuinely supports (e.g. `localEndpoint: true`
+   * for Ollama / LM Studio); the base sets metered/supportsGrammar to safe
+   * defaults that you can flip here.
+   *
+   * Subclasses that override `extraCapabilities()` always win; this option
+   * is for plain `GenericOpenAICompatModel` callers (A5, 2026-06).
+   */
+  extraCapabilities?: Partial<ModelCapabilities>;
 }
 
 // ── Message converter ─────────────────────────────────────────────────────────

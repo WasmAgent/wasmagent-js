@@ -107,3 +107,52 @@ For consumer apps using agentkit-js:
 - If you build your own consumer, audit your composition — the
   reusable fragments are deliberately small primitives, but your
   app's combination of them is what reaches the model.
+
+## Sandbox escape — disclosure SLA (A6, 2026-06)
+
+Because we ship a multi-tier sandbox and explicitly market it as the
+foundation of `code-mode` (see `docs/guides/code-mode.md`), users
+need a stronger commitment than "report it privately and we'll get
+to it."
+
+For reports affecting **`JsKernel` / `VmKernel` / `QuickJSKernel` /
+`PyodideKernel` / `WasmtimeKernel` / `RemoteSandboxKernel`** that
+demonstrate any of the following — we treat as **P0**:
+
+1. Code running inside a kernel that bypasses
+   `CapabilityManifest.allowedHosts` to reach an arbitrary external
+   host.
+2. Code running inside a kernel that reads or writes a path outside
+   `allowedReadPaths` / `allowedWritePaths` (note: symlinks under an
+   allowed prefix are explicitly out-of-scope per the
+   `assertPathAllowed` docblock).
+3. Code that breaks out of the kernel's process / linear-memory
+   isolation entirely — i.e. observes or mutates host process
+   memory, environment variables not in `capabilities.env`, or
+   files unreachable through the documented FS bridge.
+4. A timeout / memory-limit bypass that lets a single
+   `kernel.run()` consume more wall-clock or memory than the
+   documented `cpuMs` / `memoryLimitBytes` honouring matrix permits
+   (with the matrix's `⚠️ best-effort` columns excluded; those are
+   pre-disclosed as best-effort).
+
+**P0 SLA:**
+
+- Acknowledgement within 48 hours.
+- Mitigation strategy or workaround within 7 days.
+- Patched release within 30 days; affected users notified via
+  GitHub Security Advisory.
+
+We will credit reporters in the advisory unless they request
+otherwise.
+
+For reports outside the matrix above (e.g. fingerprinting,
+side-channel timing leaks, denial-of-service against the host
+process via heavy WASM compilation), the timelines are
+best-effort — track on the issue.
+
+## Public roadmap
+
+See [`ROADMAP.md`](./ROADMAP.md) for what we are building and why.
+Significant new sandbox features land via RFC PRs against
+`docs/rfcs/`; the discussion is the audit trail.

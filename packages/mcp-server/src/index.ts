@@ -44,8 +44,13 @@
  * host: this package provides the protocol-level brain, not a CLI binary.
  */
 
+export type { CodeModeServerOptions } from "./codeMode.js";
+// A1 — code-mode server (S1 strategic line, 2026-06):
+//   Two-tool MCP surface (docs_search + execute_code) that collapses N
+//   downstream tools into one in-sandbox dispatch. Pairs with any kernel
+//   from agentkit-js for unified security policy.
+export { createCodeModeServer } from "./codeMode.js";
 export { createFetchHandler } from "./fetchHandler.js";
-
 export { McpAgentServer } from "./McpAgentServer.js";
 export { InMemoryTaskStore } from "./taskStore.js";
 export type {

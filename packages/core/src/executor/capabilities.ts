@@ -138,6 +138,13 @@ export function buildCapabilityGlobals(
     };
   }
 
+  // env: explicit allow-list of values (not a pass-through of process.env).
+  // Frozen so sandbox code cannot mutate the map and see its mutation
+  // reflected in a sibling kernel run.
+  if (capabilities?.env && Object.keys(capabilities.env).length > 0) {
+    globals.__env__ = Object.freeze({ ...capabilities.env });
+  }
+
   return globals;
 }
 

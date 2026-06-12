@@ -68,6 +68,13 @@ export class JsKernel implements WasmKernel {
     // and can reconstruct fetch closures and __fs__ objects from the allow-lists.
     const capPayload = capabilities ?? null;
 
+    // Per-call timeout: capability.cpuMs (if set) tightens the kernel default.
+    // We never widen — a constructor-side timeoutMs is the host's hard ceiling.
+    const perCallTimeout =
+      capabilities?.cpuMs != null && capabilities.cpuMs > 0
+        ? Math.min(this.#timeoutMs, capabilities.cpuMs)
+        : this.#timeoutMs;
+
     // Single promise that resolves/rejects when the worker responds OR times out.
     return new Promise<KernelResult>((resolve, reject) => {
       const handler = (msg: {
@@ -96,8 +103,8 @@ export class JsKernel implements WasmKernel {
         worker.off("message", handler);
         worker.terminate().catch(() => {});
         this.#worker = null;
-        reject(new Error(`KernelError: Script execution timed out after ${this.#timeoutMs}ms`));
-      }, this.#timeoutMs);
+        reject(new Error(`KernelError: Script execution timed out after ${perCallTimeout}ms`));
+      }, perCallTimeout);
 
       worker.on("message", handler);
       worker.postMessage({
@@ -105,7 +112,7 @@ export class JsKernel implements WasmKernel {
         code,
         capabilities: capPayload,
         serial,
-        timeoutMs: this.#timeoutMs,
+        timeoutMs: perCallTimeout,
       });
     });
   }
