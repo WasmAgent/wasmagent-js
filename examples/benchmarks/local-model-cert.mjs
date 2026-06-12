@@ -212,7 +212,18 @@ async function evalCodeAgent(model, opts) {
   if (!opts.kernelFactory) {
     return { skipped: true, reason: "no kernel factory supplied (use --kernel to enable)" };
   }
-  const { CodeAgent } = await import("@agentkit-js/core");
+  // Resolve @agentkit-js/core relative to this script.
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, resolve } = await import("node:path");
+  const here = dirname(fileURLToPath(import.meta.url));
+  const corePath = resolve(here, "../../packages/core/dist/index.js");
+  let coreMod;
+  try {
+    coreMod = await import(corePath);
+  } catch {
+    coreMod = await import("@agentkit-js/core");
+  }
+  const { CodeAgent } = coreMod;
   const tasks = CODEAGENT_TASKS.slice(0, opts.limit ?? CODEAGENT_TASKS.length);
   const results = [];
   for (const t of tasks) {
@@ -369,7 +380,22 @@ async function main() {
     label = "MockLocalModel (self-test)";
     mode = "self-test (no real model — verifies the harness only)";
   } else if (values.model || values.path || values.url) {
-    const { LocalModel } = await import("@agentkit-js/model-local");
+    // Resolve @agentkit-js/model-local relative to this script so the cert
+    // harness works whether run from the workspace root (no node_modules
+    // hoist) or from a downstream consumer that has the package installed
+    // normally.
+    const { fileURLToPath } = await import("node:url");
+    const { dirname, resolve } = await import("node:path");
+    const here = dirname(fileURLToPath(import.meta.url));
+    const localPath = resolve(here, "../../packages/model-local/dist/index.js");
+    let modelLocal;
+    try {
+      modelLocal = await import(localPath);
+    } catch {
+      // Fall back to package name resolution (works when installed as a dep).
+      modelLocal = await import("@agentkit-js/model-local");
+    }
+    const { LocalModel } = modelLocal;
     if (values.model) {
       const args = { source: { model: values.model } };
       if (values.mirror) args.mirror = values.mirror;
@@ -392,7 +418,17 @@ async function main() {
 
   if (values.kernel === "quickjs") {
     opts.kernelFactory = async () => {
-      const { QuickJSKernel } = await import("@agentkit-js/kernel-quickjs");
+      const { fileURLToPath } = await import("node:url");
+      const { dirname, resolve } = await import("node:path");
+      const here = dirname(fileURLToPath(import.meta.url));
+      const kpath = resolve(here, "../../packages/kernel-quickjs/dist/index.js");
+      let mod;
+      try {
+        mod = await import(kpath);
+      } catch {
+        mod = await import("@agentkit-js/kernel-quickjs");
+      }
+      const { QuickJSKernel } = mod;
       return new QuickJSKernel();
     };
   }
