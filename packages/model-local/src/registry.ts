@@ -67,6 +67,31 @@ export interface RegisteredModel {
  * pipeline in L4.
  */
 export const MODEL_REGISTRY: Record<string, RegisteredModel> = {
+  "qwen2.5-0.5b": {
+    alias: "qwen2.5-0.5b",
+    description: "Qwen 2.5 0.5B Instruct — smallest viable model; 100% tool-call form/picked/semantic on cert (379 MB q4_0)",
+    sources: [
+      {
+        kind: "huggingface",
+        url: "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf",
+      },
+      {
+        kind: "hf-mirror",
+        url: "https://hf-mirror.com/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf",
+      },
+      {
+        kind: "modelscope",
+        url: "https://modelscope.cn/api/v1/models/qwen/Qwen2.5-0.5B-Instruct-GGUF/repo?Revision=master&FilePath=qwen2.5-0.5b-instruct-q4_0.gguf",
+      },
+    ],
+    sha256: "",
+    sizeBytes: 397_807_936,
+    license: "Apache-2.0",
+    minFreeMemGB: 1,
+    contextWindow: 32_768,
+    recommended: false,
+    note: "真机验证 2026-06-12: 工具调用 3/3 form/picked/semantic, 双语 4/4, CodeAgent 不胜任(0.5B 太小)。最小可用模型,首-token 70-310ms (Apple Silicon Metal)",
+  },
   "qwen3.5-0.8b": {
     alias: "qwen3.5-0.8b",
     description: "Qwen 3.5 0.8B — 262K context, 200+ languages, best for Chinese tasks",

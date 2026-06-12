@@ -121,14 +121,17 @@ These are documented combinations of the existing `FallbackModel` from `@agentki
 
 ## Recommended models — current registry
 
-> All entries are <1.5 GB at q4_k_m quantisation. The `recommended` flag flips on once the cert harness publishes a passing score (see L4). Until then you can still `agentkit model pull <alias>` and self-evaluate.
+> All entries are <1.5 GB at q4_k_m or smaller quantisation. The `recommended` flag flips on once the cert harness publishes a passing score (see L4). Until then you can still `agentkit model pull <alias>` and self-evaluate.
 
-| Alias | Best for | License | Size (Q4) |
+| Alias | Best for | License | Size |
 |---|---|---|---|
-| `qwen3.5-0.8b` | Chinese + English, 262K context | Apache-2.0 | ~530 MB |
-| `qwen3-0.6b` | English/code, smaller footprint | Apache-2.0 | ~400 MB |
-| `gemma-3-1b` | English tasks, broad community | Gemma ToU | ~720 MB |
-| `llama-3.2-1b` | English/code, 128K context | Llama 3.2 Community | ~800 MB |
+| `qwen2.5-0.5b` | Tool calling on tiny footprint — **3/3 form/picked/semantic on cert** (real-machine, 2026-06-12) | Apache-2.0 | ~380 MB (q4_0) |
+| `qwen3-0.6b` | English/code, smaller footprint | Apache-2.0 | ~400 MB (q4_k_m) |
+| `qwen3.5-0.8b` | Chinese + English, 262K context | Apache-2.0 | ~530 MB (q4_k_m) |
+| `gemma-3-1b` | English tasks, broad community | Gemma ToU | ~720 MB (q4_k_m) |
+| `llama-3.2-1b` | English/code, 128K context | Llama 3.2 Community | ~800 MB (q4_k_m) |
+
+See `docs/reports/local-model-cert-2026-06-12.md` in the agentkit-js repo for the full real-machine baseline.
 
 Run the cert harness on any of them (or your own GGUF):
 
