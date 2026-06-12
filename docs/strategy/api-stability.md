@@ -83,6 +83,77 @@ two weeks while there is unreleased work in `CHANGELOG.md` — is
 itself part of what this page promises. A stalled changelog is a
 governance bug, not a feature delay; flag it as such.
 
+## 1.0 freeze schedule
+
+> Added 2026-06-12 in response to the strategy memo's L3 ("make
+> trust legible") and the 2026-06 optimization brief's Direction 3
+> — "give core API a 1.0 freeze date." Without a concrete date,
+> "stable surface" reads as aspirational; with one, it becomes a
+> commitment users and co-maintainer candidates can plan around.
+
+The plan is to ship `@agentkit-js/core` **v1.0.0 on 2026-12-15**.
+That is six months after the first npm publish (2026-06-12) and is
+a hard date, not "when ready" — slipping it requires a public
+RFC under `docs/rfcs/` explaining what changed.
+
+What 1.0 means *in practice*:
+
+- Every name on the **Stable surface** above is locked. From v1.0.0
+  onward a breaking change to those names requires a major version
+  bump (v2.0.0) and a deprecation cycle of ≥1 minor release.
+- Every surface in the **Experimental** table either graduates
+  (the `@experimental` JSDoc tag is removed and the surface joins
+  the stable face) or is explicitly carried into 1.0 *still* marked
+  experimental — with the reason updated to reflect the new
+  blocker. Experimental surfaces in 1.0 keep the right to change
+  in a 1.x minor release; the type-system tag remains the
+  load-bearing signal.
+- Per-package SemVer remains independent. Adapters (`aisdk`,
+  `mastra-sandbox`, `claude-agent-sdk`, `openai-agents`) hit 1.0
+  *only* when their upstream's contract has stabilized — until
+  then they stay 0.x even if `core` is 1.0.
+
+What 1.0 does **not** mean:
+
+- It is not a feature freeze. Roadmap items continue to land in
+  1.x minor releases.
+- It is not a quality claim beyond "we won't break the names." Bug
+  fixes, documentation, and performance work continue under the
+  same cadence.
+- It is not a promise that *every* package reaches 1.0 by the same
+  date. Only `@agentkit-js/core` is on the calendar above.
+
+### Pre-freeze checklist (gates the 2026-12-15 tag)
+
+Each item below is closed in a tracked issue under the
+`milestone:1.0` label before the v1.0.0 release tag is pushed. If
+any item is open on 2026-12-01 the maintainer pages a public
+status update, not a quiet slip.
+
+- [ ] **Co-maintainer landed.** Per `GOVERNANCE.md`, ≥2 npm
+      publishers and ≥2 GitHub maintainers with merge rights.
+- [ ] **Cadence proven.** Six consecutive bi-weekly releases shipped
+      without a stall (i.e. no `governance:release-stall` issue
+      opened against the run-up).
+- [ ] **Sandbox-escape drill record.** At least one entry in
+      [`docs/strategy/security-drill-log.md`](security-drill-log.md)
+      showing the SLA rehearsal was run end-to-end (even on a
+      synthetic finding).
+- [ ] **Public benchmark number.** At least one number in the
+      README's "Verified status" table comes from a public dataset
+      with a reproducible CLI (LongMemEval-500 or
+      SWE-bench-lite-class — whichever lands first; see ROADMAP).
+- [ ] **Experimental table reviewed.** Each surface in the table
+      above has a recorded decision — graduate, defer with a new
+      reason, or remove.
+- [ ] **CHANGELOG migration note.** A "Migrating to 1.0" section
+      exists in `CHANGELOG.md` listing every removed deprecation
+      and every renamed export.
+
+If a checklist item slips and the freeze is rescheduled, the new
+date and the reason go *here*, in this file, on the same git
+commit that updates the deadline.
+
 ## How to read a JSDoc tag
 
 ```ts

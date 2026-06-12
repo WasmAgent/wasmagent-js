@@ -18,6 +18,8 @@ npm add @agentkit-js/core openai
 ```
 
 > 📚 **Docs site:** <https://telleroutlook.github.io/agentkit-js/> · **Getting started in 5 min:** [docs/guides/getting-started.md](./docs/guides/getting-started.md) · **Benchmarks:** [docs/benchmarks.md](./docs/benchmarks.md) · **Changelog:** [CHANGELOG.md](./CHANGELOG.md) · **API stability:** [docs/strategy/api-stability.md](./docs/strategy/api-stability.md) · **Strategy memo:** [docs/strategy/2026-06-competitiveness.md](./docs/strategy/2026-06-competitiveness.md) · **Enterprise security face:** [docs/strategy/security-face.md](./docs/strategy/security-face.md)
+>
+> 🤝 **Looking for a co-maintainer.** `@agentkit-js/core@1.0.0` is on the calendar for **2026-12-15**. If you ship to the Vercel AI SDK / Mastra / Claude Agent SDK / OpenAI Agents JS / Cloudflare Agents / LangGraph.js communities and want npm-publish + merge rights, see [CONTRIBUTING.md](./CONTRIBUTING.md#looking-for-a-co-maintainer) and [GOVERNANCE.md](./GOVERNANCE.md). Release cadence ledger: [docs/strategy/release-cadence-log.md](./docs/strategy/release-cadence-log.md). Sandbox-escape SLA drill log: [docs/strategy/security-drill-log.md](./docs/strategy/security-drill-log.md).
 
 ---
 

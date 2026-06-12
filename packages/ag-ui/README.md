@@ -4,6 +4,8 @@ AG-UI (inbound) HTTP transport for agentkit-js agents — frame protocol + strea
 
 > Part of [agentkit-js](https://github.com/telleroutlook/agentkit-js) — a TypeScript + WASM agent runtime.
 
+> ▽ **Maintenance-mode.** This adapter is functional and security-patched, but is **not** receiving proactive feature work while the upstream AG-UI protocol stabilizes and demand signals (organic downloads, integration requests) come in. See [maintenance tiers](https://github.com/telleroutlook/agentkit-js/blob/main/docs/strategy/maintenance-tiers.md) for the rationale. If you actively use this package and want it promoted to ◆ Narrative, open an issue tagged `tier:promote-request` with your use case.
+
 ## Install
 
 ```bash

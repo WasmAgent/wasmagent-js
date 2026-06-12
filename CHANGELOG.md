@@ -16,6 +16,91 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **bscode reverse-funnel page — Direction 6 of the 2026-06-12
+  optimization brief.** New page in the bscode demo repo,
+  `docs/their-framework-our-kernel.md`, documents five recipes
+  for dropping agentkit kernels into the framework the visitor
+  already uses (Vercel AI SDK 6 + `sandboxedJsTool`, Cloudflare
+  codemode + `agentkitCodemodeExecutor` shim, Mastra +
+  `agentkitMastraSandbox`, Anthropic Claude Agent SDK +
+  `sandboxedJsClaudeTool`, OpenAI Agents JS +
+  `sandboxedJsAgentTool`). Each recipe carries a UTM-tagged
+  `?source=bscode-<framework>-recipe` so the strategy memo's
+  falsifiability test ("zero organic downloads from upstream
+  ecosystems by 2026-Q4 ⇒ retire the runtime pitch") can be
+  checked against attribution data, not a hand-wave. The bscode
+  README links the page from the "What this demonstrates"
+  section so visitors who arrive expecting a framework demo
+  see the runtime pitch alongside.
+- **Public-benchmark plan + SWE-bench-lite skeleton — Direction 2
+  of the 2026-06-12 optimization brief.** New strategy doc
+  `docs/strategy/leaderboard-plan.md` lays out the ordered plan
+  for trading self-built numbers for public-leaderboard numbers
+  on two axes: LongMemEval-500 (defensive, vs Mastra's 94.87%)
+  and SWE-bench-lite-class code-mode dispatch (offensive — no
+  competitor has published a number on this axis yet, so the
+  first credible run owns the citation slot for 6–12 months).
+  The SWE-bench-lite harness skeleton lands at
+  `examples/benchmarks/swe-bench-lite.mjs` with a `--smoke` CI
+  guard and a fully-documented pre-run checklist; the placeholder
+  report lives at `docs/reports/swe-bench-lite-pending.md`. ROADMAP
+  promotes the SWE-bench-lite run from "considering" to "in flight."
+- **Cloudflare codemode third-party-executor draft — Direction 1
+  of the 2026-06-12 optimization brief.** New draft
+  `docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md`
+  proposes a recipe page in `cloudflare/agents` pointing
+  codemode users to `@agentkit-js/kernel-quickjs` /
+  `kernel-pyodide` / `kernel-remote` as a community-maintained
+  executor that closes the three explicit gaps in the default
+  `DynamicWorkerExecutor` (no Workers binding, Python support,
+  `needsApproval` lifecycle). Pre-submission gate: ship the
+  `agentkitCodemodeExecutor` shim in `@agentkit-js/aisdk` first
+  so the example runs. The directory's `README.md` was raised
+  from "appendix" framing to "Direction 1 priority" with the
+  rationale and a contributor pointer that ties co-maintainer
+  candidacy to landing one of these upstream entries.
+- **DevTools as standalone framework-agnostic Studio — Direction 5
+  of the 2026-06-12 optimization brief.** `packages/devtools/README.md`
+  rewritten to lead with the cross-framework story (Vercel AI SDK,
+  Mastra, OpenAI Agents JS, Anthropic SDK, LangSmith-instrumented
+  code) ahead of the EventLog story. New page
+  `docs/guides/devtools-cross-framework.md` provides per-producer
+  capture recipes plus a `devtools:cross-framework` issue label
+  for prioritizing producers users actually have. The CLI is
+  reachable via `npx -p @agentkit-js/cli agentkit devtools
+  --otel-events-file <path>` so non-agentkit users do not need
+  to install `@agentkit-js/core`. The adapter
+  (`convertGenAiSpansToEvents`) was already shipped in 2026-06-12;
+  this is the discovery surface upgrade.
+- **Maintenance tiers — Direction 4 of the 2026-06-12 optimization
+  brief.** `docs/strategy/maintenance-tiers.md` classifies all 33
+  packages into ★ Core (8) / ◆ Narrative (15) / ▽ Maintenance-mode
+  (10). The ten ▽ packages (`model-deepseek`, `model-doubao`,
+  `model-minimax`, `model-moonshot`, `model-qwen`, `model-zhipu`,
+  `a2a`, `ag-ui`, `ui-cards`, `ui-cards-react`) carry a
+  top-of-README banner stating the dominance reason (six are
+  dominated by `GenericOpenAICompatModel` + recipe; the other
+  four are off the embedded-runtime thesis path) and a
+  `tier:promote-request` issue label so users can flag active use.
+  No `package.json` deprecation, no npm dist-tag move — the
+  banner is the only behavior change. Falsifiability: ▽ packages
+  with neither a promote-request nor sustained > 100 d/w by
+  2027-Q1 graduate to "deprecated → archive."
+- **Governance signals — Direction 3 of the 2026-06-12 optimization
+  brief.** `docs/strategy/api-stability.md` now publishes a
+  **2026-12-15 1.0-freeze date** for `@agentkit-js/core`, with a
+  six-item gating checklist (co-maintainer, six bi-weekly releases
+  without stall, sandbox-escape drill on file, public-benchmark
+  number, experimental table reviewed, migration note). Two new
+  public ledgers back the existing SLAs:
+  `docs/strategy/release-cadence-log.md` (every tagged release
+  lands a row; missed fortnights with non-empty `[Unreleased]`
+  land a stall row) and `docs/strategy/security-drill-log.md`
+  (synthetic P0 finding rehearsal each quarter while maintainer
+  count < 3, paging the disclosure path end-to-end). README and
+  `GOVERNANCE.md` link both ledgers; `CONTRIBUTING.md` opens with
+  a top-level "looking for a co-maintainer" pointer rather than
+  burying it in governance.
 - `@agentkit-js/claude-agent-sdk` (D1) — agentkit kernels as Claude
   Agent SDK tools. `sandboxedJsClaudeTool()` and `codeModeClaudeTool()`
   emit the Anthropic-shape `{name, description, input_schema, handler}`
