@@ -3,6 +3,24 @@
 > First-time contributors are welcome. The project is small enough that
 > one well-scoped PR can move the needle.
 
+## Looking for a co-maintainer
+
+agentkit-js currently has a single primary maintainer. The single
+fastest way to materially help the project is to volunteer for
+**npm-publish + merge rights**. We are explicitly looking for
+contributors embedded in one of: Vercel AI SDK, Mastra, Claude
+Agent SDK, OpenAI Agents JS, Cloudflare Agents SDK, or LangGraph.js
+communities — those are the upstream surfaces our adapter packages
+target ([`ROADMAP.md`](ROADMAP.md) S1, strategy memo's L1).
+
+The role is described in
+[`GOVERNANCE.md`](GOVERNANCE.md#how-decisions-get-made-when-we-have-2-maintainers)
+and is on the 2026-12-15 1.0-freeze checklist
+([`docs/strategy/api-stability.md`](docs/strategy/api-stability.md#10-freeze-schedule)).
+Open an issue tagged `governance:co-maintainer-interest` with a
+short note about how you'd use the role; bring a recent PR you've
+landed in the upstream you're embedded in if you have one.
+
 ## Quick start
 
 ```bash

@@ -101,7 +101,19 @@ the same A6 commit; see also the embedded "Why" lines below).
 - **Public LongMemEval-500 run.** The bundled 6-item fixture is a CI
   sanity floor; a full 500-question run against the official
   [LongMemEval](https://github.com/xiaowu0162/LongMemEval) test set
-  needs API budget; planned 2026-Q3.
+  needs API budget; planned 2026-Q3. Methodology + status:
+  [`docs/strategy/leaderboard-plan.md`](docs/strategy/leaderboard-plan.md).
+
+- **SWE-bench-lite-class code-mode dispatch run.** Promoted from
+  "considering" to "in flight" 2026-06-12 with the skeleton harness
+  at [`examples/benchmarks/swe-bench-lite.mjs`](examples/benchmarks/swe-bench-lite.mjs)
+  and the placeholder report at
+  [`docs/reports/swe-bench-lite-pending.md`](docs/reports/swe-bench-lite-pending.md).
+  Direction 2 of the 2026-06-12 optimization brief; comparator
+  Cloudflare Code Mode MCP has not published a SWE-bench number,
+  so the first credible run owns the citation slot. Pre-run
+  checklist (containerised judge, cache-token plumbing, dry-run
+  gate) lives in the harness file's docblock.
 
 ## Considering (post-Q3, no commitment)
 
@@ -109,10 +121,6 @@ the same A6 commit; see also the embedded "Why" lines below).
   for `tools-browser`, CF Agent Memory as a `KvBackend`, Workflows
   example for long-running checkpoints. Tracks the 2026 Agents Week
   (May) feature set.
-
-- **Public SWE-bench-lite-class run** for the code-mode dispatch
-  pattern. Comparator: Cloudflare Code Mode MCP server (closed-source
-  numbers).
 
 ## Explicitly NOT on the roadmap
 

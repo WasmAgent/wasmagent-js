@@ -42,8 +42,26 @@ public description of how decisions get made until then.
   measuring ourselves against, not a guarantee.
 - **Release cadence.** A tagged release every two weeks while
   [`CHANGELOG.md`](CHANGELOG.md)'s `[Unreleased]` section is
-  non-empty. A stalled changelog is a governance bug; flag it as one
+  non-empty. The public ledger lives in
+  [`docs/strategy/release-cadence-log.md`](docs/strategy/release-cadence-log.md)
+  — every tagged release lands a row, and any *missed* fortnight
+  with non-empty `[Unreleased]` lands a stall row with the
+  reason. A stalled changelog is a governance bug; flag it as one
   by opening a `governance:release-stall` issue.
+
+- **Sandbox-escape SLA, drilled.** [`SECURITY.md`](SECURITY.md)
+  commits to a P0 SLA for kernel escapes. The drill ledger lives
+  in
+  [`docs/strategy/security-drill-log.md`](docs/strategy/security-drill-log.md)
+  — synthetic findings exercise the disclosure path each quarter
+  so the SLA is a rehearsed process, not a paper commitment.
+
+- **1.0 freeze date.** Public commitment to ship
+  `@agentkit-js/core@1.0.0` on **2026-12-15**, with a checklist
+  (co-maintainer landed, six bi-weekly releases without stall,
+  drill record on file, public benchmark number, experimental
+  table reviewed, migration note) gating the tag. See
+  [`docs/strategy/api-stability.md`](docs/strategy/api-stability.md#10-freeze-schedule).
 
 ## How decisions get made when we have ≥2 maintainers
 
