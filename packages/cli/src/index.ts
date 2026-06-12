@@ -39,6 +39,11 @@ if (isMain) {
       // A4 (S3, 2026-06): `agentkit devtools` flags. `events` doubles as both
       // the run-command filter and the devtools NDJSON input path.
       "events-file": { type: "string" },
+      // D5 (2026-06): framework-agnostic GenAI semconv ingest. Either NDJSON
+      // (one span per line) or OTLP/JSON (`{resourceSpans: …}`). When set,
+      // takes precedence over --events-file so users can compare a Vercel
+      // AI SDK or Mastra trace in the same Studio view.
+      "otel-events-file": { type: "string" },
       port: { type: "string", default: "4317" },
       // 2026-06-12: `agentkit evals` flags. `--suite` accepts comma-separated
       // names; `--models` is comma-separated `id@baseUrl#modelId` triples;
@@ -443,6 +448,7 @@ Usage:
   agentkit run "<task>" [options]
   agentkit init-tool --name <tool-name> [options]
   agentkit devtools --events-file <ndjson> [--port 4317]
+  agentkit devtools --otel-events-file <ndjson|otlp.json> [--port 4317]
   agentkit evals list
   agentkit evals run --suite=<names> --models=<id@url[#modelId],...> [--seeds=0,1,2]
 
@@ -469,6 +475,9 @@ init-tool options:
 devtools options:
   --events-file <path>     NDJSON event log file produced by EventLog.exportNdjson()
                            or any file with one LoggedEvent JSON per line.
+  --otel-events-file <p>   GenAI semconv source — NDJSON of spans, or OTLP/JSON
+                           ({resourceSpans:…}). Lets you point the Studio at a
+                           Vercel AI SDK / Mastra / OpenAI Agents JS trace.
   --port <port>            HTTP port (default: 4317)
 
 evals options:
@@ -512,16 +521,26 @@ export async function devtoolsCommand(
   const { readFile } = await import("node:fs/promises");
   // Lazy import — devtools is its own peer with React types; we don't want
   // run/init-tool callers to load it.
-  const { groupByTraceId, rollupRuns, summariseRun } = (await import("@agentkit-js/devtools")) as {
+  const dt = (await import("@agentkit-js/devtools")) as {
     groupByTraceId: (e: unknown[]) => Map<string, unknown[]>;
     rollupRuns: (s: unknown[]) => unknown;
     summariseRun: (e: unknown[]) => unknown;
+    parseGenAiInput: (raw: string) => unknown[];
+    convertGenAiSpansToEvents: (spans: unknown[]) => {
+      events: unknown[];
+      skipped: number;
+      tracesSeen: number;
+    };
   };
+  const { groupByTraceId, rollupRuns, summariseRun, parseGenAiInput, convertGenAiSpansToEvents } =
+    dt;
 
-  const eventsPath = opts["events-file"];
-  if (!eventsPath || typeof eventsPath !== "string") {
-    console.error("Error: --events-file <path> is required.");
-    console.error("  Example: agentkit devtools --events-file ./events.ndjson");
+  const eventsPath = opts["events-file"] as string | undefined;
+  const otelPath = opts["otel-events-file"] as string | undefined;
+  if (!eventsPath && !otelPath) {
+    console.error("Error: --events-file <path> or --otel-events-file <path> is required.");
+    console.error("  agentkit devtools --events-file ./events.ndjson");
+    console.error("  agentkit devtools --otel-events-file ./trace.ndjson  # any GenAI semconv source");
     process.exit(1);
   }
   const port = Number.parseInt((opts.port as string) ?? "4317", 10);
@@ -530,18 +549,28 @@ export async function devtoolsCommand(
   // run rarely exceed a few MB) and re-reading on every request would
   // surprise users who expect "this view reflects the file at startup".
   // Re-running the CLI is the refresh story; explicit > magic.
-  const raw = await readFile(eventsPath, "utf8");
-  const events: unknown[] = [];
-  for (const line of raw.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    try {
-      events.push(JSON.parse(trimmed));
-    } catch {
-      // Skip malformed lines but report once at startup so the user knows
-      // there's noise in their file.
-      console.error(`Skipping malformed NDJSON line: ${trimmed.slice(0, 80)}…`);
+  let events: unknown[] = [];
+  let sourceLabel = "";
+  if (otelPath) {
+    const raw = await readFile(otelPath, "utf8");
+    const spans = parseGenAiInput(raw);
+    const conv = convertGenAiSpansToEvents(spans);
+    events = conv.events;
+    sourceLabel = `${otelPath} (GenAI semconv: ${spans.length} spans → ${conv.events.length} events, ${conv.tracesSeen} trace(s)${conv.skipped ? `, ${conv.skipped} skipped` : ""})`;
+  } else {
+    const raw = await readFile(eventsPath as string, "utf8");
+    for (const line of raw.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        events.push(JSON.parse(trimmed));
+      } catch {
+        // Skip malformed lines but report once at startup so the user knows
+        // there's noise in their file.
+        console.error(`Skipping malformed NDJSON line: ${trimmed.slice(0, 80)}…`);
+      }
     }
+    sourceLabel = eventsPath as string;
   }
 
   const grouped = groupByTraceId(events);
@@ -570,7 +599,7 @@ export async function devtoolsCommand(
   });
 
   await new Promise<void>((resolve) => server.listen(port, resolve));
-  console.log(`agentkit Studio: http://localhost:${port} (events: ${eventsPath})`);
+  console.log(`agentkit Studio: http://localhost:${port} (source: ${sourceLabel})`);
   console.log(
     `Tracking ${summaries.length} run${summaries.length === 1 ? "" : "s"} ` +
       `(${(rollup as { totalCostUsd: number }).totalCostUsd.toFixed(4)} USD total).`

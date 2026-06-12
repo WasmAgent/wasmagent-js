@@ -89,6 +89,7 @@ agentkit-js is early-stage. The differentiating features (code execution kernels
 | Judge scorer weighted breakdown (A4) | ✓ | `packages/core/src/evals/JudgeScorer.test.ts` |
 | Paired-statistics parity vs scipy (evals-runner) | ✓ 31 reference values to ±1e-7 | `packages/evals-runner/src/stats/index.test.ts` |
 | Local Studio HTTP overview (A4 of 2026-06-12 plan) | ✓ | `agentkit devtools --events-file <ndjson>` |
+| Framework-agnostic GenAI semconv ingest (D5) | ✓ 9 adapter tests | `agentkit devtools --otel-events-file <path>` — accepts NDJSON or OTLP/JSON from any producer (Vercel AI SDK, Mastra, OpenAI Agents JS, Anthropic SDK) |
 | Multi-model evaluation across 17× size range | ✓ 5 models, 2026-06-12 | `docs/reports/longmemeval-5model-2026-06-12.md` |
 
 ---
