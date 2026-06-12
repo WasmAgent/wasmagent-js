@@ -1,0 +1,70 @@
+{
+  "name": "@agentkit-js/claude-agent-sdk",
+  "version": "0.1.0",
+  "description": "Drop agentkit-js sandbox kernels into the Anthropic Claude Agent SDK — edge-safe code execution with one capability manifest, reusing your MCP server policy",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.40.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/sdk": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.55.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "zod": "^3.22.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "claude",
+    "anthropic",
+    "agent-sdk",
+    "agent",
+    "sandbox",
+    "code-execution",
+    "tool",
+    "agentkit"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "directory": "packages/claude-agent-sdk"
+  },
+  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/claude-agent-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "author": "agentkit-js contributors"
+}
