@@ -13,3 +13,6 @@ docs/.vitepress/dist/
 docs/.vitepress/cache/
 *.tgz
 .DS_Store
+
+# Local benchmark caches (e.g. SWE-bench-lite tasks fetched from HF)
+.cache/

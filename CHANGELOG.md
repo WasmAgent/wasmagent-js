@@ -16,6 +16,28 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **swe-bench-lite harness — `loadTasks` + `dispatchCodemode` (mock-mode)
+  landed (2026-06-13).** `examples/benchmarks/swe-bench-lite.mjs` is no
+  longer pure skeleton:
+  - `loadTasks(count)` fetches from HuggingFace datasets-server
+    (`princeton-nlp/SWE-bench_Lite`), pages at 100 rows/call up to the
+    full 300, caches to `.cache/swe-bench-lite/test.json`. New
+    `--load-tasks=N` flag for live probing. JSON-string-encoded
+    `FAIL_TO_PASS` / `PASS_TO_PASS` columns are parsed; defensive
+    against missing fields so a single malformed row does not abort
+    the load.
+  - `dispatchCodemode(task, answerer)` end-to-end through the
+    stub-answerer path: spins up `JsKernel` + `agentkitCodemodeExecutor`
+    + a fake repo-edit tool surface (`readFile` / `writeFile` /
+    `gitDiff` / `runTestsInRepo`), runs the answerer-supplied codemode
+    script, returns `{ patch, toolCallCount, error?, logs }`. Real-mode
+    Anthropic / OpenAI answerers throw a clear "not wired yet" error
+    referencing the funded-run gate. Containerised judge stays
+    deferred per the brief's pre-run checklist.
+  - `--smoke` is now 12 offline checks (was 1): `normalizeRow` parsing,
+    defensive empty-row handling, end-to-end dispatch through the stub
+    answerer (patch produced, instance_id threaded through, real-mode
+    rejected cleanly).
 - **`agentkitCodemodeExecutor` shim — Direction 1 pre-submission
   gate cleared (2026-06-13).** New
   `@agentkit-js/aisdk` export `agentkitCodemodeExecutor(opts)`

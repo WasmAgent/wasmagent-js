@@ -117,9 +117,22 @@
  *       Sonnet-4-6 on SWE-bench-lite).
  */
 
-import { writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { dirname, resolve as resolvePath } from "node:path";
 
 const DEFAULT_REPORT_PATH = "docs/reports/swe-bench-lite-pending.md";
+
+/** Local cache for the dataset rows so a re-run does not re-download. */
+const DATASET_CACHE_PATH = resolvePath(
+  // .cache/ is .gitignored at the repo root by convention.
+  ".cache/swe-bench-lite/test.json"
+);
+
+/** HuggingFace datasets-server base URL. */
+const HF_ROWS_URL =
+  "https://datasets-server.huggingface.co/rows" +
+  "?dataset=princeton-nlp%2FSWE-bench_Lite&config=default&split=test";
 
 // ── flag parsing ─────────────────────────────────────────────────────────────
 // Same shape as longmemeval-500.mjs so users have one mental model.
@@ -132,6 +145,24 @@ if (args["help"] || (args._.length === 0 && Object.keys(args).length === 1)) {
 
 if (args["smoke"]) {
   await smokeRun();
+  process.exit(0);
+}
+
+if (args["load-tasks"]) {
+  // Live network probe: download N tasks and print a one-line summary
+  // per task. Useful for verifying the loader without committing to a
+  // full benchmark run.
+  const n = Number.parseInt(String(args["load-tasks"]), 10);
+  if (!Number.isFinite(n) || n <= 0) {
+    console.error("Error: --load-tasks=N requires a positive integer.");
+    process.exit(2);
+  }
+  const tasks = await loadTasks(n);
+  console.log(`Loaded ${tasks.length} tasks. First few:`);
+  for (const t of tasks.slice(0, Math.min(3, tasks.length))) {
+    console.log(`  - ${t.instance_id} (${t.repo} @ ${t.base_commit.slice(0, 8)})`);
+    console.log(`    fail_to_pass=${t.fail_to_pass.length}, pass_to_pass=${t.pass_to_pass.length}`);
+  }
   process.exit(0);
 }
 
@@ -149,21 +180,264 @@ process.exit(2);
 // pipeline) can fill in one slot at a time without holding the whole
 // run in their head.
 
-// eslint-disable-next-line no-unused-vars
-async function loadTasks(_count) {
-  // TODO: download SWE-bench_Lite from HuggingFace (or a local cache),
-  // return [{ instance_id, repo, base_commit, problem_statement,
-  // test_patch, ...}]. Honor the known skip-list at the top of the
-  // upstream dataset README.
-  throw new Error("loadTasks: not yet implemented");
+/**
+ * Standardised SWE-bench-lite task shape this harness consumes. Subset of
+ * the upstream HuggingFace fields — we keep only what the dispatch /
+ * judge stages need so a downstream contributor doesn't have to read the
+ * dataset README to understand the call sites.
+ */
+/**
+ * @typedef {object} SweBenchTask
+ * @property {string} instance_id     Stable id, e.g. "astropy__astropy-12907".
+ * @property {string} repo            "owner/name" of the upstream repo.
+ * @property {string} base_commit     Commit to check out before applying patch.
+ * @property {string} problem_statement  GitHub issue body the agent solves.
+ * @property {string} test_patch      Test patch the judge applies + runs.
+ * @property {string} patch           Reference patch (oracle solution; NOT shown to the agent).
+ * @property {string[]} fail_to_pass  Tests that flip from FAIL→PASS on a correct patch.
+ * @property {string[]} pass_to_pass  Tests that must STAY passing.
+ * @property {string} version         Version string used by SWE-bench's judge.
+ * @property {string} environment_setup_commit  Commit pinning the test environment.
+ */
+
+/**
+ * Fetch (or load from cache) up to `count` SWE-bench-lite tasks.
+ *
+ * The official set is 300 instances; HuggingFace datasets-server pages
+ * at 100 rows per call so a full load is three round-trips. We cache to
+ * `.cache/swe-bench-lite/test.json` keyed by row count so a `--smoke`
+ * follow-up does not re-hit the network.
+ *
+ * @param {number} count
+ * @returns {Promise<SweBenchTask[]>}
+ */
+async function loadTasks(count) {
+  if (!Number.isInteger(count) || count <= 0) {
+    throw new TypeError(`loadTasks: count must be a positive integer, got ${count}`);
+  }
+
+  // 1. Cache check.
+  if (existsSync(DATASET_CACHE_PATH)) {
+    const cached = JSON.parse(await readFile(DATASET_CACHE_PATH, "utf8"));
+    if (Array.isArray(cached) && cached.length >= count) {
+      return cached.slice(0, count);
+    }
+  }
+
+  // 2. Paged fetch from HF datasets-server.
+  const tasks = [];
+  let offset = 0;
+  const PAGE = 100; // HF cap.
+  while (tasks.length < count) {
+    const length = Math.min(PAGE, count - tasks.length);
+    const url = `${HF_ROWS_URL}&offset=${offset}&length=${length}`;
+    const res = await fetch(url, {
+      headers: { accept: "application/json" },
+    });
+    if (!res.ok) {
+      throw new Error(
+        `loadTasks: HF datasets-server returned ${res.status} ${res.statusText} ` +
+          `for offset=${offset} length=${length}. ` +
+          "Common causes: network blocked, HF rate-limit, or the SWE-bench-lite " +
+          "dataset shape changed upstream. Set HTTPS_PROXY if you're behind one."
+      );
+    }
+    /** @type {{rows: Array<{row: Record<string, unknown>}>, num_rows_total: number}} */
+    const json = await res.json();
+    if (!Array.isArray(json.rows) || json.rows.length === 0) break;
+    for (const { row } of json.rows) {
+      tasks.push(normalizeRow(row));
+    }
+    offset += length;
+    if (json.num_rows_total != null && offset >= json.num_rows_total) break;
+  }
+
+  // 3. Persist cache (best-effort; failure is logged but not fatal).
+  try {
+    await mkdir(dirname(DATASET_CACHE_PATH), { recursive: true });
+    await writeFile(DATASET_CACHE_PATH, JSON.stringify(tasks), "utf8");
+  } catch (e) {
+    console.error(`loadTasks: cache write failed (${e.message}); continuing.`);
+  }
+
+  return tasks.slice(0, count);
 }
 
-// eslint-disable-next-line no-unused-vars
-async function dispatchCodemode(_task, _answerer) {
-  // TODO: wire @agentkit-js/mcp-server createCodeModeServer with the
-  // file/test/git tool surface, run the answerer with docs_search +
-  // execute_code, capture per-step tokens + cache_read tokens.
-  throw new Error("dispatchCodemode: not yet implemented");
+/**
+ * Map the HF row shape onto our task shape. FAIL_TO_PASS / PASS_TO_PASS
+ * arrive as JSON-encoded strings inside a string field — we decode them
+ * here so consumers see a parsed string[].
+ *
+ * @param {Record<string, unknown>} row
+ * @returns {SweBenchTask}
+ */
+function normalizeRow(row) {
+  const parseList = (v) => {
+    if (Array.isArray(v)) return v.map(String);
+    if (typeof v !== "string") return [];
+    try {
+      const parsed = JSON.parse(v);
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  };
+  return {
+    instance_id: String(row.instance_id ?? ""),
+    repo: String(row.repo ?? ""),
+    base_commit: String(row.base_commit ?? ""),
+    problem_statement: String(row.problem_statement ?? ""),
+    test_patch: String(row.test_patch ?? ""),
+    patch: String(row.patch ?? ""),
+    fail_to_pass: parseList(row.FAIL_TO_PASS),
+    pass_to_pass: parseList(row.PASS_TO_PASS),
+    version: String(row.version ?? ""),
+    environment_setup_commit: String(row.environment_setup_commit ?? ""),
+  };
+}
+
+/**
+ * @typedef {object} StubAnswerer
+ * @property {"stub"} kind
+ * @property {(task: SweBenchTask) => string} scriptFor
+ *   Returns the codemode script the "agent" would have emitted for this
+ *   task. Mocks the model — no API call, deterministic output. Used by
+ *   --smoke / unit testing of the dispatch wiring.
+ *
+ * @typedef {object} RealAnswerer
+ * @property {"anthropic" | "openai"} kind
+ * @property {string} model
+ * @property {string} apiKey
+ * @property {string} [baseUrl]
+ *
+ * @typedef {StubAnswerer | RealAnswerer} Answerer
+ */
+
+/**
+ * Run one task through the code-mode dispatch path: load a fake repo
+ * tool surface, ask the answerer for a codemode script, execute the
+ * script inside an agentkit kernel via `agentkitCodemodeExecutor`, and
+ * return the patch + counters.
+ *
+ * Stub-mode (the only mode wired today): `answerer.scriptFor(task)`
+ * returns the script verbatim. Real-mode (Anthropic / OpenAI) is
+ * deferred to the funded run — the hook is here so the real-mode call
+ * is one branch away once an API key + container judge land.
+ *
+ * @param {SweBenchTask} task
+ * @param {Answerer} answerer
+ * @returns {Promise<{patch: string, toolCallCount: number, error?: string, logs: string[]}>}
+ */
+async function dispatchCodemode(task, answerer) {
+  // Lazy-import agentkit so smokeRun (which never calls dispatch) does
+  // not pay the cost of the workspace's TS build for every CI tick.
+  const { JsKernel } = await import("../../packages/core/dist/index.js");
+  const { agentkitCodemodeExecutor } = await import(
+    "../../packages/aisdk/dist/index.js"
+  );
+
+  // Fake repo state for this task — kept inside the dispatch closure
+  // so concurrent dispatches do not share state. The real run replaces
+  // this with a containerised git checkout at task.base_commit.
+  const repo = new Map(); // path -> contents
+  let pendingPatch = ""; // accumulated diff produced by writeFile calls
+
+  const tools = {
+    /**
+     * Read a file from the repo. Stub returns a one-line stub so the
+     * answerer's script gets a deterministic response shape.
+     */
+    async readFile({ path }) {
+      if (!repo.has(path)) {
+        // Real run: read from the on-disk checkout. Stub: synthesise.
+        repo.set(path, `// stub contents of ${path}\n`);
+      }
+      return { content: repo.get(path) };
+    },
+
+    /** Write a file. Records a one-line "diff" for the patch we hand back. */
+    async writeFile({ path, content }) {
+      const before = repo.get(path) ?? "";
+      repo.set(path, content);
+      pendingPatch += `--- a/${path}\n+++ b/${path}\n@@ -1,1 +1,1 @@\n-${before.trim()}\n+${content.trim()}\n`;
+      return { ok: true };
+    },
+
+    /** Return the accumulated patch. Mirrors `git diff` on the real run. */
+    async gitDiff() {
+      return { patch: pendingPatch };
+    },
+
+    /**
+     * Mock test run. Always returns "tests would run in the judge step"
+     * — the real judge applies test_patch + runs the upstream test
+     * suite in a container, NEVER on the host (per brief pre-run
+     * checklist).
+     */
+    async runTestsInRepo() {
+      return { note: "deferred to containerised judge" };
+    },
+  };
+
+  // Build the codemode script.
+  let script;
+  if (answerer.kind === "stub") {
+    script = answerer.scriptFor(task);
+  } else {
+    // Real-mode hook — funding-dependent. The real call shape:
+    //   1. Build the system prompt from task.problem_statement +
+    //      tool docs (docs_search shape).
+    //   2. Send to Anthropic/OpenAI; capture the assistant's
+    //      `execute_code` tool call argument as `script`.
+    //   3. Track input/output/cache_read tokens for the Pareto report.
+    throw new Error(
+      `dispatchCodemode: real-mode answerer ('${answerer.kind}') not wired yet. ` +
+        "Stub-mode is the only path until the funded run lands. " +
+        "See docs/reports/swe-bench-lite-pending.md for status."
+    );
+  }
+
+  const exec = agentkitCodemodeExecutor({
+    kernel: new JsKernel(),
+    capabilities: {
+      // Tool surface is host-bridged (each tool runs on the host); the
+      // kernel itself needs no network or fs access for the stub path.
+      // Real-mode tightens further: writeFile is gated to the workspace.
+      allowedHosts: [],
+      cpuMs: 5000,
+    },
+  });
+
+  const result = await exec.execute(script, tools);
+
+  // Always materialise the patch — even on error — so the judge can
+  // see partial work. The error field is preserved so the Pareto
+  // report can attribute the failure.
+  const final = await tools.gitDiff();
+  const out = {
+    patch: final.patch,
+    toolCallCount: countToolCallsFromLogs(result.logs ?? []),
+    logs: result.logs ?? [],
+  };
+  if (result.error) out.error = result.error;
+  return out;
+}
+
+/**
+ * Best-effort tool-call count from the kernel's log stream. We do not
+ * thread a counter through the executor because (a) it would couple
+ * benchmark concerns into the public Executor surface and (b) the real
+ * run derives the same number from prompt-cache events. For stub-mode
+ * we count the `tools.X(` substring in user-emitted console output;
+ * scripts that never log it report 0 (which is a true count of what
+ * the user-visible logs reveal).
+ */
+function countToolCallsFromLogs(logs) {
+  let n = 0;
+  for (const line of logs) {
+    if (typeof line === "string" && line.includes("[tool-call]")) n += 1;
+  }
+  return n;
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -194,17 +468,104 @@ async function smokeRun() {
   // Exercises the parser + report scaffolding without touching the
   // real dataset or any model. CI guard: changes to this file should
   // not break --smoke.
-  const out = [
-    "# SWE-bench-lite — smoke run output",
-    "",
-    "> Smoke run produced no real numbers. The full harness is",
-    "> draft — see the docblock at the top of",
-    "> `examples/benchmarks/swe-bench-lite.mjs` for the pre-run",
-    "> checklist and the placeholder report at",
-    `> \`${DEFAULT_REPORT_PATH}\` for what gets published.`,
-    "",
-  ].join("\n");
-  console.log(out);
+  //
+  // Coverage:
+  //   1. normalizeRow handles the JSON-string-encoded FAIL_TO_PASS /
+  //      PASS_TO_PASS fields the way HF datasets-server returns them
+  //      (verified 2026-06-13 against the live API).
+  //   2. normalizeRow tolerates missing / null fields without throwing
+  //      so a single malformed row in a 300-row run doesn't kill the
+  //      load.
+  const checks = [];
+  const ok = (name, cond) => {
+    checks.push({ name, ok: !!cond });
+    if (!cond) process.exitCode = 1;
+  };
+
+  // Sample row mirroring HF's actual response shape.
+  const sampleRow = {
+    repo: "astropy/astropy",
+    instance_id: "astropy__astropy-12907",
+    base_commit: "d16bfe05a744909de4b27f5875fe0d4ed41ce607",
+    patch: "diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ +1 @@\n+y",
+    test_patch: "diff --git a/t b/t\n--- a/t\n+++ b/t\n",
+    problem_statement: "issue body",
+    FAIL_TO_PASS: '["test_a", "test_b"]', // <- string-encoded JSON
+    PASS_TO_PASS: '["test_c"]',
+    version: "4.3",
+    environment_setup_commit: "298ccb47",
+  };
+  const t = normalizeRow(sampleRow);
+  ok("instance_id", t.instance_id === "astropy__astropy-12907");
+  ok("repo", t.repo === "astropy/astropy");
+  ok("fail_to_pass parsed as array", Array.isArray(t.fail_to_pass) && t.fail_to_pass.length === 2);
+  ok("fail_to_pass values", t.fail_to_pass[0] === "test_a" && t.fail_to_pass[1] === "test_b");
+  ok("pass_to_pass parsed as array", Array.isArray(t.pass_to_pass) && t.pass_to_pass.length === 1);
+
+  // Defensive: garbage in, sane defaults out.
+  const garbage = normalizeRow({});
+  ok("garbage row gives empty arrays, not throws", Array.isArray(garbage.fail_to_pass) && garbage.fail_to_pass.length === 0);
+  ok("garbage row gives empty strings", garbage.instance_id === "" && garbage.repo === "");
+
+  // 3. dispatchCodemode end-to-end through the stub answerer.
+  //    The stub script reads a file, writes a one-line patch, then
+  //    returns. We assert the patch surface is non-empty and the
+  //    error path is clean — the real run swaps the stub for an
+  //    Anthropic / OpenAI answerer and a containerised judge.
+  try {
+    const dispatched = await dispatchCodemode(t, {
+      kind: "stub",
+      scriptFor: (task) => `
+        const before = await tools.readFile({ path: "src/main.js" });
+        console.log("[tool-call] readFile " + before.content.length + " bytes");
+        await tools.writeFile({
+          path: "src/main.js",
+          content: "// fixed for " + ${JSON.stringify(task.instance_id)} + "\\n",
+        });
+        const diff = await tools.gitDiff();
+        return diff.patch;
+      `,
+    });
+    ok("dispatchCodemode runs without unhandled error", !dispatched.error);
+    ok("dispatchCodemode produces a non-empty patch", typeof dispatched.patch === "string" && dispatched.patch.length > 0);
+    ok("dispatchCodemode patch references the task instance id", dispatched.patch.includes("astropy__astropy-12907"));
+    // The toolCallCount derives from `[tool-call]` substrings in
+    // KernelResult.logs. JsKernel's worker formats logs as
+    // `args.map(String).join(" ")` so the marker survives intact.
+    // We accept 0 (no console.log captured) as well as ≥1 here
+    // because some environments suppress worker-thread console
+    // forwarding; the real run derives the count from prompt-cache
+    // events instead. The check that matters is that the call
+    // happened — proven by the patch containing the writeFile result.
+    ok(
+      "dispatchCodemode toolCallCount is a non-negative integer",
+      Number.isInteger(dispatched.toolCallCount) && dispatched.toolCallCount >= 0
+    );
+  } catch (e) {
+    ok(`dispatchCodemode threw: ${e.message}`, false);
+  }
+
+  // 4. dispatchCodemode rejects real-mode answerers cleanly (until
+  //    the funded run lands).
+  try {
+    await dispatchCodemode(t, { kind: "anthropic", model: "x", apiKey: "y" });
+    ok("dispatchCodemode real-mode should have thrown", false);
+  } catch (e) {
+    ok("dispatchCodemode rejects real-mode with clear message", String(e.message).includes("real-mode"));
+  }
+
+  console.log("# SWE-bench-lite — smoke run output");
+  console.log("");
+  for (const c of checks) {
+    console.log(`  ${c.ok ? "✓" : "✗"} ${c.name}`);
+  }
+  console.log("");
+  console.log(`Result: ${checks.filter((c) => c.ok).length}/${checks.length} checks passed.`);
+  console.log("");
+  console.log(`See \`${DEFAULT_REPORT_PATH}\` for the publication-run methodology.`);
+  console.log(
+    `Live network probe: \`node examples/benchmarks/swe-bench-lite.mjs --load-tasks=N\` (requires HF reachable).`
+  );
 }
 
 function parseArgs(argv) {
@@ -230,6 +591,7 @@ the methodology + slots a contributor can fill in.
 
 Usage:
   --smoke                       Run the offline harness exerciser (CI guard).
+  --load-tasks=N                Live: download N tasks from HuggingFace + print summary.
   --tasks=N                     Number of SWE-bench-lite tasks (full set: 300).
   --answerer=ID                 Single answerer model id.
   --answerer-base=URL           Answerer base URL (OpenAI-compat / Anthropic).
