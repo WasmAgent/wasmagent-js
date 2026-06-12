@@ -22,6 +22,7 @@ bun run bench -- ptc    # one specific suite
 | **Context editing** (cache-stable history compaction) | **13.8 %** of baseline tokens (–86 %) | ≤16 % (≥–84 %) | [`context-editing.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/context-editing.mjs) |
 | **Observational memory** (compressed reflection prefix) | **21.9 %** of baseline (–78 %) | ~22 % (≤25 %) | [`observational-memory.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/observational-memory.mjs) |
 | **`ParallelForkJoinRunner`** (8 branches, cap=4) | ~**3.8×** wall-clock vs equivalent serial work; tokens scale linearly | ≥2.5× speedup, 4–12× tokens | [`parallel-agents.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/parallel-agents.mjs) |
+| **Cross-model cost comparison** (same task, 11 models) | DeepSeek V4 cheapest at **~$0.003** ; Claude Opus most expensive at **~$0.15** (≈56× ratio) | cheapest <$0.05, most-expensive <$5, ratio in 5×–200× range | [`cost-comparison.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/cost-comparison.mjs) → [report](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/report-cost-comparison.md) |
 
 ## Why these are not marketing numbers
 

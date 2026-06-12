@@ -16,9 +16,17 @@
         "vitest": "^2.1.0",
       },
     },
+    "examples/a2a-interop": {
+      "name": "agentkit-example-a2a-interop",
+      "version": "0.0.0",
+      "dependencies": {
+        "@agentkit-js/a2a": "workspace:*",
+        "@agentkit-js/core": "workspace:*",
+      },
+    },
     "examples/basic-agent": {
       "name": "basic-agent",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
         "@anthropic-ai/sdk": "^0.37.0",
@@ -26,7 +34,7 @@
     },
     "examples/browser-screenshot": {
       "name": "example-browser-screenshot",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
         "@agentkit-js/model-anthropic": "workspace:*",
@@ -38,7 +46,7 @@
     },
     "examples/chat-cards": {
       "name": "chat-cards",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@agentkit-js/react": "workspace:*",
         "@agentkit-js/ui-cards": "workspace:*",
@@ -72,7 +80,7 @@
     },
     "examples/eval-suite": {
       "name": "example-eval-suite",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
         "@agentkit-js/model-anthropic": "workspace:*",
@@ -86,7 +94,7 @@
     },
     "examples/kernel-only": {
       "name": "agentkit-example-kernel-only",
-      "version": "0.0.0",
+      "version": "0.0.1",
       "dependencies": {
         "@agentkit-js/kernel-quickjs": "workspace:*",
         "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
@@ -102,7 +110,7 @@
     },
     "examples/tool-calling-agent": {
       "name": "tool-calling-agent-example",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
         "@anthropic-ai/sdk": "^0.37.0",
@@ -111,7 +119,7 @@
     },
     "examples/tool-search-rag": {
       "name": "example-tool-search-rag",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
         "@agentkit-js/model-anthropic": "workspace:*",
@@ -121,7 +129,7 @@
     },
     "packages/a2a": {
       "name": "@agentkit-js/a2a",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -134,7 +142,7 @@
     },
     "packages/ag-ui": {
       "name": "@agentkit-js/ag-ui",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -146,7 +154,7 @@
     },
     "packages/agent-prompts": {
       "name": "@agentkit-js/agent-prompts",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "devDependencies": {
         "@types/node": "^22.0.0",
         "typescript": "^5.7.0",
@@ -155,7 +163,7 @@
     },
     "packages/cli": {
       "name": "@agentkit-js/cli",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "bin": {
         "agentkit": "./dist/index.js",
       },
@@ -188,7 +196,7 @@
     },
     "packages/core": {
       "name": "@agentkit-js/core",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "zod": "^3.23.0",
         "zod-to-json-schema": "^3.25.2",
@@ -209,7 +217,7 @@
     },
     "packages/devtools": {
       "name": "@agentkit-js/devtools",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -232,7 +240,7 @@
     },
     "packages/kernel-pyodide": {
       "name": "@agentkit-js/kernel-pyodide",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -247,7 +255,7 @@
     },
     "packages/kernel-quickjs": {
       "name": "@agentkit-js/kernel-quickjs",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -270,7 +278,7 @@
     },
     "packages/kernel-remote": {
       "name": "@agentkit-js/kernel-remote",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -289,7 +297,7 @@
     },
     "packages/kernel-wasmtime": {
       "name": "@agentkit-js/kernel-wasmtime",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -301,7 +309,7 @@
     },
     "packages/mcp-server": {
       "name": "@agentkit-js/mcp-server",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -314,7 +322,7 @@
     },
     "packages/model-anthropic": {
       "name": "@agentkit-js/model-anthropic",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -329,7 +337,7 @@
     },
     "packages/model-deepseek": {
       "name": "@agentkit-js/model-deepseek",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -344,7 +352,7 @@
     },
     "packages/model-doubao": {
       "name": "@agentkit-js/model-doubao",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -359,7 +367,7 @@
     },
     "packages/model-minimax": {
       "name": "@agentkit-js/model-minimax",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -374,7 +382,7 @@
     },
     "packages/model-moonshot": {
       "name": "@agentkit-js/model-moonshot",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -389,7 +397,7 @@
     },
     "packages/model-openai": {
       "name": "@agentkit-js/model-openai",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -404,7 +412,7 @@
     },
     "packages/model-qwen": {
       "name": "@agentkit-js/model-qwen",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -419,7 +427,7 @@
     },
     "packages/model-zhipu": {
       "name": "@agentkit-js/model-zhipu",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -434,7 +442,7 @@
     },
     "packages/otel-exporter": {
       "name": "@agentkit-js/otel-exporter",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -446,7 +454,7 @@
     },
     "packages/react": {
       "name": "@agentkit-js/react",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
       },
@@ -462,7 +470,7 @@
     },
     "packages/tools-browser": {
       "name": "@agentkit-js/tools-browser",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
         "zod": "^3.23.0",
@@ -482,7 +490,7 @@
     },
     "packages/tools-rag": {
       "name": "@agentkit-js/tools-rag",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
         "zod": "^3.23.0",
@@ -495,7 +503,7 @@
     },
     "packages/tools-web": {
       "name": "@agentkit-js/tools-web",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
         "zod": "^3.23.0",
@@ -508,7 +516,7 @@
     },
     "packages/ui-cards": {
       "name": "@agentkit-js/ui-cards",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "devDependencies": {
         "@types/node": "^22.0.0",
         "typescript": "^5.7.0",
@@ -517,7 +525,7 @@
     },
     "packages/ui-cards-react": {
       "name": "@agentkit-js/ui-cards-react",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/ui-cards": "workspace:*",
       },
@@ -546,7 +554,7 @@
     },
     "tests/integration": {
       "name": "@agentkit-js/integration-tests",
-      "version": "0.0.0",
+      "version": "0.2.0",
       "dependencies": {
         "@agentkit-js/agent-prompts": "workspace:*",
         "@agentkit-js/ui-cards": "workspace:*",
@@ -1202,6 +1210,8 @@
     "agent-base": ["agent-base@7.1.4", "https://registry.npmmirror.com/agent-base/-/agent-base-7.1.4.tgz", {}, "sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ=="],
 
     "agentkeepalive": ["agentkeepalive@4.6.0", "https://registry.npmmirror.com/agentkeepalive/-/agentkeepalive-4.6.0.tgz", { "dependencies": { "humanize-ms": "1.2.1" } }, "sha512-kja8j7PjmncONqaTsB8fQ+wE2mSU2DJ9D4XKoJ5PFWIdRMa6SLSN1ff4mOr4jCbfRSsxR4keIiySJU0N9T5hIQ=="],
+
+    "agentkit-example-a2a-interop": ["agentkit-example-a2a-interop@workspace:examples/a2a-interop"],
 
     "agentkit-example-devtools-replay": ["agentkit-example-devtools-replay@workspace:examples/devtools-replay"],
 
