@@ -1,0 +1,15 @@
+{
+  "name": "local-offline",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fully offline agent demo — local LLM + QuickJS kernel + in-memory state. No cloud calls, no API keys.",
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*",
+    "@agentkit-js/model-local": "workspace:*",
+    "@agentkit-js/kernel-quickjs": "workspace:*"
+  }
+}

@@ -53,6 +53,11 @@ if (isMain) {
       seeds: { type: "string", default: "0,1,2" },
       "base-url": { type: "string" },
       "report-file": { type: "string" },
+      // 2026-06-12: `agentkit model` (L6) flags. Loaded lazily via
+      // @agentkit-js/model-local — no impact on `agentkit run` users who
+      // don't install the local-model peer.
+      mirror: { type: "string" },
+      "cache-dir": { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
     allowPositionals: true,
@@ -77,6 +82,9 @@ if (isMain) {
       break;
     case "evals":
       await evalsCommand(rest, values);
+      break;
+    case "model":
+      await modelCommand(rest, values);
       break;
     default:
       console.error(`Unknown command: ${command}`);
@@ -451,6 +459,10 @@ Usage:
   agentkit devtools --otel-events-file <ndjson|otlp.json> [--port 4317]
   agentkit evals list
   agentkit evals run --suite=<names> --models=<id@url[#modelId],...> [--seeds=0,1,2]
+  agentkit model list
+  agentkit model pull <alias> [--mirror=<huggingface|hf-mirror|modelscope|<url>>] [--cache-dir=<path>]
+  agentkit model verify <alias> [--cache-dir=<path>]
+  agentkit model rm <alias> [--cache-dir=<path>]
 
 Commands:
   run "<task>"              Run an agent on a task
@@ -458,6 +470,10 @@ Commands:
   devtools                  Start the local Studio (zero-deploy runs overview)
   evals list                List the 6 reference benchmark suites
   evals run                 Run a multi-model multi-suite evaluation; output a Pareto report
+  model list                List registered local models (Qwen/Gemma/Llama 1B-class)
+  model pull <alias>        Download a registered local model with sha256 verification
+  model verify <alias>      Recompute sha256 of the cached file and compare
+  model rm <alias>          Delete the cached model file
 
 run options:
   --model <id>             Model ID (default: claude-sonnet-4-6)
@@ -798,3 +814,162 @@ export async function evalsCommand(
     console.log(md);
   }
 }
+
+// ── 2026-06-12: model command (L6) ────────────────────────────────────────────
+
+/**
+ * `agentkit model <list|pull|verify|rm> [alias|path]`
+ *
+ * Thin wrapper over @agentkit-js/model-local's downloader + registry. We
+ * dynamic-import the peer so users who don't install the local-LLM provider
+ * still see no overhead and no missing-module error from the main CLI.
+ *
+ * Behaviour mirrors common package-manager idioms:
+ *   - `model list`            — print every registered alias with size and license.
+ *   - `model pull <alias>`    — download and verify (multi-mirror, sha256).
+ *   - `model verify <alias>`  — recompute sha256 of cached file and compare.
+ *   - `model rm <alias>`      — delete the cached GGUF.
+ *
+ * Memory-budget warning: before pull(), check `os.freemem()` against the
+ * registry's `minFreeMemGB`. We warn-but-don't-fail (the OS pages and a
+ * generous swap can still load), which gives users a heads-up without
+ * being prescriptive about hardware.
+ */
+export async function modelCommand(
+  positionals: string[],
+  opts: Record<string, string | boolean | undefined>
+): Promise<void> {
+  const sub = positionals[0] ?? "list";
+
+  let local: typeof import("@agentkit-js/model-local");
+  try {
+    local = (await import("@agentkit-js/model-local")) as typeof import(
+      "@agentkit-js/model-local"
+    );
+  } catch (err) {
+    console.error(
+      "Error: @agentkit-js/model-local is not installed.\n" +
+        "  npm install @agentkit-js/model-local\n" +
+        "  (also requires the optional peer: npm install node-llama-cpp)"
+    );
+    process.exit(2);
+    return;
+  }
+
+  const cacheDir = (opts["cache-dir"] as string | undefined) ?? local.defaultCacheDir();
+  const mirror = opts.mirror as string | undefined;
+
+  if (sub === "list") {
+    console.log(`Cache dir: ${cacheDir}`);
+    console.log("");
+    console.log("Alias               Size (MB)  License                       Recommended  Note");
+    console.log("------------------  ---------  ----------------------------  -----------  ----");
+    for (const m of local.listRegisteredModels()) {
+      const sizeMb = (m.sizeBytes / 1_000_000).toFixed(0).padStart(9, " ");
+      const lic = m.license.padEnd(28, " ");
+      const rec = (m.recommended ? "yes" : "—").padEnd(11, " ");
+      const alias = m.alias.padEnd(18, " ");
+      console.log(`${alias}  ${sizeMb}  ${lic}  ${rec}  ${m.note ?? ""}`);
+    }
+    return;
+  }
+
+  if (sub === "pull") {
+    const alias = positionals[1];
+    if (!alias) {
+      console.error("Error: agentkit model pull <alias>");
+      process.exit(1);
+      return;
+    }
+    const reg = local.getRegisteredModel(alias);
+    // Memory pre-check.
+    try {
+      const os = await import("node:os");
+      const freeGB = os.freemem() / 1024 ** 3;
+      if (freeGB < reg.minFreeMemGB) {
+        console.warn(
+          `[warn] free RAM is ${freeGB.toFixed(1)} GB; "${alias}" recommends at least ` +
+            `${reg.minFreeMemGB} GB free at load time. Proceeding — load may swap.`
+        );
+      }
+    } catch {
+      // os.freemem() not available; skip the check.
+    }
+    process.stderr.write(`Pulling ${alias} (${(reg.sizeBytes / 1e6).toFixed(0)} MB) ...\n`);
+    const downloadOpts: Parameters<typeof local.downloadGGUF>[1] = {
+      cacheDir,
+      onProgress: (transferred, total) => {
+        const pct = total > 0 ? ((transferred / total) * 100).toFixed(1) : "?";
+        process.stderr.write(`\r  ${(transferred / 1e6).toFixed(1)} MB (${pct}%)`);
+      },
+    };
+    if (mirror !== undefined) downloadOpts.mirror = mirror;
+    const result = await local.downloadGGUF(reg, downloadOpts);
+    process.stderr.write("\n");
+    console.log(`✓ ${alias} → ${result.path}`);
+    console.log(`  source:    ${result.sourceUsed.kind}`);
+    console.log(`  cache hit: ${result.cacheHit}`);
+    console.log(
+      `  verified:  ${result.verified} ${reg.sha256 ? "" : "(registry sha256 not yet pinned)"}`
+    );
+    return;
+  }
+
+  if (sub === "verify") {
+    const alias = positionals[1];
+    if (!alias) {
+      console.error("Error: agentkit model verify <alias>");
+      process.exit(1);
+      return;
+    }
+    const reg = local.getRegisteredModel(alias);
+    const path = await import("node:path").then((p) =>
+      p.join(cacheDir, local.filenameForSource(reg.sources[0]!))
+    );
+    const fs = await import("node:fs");
+    if (!fs.existsSync(path)) {
+      console.error(`Not cached: ${path}\n  Run: agentkit model pull ${alias}`);
+      process.exit(1);
+      return;
+    }
+    const got = await local.computeSha256(path);
+    if (!reg.sha256) {
+      console.log(`sha256 = ${got}`);
+      console.log("(registry sha256 not yet pinned — nothing to compare against)");
+      return;
+    }
+    if (got === reg.sha256) {
+      console.log(`✓ verified  ${alias}  sha256=${got}`);
+    } else {
+      console.error(`✗ MISMATCH  expected=${reg.sha256}  got=${got}`);
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (sub === "rm") {
+    const alias = positionals[1];
+    if (!alias) {
+      console.error("Error: agentkit model rm <alias>");
+      process.exit(1);
+      return;
+    }
+    const reg = local.getRegisteredModel(alias);
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path").then((p) =>
+      p.join(cacheDir, local.filenameForSource(reg.sources[0]!))
+    );
+    try {
+      await fs.unlink(path);
+      console.log(`✓ removed ${path}`);
+    } catch (e) {
+      console.error(`Not present: ${path}`);
+      process.exit(1);
+    }
+    return;
+  }
+
+  console.error(`Unknown model subcommand: ${sub}. Use list | pull | verify | rm.`);
+  process.exit(1);
+}
+

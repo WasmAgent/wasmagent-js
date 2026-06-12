@@ -1,0 +1,78 @@
+{
+  "name": "@agentkit-js/model-local",
+  "version": "0.1.0",
+  "description": "Embedded local LLM provider for agentkit-js — node-llama-cpp adapter with grammar-constrained tool calling, multi-mirror download (HF/hf-mirror/ModelScope), and cert pipeline",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./registry": {
+      "import": "./dist/registry.js",
+      "types": "./dist/registry.d.ts"
+    },
+    "./downloader": {
+      "import": "./dist/downloader.js",
+      "types": "./dist/downloader.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "node-llama-cpp": ">=3.18.0"
+  },
+  "peerDependenciesMeta": {
+    "node-llama-cpp": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "zod": "^3.24.0"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "directory": "packages/model-local"
+  },
+  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/model-local#readme",
+  "bugs": {
+    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "agentkit",
+    "agent",
+    "ai",
+    "llm",
+    "local",
+    "offline",
+    "llama.cpp",
+    "gguf",
+    "qwen",
+    "gemma"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "author": "agentkit-js contributors"
+}
