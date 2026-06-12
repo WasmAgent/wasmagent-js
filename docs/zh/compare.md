@@ -7,9 +7,12 @@
 | 边缘安全沙箱化代码执行 | ❌ | ❌ | ❌ | ⚠️ OS / Docker | ❌ | ✅ **3 层** |
 | 进程内真 Python | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ Pyodide |
 | 自动 prompt-cache 断点 + 1h TTL | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Code-mode MCP server（docs_search + execute_code） | ❌ | ❌ | ❌ | ❌ | ⚠️ 闭源 | ✅ |
 | 国产模型（豆包 / DeepSeek / Kimi / 千问 / GLM / MiniMax） | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | 时间旅行调试器 + 任意步分叉 | ❌ | ❌ | ✅ Studio | ❌ | ❌ | ✅ |
 | Stateless HITL + SSE Last-Event-ID 续传 | ❌ | ⚠️ 部分 | ✅ | ❌ | ⚠️ 仅 DO | ✅ |
+| 本地 Studio（成本 / 延迟 / 错误率） | ❌ | ✅ Studio（SaaS） | ❌ | ❌ | ❌ | ✅ 零部署 |
+| Pareto 优先的多模型评测 | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | CI 守护的可复现基准 | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 
 > "❌" 表示该框架今天（2026 年 6 月）没有这项能力。"⚠️" 表示部分支持。每季度重新核实。

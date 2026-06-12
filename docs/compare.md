@@ -7,9 +7,12 @@ A short cut of the [comparison table from the main README](https://github.com/te
 | Edge-safe sandboxed code execution | ❌ | ❌ | ❌ | ⚠️ OS / Docker | ❌ | ✅ **3 tiers** |
 | Real Python in-process | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ Pyodide |
 | Auto prompt-cache breakpoints + 1h TTL | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Code-mode MCP server (docs_search + execute_code) | ❌ | ❌ | ❌ | ❌ | ⚠️ proprietary | ✅ |
 | Chinese models (Doubao / DeepSeek / Kimi / Qwen / GLM / MiniMax) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Time-travel debugger + fork-from-step | ❌ | ❌ | ✅ Studio | ❌ | ❌ | ✅ |
 | Stateless HITL + SSE Last-Event-ID resume | ❌ | ⚠️ partial | ✅ | ❌ | ⚠️ DO only | ✅ |
+| Local Studio (cost / latency / errors) | ❌ | ✅ Studio (SaaS) | ❌ | ❌ | ❌ | ✅ zero-deploy |
+| Pareto-first multi-model evaluation harness | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Reproducible benchmarks gated by CI | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 
 > "❌" means the framework does not ship the capability today (June 2026). Where alternatives are partially available, "⚠️" notes the caveat. We re-verify quarterly.

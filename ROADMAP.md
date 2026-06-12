@@ -72,16 +72,36 @@ the same A6 commit; see also the embedded "Why" lines below).
   [`docs/guides/openai-compat-recipes.md`](docs/guides/openai-compat-recipes.md).
   Existing `model-*` packages remain as named presets.
 
-## In flight (2026-Q3)
-
-- **A3 — LongMemEval public benchmark.** Sample-mode harness shipped
-  ([`examples/benchmarks/longmemeval.mjs`](examples/benchmarks/longmemeval.mjs)).
-  Full-mode runs against any OpenAI-compatible endpoint (local Ollama
-  by default). Public number lives in `docs/benchmarks.md` and is
-  refreshed quarterly with each kernel + observation prompt change.
-
 - **A6 — Maintainership signals.** ROADMAP (this file), CONTRIBUTING
   (added 2026-06-12), kernel sandbox-escape SLA in SECURITY.md.
+
+- **Evaluation harness** (`@agentkit-js/evals-runner`, 2026-06-12).
+  Multi-model × multi-suite × multi-seed Pareto reports over
+  (accuracy, cost, p95 wall). Six reference benchmark suites
+  (multi-turn-memory, long-context-recall, cost-per-correct,
+  tool-sequence, agent-trajectory, latency-under-budget). Built-in
+  paired statistics — McNemar exact / Wilson CI / paired bootstrap /
+  G1 gate — match scipy reference values to ±1e-7 across 31 parity
+  tests. CLI: `agentkit evals run --suite=<name> --models=<id@url,...>`.
+  Doc: [`docs/guides/evals-runner.md`](docs/guides/evals-runner.md).
+  All six reference suites use synthetic / hand-built fixtures so
+  they don't overlap with public training corpora — a fine-tune on
+  GSM8K / MMLU / IFEval cannot silently inflate the score.
+
+- **A3 — LongMemEval-style end-to-end benchmark.** Sample-mode
+  harness ([`examples/benchmarks/longmemeval.mjs`](examples/benchmarks/longmemeval.mjs))
+  AND a 5-model run against local Ollama
+  ([`docs/reports/longmemeval-5model-2026-06-12.md`](docs/reports/longmemeval-5model-2026-06-12.md)).
+  Pareto framing surfaced a 0.94 GB Q3_K_M model at parity accuracy
+  with the 8B / 12B models at 4× lower p95 latency — exactly the
+  insight single-number accuracy benchmarks suppress.
+
+## In flight (2026-Q3)
+
+- **Public LongMemEval-500 run.** The bundled 6-item fixture is a CI
+  sanity floor; a full 500-question run against the official
+  [LongMemEval](https://github.com/xiaowu0162/LongMemEval) test set
+  needs API budget; planned 2026-Q3.
 
 ## Considering (post-Q3, no commitment)
 

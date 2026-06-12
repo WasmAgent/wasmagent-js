@@ -1,6 +1,8 @@
 # Evals 实战手册
 
-agentkit-js 内置 16 个 scorer，覆盖正确性、忠实度、相关性、效率、约束、恢复、护栏合规以及 LLM 担任评委等场景。本指南展示如何把它们组合起来做生产级基准评测。
+agentkit-js 内置 15 个 scorer，覆盖正确性、忠实度、相关性、效率、约束、恢复、护栏合规以及 LLM 担任评委等场景。本指南展示如何把它们组合起来做生产级基准评测。
+
+> **要做多模型横向对比？** 看 [`@agentkit-js/evals-runner`](./evals-runner.md) — 把这些 scorer 套进 多模型 × 多套件 × 多 seed 的 Pareto 报告里,自带配对统计。Cookbook 讲的是单 trace scorer API;runner 在它上面再封一层。
 
 ## 可用 scorer
 
