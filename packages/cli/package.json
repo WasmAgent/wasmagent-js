@@ -1,6 +1,6 @@
 {
   "name": "@agentkit-js/cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "CLI for agentkit-js — mirrors smolagents' `smolagent` CLI (D6)",
   "type": "module",
   "bin": {

@@ -1,5 +1,12 @@
 # agentkit-example-kernel-only
 
+## 0.0.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @agentkit-js/kernel-quickjs@0.2.1
+
 ## 0.0.1
 
 ### Patch Changes

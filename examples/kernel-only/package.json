@@ -1,6 +1,6 @@
 {
   "name": "agentkit-example-kernel-only",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "type": "module",
   "description": "Standalone usage of @agentkit-js/kernel-quickjs WITHOUT pulling in the rest of agentkit-js — proves the kernel packages can be embedded into any agent framework.",

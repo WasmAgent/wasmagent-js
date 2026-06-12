@@ -1,6 +1,6 @@
 {
   "name": "@agentkit-js/core",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Core runtime for agentkit-js — agents, executor, memory, models, tools",
   "type": "module",
   "main": "./dist/index.js",

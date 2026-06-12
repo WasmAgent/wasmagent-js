@@ -1,5 +1,12 @@
 # @agentkit-js/kernel-wasmtime
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies [[`54f22d2`](https://github.com/telleroutlook/agentkit-js/commit/54f22d2b035ea12e9326d00a1c1541d9b7b4a5a3)]:
+  - @agentkit-js/core@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes

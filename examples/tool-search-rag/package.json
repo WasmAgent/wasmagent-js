@@ -1,6 +1,6 @@
 {
   "name": "example-tool-search-rag",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "End-to-end RAG agent using @agentkit-js/tools-web (Tavily) + @agentkit-js/tools-rag (HttpEmbedder + InMemoryVectorStore)",
   "type": "module",

@@ -1,6 +1,6 @@
 {
   "name": "@agentkit-js/devtools",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "DevTools for agentkit-js — event timeline, step-replay, fork-from-checkpoint",
   "type": "module",
   "main": "./dist/index.js",
