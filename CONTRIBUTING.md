@@ -86,6 +86,37 @@ maintainer tags `v<version>` on `main`. Do not hand-publish from a
 dev machine. The current version manifest is `packages/*/package.json`;
 align bumps via changesets when bumping more than one package.
 
+## Generic-first discipline (S4)
+
+Anything that is not strictly product-specific lands in `agentkit-js`
+*first* and is consumed by `bscode` or any other downstream as a
+public API. This is not a stylistic preference — it is the rule that
+keeps `bscode` a funnel rather than a competing product (see
+[`ROADMAP.md`](ROADMAP.md) S4).
+
+Concretely, before opening a PR in the `bscode` repo that adds a new
+tool, scorer, judge, runner, or workspace abstraction, ask:
+
+1. **Is the logic specific to this product, or would another agent
+   project want it?** If the second answer is yes, the PR belongs in
+   `agentkit-js`, with `bscode` consuming the published package.
+2. **Does it depend only on already-published `@agentkit-js/*` APIs?**
+   If it would force an internal-only import, the missing public API
+   is the actual blocker — land that first.
+3. **Is there a comparable feature already in `agentkit-js` you
+   would otherwise duplicate?** If yes, extend the framework instead.
+
+PRs in `bscode` that fail this test will be redirected to land the
+generic piece here first. Reviewers should reference S4 by name in
+the redirect, so the rule is visible to future contributors.
+
+## Co-maintainers wanted
+
+The repository is currently single-maintainer; we are explicitly
+recruiting co-maintainers. Decision rights, the path in, and the SLAs
+we are working to are all written down in
+[`GOVERNANCE.md`](GOVERNANCE.md).
+
 ## Code of conduct
 
 Be kind. Disagree on the substance, not the contributor.
