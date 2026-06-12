@@ -83,8 +83,18 @@ interface LlamaChatSessionLike {
       stopOnAbortSignal?: boolean;
     }
   ): Promise<string>;
-  // node-llama-cpp 3.x: createGrammarForJsonSchema is a top-level Llama method;
-  // we capture both possible accessors for forward-compat.
+  /**
+   * Optional in older node-llama-cpp builds; present in 3.x. Releases the
+   * underlying LlamaContextSequence so the next generate() can reuse it.
+   * Without this, the second generate() throws "No sequences left" on a
+   * default-sized (sequences=1) context — caught by real-machine cert run
+   * 2026-06-12 (Qwen2.5-0.5B), single-call smoke didn't surface it.
+   */
+  dispose?(): void;
+}
+
+interface LlamaSequenceLike {
+  dispose?(): void;
 }
 
 let _cached: LlamaModuleLike | null = null;
@@ -92,11 +102,11 @@ async function loadLlamaModule(): Promise<LlamaModuleLike> {
   if (_cached) return _cached;
   try {
     // node-llama-cpp is an optional peer; resolved at runtime so consumers
-    // who never call generate() never load the native binding. The
-    // ts-expect-error guards against the case where the peer isn't installed
-    // at type-check time (the more common scenario for downstream packages).
-    // @ts-expect-error — optional peer dependency, may not be installed
-    const mod = (await import("node-llama-cpp")) as unknown as LlamaModuleLike;
+    // who never call generate() never load the native binding. We import via
+    // a non-literal string so TypeScript doesn't try to resolve types at
+    // compile time — peer may not be installed in downstream packages.
+    const moduleName = "node-llama-cpp";
+    const mod = (await import(moduleName)) as unknown as LlamaModuleLike;
     _cached = mod;
     return mod;
   } catch (err) {
@@ -179,12 +189,40 @@ export class LocalModel implements Model {
   ): AsyncGenerator<StreamEvent> {
     const loaded = await this.#ensureLoaded();
     const sysPrompt = extractSystemPrompt(messages, opts);
+    const sequence = loaded.context.getSequence() as LlamaSequenceLike;
     const sessionOpts: { contextSequence: unknown; systemPrompt?: string } = {
-      contextSequence: loaded.context.getSequence(),
+      contextSequence: sequence,
     };
     if (sysPrompt !== undefined) sessionOpts.systemPrompt = sysPrompt;
     const session = new loaded.llamaChat(sessionOpts);
 
+    // Whether we yielded events successfully — used to decide whether to swallow
+    // a sequence-pool exhaustion error in the cleanup path. The session/sequence
+    // MUST be released back to the pool on every exit (success OR error),
+    // otherwise the next generate() throws "No sequences left" — surfaced by
+    // the real-machine cert run on Qwen2.5-0.5B (2026-06-12).
+    try {
+      yield* this.#runGeneration(session, loaded, messages, opts);
+    } finally {
+      try {
+        session.dispose?.();
+      } catch {
+        // Disposal must never mask the upstream error.
+      }
+      try {
+        sequence.dispose?.();
+      } catch {
+        // Same.
+      }
+    }
+  }
+
+  async *#runGeneration(
+    session: LlamaChatSessionLike,
+    loaded: LoadedModel,
+    messages: ModelMessage[],
+    opts: GenerateOptions
+  ): AsyncGenerator<StreamEvent> {
     // Decide grammar mode: tool-calling > responseFormat > free-form.
     const tools = extractTools(opts.tools);
     const enableGrammar = this.#opts.enableGrammar !== false;

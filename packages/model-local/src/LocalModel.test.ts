@@ -14,18 +14,47 @@ interface RecordedPrompt {
   numericOpts: Record<string, unknown>;
 }
 
+interface SeqTracker {
+  sequencesIssued: number;
+  sequencesDisposed: number;
+  sessionsDisposed: number;
+}
+
 function makeStubModule(opts: {
   reply: string | ((prompt: string) => string);
   hasGrammarFn?: boolean;
   recorded?: RecordedPrompt[];
+  seqTracker?: SeqTracker;
+  /** Cap on concurrent live sequences. Mirrors node-llama-cpp's pool. */
+  maxConcurrentSequences?: number;
 }) {
   const recorded = opts.recorded ?? [];
+  const tracker = opts.seqTracker ?? {
+    sequencesIssued: 0,
+    sequencesDisposed: 0,
+    sessionsDisposed: 0,
+  };
+  const cap = opts.maxConcurrentSequences ?? 0;
+  let live = 0;
   const llama = {
     loadModel: async (_o: { modelPath: string }) => ({
       trainContextSize: 4096,
       createContext: async (_co: object) => ({
         contextSize: 4096,
-        getSequence: () => ({ id: "seq" }),
+        getSequence: () => {
+          if (cap > 0 && live >= cap) {
+            throw new Error("No sequences left");
+          }
+          live++;
+          tracker.sequencesIssued++;
+          return {
+            id: `seq-${tracker.sequencesIssued}`,
+            dispose: () => {
+              live--;
+              tracker.sequencesDisposed++;
+            },
+          };
+        },
       }),
     }),
     createGrammarForJsonSchema: opts.hasGrammarFn
@@ -54,12 +83,19 @@ function makeStubModule(opts: {
       }
       return reply;
     }
+    dispose() {
+      tracker.sessionsDisposed++;
+    }
   }
   const mod = {
     getLlama: async () => llama,
     LlamaChatSession: StubSession,
   };
-  return { mod: mod as unknown as Parameters<typeof __setLlamaModuleForTests>[0], recorded };
+  return {
+    mod: mod as unknown as Parameters<typeof __setLlamaModuleForTests>[0],
+    recorded,
+    tracker,
+  };
 }
 
 describe("LocalModel construction", () => {
@@ -246,5 +282,88 @@ describe("renderMessagesAsPrompt", () => {
   it("appends the tool prompt addendum at the end", () => {
     const out = renderMessagesAsPrompt([{ role: "user", content: "hi" }], "TOOLS-HERE");
     expect(out.endsWith("TOOLS-HERE")).toBe(true);
+  });
+});
+
+// ── Sequence-pool disposal regression (real-machine bug, 2026-06-12) ─────────
+//
+// node-llama-cpp's LlamaContext defaults to sequences=1. Without disposing the
+// session/sequence after each generate(), the SECOND call throws "No sequences
+// left". The single-call smoke test missed this — only the cert harness's 3-
+// task tool loop on real hardware (Qwen2.5-0.5B) surfaced it. These tests
+// pin the disposal contract so it can't silently regress.
+
+describe("LocalModel sequence disposal", () => {
+  it("disposes session + sequence after each generate (free-form)", async () => {
+    const { mod, tracker } = makeStubModule({ reply: "ok" });
+    __setLlamaModuleForTests(mod);
+    const m = new LocalModel({ source: { path: "/tmp/x.gguf" } });
+    for await (const _ of m.generate([{ role: "user", content: "hi" }])) {
+      // drain
+    }
+    expect(tracker.sequencesIssued).toBe(1);
+    expect(tracker.sequencesDisposed).toBe(1);
+    expect(tracker.sessionsDisposed).toBe(1);
+  });
+
+  it("disposes session + sequence after each generate (tool mode)", async () => {
+    const { mod, tracker } = makeStubModule({
+      reply: '{"type":"tool_use","name":"calc","input":{"a":1,"b":2}}',
+      hasGrammarFn: true,
+    });
+    __setLlamaModuleForTests(mod);
+    const m = new LocalModel({ source: { path: "/tmp/x.gguf" } });
+    const tools = [
+      {
+        name: "calc",
+        input_schema: { type: "object", properties: { a: { type: "number" } } },
+      },
+    ];
+    for await (const _ of m.generate([{ role: "user", content: "x" }], { tools })) {
+      // drain
+    }
+    expect(tracker.sequencesDisposed).toBe(1);
+    expect(tracker.sessionsDisposed).toBe(1);
+  });
+
+  it("survives N consecutive calls when sequence pool is capped at 1", async () => {
+    // Mirrors the cert harness loop that exposed the bug. With cap=1, this
+    // would throw "No sequences left" on the 2nd call without proper disposal.
+    const { mod, tracker } = makeStubModule({
+      reply: "ok",
+      maxConcurrentSequences: 1,
+    });
+    __setLlamaModuleForTests(mod);
+    const m = new LocalModel({ source: { path: "/tmp/x.gguf" } });
+    for (let i = 0; i < 5; i++) {
+      for await (const _ of m.generate([{ role: "user", content: `${i}` }])) {
+        // drain
+      }
+    }
+    expect(tracker.sequencesIssued).toBe(5);
+    expect(tracker.sequencesDisposed).toBe(5);
+    expect(tracker.sessionsDisposed).toBe(5);
+  });
+
+  it("still disposes when generate() throws mid-stream", async () => {
+    const { mod, tracker } = makeStubModule({
+      reply: () => {
+        throw new Error("boom");
+      },
+    });
+    __setLlamaModuleForTests(mod);
+    const m = new LocalModel({ source: { path: "/tmp/x.gguf" } });
+    let threw = false;
+    try {
+      for await (const _ of m.generate([{ role: "user", content: "hi" }])) {
+        // drain
+      }
+    } catch {
+      threw = true;
+    }
+    expect(threw).toBe(true);
+    // Even on error, the sequence/session must be released.
+    expect(tracker.sequencesDisposed).toBe(1);
+    expect(tracker.sessionsDisposed).toBe(1);
   });
 });
