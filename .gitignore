@@ -12,3 +12,4 @@ examples/benchmarks/report-*.md
 docs/.vitepress/dist/
 docs/.vitepress/cache/
 *.tgz
+.DS_Store

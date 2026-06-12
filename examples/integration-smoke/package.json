@@ -17,13 +17,15 @@
     "edge:cm": "bun edge-codemode-adversarial.mjs",
     "edge:caps": "bun edge-capability-boundaries.mjs",
     "edge:studio": "bun edge-studio-robustness.mjs",
-    "edge:cross": "bun edge-cross-package.mjs"
+    "edge:cross": "bun edge-cross-package.mjs",
+    "edge:evals": "bun edge-evals-runner.mjs"
   },
   "dependencies": {
     "@agentkit-js/aisdk": "workspace:*",
     "@agentkit-js/cli": "workspace:*",
     "@agentkit-js/core": "workspace:*",
     "@agentkit-js/devtools": "workspace:*",
+    "@agentkit-js/evals-runner": "workspace:*",
     "@agentkit-js/kernel-quickjs": "workspace:*",
     "@agentkit-js/mastra-sandbox": "workspace:*",
     "@agentkit-js/mcp-server": "workspace:*",

@@ -1,0 +1,419 @@
+/**
+ * Core runner: takes models × suites × seeds, produces a structured report.
+ *
+ * Implementation notes:
+ *   - We do NOT spin up the full agentkit `ToolCallingAgent` / `CodeAgent`
+ *     loop here — most evaluation suites are single-shot question →
+ *     answer. The runner calls the model directly through `ModelProvider`
+ *     and synthesises a minimal `AgentTrace` for the agentkit scorers.
+ *     Agent-trajectory suites are a separate code path (see
+ *     `suites/agent-trajectory.ts`) that do exercise the agent loop.
+ *   - Per-model concurrency is capped to avoid overwhelming a single
+ *     local Ollama instance; per-suite parallelism is sequential because
+ *     each suite needs its own per-item state.
+ *   - Determinism: temperature defaults to 0; `seed` is included in the
+ *     OpenAI-compat call so providers that honour it (e.g. vLLM, OpenAI)
+ *     produce reproducible answers across runs.
+ */
+
+import type { AgentEvent, EvalSample, Scorer } from "@agentkit-js/core";
+import { wilsonCI } from "./stats/wilson.js";
+import type {
+  BenchmarkItem,
+  BenchmarkSuite,
+  EvaluationReport,
+  ModelProvider,
+  ModelSpec,
+  RunEvaluationOptions,
+  RunResult,
+  SuiteAggregate,
+} from "./types.js";
+
+const DEFAULT_SEEDS = [0, 1, 2];
+const DEFAULT_CONCURRENCY = 4;
+
+/**
+ * Default OpenAI-compatible provider — POSTs to `${baseUrl}/chat/completions`
+ * and returns content + token counts. The base URL plus model id are the
+ * only knobs; this is the same path `GenericOpenAICompatModel` takes.
+ */
+export function defaultProvider(): ModelProvider {
+  return {
+    async call({ model, messages, abortSignal }) {
+      const url = `${model.baseUrl.replace(/\/$/, "")}/chat/completions`;
+      const apiKey = model.apiKey ?? process.env.OPENAI_API_KEY ?? "ollama";
+      const init: RequestInit = {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: model.modelId ?? model.id,
+          messages,
+          temperature: model.temperature ?? 0,
+          stream: false,
+        }),
+      };
+      if (abortSignal) init.signal = abortSignal;
+      const res = await fetch(url, init);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+      }
+      const data = (await res.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+        usage?: { prompt_tokens?: number; completion_tokens?: number };
+      };
+      const content = data.choices?.[0]?.message?.content ?? "";
+      const usage = data.usage ?? {};
+      return {
+        content,
+        inputTokens: usage.prompt_tokens ?? 0,
+        outputTokens: usage.completion_tokens ?? 0,
+      };
+    },
+  };
+}
+
+/**
+ * Run a full multi-model multi-seed evaluation.
+ *
+ * Sequencing: outer loop is (suite, model, seed); inner loop is items
+ * with up to `concurrency` parallel cells. We run model × seed sequentially
+ * across one model so we don't double-bill a single local backend; that
+ * said, swapping models also runs sequentially because Ollama unloads the
+ * previous model from VRAM. If the provider is multi-tenant cloud, the
+ * caller can wrap two calls to `runEvaluation` in `Promise.all` to
+ * parallelise across models.
+ */
+export async function runEvaluation(
+  opts: RunEvaluationOptions,
+  provider: ModelProvider = defaultProvider()
+): Promise<EvaluationReport> {
+  const seeds = opts.seeds ?? DEFAULT_SEEDS;
+  const concurrency = opts.concurrency ?? DEFAULT_CONCURRENCY;
+  const startedAtMs = Date.now();
+  const cells: RunResult[] = [];
+  const totalCells =
+    (opts.models.length *
+      opts.suites.length *
+      seeds.length *
+      opts.suites.reduce((acc, s) => acc + s.items.length, 0)) /
+    Math.max(1, opts.suites.length);
+
+  for (const suite of opts.suites) {
+    for (const model of opts.models) {
+      for (const seed of seeds) {
+        // Items run in parallel up to `concurrency`, all sharing the same
+        // (model, seed) — one model loaded, one seed; this is the friend
+        // of local-Ollama-throughput (single GPU / single inference
+        // worker).
+        const queue = [...suite.items];
+        const workers: Promise<void>[] = [];
+        for (let w = 0; w < concurrency; w++) {
+          workers.push(
+            (async () => {
+              while (queue.length > 0) {
+                const item = queue.shift();
+                if (!item) return;
+                const cell = await runCell({
+                  suite,
+                  model,
+                  seed,
+                  item,
+                  provider,
+                });
+                cells.push(cell);
+                opts.onProgress?.(cells.length, totalCells, cell);
+              }
+            })()
+          );
+        }
+        await Promise.all(workers);
+      }
+    }
+  }
+
+  const aggregates = buildAggregates(opts.models, opts.suites, seeds, cells);
+  const pareto = buildParetoFront(opts.suites, aggregates);
+
+  return {
+    startedAt: new Date(startedAtMs).toISOString(),
+    totalMs: Date.now() - startedAtMs,
+    models: opts.models,
+    suites: opts.suites.map((s) => ({
+      name: s.name,
+      title: s.title,
+      description: s.description,
+    })),
+    seeds,
+    aggregates,
+    cells,
+    pareto,
+  };
+}
+
+// ── Per-cell execution ──────────────────────────────────────────────────────
+
+/**
+ * Run one (model, seed, item) cell:
+ *  1. Build the message list (item.messages or [system, user task]).
+ *  2. Call the model.
+ *  3. Synthesise a minimal AgentTrace (model_start / model_done /
+ *     final_answer) so the agentkit scorers — written for full
+ *     ToolCallingAgent traces — work unchanged.
+ *  4. Run every scorer; aggregate scores.
+ *  5. Decide pass/fail via expectedAnswerMatcher or exactMatch fallback.
+ */
+async function runCell(args: {
+  suite: BenchmarkSuite;
+  model: ModelSpec;
+  seed: number;
+  item: BenchmarkItem;
+  provider: ModelProvider;
+}): Promise<RunResult> {
+  const { suite, model, seed, item, provider } = args;
+  const startMs = Date.now();
+  const messages = item.messages ?? [
+    {
+      role: "system" as const,
+      content:
+        "Answer the user's question. Reply with the answer ONLY — no preamble, no explanation. Be concise.",
+    },
+    { role: "user" as const, content: item.task },
+  ];
+
+  let content = "";
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let error: string | null = null;
+  try {
+    const r = await provider.call({ model, messages });
+    content = r.content;
+    inputTokens = r.inputTokens;
+    outputTokens = r.outputTokens;
+  } catch (e) {
+    error = e instanceof Error ? e.message : String(e);
+  }
+  const wallMs = Date.now() - startMs;
+
+  // Synthesise a trace.
+  const traceId = `${model.id}::${suite.name}::${seed}::${item.id}`;
+  const events: AgentEvent[] = [
+    {
+      traceId,
+      parentTraceId: null,
+      timestampMs: startMs,
+      channel: "model",
+      event: "model_start",
+      data: { modelId: model.modelId ?? model.id, step: 1 },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any,
+    {
+      traceId,
+      parentTraceId: null,
+      timestampMs: startMs + wallMs,
+      channel: "model",
+      event: "model_done",
+      data: {
+        modelId: model.modelId ?? model.id,
+        step: 1,
+        finishReason: error ? "error" : "stop",
+        inputTokens,
+        outputTokens,
+        estimatedUsd: priceUsd(model, inputTokens, outputTokens),
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any,
+    {
+      traceId,
+      parentTraceId: null,
+      timestampMs: startMs + wallMs,
+      channel: "text",
+      event: error ? "error" : "final_answer",
+      data: error ? { error } : { answer: content },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any,
+  ];
+  const trace = {
+    traceId,
+    task: item.task,
+    events,
+    finalAnswer: error ? null : content,
+    toolCalls: [] as Array<{ toolName: string; args: Record<string, unknown>; callId: string }>,
+    toolResults: [] as Array<{
+      toolName: string;
+      output: unknown;
+      callId: string;
+      isError: boolean;
+    }>,
+  };
+
+  // Score.
+  const scores = await runScorers(suite.scorers, trace, item);
+  const passed = decidePassed(item, content, error);
+
+  return {
+    modelId: model.id,
+    seed,
+    itemId: item.id,
+    trace,
+    scores,
+    passed,
+    wallMs,
+    tokens: { input: inputTokens, output: outputTokens, cacheRead: 0 },
+    costUsd: priceUsd(model, inputTokens, outputTokens),
+    error,
+  };
+}
+
+async function runScorers(
+  scorers: Scorer[],
+  trace: ReturnType<typeof Object>,
+  item: EvalSample
+): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  for (const s of scorers) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r = await Promise.resolve(s.score(trace as any, item));
+      out[s.name] = r.score;
+    } catch (e) {
+      out[s.name] = 0;
+      out[`${s.name}_error`] = 1;
+      void e;
+    }
+  }
+  return out;
+}
+
+function decidePassed(item: BenchmarkItem, answer: string, err: string | null): boolean {
+  if (err) return false;
+  if (item.expectedAnswerMatcher) return item.expectedAnswerMatcher(answer);
+  if (typeof item.expectedAnswer === "string") {
+    return answer.toLowerCase().includes(item.expectedAnswer.toLowerCase());
+  }
+  return false;
+}
+
+function priceUsd(model: ModelSpec, inputTokens: number, outputTokens: number): number {
+  const inP = model.pricePer1MInput ?? 0;
+  const outP = model.pricePer1MOutput ?? 0;
+  return (inputTokens / 1e6) * inP + (outputTokens / 1e6) * outP;
+}
+
+// ── Aggregation ──────────────────────────────────────────────────────────────
+
+function buildAggregates(
+  models: ModelSpec[],
+  suites: BenchmarkSuite[],
+  seeds: number[],
+  cells: RunResult[]
+): SuiteAggregate[] {
+  const out: SuiteAggregate[] = [];
+  for (const suite of suites) {
+    for (const model of models) {
+      const cellsForModelSuite = cells.filter(
+        (c) =>
+          c.modelId === model.id &&
+          // suite name is encoded in trace.traceId; cheaper to test the suite-item membership
+          suite.items.some((it) => it.id === c.itemId)
+      );
+      const seedAccs: number[] = [];
+      for (const seed of seeds) {
+        const seedCells = cellsForModelSuite.filter((c) => c.seed === seed);
+        const passed = seedCells.filter((c) => c.passed).length;
+        seedAccs.push(seedCells.length === 0 ? 0 : passed / seedCells.length);
+      }
+      const meanAcc = seedAccs.reduce((a, b) => a + b, 0) / Math.max(seedAccs.length, 1);
+      const seedStd = stddev(seedAccs);
+
+      // Pooled accuracy across all (seed × item) cells for Wilson CI.
+      const totalCells = cellsForModelSuite.length;
+      const passedCells = cellsForModelSuite.filter((c) => c.passed).length;
+      const [wilsonLo, wilsonHi] = wilsonCI(passedCells, totalCells);
+
+      const totalTokens = cellsForModelSuite.reduce(
+        (a, c) => a + c.tokens.input + c.tokens.output,
+        0
+      );
+      const totalCostUsd = cellsForModelSuite.reduce((a, c) => a + c.costUsd, 0);
+      const wallMsSorted = cellsForModelSuite.map((c) => c.wallMs).sort((a, b) => a - b);
+      const medianWallMs = percentile(wallMsSorted, 50);
+      const p95WallMs = percentile(wallMsSorted, 95);
+
+      out.push({
+        modelId: model.id,
+        suiteName: suite.name,
+        seedAccs,
+        meanAcc,
+        wilsonLo,
+        wilsonHi,
+        seedStd,
+        totalTokens,
+        totalCostUsd,
+        medianWallMs,
+        p95WallMs,
+        totalCells,
+        passedCells,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Pareto front per suite over (meanAcc desc, totalCostUsd asc, p95WallMs asc).
+ * A model is on the front if no other model dominates it on all three axes.
+ */
+function buildParetoFront(
+  suites: BenchmarkSuite[],
+  aggregates: SuiteAggregate[]
+): EvaluationReport["pareto"] {
+  const out: EvaluationReport["pareto"] = [];
+  for (const suite of suites) {
+    const inSuite = aggregates.filter((a) => a.suiteName === suite.name);
+    const front: EvaluationReport["pareto"][number]["front"] = [];
+    for (const candidate of inSuite) {
+      const dominated = inSuite.some(
+        (other) =>
+          other !== candidate &&
+          other.meanAcc >= candidate.meanAcc &&
+          other.totalCostUsd <= candidate.totalCostUsd &&
+          other.p95WallMs <= candidate.p95WallMs &&
+          (other.meanAcc > candidate.meanAcc ||
+            other.totalCostUsd < candidate.totalCostUsd ||
+            other.p95WallMs < candidate.p95WallMs)
+      );
+      if (!dominated) {
+        front.push({
+          modelId: candidate.modelId,
+          meanAcc: candidate.meanAcc,
+          totalCostUsd: candidate.totalCostUsd,
+          p95WallMs: candidate.p95WallMs,
+        });
+      }
+    }
+    out.push({ suiteName: suite.name, front });
+  }
+  return out;
+}
+
+function stddev(xs: number[]): number {
+  if (xs.length < 2) return 0;
+  const m = xs.reduce((a, b) => a + b, 0) / xs.length;
+  const v = xs.reduce((a, b) => a + (b - m) ** 2, 0) / (xs.length - 1);
+  return Math.sqrt(v);
+}
+
+function percentile(sortedAsc: number[], p: number): number {
+  if (sortedAsc.length === 0) return 0;
+  if (sortedAsc.length === 1) return sortedAsc[0] as number;
+  const rank = (p / 100) * (sortedAsc.length - 1);
+  const lower = Math.floor(rank);
+  const upper = Math.ceil(rank);
+  if (lower === upper) return sortedAsc[lower] as number;
+  const frac = rank - lower;
+  return (sortedAsc[lower] as number) * (1 - frac) + (sortedAsc[upper] as number) * frac;
+}

@@ -112,6 +112,50 @@ Two non-obvious findings the failure pattern reveals:
   same magnitude in absolute input tokens (S6 went 654→200ish on every
   model) but a larger fraction of those models' total budget.
 
+## Same fixture, run via `agentkit evals` (2026-06-12, prompt re-tuned)
+
+The runner shipped in `@agentkit-js/evals-runner@0.1.0` uses a more
+prescriptive system message ("Reply with the answer ONLY — no preamble,
+no explanation. Be concise"). On the same 6-item fixture, T=0, 1 seed,
+the per-model results shifted in a way that's worth recording:
+
+```bash
+agentkit evals run --suite=multi-turn-memory \
+  --models="qwen2.5:0.5b,evo-qwen3-1b7-q3km:latest,evomerge-qwen25-1b5:latest,evomerge-qwen3-v2:latest,gemma4-12b:latest" \
+  --base-url=http://localhost:11434/v1 --seeds=0
+```
+
+| Model                                     | Size    | Acc        | p95 wall | Pareto |
+| ----------------------------------------- | ------: | :--------: | -------: | :----: |
+| `qwen2.5:0.5b`                            | 0.40 GB | 4/6 = 67%  |   1 038 ms | ★      |
+| `evo-qwen3-1b7-q3km:latest`               | 0.94 GB | **6/6 = 100%** |  4 009 ms | ★ |
+| `evomerge-qwen25-1b5:latest`              | 1.65 GB | 4/6 = 67%  |  1 635 ms |        |
+| `evomerge-qwen3-v2:latest`                | 4.12 GB | **6/6 = 100%** | 16 492 ms |   |
+| `gemma4-12b:latest`                       | 6.78 GB | **6/6 = 100%** | 16 510 ms |   |
+
+**Two new findings vs the bash-loop run above**:
+
+1. **Three of five models now reach 100%** (vs the previous 5/6 = 83%).
+   The single-item swing was S5 ("favourite number = 17"), where the
+   directive system message stops the larger models from adding "Your
+   favourite number is 17, which is a prime!" prose that the substring
+   matcher counted as a non-answer in the looser earlier prompt. The
+   `q3km` model also benefits and now matches the 8B / 12B accuracy.
+2. **The Pareto front is now `qwen2.5:0.5b` + `evo-qwen3-1b7-q3km`.**
+   Both 8B and 12B are *dominated* — same accuracy at 4× higher p95
+   wall. If you only need this benchmark and your 0.94 GB model already
+   scores 100% in 4 s, the 12B is paying for nothing.
+
+The lesson is on prompt sensitivity, not on memory: small accuracy
+swings in this fixture are mostly attributable to instruction
+phrasing, which is the same reason `agentkit evals` reports `σ across
+seeds` and Wilson CI on every cell — for any single number to be a
+defensible claim, you need ≥3 seeds and the variance across them
+disclosed.
+
+The full report (markdown, exactly as `--report-file` writes it) is
+preserved at `docs/reports/longmemeval-5model-2026-06-12.md`.
+
 ## Why these are not marketing numbers
 
 - **Mechanism-focused, not credentials-required.** Each benchmark uses a deterministic fake model that returns scripted trajectories. We're measuring *whether the mechanism strips schemas / compacts history / etc.*, not re-asking a real LLM the same question.

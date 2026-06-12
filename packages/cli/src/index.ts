@@ -40,6 +40,14 @@ if (isMain) {
       // the run-command filter and the devtools NDJSON input path.
       "events-file": { type: "string" },
       port: { type: "string", default: "4317" },
+      // 2026-06-12: `agentkit evals` flags. `--suite` accepts comma-separated
+      // names; `--models` is comma-separated `id@baseUrl#modelId` triples;
+      // `--seeds` is comma-separated integers.
+      suite: { type: "string" },
+      models: { type: "string" },
+      seeds: { type: "string", default: "0,1,2" },
+      "base-url": { type: "string" },
+      "report-file": { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
     allowPositionals: true,
@@ -61,6 +69,9 @@ if (isMain) {
       break;
     case "devtools":
       await devtoolsCommand(values);
+      break;
+    case "evals":
+      await evalsCommand(rest, values);
       break;
     default:
       console.error(`Unknown command: ${command}`);
@@ -432,11 +443,15 @@ Usage:
   agentkit run "<task>" [options]
   agentkit init-tool --name <tool-name> [options]
   agentkit devtools --events-file <ndjson> [--port 4317]
+  agentkit evals list
+  agentkit evals run --suite=<names> --models=<id@url[#modelId],...> [--seeds=0,1,2]
 
 Commands:
   run "<task>"              Run an agent on a task
   init-tool                 Scaffold a new ToolDefinition file (TypeScript or Rust/WASM)
   devtools                  Start the local Studio (zero-deploy runs overview)
+  evals list                List the 6 reference benchmark suites
+  evals run                 Run a multi-model multi-suite evaluation; output a Pareto report
 
 run options:
   --model <id>             Model ID (default: claude-sonnet-4-6)
@@ -456,12 +471,22 @@ devtools options:
                            or any file with one LoggedEvent JSON per line.
   --port <port>            HTTP port (default: 4317)
 
+evals options:
+  --suite <names>          Comma-separated suite names. Try \`evals list\` for the catalogue.
+  --models <list>          Comma-separated id@baseUrl[#modelId] specs.
+                           Example: --models="qwen2.5:0.5b@http://localhost:11434/v1"
+  --base-url <url>         Default base URL for models that omit '@' (default: http://localhost:11434/v1)
+  --seeds <list>           Comma-separated seeds (default: 0,1,2 — matches the ≥3-seed paired-stats discipline)
+  --report-file <path>     Write the markdown report to this file instead of stdout
+
 Examples:
   agentkit run "What is 2+2?"
   agentkit run "Analyse data" --stream | jq .
   agentkit run "Search AI news" --events final_answer,error
   agentkit init-tool --name web-search --output ./tools
   agentkit devtools --events-file ./events.ndjson
+  agentkit evals list
+  agentkit evals run --suite=multi-turn-memory --models=qwen2.5:0.5b@http://localhost:11434/v1
 `);
 }
 
@@ -631,4 +656,116 @@ function renderStudioHtml(): string {
   </script>
 </body>
 </html>`;
+}
+
+// ── 2026-06-12: evals command ────────────────────────────────────────────────
+
+/**
+ * `agentkit evals run --suite=<name,name> --models=<id@url#modelId,...> --seeds=0,1,2`
+ *
+ * Wraps `@agentkit-js/evals-runner` so users can fire a multi-model
+ * multi-suite evaluation without writing TypeScript. Maps to the same
+ * runEvaluation()/REFERENCE_SUITES API surface — nothing CLI-specific.
+ *
+ * Models string format: `id@baseUrl#modelId` (modelId optional, defaults
+ * to id). Comma-separated. Example:
+ *   --models=qwen2.5:0.5b@http://localhost:11434/v1,gpt4o@https://api.openai.com/v1#gpt-4o-mini
+ *
+ * Falls back to a global `--base-url` if the model spec omits `@`.
+ */
+export async function evalsCommand(
+  positionals: string[],
+  opts: Record<string, string | boolean | undefined>
+): Promise<void> {
+  const sub = positionals[0] ?? "list";
+  const { REFERENCE_SUITES, runEvaluation, renderReportMarkdown } = await import(
+    "@agentkit-js/evals-runner"
+  );
+
+  if (sub === "list") {
+    console.log("Available reference suites:");
+    for (const [name, suite] of Object.entries(REFERENCE_SUITES)) {
+      console.log(`  ${name.padEnd(28)} — ${suite.title}`);
+      console.log(`    ${suite.description}`);
+    }
+    console.log("");
+    console.log("Run with:  agentkit evals run --suite=<name,...> --models=<id@url[#modelId],...>");
+    return;
+  }
+
+  if (sub !== "run") {
+    console.error(`Unknown evals subcommand: ${sub}. Use 'list' or 'run'.`);
+    process.exit(1);
+  }
+
+  const suiteNames = String(opts.suite ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (suiteNames.length === 0) {
+    console.error("Error: --suite=<name,...> is required (try `agentkit evals list`).");
+    process.exit(1);
+  }
+  const suites = suiteNames.map((n) => {
+    const s = REFERENCE_SUITES[n];
+    if (!s) {
+      console.error(`Unknown suite: ${n}. Try \`agentkit evals list\`.`);
+      process.exit(1);
+    }
+    return s;
+  });
+
+  const modelsRaw = String(opts.models ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (modelsRaw.length === 0) {
+    console.error(
+      "Error: --models=<id@url[#modelId],...> is required.\n" +
+        '  Example: --models="qwen2.5:0.5b@http://localhost:11434/v1"'
+    );
+    process.exit(1);
+  }
+  const fallbackBaseUrl = (opts["base-url"] as string | undefined) ?? "http://localhost:11434/v1";
+  const models = modelsRaw.map((spec) => {
+    // Format: id@baseUrl#modelId. baseUrl optional (falls back to --base-url).
+    const atIdx = spec.indexOf("@");
+    const id = atIdx >= 0 ? spec.slice(0, atIdx) : spec;
+    const tail = atIdx >= 0 ? spec.slice(atIdx + 1) : "";
+    const hashIdx = tail.indexOf("#");
+    const baseUrl = hashIdx >= 0 ? tail.slice(0, hashIdx) : tail || fallbackBaseUrl;
+    const modelId = hashIdx >= 0 ? tail.slice(hashIdx + 1) : id;
+    return { id, baseUrl, modelId };
+  });
+
+  const seeds = String(opts.seeds ?? "0,1,2")
+    .split(",")
+    .map((s) => Number.parseInt(s.trim(), 10))
+    .filter((n) => Number.isInteger(n));
+
+  console.log(
+    `[evals] ${models.length} model(s) × ${suites.length} suite(s) × ${seeds.length} seed(s)`
+  );
+  const report = await runEvaluation({
+    models,
+    suites,
+    seeds,
+    onProgress: (done, total) => {
+      if (done % 10 === 0 || done === total) {
+        const pct = total > 0 ? ((done / total) * 100).toFixed(1) : "?";
+        process.stderr.write(`\r[evals] ${done}/${total} (${pct}%)`);
+      }
+    },
+  });
+  process.stderr.write("\n");
+
+  const md = renderReportMarkdown(report);
+  const reportFile = (opts["report-file"] as string | undefined) ?? null;
+  if (reportFile) {
+    const { writeFile: wf } = await import("node:fs/promises");
+    await wf(reportFile, md, "utf8");
+    console.log(`Report → ${reportFile}`);
+  } else {
+    console.log(md);
+  }
 }

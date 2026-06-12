@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@agentkit-js/core": "workspace:*",
-    "@agentkit-js/devtools": "workspace:*"
+    "@agentkit-js/devtools": "workspace:*",
+    "@agentkit-js/evals-runner": "workspace:*"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
