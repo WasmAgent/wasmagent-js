@@ -2,49 +2,50 @@
 
 > Last refreshed: **2026-06-12**.
 
-This directory holds **drafts**, not submitted PRs. Each file describes
-the target repo, the exact branch/path the PR should touch, the body
-text, and any open caveats found while researching. The drafts here
-are intended to be reviewed before being filed against external
-projects so we don't waste a maintainer's time with a wrong-shape
-proposal.
-
+This directory holds **drafts**, of which one was submitted as a PR
+and two were submitted as issues after the local working copy of the
+target file revealed the original PR shape would have been wrong.
 The strategic context lives in
 [`../2026-06-competitiveness.md`](../2026-06-competitiveness.md) (L1
-"Become the embedded runtime"). The three drafts target the three
-upstream surfaces that map to the L1 falsifiability test: if these
-adapters do not get organic downloads after upstream inclusion, the
-runtime pitch is wrong.
+"Become the embedded runtime").
 
-| Draft                                         | Target repo                       | Status      |
-|-----------------------------------------------|-----------------------------------|-------------|
-| [`vercel-ai-sdk-mcp-example.md`](vercel-ai-sdk-mcp-example.md)               | `vercel/ai`                       | DRAFT       |
-| [`mastra-mcp-overview-link.md`](mastra-mcp-overview-link.md)                 | `mastra-ai/mastra`                | DRAFT       |
-| [`awesome-mcp-servers-frameworks-entry.md`](awesome-mcp-servers-frameworks-entry.md) | `punkpeye/awesome-mcp-servers` | DRAFT       |
+## Submission record
 
-## What changed during research
+| Draft                                         | Target repo                       | What was filed                                      |
+|-----------------------------------------------|-----------------------------------|-----------------------------------------------------|
+| [`awesome-mcp-servers-frameworks-entry.md`](awesome-mcp-servers-frameworks-entry.md) | `punkpeye/awesome-mcp-servers` | **PR** [#7910](https://github.com/punkpeye/awesome-mcp-servers/pull/7910) — added to `Code Execution` section, single-line diff |
+| [`mastra-mcp-overview-link.md`](mastra-mcp-overview-link.md)                 | `mastra-ai/mastra`                | **Issue** [#17884](https://github.com/mastra-ai/mastra/issues/17884) — `docs/mcp/overview.mdx` has no clean insertion point; asked for content-shape decision before PR |
+| [`vercel-ai-sdk-mcp-example.md`](vercel-ai-sdk-mcp-example.md)               | `vercel/ai`                       | **Issue** [#16063](https://github.com/vercel/ai/issues/16063) — example placement (`examples/mcp-*` vs `sandboxed-tools` vs cookbook) needs maintainer nod first |
 
-The *original* plan in the optimization brief proposed targeting
-Vercel AI SDK's "community providers" page and Mastra's "sandbox
-provider list." Reality check (2026-06-12, verified via the GitHub
-API in the drafting session):
+## Why two were issues, not PRs
 
-- **Vercel AI SDK community providers** (`content/providers/03-community-providers/`)
-  is explicitly scoped to *Language Model Providers* — adapter
-  packages that implement the Language Model Specification V4. The
-  template the maintainers point to is `13-openrouter.mdx`. agentkit
-  does NOT implement that spec (it's a sandbox/kernel runtime, not a
-  model adapter), so this slot is **the wrong target**. Pivoting to
-  `examples/mcp` style — a runnable AI-SDK + agentkit example — is
-  the legitimate analog.
-- **Mastra "sandbox provider list"** referenced in the brief does
-  not exist as a maintained registry. `docs/agent-builder/integrations.mdx`
-  is the closest page but it covers Composio / Arcade *tool*
-  providers (Enterprise Edition). The legitimate target is the
-  generic MCP docs (`docs/mcp/overview.mdx` and `docs/mcp/mcp-apps.mdx`),
-  which currently mention specific vendors and could absorb a one-line
-  pointer to agentkit's MCP code-mode server.
-- **awesome-mcp-servers** is appropriate — its `Frameworks` section
-  is exactly the right home for `@agentkit-js/mcp-server`.
+The drafts assumed both target pages had a clean insertion point. The
+local working copies, read on submission day, did not:
 
-The rest of this directory contains the corrected drafts.
+- **Mastra** — `overview.mdx`'s `## Connecting to an MCP registry`
+  Tabs section lists *hosted registries* (Klavis, mcp.run, Composio,
+  Smithery, Apify, Ampersand). agentkit is a single open-source MCP
+  server *library*, not a registry — adding it as a tab would be
+  the wrong shape. The honest move is to ask the maintainers if
+  they'd accept a separate "Open-source MCP server libraries"
+  section, with agentkit as one of multiple seed entries.
+- **vercel/ai** — `examples/mcp/` uses `experimental_createMCPClient`
+  to *consume* an MCP server, which is a different shape from
+  `tool()` + sandbox-kernel. Naming the new dir `mcp-agentkit/` would
+  be misleading. The honest move is to ask the maintainers whether
+  they'd prefer `examples/sandboxed-tools/`, a docs cookbook entry,
+  or to skip it.
+
+These are the maintainers' content-shape decisions, not ours. A
+maintainer's "no thanks, this isn't a fit" is itself a useful data
+point — it's exactly the falsifiability test the strategy memo lays
+out.
+
+## Acceptance tracking
+
+The acceptance criterion in each draft (merged PR + traceable
+download shift on the relevant package) holds. When any of the
+three lands, update the table above and the strategy memo's
+"Watch the [evals reports directory] and the upstream adapter
+download graphs; that is the signal" line to point at concrete
+numbers.
