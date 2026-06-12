@@ -16,6 +16,7 @@
  *   - renderReportMarkdown — markdown renderer for the report.
  *   - { mcnemarExact, wilsonCI, pairedBootstrap, buildG1Report } —
  *     stats primitives, also reachable via "@agentkit-js/evals-runner/stats".
+ *   - { estimateJoulesPerCorrect, renderEnergyTable } — P16-8 ④ energy axis.
  */
 
 export { renderReportCompact, renderReportMarkdown } from "./report.js";
@@ -39,6 +40,16 @@ export {
   REFERENCE_SUITES,
   toolSequenceSuite,
 } from "./suites/index.js";
+// Energy estimation (P16-8 ④)
+export {
+  estimateJoulesPerCorrect,
+  renderEnergyRow,
+  renderEnergyTable,
+} from "./energy.js";
+export type {
+  EnergyReport,
+  EnergySpec,
+} from "./energy.js";
 export type {
   BenchmarkItem,
   BenchmarkSuite,
@@ -49,3 +60,4 @@ export type {
   RunResult,
   SuiteAggregate,
 } from "./types.js";
+

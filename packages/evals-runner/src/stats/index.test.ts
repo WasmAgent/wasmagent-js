@@ -187,3 +187,85 @@ describe("buildG1Report — pooled paired-stats gate (≥3 seeds)", () => {
     expect(r.passes).toBe(false); // §0.4 hard requires ≥3 seeds
   });
 });
+
+// ── Energy estimation tests (P16-8 ④) ────────────────────────────────────────
+
+describe("estimateJoulesPerCorrect — energy efficiency estimate", () => {
+  // Import is in the src root, not stats/
+  it("computes J/correct from aggregate (happy path)", async () => {
+    const { estimateJoulesPerCorrect } = await import("../energy.js");
+    const agg = {
+      modelId: "test-model",
+      suiteName: "multi-turn-memory",
+      seedAccs: [0.8, 0.8, 0.8],
+      meanAcc: 0.8,
+      wilsonLo: 0.7,
+      wilsonHi: 0.88,
+      seedStd: 0,
+      totalTokens: 1000,
+      totalCostUsd: 0,
+      medianWallMs: 500,
+      p95WallMs: 800,
+      warmupMs: 2000,
+      totalCells: 10,
+      passedCells: 8,
+    };
+    const r = estimateJoulesPerCorrect(agg, { tdpWatts: 20 });
+    expect(r.modelId).toBe("test-model");
+    // 10 cells × 500ms = 5000ms → 5s × 20W = 100J total
+    expect(r.totalJoules).toBeCloseTo(100, 1);
+    // 8 correct → 100/8 = 12.5 J/correct
+    expect(r.joulesPerCorrect).toBeCloseTo(12.5, 1);
+    expect(r.accuracy).toBeCloseTo(0.8, 5);
+    // warmup: 2000ms × 20W = 40J (reported separately, not in totalJoules)
+    expect(r.warmupJoules).toBeCloseTo(40, 1);
+  });
+
+  it("J/correct is Infinity when no correct answers", async () => {
+    const { estimateJoulesPerCorrect } = await import("../energy.js");
+    const agg = {
+      modelId: "zero-model",
+      suiteName: "suite",
+      seedAccs: [0],
+      meanAcc: 0,
+      wilsonLo: 0,
+      wilsonHi: 0.3,
+      seedStd: 0,
+      totalTokens: 100,
+      totalCostUsd: 0,
+      medianWallMs: 200,
+      p95WallMs: 300,
+      warmupMs: 0,
+      totalCells: 5,
+      passedCells: 0,
+    };
+    const r = estimateJoulesPerCorrect(agg, { tdpWatts: 10 });
+    expect(r.joulesPerCorrect).toBe(Infinity);
+  });
+
+  it("renders energy table with sorted J/correct", async () => {
+    const { estimateJoulesPerCorrect, renderEnergyTable } = await import("../energy.js");
+    const base = {
+      suiteName: "multi-turn-memory",
+      seedAccs: [0.5],
+      meanAcc: 0.5,
+      wilsonLo: 0.3,
+      wilsonHi: 0.7,
+      seedStd: 0,
+      totalTokens: 500,
+      totalCostUsd: 0,
+      medianWallMs: 1000,
+      p95WallMs: 1500,
+      warmupMs: 0,
+      totalCells: 10,
+      passedCells: 5,
+    };
+    const r1 = estimateJoulesPerCorrect({ ...base, modelId: "small-model" }, { tdpWatts: 5 });
+    const r2 = estimateJoulesPerCorrect({ ...base, modelId: "large-model", medianWallMs: 5000 }, { tdpWatts: 40 });
+    const table = renderEnergyTable([r2, r1], "multi-turn-memory");
+    // small-model should come first (lower J/correct)
+    const lines = table.split("\n").filter(l => l.startsWith("| `"));
+    expect(lines[0]).toContain("small-model");
+    expect(lines[1]).toContain("large-model");
+  });
+});

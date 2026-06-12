@@ -5,30 +5,59 @@
  *
  * Three sections:
  *   1. Headline table — one row per (model, suite). Mean acc + Wilson CI +
- *      total cost + p95 wall + Pareto-front flag.
+ *      total cost + p95 wall (steady-state, warmup separate) + Pareto-front flag.
  *   2. Per-suite breakdown — one table per suite, models as rows, items
  *      as columns. Cells show pass/fail at the per-seed level.
- *   3. Configuration footer — seeds, totals, started-at timestamp.
+ *   3. Cross-model McNemar comparison — pairwise paired-test table per suite
+ *      (only when ≥2 models and ≥3 seeds). "NOT-FOR-CLAIMS" watermark when
+ *      n < 50 or seeds < 3.
+ *   4. Configuration footer — seeds, warm-up, totals, started-at timestamp.
  */
 
-import type { EvaluationReport, SuiteAggregate } from "./types.js";
+import { mcnemarExact } from "./stats/mcnemar.js";
+import type { EvaluationReport, RunResult, SuiteAggregate } from "./types.js";
+
+/** Minimum item count for a McNemar comparison to be claims-worthy. */
+const MIN_N_FOR_CLAIMS = 50;
 
 export function renderReportMarkdown(report: EvaluationReport): string {
   const out: string[] = [];
+
+  // ── NOT-FOR-CLAIMS watermark ──────────────────────────────────────────────
+  const maxN = Math.max(...report.aggregates.map((a) => a.totalCells / Math.max(report.seeds.length, 1)), 0);
+  const nSeeds = report.seeds.length;
+  const notForClaims = nSeeds < 3 || maxN < MIN_N_FOR_CLAIMS;
+  if (notForClaims) {
+    out.push(`> ⚠️ **NOT-FOR-CLAIMS**: This run has ${nSeeds} seed(s) and ≤${Math.ceil(maxN)} items/suite.`);
+    out.push(`> Paired McNemar requires ≥3 seeds and ≥${MIN_N_FOR_CLAIMS} items for a statistically valid comparison.`);
+    out.push(`> Wilson CIs here are for exploration only — differences ≤10pp are indistinguishable at this n.`);
+    out.push("");
+  }
+
   out.push(`# Evaluation Report`);
   out.push("");
   out.push(`> **Started:** ${report.startedAt}`);
   out.push(
     `> **Wall:** ${(report.totalMs / 1000).toFixed(1)} s · **Models:** ${report.models.length} · **Suites:** ${report.suites.length} · **Seeds:** ${report.seeds.length} (${report.seeds.join(", ")})`
   );
+  if (report.warmup !== false) {
+    const warmupSummary = report.aggregates
+      .filter((a, i, arr) => arr.findIndex((x) => x.modelId === a.modelId) === i)
+      .map((a) => `${a.modelId}=${a.warmupMs}ms`)
+      .join(", ");
+    out.push(`> **Warm-up:** enabled — cold-load ms: ${warmupSummary || "n/a"}`);
+    out.push(`> **p95 wall below is steady-state only** (warm-up excluded).`);
+  } else {
+    out.push(`> ⚠️ **Warm-up: disabled** — p95 wall may include cold model-loading time.`);
+  }
   out.push("");
 
   out.push(`## Summary`);
   out.push("");
   out.push(
-    "| Suite | Model | Mean acc | 95% Wilson | σ across seeds | Tokens | Cost (USD) | p95 wall (ms) | Pareto |"
+    "| Suite | Model | Mean acc | 95% Wilson | σ across seeds | Tokens | Cost (USD) | p95 wall (ms) | Warm-up (ms) | Pareto |"
   );
-  out.push("|---|---|---:|:-:|---:|---:|---:|---:|:-:|");
+  out.push("|---|---|---:|:-:|---:|---:|---:|---:|---:|:-:|");
   for (const suiteSummary of report.suites) {
     const suiteName = suiteSummary.name;
     const inSuite = report.aggregates.filter((a) => a.suiteName === suiteName);
@@ -43,6 +72,7 @@ export function renderReportMarkdown(report: EvaluationReport): string {
           `| ${a.totalTokens.toLocaleString()} ` +
           `| $${a.totalCostUsd.toFixed(4)} ` +
           `| ${Math.round(a.p95WallMs).toLocaleString()} ` +
+          `| ${a.warmupMs > 0 ? Math.round(a.warmupMs).toLocaleString() : "—"} ` +
           `| ${onPareto ? "★" : ""} |`
       );
     }
@@ -103,6 +133,88 @@ export function renderReportMarkdown(report: EvaluationReport): string {
     out.push("");
   }
 
+  // ── Cross-model McNemar comparison ─────────────────────────────────────────
+  if (report.models.length >= 2) {
+    out.push(`## Cross-model paired comparison (McNemar)`);
+    out.push("");
+
+    if (notForClaims) {
+      out.push(`> ⚠️ **NOT-FOR-CLAIMS**: n < ${MIN_N_FOR_CLAIMS} items or seeds < 3. These p-values are exploratory only.`);
+      out.push("");
+    } else {
+      out.push(`> Pooled across seeds. b = candidate-correct/baseline-wrong; c = opposite.`);
+      out.push(`> p < 0.05 indicates statistically significant difference.`);
+      out.push("");
+    }
+
+    for (const suiteSummary of report.suites) {
+      const suiteCells = report.cells.filter((c) =>
+        report.aggregates.some((a) => a.suiteName === suiteSummary.name && a.modelId === c.modelId)
+      );
+      const suiteModels = report.models.filter((m) =>
+        report.aggregates.some((a) => a.suiteName === suiteSummary.name && a.modelId === m.id)
+      );
+      if (suiteModels.length < 2) continue;
+
+      out.push(`### Suite \`${suiteSummary.name}\``);
+      out.push("");
+      out.push(`| Candidate | Baseline | b | c | Δacc | McNemar p | Verdict |`);
+      out.push(`|---|---|---:|---:|---:|---:|---|`);
+
+      for (let i = 0; i < suiteModels.length; i++) {
+        for (let j = 0; j < suiteModels.length; j++) {
+          if (i === j) continue;
+          const cand = suiteModels[i]!;
+          const base = suiteModels[j]!;
+
+          // Build pooled b/c across all seeds and items.
+          let b = 0;
+          let c = 0;
+          let pooledN = 0;
+          let pooledCandPass = 0;
+          let pooledBasePass = 0;
+
+          const itemIds = Array.from(new Set(suiteCells.map((cell) => cell.itemId)));
+          for (const seed of report.seeds) {
+            for (const itemId of itemIds) {
+              const candCell = suiteCells.find(
+                (cell) => cell.modelId === cand.id && cell.seed === seed && cell.itemId === itemId
+              );
+              const baseCell = suiteCells.find(
+                (cell) => cell.modelId === base.id && cell.seed === seed && cell.itemId === itemId
+              );
+              if (!candCell || !baseCell) continue;
+              pooledN++;
+              const cp = candCell.passed;
+              const bp = baseCell.passed;
+              if (cp) pooledCandPass++;
+              if (bp) pooledBasePass++;
+              if (cp && !bp) b++;
+              else if (!cp && bp) c++;
+            }
+          }
+
+          const { p } = mcnemarExact(b, c);
+          const deltaAcc = pooledN > 0 ? (pooledCandPass - pooledBasePass) / pooledN : 0;
+          const verdictIcon = notForClaims ? "—" :
+            p < 0.05 ? (deltaAcc > 0 ? "✅ sig. better" : "❌ sig. worse") : "≈ not significant";
+
+          out.push(
+            `| \`${cand.id}\` | \`${base.id}\` ` +
+              `| ${b} | ${c} ` +
+              `| ${deltaAcc >= 0 ? "+" : ""}${(deltaAcc * 100).toFixed(1)}pp ` +
+              `| ${p.toFixed(3)}${notForClaims ? "†" : ""} ` +
+              `| ${verdictIcon} |`
+          );
+        }
+      }
+      if (notForClaims) {
+        out.push(`> † p-values marked with † are NOT-FOR-CLAIMS (n < ${MIN_N_FOR_CLAIMS} or seeds < 3).`);
+      }
+      out.push("");
+    }
+  }
+
   // Footer.
   out.push(`## Configuration`);
   out.push("");
@@ -131,7 +243,9 @@ export function renderReportCompact(aggregates: SuiteAggregate[]): string {
         `${a.modelId}/${a.suiteName}: ${(a.meanAcc * 100).toFixed(1)}% ` +
         `(σ ${(a.seedStd * 100).toFixed(1)}pp, ` +
         `$${a.totalCostUsd.toFixed(3)}, ` +
-        `p95 ${Math.round(a.p95WallMs)}ms)`
+        `p95 ${Math.round(a.p95WallMs)}ms, ` +
+        `warmup ${a.warmupMs > 0 ? Math.round(a.warmupMs) + "ms" : "—"})`
     )
     .join("\n");
 }
+
