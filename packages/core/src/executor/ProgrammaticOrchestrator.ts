@@ -107,77 +107,135 @@ export class ProgrammaticOrchestrator {
   }
 
   /**
-   * Execute script with callTool callbacks via a serialised message-passing protocol.
+   * Execute the model-generated script inside the kernel sandbox.
    *
-   * For kernels that can't receive host callbacks directly (JsKernel uses worker_threads),
-   * we execute the script in interpreted mode using the VmKernel fallback within this
-   * process, respecting all CapabilityManifest constraints.
+   * Iterative re-run protocol with a sentinel-based cooperative pause:
+   *
+   *   - The kernel-side `callTool(name, args)` returns the cached result if
+   *     the host has already resolved that exact call site (keyed by call
+   *     index — calls always run in the same order on every re-run because
+   *     the script is deterministic). If the result is NOT yet cached,
+   *     callTool throws a marker error.
+   *   - The host catches that marker, resolves the most-recently-recorded
+   *     pending call against the real ToolRegistry, injects the JSON
+   *     result back into the kernel's `__ptc_results__` map keyed by the
+   *     same call index, and re-runs the script.
+   *   - The script then advances past its earlier `await`, hits the next
+   *     `callTool`, and either completes (returns) or throws the marker
+   *     again. Loop, bounded at 50 iterations as a runaway guard.
+   *
+   * Why throw-and-re-run instead of an in-process callback: the script
+   * runs inside the kernel sandbox (worker thread / WASM), which cannot
+   * synchronously reach the host's tool registry. Re-running with cached
+   * results is the only way to keep the sandbox boundary intact while
+   * letting the script see real values from `await`.
+   *
+   * The script is wrapped in an `async` IIFE so `await callTool(...)` —
+   * the natural authoring shape — parses inside the kernel. There is no
+   * host-process fallback: kernel errors propagate to the caller.
    */
   async #runWithCallbacks(
     script: string,
     callTool: (name: string, args: Record<string, unknown>) => Promise<string>,
     signal?: AbortSignal
   ): Promise<string> {
-    // Use the kernel for execution when it's a VmKernel (in-process).
-    // Otherwise fall back to Function() execution within this process
-    // (safe because the script is model-generated and capabilities are gated by callTool).
-    try {
-      // Inject callTool bridge into kernel globals via a setup script.
-      // The kernel stores __ptc_results__ as a JSON-serializable map.
-      const setupScript = `var __ptc_results__ = {}; var __ptc_calls__ = []; function callTool(name, args) { var key = name + ':' + __ptc_calls__.length; __ptc_calls__.push({key, name, args}); return __ptc_results__[key] || null; }`;
-      await this.#kernel.run(setupScript, this.#capabilities);
+    const PENDING_MARKER = "__PTC_PENDING__";
 
-      // Iterative execution: run the script, check for pending callTool() calls,
-      // resolve them, inject results, re-run until no new calls are made.
-      let lastCallCount = -1;
-      let output = "";
-      for (let iteration = 0; iteration < 50; iteration++) {
-        if (signal?.aborted) throw new Error("ProgrammaticOrchestrator: aborted");
+    // Setup: inject __ptc_results__, __ptc_calls__, and the callTool
+    // function. callTool throws a recognisable error when the result for
+    // its position is not yet cached — the script's `await` propagates
+    // the rejection up through the IIFE, the kernel returns the error,
+    // and the host resolves the pending call before re-running.
+    const setupScript = `
+      var __ptc_results__ = {};
+      var __ptc_calls__ = [];
+      function callTool(name, args) {
+        var key = name + ':' + __ptc_calls__.length;
+        __ptc_calls__.push({ key: key, name: name, args: args });
+        if (!Object.prototype.hasOwnProperty.call(__ptc_results__, key)) {
+          // Host has not resolved this call yet. Reject so the script
+          // pauses; the host catches "${PENDING_MARKER}" and re-runs.
+          return Promise.reject(new Error("${PENDING_MARKER}:" + key));
+        }
+        var raw = __ptc_results__[key];
+        try { return Promise.resolve(JSON.parse(raw)); }
+        catch (e) { return Promise.resolve(raw); }
+      }
+    `;
+    await this.#kernel.run(setupScript, this.#capabilities);
 
-        const execResult = await this.#kernel.run(
-          `var __result__ = (function() { ${script} })(); JSON.stringify({result: String(__result__ ?? ''), calls: __ptc_calls__})`,
-          this.#capabilities
-        );
+    // Map of resolved keys we've injected into the kernel — used to detect
+    // forward progress across iterations and to bail if the script keeps
+    // emitting new pending calls without ever resolving.
+    const resolved = new Map<string, string>();
 
-        const raw =
-          typeof execResult.output === "string"
-            ? execResult.output
-            : JSON.stringify(execResult.output);
-        let parsed: {
-          result: string;
-          calls: Array<{ key: string; name: string; args: Record<string, unknown> }>;
-        };
+    let output = "";
+    for (let iteration = 0; iteration < 50; iteration++) {
+      if (signal?.aborted) throw new Error("ProgrammaticOrchestrator: aborted");
+
+      // Reset the per-run __ptc_calls__ array so each re-run sees the same
+      // sequence of recorded calls. __ptc_results__ persists across runs
+      // (the host-injected cache).
+      const runScript = `(async function() {
+        __ptc_calls__ = [];
         try {
-          parsed = JSON.parse(raw) as typeof parsed;
-        } catch {
-          output = raw;
-          break;
+          var __r = await (async function() { ${script} })();
+          return JSON.stringify({ done: true, result: typeof __r === 'string' ? __r : (__r == null ? '' : JSON.stringify(__r)) });
+        } catch (e) {
+          var msg = (e && e.message) || String(e);
+          if (msg.indexOf(${JSON.stringify(`${PENDING_MARKER}:`)}) === 0) {
+            return JSON.stringify({ done: false, pending: __ptc_calls__[__ptc_calls__.length - 1] });
+          }
+          return JSON.stringify({ done: true, error: msg });
         }
+      })()`;
 
-        output = parsed.result;
-        const pendingCalls = parsed.calls.filter(
-          (c) => !(c.key in ({} as Record<string, unknown>))
-        );
+      const execResult = await this.#kernel.run(runScript, this.#capabilities);
+      const raw =
+        typeof execResult.output === "string"
+          ? execResult.output
+          : JSON.stringify(execResult.output);
 
-        if (pendingCalls.length === 0 || parsed.calls.length === lastCallCount) break;
-        lastCallCount = parsed.calls.length;
-
-        // Resolve pending tool calls.
-        for (const call of pendingCalls) {
-          const result = await callTool(call.name, call.args ?? {});
-          // Inject result back into kernel.
-          const injectScript = `__ptc_results__[${JSON.stringify(call.key)}] = ${JSON.stringify(result)};`;
-          await this.#kernel.run(injectScript, this.#capabilities);
-        }
+      let parsed: {
+        done: boolean;
+        result?: string;
+        pending?: { key: string; name: string; args: Record<string, unknown> };
+        error?: string;
+      };
+      try {
+        parsed = JSON.parse(raw) as typeof parsed;
+      } catch {
+        output = raw;
+        break;
       }
 
-      return output;
-    } catch {
-      // Fallback: execute directly in this process using AsyncFunction.
-      const fn = new Function("callTool", `return (async function() { ${script} })()`);
-      const result = await (fn as (c: typeof callTool) => Promise<unknown>)(callTool);
-      return typeof result === "string" ? result : JSON.stringify(result ?? null);
+      if (parsed.done) {
+        if (parsed.error) {
+          throw new Error(parsed.error);
+        }
+        output = parsed.result ?? "";
+        break;
+      }
+
+      // Not done — the script paused on a callTool that needs a host
+      // round-trip. Resolve it and inject the result before re-running.
+      if (!parsed.pending) {
+        throw new Error("ProgrammaticOrchestrator: pause without pending call payload");
+      }
+      const { key, name, args } = parsed.pending;
+      if (resolved.has(key)) {
+        // Defensive: same key requested twice means we'd loop forever.
+        throw new Error(
+          `ProgrammaticOrchestrator: call ${name} (${key}) re-requested after resolution`
+        );
+      }
+      const resultStr = await callTool(name, args ?? {});
+      resolved.set(key, resultStr);
+      const injectScript = `__ptc_results__[${JSON.stringify(key)}] = ${JSON.stringify(resultStr)};`;
+      await this.#kernel.run(injectScript, this.#capabilities);
     }
+
+    return output;
   }
 }
 
