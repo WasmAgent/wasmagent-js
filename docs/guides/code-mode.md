@@ -48,7 +48,7 @@ const server = createCodeModeServer({
 });
 
 // Wire to HTTP — works in Node, Bun, Workers.
-export default { fetch: createFetchHandler({ server, path: "/mcp" }) };
+export default { fetch: createFetchHandler(server, { path: "/mcp" }) };
 ```
 
 The host now sees **two** tools instead of forty:
