@@ -71,6 +71,24 @@ jobs:
       - name: Reproducible benchmarks (C1)
         run: bun run bench
 
+      # D2 follow-up — the LongMemEval-500 multi-observer harness is funded-run
+      # gated (🖥️ in ROADMAP), but its --smoke path runs offline against a
+      # 2-item synthetic dataset and exercises every code path that the funded
+      # run would: provider call shape, observer dispatch, per-category
+      # aggregation, McNemar-friendly stats, markdown rendering. If the file
+      # rots between funded runs, this step fails first.
+      - name: LongMemEval-500 harness smoke (D2)
+        run: |
+          OUT=$(node examples/benchmarks/longmemeval-500.mjs \
+            --smoke --report --answerer=smoke --observers=smoke,smoke2 --questions=2)
+          echo "$OUT"
+          # Sentinel checks: the smoke run is offline + deterministic, so a
+          # 100% accuracy + non-zero token total + 2-observer table is the
+          # invariant. Any drift means the runner shape changed and the
+          # docs/reports/longmemeval-500-pending.md publishing path is broken.
+          echo "$OUT" | grep -q "100.0% | 190" || (echo "::error::smoke output drift"; exit 1)
+          echo "$OUT" | grep -q '`smoke2`'    || (echo "::error::observer column missing"; exit 1)
+
   deploy-worker:
     name: Deploy Cloudflare Worker (main only)
     runs-on: ubuntu-latest
