@@ -93,7 +93,11 @@ describe("buildToolPromptAddendum", () => {
     ]);
     expect(text).toContain("calc — do math");
     expect(text).toContain('input schema: {"type":"object"}');
-    expect(text).toContain("Output ONLY a JSON object");
+    // Steering language: tool-use is preferred over final_answer when a
+    // tool fits. Locks the regression that 0.5B Qwen on cert task tc1
+    // surfaced (model picked final_answer instead of calling the calculator).
+    expect(text).toContain("MUST output ONE JSON object");
+    expect(text).toContain("MUST call that tool");
   });
 });
 

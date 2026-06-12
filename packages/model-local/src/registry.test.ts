@@ -17,6 +17,7 @@ describe("registry", () => {
     expect(Object.keys(MODEL_REGISTRY).sort()).toEqual([
       "gemma-3-1b",
       "llama-3.2-1b",
+      "qwen2.5-0.5b",
       "qwen3-0.6b",
       "qwen3.5-0.8b",
     ]);

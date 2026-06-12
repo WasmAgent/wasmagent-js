@@ -98,19 +98,31 @@ export function buildToolCallSchema(tools: ExtractedTool[]): object {
  * Build a compact system-prompt addendum advertising the tools and the
  * required JSON shape. Kept short so it fits inside small models'
  * effective-attention windows.
+ *
+ * Steering note: when tools are present and one obviously fits the user
+ * request, small models sometimes default to `final_answer` because the
+ * grammar permits both. The addendum nudges them toward `tool_use` for
+ * any task that matches a tool's stated purpose, which is what an agent
+ * caller almost always wants. Final-answer is reserved for "I genuinely
+ * cannot use any of these tools" cases.
  */
 export function buildToolPromptAddendum(tools: ExtractedTool[]): string {
   if (tools.length === 0) return "";
   const lines: string[] = [];
   lines.push(
-    "You can either return a final answer or call exactly one tool.",
-    "Output ONLY a JSON object — no prose, no markdown, no backticks.",
+    "You MUST output ONE JSON object — no prose, no markdown, no backticks.",
     "",
-    "Final answer schema:",
-    `  {"type":"final_answer","text":"..."}`,
+    "Decision rule (read carefully):",
+    "  - If ANY of the available tools matches what the user asks for,",
+    "    you MUST call that tool. Use the `tool_use` schema below.",
+    "  - Only use `final_answer` when NO tool fits — e.g. casual chat or",
+    "    questions outside every tool's stated purpose.",
     "",
-    "Tool call schema (pick one tool):",
+    "Tool-use schema (preferred when a tool fits):",
     `  {"type":"tool_use","name":"<tool>","input":{...}}`,
+    "",
+    "Final-answer schema (only when no tool fits):",
+    `  {"type":"final_answer","text":"..."}`,
     "",
     "Available tools:"
   );

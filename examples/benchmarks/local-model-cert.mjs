@@ -131,8 +131,9 @@ async function evalToolCalling(model, opts) {
   const tasks = TOOLCALL_TASKS.slice(0, opts.limit ?? TOOLCALL_TASKS.length);
   const results = [];
   for (const t of tasks) {
-    let formOk = false;
-    let semanticOk = false;
+    let formOk = false;        // structurally legal output (JSON / tool_use / final_answer)
+    let pickedTool = false;    // chose tool_use over final_answer
+    let semanticOk = false;    // arguments semantically match expected
     let detail = "";
     try {
       const events = [];
@@ -145,6 +146,7 @@ async function evalToolCalling(model, opts) {
       const toolCallEv = events.find((e) => e.type === "tool_call");
       if (toolCallEv?.toolCall) {
         formOk = true;
+        pickedTool = true;
         const got = toolCallEv.toolCall;
         if (got.name === t.expected.name) {
           // Soft-equal the input: every expected key must be present and equal.
@@ -157,25 +159,44 @@ async function evalToolCalling(model, opts) {
           detail = `wrong tool: ${got.name}`;
         }
       } else {
-        // Free-form fallback path. Try to parse a JSON object from the text.
+        // Either grammar is off (free-form) or model chose final_answer.
+        // Both paths produce text-only output. Try parsing it as JSON to
+        // distinguish "structurally legal final_answer" from "garbled prose".
         const text = events.filter((e) => e.type === "text_delta").map((e) => e.delta).join("");
         try {
           const parsed = JSON.parse(text.trim());
-          if (parsed && typeof parsed === "object" && parsed.name && parsed.input) {
-            formOk = true;
-            if (parsed.name === t.expected.name) semanticOk = true;
-            else detail = `wrong tool: ${parsed.name}`;
+          if (parsed && typeof parsed === "object") {
+            // If the model emitted a final_answer, formOk is true but
+            // pickedTool stays false — so the harness can report the
+            // model's tool-pick rate separately from its grammar
+            // adherence rate.
+            if (parsed.type === "final_answer") {
+              formOk = true;
+              detail = `chose final_answer over tool_use: ${String(parsed.text).slice(0, 60)}`;
+            } else if (parsed.name && parsed.input) {
+              formOk = true;
+              pickedTool = true;
+              if (parsed.name === t.expected.name) semanticOk = true;
+              else detail = `wrong tool: ${parsed.name}`;
+            } else {
+              detail = `unrecognised JSON shape: ${text.slice(0, 80)}`;
+            }
           } else {
-            detail = "no tool_call event and no parseable JSON";
+            detail = `non-object JSON: ${text.slice(0, 80)}`;
           }
-        } catch (e) {
+        } catch {
+          // Note: when grammar is ON, LocalModel parses the JSON itself
+          // and unwraps final_answer into text_delta. So this branch
+          // genuinely means "model wrote prose despite grammar" — only
+          // possible if grammar creation failed and we fell back to
+          // free-form sampling.
           detail = `text-only output: ${text.slice(0, 80)}`;
         }
       }
     } catch (e) {
       detail = `error: ${e?.message ?? String(e)}`;
     }
-    results.push({ id: t.id, formOk, semanticOk, detail });
+    results.push({ id: t.id, formOk, pickedTool, semanticOk, detail });
   }
   return results;
 }
@@ -267,28 +288,39 @@ function renderReport(modelLabel, mode, tool, bilingual, code) {
   lines.push("");
   lines.push("## Summary");
   lines.push("");
-  lines.push("| Dimension | Form rate | Semantic rate |");
-  lines.push("|---|---|---|");
+  lines.push("| Dimension | Form rate | Picked tool | Semantic rate |");
+  lines.push("|---|---|---|---|");
   const tForm = rate(tool, "formOk");
+  const tPick = rate(tool, "pickedTool");
   const tSem = rate(tool, "semanticOk");
-  lines.push(`| Tool calling | ${fmtPct(tForm)} | ${fmtPct(tSem)} |`);
+  lines.push(
+    `| Tool calling | ${fmtPct(tForm)} | ${fmtPct(tPick)} | ${fmtPct(tSem)} |`
+  );
   const bil = rate(bilingual, "pass");
-  lines.push(`| Bilingual instruction | — | ${fmtPct(bil)} |`);
+  lines.push(`| Bilingual instruction | — | — | ${fmtPct(bil)} |`);
   if (code.skipped) {
-    lines.push(`| CodeAgent | — | SKIPPED (${code.reason}) |`);
+    lines.push(`| CodeAgent | — | — | SKIPPED (${code.reason}) |`);
   } else {
     const codeR = rate(code.results, "pass");
-    lines.push(`| CodeAgent | — | ${fmtPct(codeR)} |`);
+    lines.push(`| CodeAgent | — | — | ${fmtPct(codeR)} |`);
   }
+  lines.push("");
+  lines.push(
+    "**Form rate** = grammar-legal output (any of `tool_use` / `final_answer`).  ",
+    "**Picked tool** = chose `tool_use` when a tool fit the request (vs falling back to `final_answer`).  ",
+    "**Semantic rate** = picked the right tool with the right arguments."
+  );
   lines.push("");
 
-  lines.push("## Tool calling — failures");
+  lines.push("## Tool calling — per-task");
   lines.push("");
+  lines.push("| id | form | tool | semantic | detail |");
+  lines.push("|---|---|---|---|---|");
   for (const r of tool) {
-    if (r.formOk && r.semanticOk) continue;
-    lines.push(`- **${r.id}** — form=${r.formOk} sem=${r.semanticOk} — ${r.detail || "(no detail)"}`);
+    lines.push(
+      `| ${r.id} | ${r.formOk ? "✓" : "✗"} | ${r.pickedTool ? "✓" : "—"} | ${r.semanticOk ? "✓" : "✗"} | ${r.detail || ""} |`
+    );
   }
-  if (tool.every((r) => r.formOk && r.semanticOk)) lines.push("(none)");
   lines.push("");
 
   lines.push("## Bilingual — failures");
