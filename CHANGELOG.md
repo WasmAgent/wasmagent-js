@@ -16,6 +16,28 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`agentkitCodemodeExecutor` shim — Direction 1 pre-submission
+  gate cleared (2026-06-13).** New
+  `@agentkit-js/aisdk` export `agentkitCodemodeExecutor(opts)`
+  conforms to the Cloudflare codemode `Executor` interface
+  (`execute(code, providersOrFns) => Promise<{result, error?, logs?}>`)
+  and runs the LLM-emitted code inside any agentkit `WasmKernel`
+  (QuickJSKernel / PyodideKernel / WasmtimeKernel / RemoteSandboxKernel).
+  The contract types are reproduced structurally — no
+  `@cloudflare/codemode` import — so consumers keep their bundle
+  clean. Supports both the flat `Record<string, fn>` and the
+  namespaced `ResolvedProvider[]` shapes, plus `positionalArgs`.
+  Implemented as a marker-and-rerun loop parallel to
+  `ProgrammaticOrchestrator` but reshaped for codemode's
+  `await tools.namespace.method(args)` authoring style. Uses a
+  Proxy-based `tools` global so unknown leaves throw a clear
+  message rather than silent `undefined`. Console output is
+  surfaced via each kernel's existing `KernelResult.logs`
+  accumulation, sidestepping per-run console-shim resets in some
+  kernels. 6 new unit tests (14 total in `aisdk`); `bun run
+  typecheck` passes 50/50. Unblocks the `cloudflare/agents`
+  recipe-page PR draft at
+  `docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md`.
 - **`@agentkit-js/mcp-server` stdio entry point — response to
   `awesome-mcp-servers#7910`'s Glama listing requirement.** New
   `packages/mcp-server/src/stdio.ts` wires the existing
