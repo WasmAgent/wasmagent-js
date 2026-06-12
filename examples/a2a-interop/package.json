@@ -1,0 +1,14 @@
+{
+  "name": "agentkit-example-a2a-interop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end demo proving @agentkit-js/a2a implements the A2A v1.0 protocol correctly — a local agentkit-js agent is exposed as an A2A server, then called by an external 'framework' simulated via raw HTTP and via A2ARemoteAgent (which is what ADK / CrewAI / your own framework would do).",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@agentkit-js/a2a": "workspace:*",
+    "@agentkit-js/core": "workspace:*"
+  }
+}

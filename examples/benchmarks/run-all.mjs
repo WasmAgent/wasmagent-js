@@ -15,6 +15,7 @@ const benchmarks = [
   "input-examples.mjs",
   "context-editing.mjs",
   "parallel-agents.mjs",
+  "cost-comparison.mjs",
 ];
 
 let failed = 0;

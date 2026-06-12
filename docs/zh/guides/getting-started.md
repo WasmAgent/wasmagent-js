@@ -76,7 +76,7 @@ const agent = new CodeAgent({
 });
 ```
 
-完整对比与决策树见 [kernel comparison](../kernels/comparison.md)。
+完整对比与决策树见 [kernel 决策树](../kernels-comparison)。
 
 ## 接下来
 

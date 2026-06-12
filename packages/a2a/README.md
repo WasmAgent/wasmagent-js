@@ -12,19 +12,63 @@ npm install @agentkit-js/a2a @agentkit-js/core
 
 ## Usage
 
+### Expose an agentkit-js agent as an A2A server
+
 ```ts
-import { A2AServer, A2ARemoteAgent } from "@agentkit-js/a2a";
-import { CodeAgent, AnthropicModel } from "@agentkit-js/core";
+import { createA2AServer } from "@agentkit-js/a2a";
+import { ToolCallingAgent, AnthropicModel } from "@agentkit-js/core";
 
-// Expose your agent as A2A:
-const server = new A2AServer(new CodeAgent({ model: new AnthropicModel(/*...*/) }));
+const agent = new ToolCallingAgent({
+  model: new AnthropicModel(/* ... */),
+  tools: [/* ... */],
+});
 
-// Or call a remote A2A agent as a tool:
-const remote = new A2ARemoteAgent({ url: "https://other-team.example/a2a" });
+const server = createA2AServer(agent, {
+  agentId: "https://example.com/agents/my-agent",
+  name: "My Agent",
+  description: "Does things over A2A.",
+  skills: ["search.web", "calc.math"],
+  port: 3000,
+});
+
+await server.start();
+// → discoverable at http://localhost:3000/.well-known/agent-card
+// → tasks accepted at http://localhost:3000/tasks
 ```
 
-Aligns with the [Agent2Agent](https://github.com/google/A2A) protocol so agentkit-js
-agents interoperate with frameworks that support A2A (Google ADK, CrewAI 1.14+, etc.).
+### Call a remote A2A agent as a tool
+
+```ts
+import { A2ARemoteAgent } from "@agentkit-js/a2a";
+import { ToolCallingAgent } from "@agentkit-js/core";
+
+const remoteTool = A2ARemoteAgent.asTool({
+  taskEndpoint: "https://other-team.example/tasks",
+  name: "remote_search",
+  description: "Web search via the team's hosted A2A agent.",
+  apiKey: process.env.OTHER_TEAM_API_KEY,
+});
+
+const parent = new ToolCallingAgent({ model, tools: [remoteTool] });
+```
+
+## Interoperability — proof on the wire
+
+[`examples/a2a-interop`](https://github.com/telleroutlook/agentkit-js/tree/main/examples/a2a-interop)
+runs both directions end-to-end inside one process:
+
+- **Path A** — raw HTTP client hits `createA2AServer`. This is the path Google
+  ADK / CrewAI 1.14+ / Langroid take when they discover and call our agent.
+- **Path B** — `A2ARemoteAgent.asTool` calls a remote A2A endpoint. This is the
+  path our agents take when calling out to an ADK / CrewAI agent.
+
+```bash
+node examples/a2a-interop/index.mjs
+```
+
+Aligns with the [Agent2Agent v1.0](https://github.com/google/A2A) protocol so
+agentkit-js agents interoperate with any A2A-compliant framework (Google ADK,
+CrewAI 1.14+, Langroid, …) without per-framework adapters.
 
 ## License
 
