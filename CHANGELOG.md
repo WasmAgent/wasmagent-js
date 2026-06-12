@@ -16,6 +16,19 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `@agentkit-js/claude-agent-sdk` (D1) — agentkit kernels as Claude
+  Agent SDK tools. `sandboxedJsClaudeTool()` and `codeModeClaudeTool()`
+  emit the Anthropic-shape `{name, description, input_schema, handler}`
+  quadruple, structurally typed so they survive both the v0 and the
+  upcoming v1 line of `@anthropic-ai/sdk`. 7 unit tests.
+- `@agentkit-js/openai-agents` (D1) — agentkit kernels as OpenAI
+  Agents JS tools. `sandboxedJsAgentTool()` and `codeModeAgentTool()`
+  emit the `@openai/agents` `Tool<T>` shape (Zod parameters +
+  `execute()`). 6 unit tests.
+- `docs/guides/integrate-claude-agent-sdk.md` and
+  `docs/guides/integrate-openai-agents.md` — install + minimal
+  snippets + capability cheat-sheet for each adapter, mirroring the
+  existing Vercel AI SDK guide.
 - `examples/benchmarks/longmemeval-500.mjs` (D2) — standalone runner
   for the official LongMemEval-500 set with multi-observer
   comparison, per-category breakdown (multi-session row called out
