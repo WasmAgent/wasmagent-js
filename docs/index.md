@@ -45,6 +45,11 @@ features:
     details: Every percentage in the README is reproduced in CI - drift outside ±10 % fails the build. No bit-rot.
     link: /benchmarks
     linkText: See the numbers
+  - icon: 📊
+    title: Pareto-first model evaluation
+    details: <code>@agentkit-js/evals-runner</code> ships six benchmark suites and paired statistics (McNemar / Wilson / bootstrap) — multi-model comparisons surface trade-off fronts, not single-number ranks.
+    link: /guides/evals-runner
+    linkText: Open guide
 ---
 
 <div style="text-align: center; margin-top: 3rem; opacity: 0.7;">

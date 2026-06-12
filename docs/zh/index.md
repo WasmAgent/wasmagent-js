@@ -45,6 +45,11 @@ features:
     details: README 里每一个百分比都在 CI 中复现。漂移超出 ±10 % 直接 fail，不会 bit-rot。
     link: /zh/benchmarks
     linkText: 看数字
+  - icon: 📊
+    title: Pareto 优先的模型评测
+    details: <code>@agentkit-js/evals-runner</code> 提供 6 个评测套件 + 配对统计学（McNemar / Wilson / bootstrap）—— 多模型对比直接给出 trade-off 前沿，而不是单一数字排名。
+    link: /zh/guides/evals-cookbook
+    linkText: 查看指南
 ---
 
 <div style="text-align: center; margin-top: 3rem; opacity: 0.7;">

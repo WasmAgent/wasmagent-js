@@ -1,14 +1,15 @@
 # Packages
 
-agentkit-js is a 26-package monorepo published under the `@agentkit-js/*` scope on npm.
+agentkit-js is a 30-package monorepo published under the `@agentkit-js/*` scope on npm.
 
 ## Runtime
 
 | Package | What it is |
 |---|---|
 | [`@agentkit-js/core`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/core) | Agents, kernels, models, tools, runners, evals, checkpoints, observability |
-| [`@agentkit-js/cli`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/cli) | `agentkit run` command |
-| [`@agentkit-js/devtools`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/devtools) | Time-travel debugger + opt-in React UI |
+| [`@agentkit-js/cli`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/cli) | `agentkit` CLI: `run`, `init-tool`, `devtools`, `evals` |
+| [`@agentkit-js/devtools`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/devtools) | Time-travel debugger + opt-in React UI + `RunsAggregator` for the local Studio |
+| [`@agentkit-js/evals-runner`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/evals-runner) | Multi-model multi-suite Pareto evaluation harness; six reference suites; paired statistics (McNemar / Wilson / bootstrap / G1) |
 | [`@agentkit-js/react`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/react) | `useAgentRun()` SSE streaming hook |
 | [`@agentkit-js/agent-prompts`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/agent-prompts) | Reusable prompt fragments |
 | [`@agentkit-js/ui-cards`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/ui-cards) · [`ui-cards-react`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/ui-cards-react) | `\`\`\`card:*` block parser + components |
@@ -58,7 +59,9 @@ See the [kernel decision tree](/kernels/comparison) for picking the right one.
 
 | Package | Protocol |
 |---|---|
-| [`@agentkit-js/mcp-server`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/mcp-server) | Expose any agent as MCP server |
+| [`@agentkit-js/mcp-server`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/mcp-server) | Expose any agent as MCP server; `createCodeModeServer()` for the docs-search + execute-code two-tool surface |
+| [`@agentkit-js/aisdk`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/aisdk) | Vercel AI SDK 4–6 integration: `sandboxedJsTool()` + `codeModeTool()` |
+| [`@agentkit-js/mastra-sandbox`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/mastra-sandbox) | Mastra sandbox-provider contract backed by an agentkit kernel |
 | [`@agentkit-js/a2a`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/a2a) | A2A (Agent2Agent) inbound + outbound |
 | [`@agentkit-js/ag-ui`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/ag-ui) | AG-UI inbound transport |
 

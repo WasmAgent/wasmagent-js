@@ -77,16 +77,19 @@ agentkit-js is early-stage. The differentiating features (code execution kernels
 
 | | Number | Verified by |
 |---|---|---|
-| Tests passing (all packages) | **1148+** | `bun run test` (CI matrix on every push) — `@agentkit-js/core` 705 · `@agentkit-js/mcp-server` 25 · `@agentkit-js/devtools` 17 · others 401 |
-| README percentages reproducible | **5 / 5** | `bun run bench` — runs in CI; non-zero exit blocks the PR (incl. A1 ≤25% target) |
+| Tests passing (all packages) | **1219** | `bun run test` (CI matrix on every push) — `@agentkit-js/core` 716 · `@agentkit-js/mcp-server` 32 · `@agentkit-js/devtools` 25 · `@agentkit-js/evals-runner` 31 · others 415 |
+| README percentages reproducible | **7 / 7** | `bun run bench` — runs in CI; non-zero exit blocks the PR (incl. A1 ≤25% target + S1/A1 code-mode ≤50% target) |
 | Cross-process kill-and-resume (A1 DoD ①) | ✓ Redis + ✓ Cloudflare KV + ✓ Durable Object | `redis.test.ts` + `kvAdapters.test.ts` |
 | SSE Last-Event-ID gap-free replay (A2 DoD ①) | ✓ | `EventLog.test.ts` round-trip test |
 | Stateless HITL resume (A3 DoD ①) | ✓ | `hitl.test.ts` — three simulated processes |
 | Observational memory ≥4× compression (A1) | ✓ 22% of baseline | `examples/benchmarks/observational-memory.mjs` |
+| Code-mode bootstrap O(1) vs direct-MCP O(N) (S1/A1) | ✓ 13.6% of direct at N=30 tools | `examples/benchmarks/code-mode-tokens.mjs` |
 | Step-fork bundle (A2 DevTools) | ✓ 9 unit + 8 jsdom render tests | `packages/devtools/src/EventLogReplay.test.ts` + `react/DevTools.test.tsx` |
 | Skill lazy-load + post-hook chain (A3) | ✓ | `packages/core/src/skills/Skill.test.ts` + `guardrails/index.test.ts` |
 | Judge scorer weighted breakdown (A4) | ✓ | `packages/core/src/evals/JudgeScorer.test.ts` |
-| `(future) KV-backed checkpointer` TODO | ✓ removed | `git grep` returns empty |
+| Paired-statistics parity vs scipy (evals-runner) | ✓ 31 reference values to ±1e-7 | `packages/evals-runner/src/stats/index.test.ts` |
+| Local Studio HTTP overview (A4 of 2026-06-12 plan) | ✓ | `agentkit devtools --events-file <ndjson>` |
+| Multi-model evaluation across 17× size range | ✓ 5 models, 2026-06-12 | `docs/reports/longmemeval-5model-2026-06-12.md` |
 
 ---
 
@@ -105,6 +108,9 @@ agentkit-js is early-stage. The differentiating features (code execution kernels
 - **Long-history compaction** — `agent.assembler.compact(model, keepRecentSteps)` summarises old steps; inject a custom `MessageAssembler` via `assembler` option
 - **Production resilience** — automatic exponential backoff + jitter retry for 429 / 5xx / network errors on all model adapters; configurable via `RetryPolicy`
 - **Evals framework** — `runEval()` with 16 built-in scorers covering correctness (`exactMatch`, `toolCallAccuracy`, `trajectoryValidity`, `finalAnswerLength`, `guardrailCompliance`), faithfulness, relevance, recovery, efficiency, constraints, plus two multi-criterion `JudgeScorer` judges (`trajectoryQualityJudge`, `answerCompletenessJudge`)
+- **Evaluation harness** (`@agentkit-js/evals-runner`) — `runEvaluation()` plus `agentkit evals run` CLI: multi-model × multi-suite × multi-seed Pareto reports over (accuracy, cost, p95 wall). Six reference suites cover the gaps single-task benchmarks miss (long-context recall, multi-turn memory, agent trajectory, latency-under-budget, cost-per-correct, tool-sequence). Built-in paired statistics (McNemar exact / Wilson CI / paired bootstrap / G1 gate) match scipy reference values to ±1e-7. All synthetic fixtures — no overlap with public training corpora.
+- **Code-mode MCP server** (`@agentkit-js/mcp-server`) — `createCodeModeServer()` collapses N downstream tools into a `docs_search` + `execute_code` two-tool MCP surface. At 30 tools the bootstrap-token cost drops to 13.6% of direct MCP (codemode-lite reported 53%); pairs with any agentkit kernel for unified security policy.
+- **AI SDK + Mastra plugin packages** (`@agentkit-js/aisdk`, `@agentkit-js/mastra-sandbox`) — drop agentkit's WASM kernels into Vercel AI SDK 4–6 (`sandboxedJsTool`, `codeModeTool`) or Mastra (`agentkitMastraSandbox`) without an external sandbox provider.
 - **Observability** — `OtelBridge` maps `AgentEvent` streams to OTel-compatible spans; emits `gen_ai.*` semantic convention attributes (Datadog/Honeycomb/Grafana GenAI view compatible) with `semconvMode: "both" | "stable" | "legacy"`
 - **Durable runtime** — `KvCheckpointer` with four production backends: `CloudflareKvBackend`, `DurableObjectKvBackend`, `RedisKvBackend` (ioredis-style), `RedisRestKvBackend` (Upstash REST, edge-safe). `CheckpointableRun` saves state after every step; `await_human_input` persists `pendingHumanInput` and exits the iterator so the worker can recycle while a human reviews.
 - **SSE Last-Event-ID resume** — `EventLog` tags every event with a monotonic id, persists to the same `KvBackend`, and replays only the missing tail when a client reconnects. The reference Cloudflare Worker honors `Last-Event-ID` natively; `useAgentRun({ resume: { maxAttempts } })` retries automatically.

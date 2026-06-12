@@ -1,9 +1,15 @@
 # Evals Cookbook
 
-agentkit-js ships 12+ scorers covering correctness, faithfulness,
+agentkit-js ships 15 scorers covering correctness, faithfulness,
 relevance, efficiency, constraints, recovery, guardrail compliance,
 and LLM-as-judge. This guide shows how to combine them for production-
 grade benchmarking.
+
+> **Looking for the multi-model harness?** See
+> [`@agentkit-js/evals-runner`](./evals-runner.md) — uses these same
+> scorers to drive multi-model × multi-suite × multi-seed Pareto
+> reports with built-in paired statistics. The cookbook below covers
+> the per-trace scorer API; the runner sits on top.
 
 ## Available scorers
 
