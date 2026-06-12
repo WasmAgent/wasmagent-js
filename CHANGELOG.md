@@ -16,6 +16,15 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `examples/benchmarks/longmemeval-500.mjs` (D2) — standalone runner
+  for the official LongMemEval-500 set with multi-observer
+  comparison, per-category breakdown (multi-session row called out
+  explicitly as the Mastra weak spot), prompt-cache hit accounting
+  (Anthropic `cache_read_input_tokens` summed), and a `--smoke` mode
+  that exercises the runner offline so CI doesn't drift. The full
+  run is funding-dependent (🖥️ in ROADMAP); a placeholder lives at
+  `docs/reports/longmemeval-500-pending.md` with the exact CLI
+  command that will populate it.
 - `agentkit devtools --otel-events-file <path>` (D5) — point the
   zero-deploy local Studio at any GenAI semconv source: NDJSON spans
   or OTLP/JSON. The `convertGenAiSpansToEvents()` adapter (9 tests)
