@@ -17,7 +17,7 @@ npm add @agentkit-js/core @anthropic-ai/sdk
 npm add @agentkit-js/core openai
 ```
 
-> 📚 **Docs site:** <https://telleroutlook.github.io/agentkit-js/> · **Getting started in 5 min:** [docs/guides/getting-started.md](./docs/guides/getting-started.md) · **Benchmarks:** [docs/benchmarks.md](./docs/benchmarks.md) · **Changelog:** [CHANGELOG.md](./CHANGELOG.md) · **API stability:** [docs/strategy/api-stability.md](./docs/strategy/api-stability.md) · **Strategy memo:** [docs/strategy/2026-06-competitiveness.md](./docs/strategy/2026-06-competitiveness.md)
+> 📚 **Docs site:** <https://telleroutlook.github.io/agentkit-js/> · **Getting started in 5 min:** [docs/guides/getting-started.md](./docs/guides/getting-started.md) · **Benchmarks:** [docs/benchmarks.md](./docs/benchmarks.md) · **Changelog:** [CHANGELOG.md](./CHANGELOG.md) · **API stability:** [docs/strategy/api-stability.md](./docs/strategy/api-stability.md) · **Strategy memo:** [docs/strategy/2026-06-competitiveness.md](./docs/strategy/2026-06-competitiveness.md) · **Enterprise security face:** [docs/strategy/security-face.md](./docs/strategy/security-face.md)
 
 ---
 
