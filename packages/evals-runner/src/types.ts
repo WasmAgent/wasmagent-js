@@ -139,9 +139,15 @@ export interface SuiteAggregate {
   totalTokens: number;
   /** Total USD cost. */
   totalCostUsd: number;
-  /** Wall-clock distribution. */
+  /** Wall-clock distribution (steady-state, excluding warmup). */
   medianWallMs: number;
   p95WallMs: number;
+  /**
+   * Warm-up call wall-clock for this model (ms). Reported separately so
+   * p95WallMs reflects steady-state inference, not cold model loading.
+   * 0 when warmup was disabled or failed silently.
+   */
+  warmupMs: number;
   /** Total items run = items × seeds. */
   totalCells: number;
   /** Cells that passed. */
@@ -170,6 +176,12 @@ export interface EvaluationReport {
     suiteName: string;
     front: Array<{ modelId: string; meanAcc: number; totalCostUsd: number; p95WallMs: number }>;
   }>;
+  /**
+   * Whether warm-up was performed (default true). When false, p95WallMs
+   * may include cold model-loading time and should not be compared across
+   * models run in different sessions.
+   */
+  warmup?: boolean;
 }
 
 // ── Runner options ──────────────────────────────────────────────────────────
@@ -184,7 +196,16 @@ export interface RunEvaluationOptions {
   /** Concurrency *per model*. Items within a (model, seed) grid run up
    *  to this many in parallel. Default 4. */
   concurrency?: number;
-  /** Optional progress callback fired after each cell completes. */
+  /**
+   * Whether to warm up each model before evaluation (default true).
+   * When enabled, a cheap call is fired before the first evaluation seed
+   * to force Ollama to load model weights. This ensures p95 wall reflects
+   * steady-state inference latency, not cold model loading.
+   * Disable in tests or when using a pre-warmed cloud endpoint.
+   */
+  warmup?: boolean;
+  /** Optional progress callback fired after each cell completes.
+   *  Also fired with done=-1 when a warm-up call completes (cell is null). */
   onProgress?: (done: number, total: number, cell: RunResult) => void;
 }
 

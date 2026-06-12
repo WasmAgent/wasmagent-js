@@ -14,6 +14,10 @@
  *   - Determinism: temperature defaults to 0; `seed` is included in the
  *     OpenAI-compat call so providers that honour it (e.g. vLLM, OpenAI)
  *     produce reproducible answers across runs.
+ *   - Warm-up (P16-8): each model is optionally primed with a cheap call
+ *     before evaluation begins, so p95 wall reflects steady-state inference
+ *     rather than cold model loading. Warm-up wall time is reported
+ *     separately as `warmupMs` in the aggregate.
  */
 
 import type { AgentEvent, EvalSample, Scorer } from "@agentkit-js/core";
@@ -31,6 +35,9 @@ import type {
 
 const DEFAULT_SEEDS = [0, 1, 2];
 const DEFAULT_CONCURRENCY = 4;
+
+/** Single-item warm-up prompt — cheap but forces model load. */
+const WARMUP_PROMPT = "Reply with the word OK only.";
 
 /**
  * Default OpenAI-compatible provider — POSTs to `${baseUrl}/chat/completions`
@@ -77,6 +84,32 @@ export function defaultProvider(): ModelProvider {
 }
 
 /**
+ * Warm up a model by sending a cheap call and returning the wall-clock ms.
+ * This forces Ollama to load the model weights before evaluation, ensuring
+ * that p95 wall in cells reflects steady-state inference latency, not
+ * cold model load time (which can be 5–30s for large models).
+ *
+ * If the call fails, we swallow the error (warm-up failure is non-fatal)
+ * and return 0.
+ */
+async function warmupModel(
+  model: ModelSpec,
+  provider: ModelProvider,
+): Promise<number> {
+  const start = Date.now();
+  try {
+    await provider.call({
+      model,
+      messages: [{ role: "user", content: WARMUP_PROMPT }],
+    });
+  } catch {
+    // Warm-up failure is non-fatal — evaluation continues without it.
+    return 0;
+  }
+  return Date.now() - start;
+}
+
+/**
  * Run a full multi-model multi-seed evaluation.
  *
  * Sequencing: outer loop is (suite, model, seed); inner loop is items
@@ -86,6 +119,10 @@ export function defaultProvider(): ModelProvider {
  * previous model from VRAM. If the provider is multi-tenant cloud, the
  * caller can wrap two calls to `runEvaluation` in `Promise.all` to
  * parallelise across models.
+ *
+ * Warm-up: when `warmup` option is true (default), the runner fires one
+ * cheap call per model before the first evaluation seed to force model
+ * loading. The warm-up wall time is captured in `SuiteAggregate.warmupMs`.
  */
 export async function runEvaluation(
   opts: RunEvaluationOptions,
@@ -93,8 +130,10 @@ export async function runEvaluation(
 ): Promise<EvaluationReport> {
   const seeds = opts.seeds ?? DEFAULT_SEEDS;
   const concurrency = opts.concurrency ?? DEFAULT_CONCURRENCY;
+  const doWarmup = opts.warmup !== false; // default true
   const startedAtMs = Date.now();
   const cells: RunResult[] = [];
+  const warmupMsByModelId: Map<string, number> = new Map();
   const totalCells =
     (opts.models.length *
       opts.suites.length *
@@ -104,6 +143,13 @@ export async function runEvaluation(
 
   for (const suite of opts.suites) {
     for (const model of opts.models) {
+      // Warm up once per model (before first seed of first suite).
+      if (doWarmup && !warmupMsByModelId.has(model.id)) {
+        const wMs = await warmupModel(model, provider);
+        warmupMsByModelId.set(model.id, wMs);
+        opts.onProgress?.(-1, totalCells, null as unknown as RunResult); // progress hint
+      }
+
       for (const seed of seeds) {
         // Items run in parallel up to `concurrency`, all sharing the same
         // (model, seed) — one model loaded, one seed; this is the friend
@@ -135,7 +181,13 @@ export async function runEvaluation(
     }
   }
 
-  const aggregates = buildAggregates(opts.models, opts.suites, seeds, cells);
+  const aggregates = buildAggregates(
+    opts.models,
+    opts.suites,
+    seeds,
+    cells,
+    warmupMsByModelId,
+  );
   const pareto = buildParetoFront(opts.suites, aggregates);
 
   return {
@@ -151,6 +203,7 @@ export async function runEvaluation(
     aggregates,
     cells,
     pareto,
+    warmup: doWarmup,
   };
 }
 
@@ -309,7 +362,8 @@ function buildAggregates(
   models: ModelSpec[],
   suites: BenchmarkSuite[],
   seeds: number[],
-  cells: RunResult[]
+  cells: RunResult[],
+  warmupMsByModelId: Map<string, number>,
 ): SuiteAggregate[] {
   const out: SuiteAggregate[] = [];
   for (const suite of suites) {
@@ -339,6 +393,10 @@ function buildAggregates(
         0
       );
       const totalCostUsd = cellsForModelSuite.reduce((a, c) => a + c.costUsd, 0);
+
+      // Split wall times into warmup-excluded (steady-state) measurements.
+      // warmupMs is reported separately; p95 reflects steady-state inference.
+      const warmupMs = warmupMsByModelId.get(model.id) ?? 0;
       const wallMsSorted = cellsForModelSuite.map((c) => c.wallMs).sort((a, b) => a - b);
       const medianWallMs = percentile(wallMsSorted, 50);
       const p95WallMs = percentile(wallMsSorted, 95);
@@ -355,6 +413,7 @@ function buildAggregates(
         totalCostUsd,
         medianWallMs,
         p95WallMs,
+        warmupMs,
         totalCells,
         passedCells,
       });
@@ -417,3 +476,4 @@ function percentile(sortedAsc: number[], p: number): number {
   const frac = rank - lower;
   return (sortedAsc[lower] as number) * (1 - frac) + (sortedAsc[upper] as number) * frac;
 }
+
