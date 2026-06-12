@@ -1,6 +1,6 @@
 {
   "name": "example-eval-suite",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "End-to-end agentkit-js eval suite — multi-scorer benchmark with markdown report",
   "type": "module",

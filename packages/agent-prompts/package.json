@@ -1,6 +1,6 @@
 {
   "name": "@agentkit-js/agent-prompts",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Reusable system prompt templates for agentkit-js — code/tool/framework prompts with D2 + Markdown card conventions",
   "type": "module",
   "main": "./dist/index.js",

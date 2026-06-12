@@ -1,6 +1,6 @@
 {
   "name": "@agentkit-js/ui-cards",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Card block parser for agentkit-js — extracts ```card:* fenced blocks from AI reply text",
   "type": "module",
   "main": "./dist/index.js",

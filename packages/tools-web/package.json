@@ -1,6 +1,6 @@
 {
   "name": "@agentkit-js/tools-web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Web search tools for agentkit-js — Tavily, Brave, Perplexity adapters",
   "type": "module",
   "main": "./dist/index.js",
