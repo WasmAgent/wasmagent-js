@@ -46,6 +46,7 @@ There are several mature TypeScript agent frameworks. Here is an honest assessme
 | **Durable workflows / checkpointing** | ✅ DurableAgent (AI SDK 6) | ✅ LangGraph | ❌ (Assistants API retiring 2026-08-26) | ⚠️ partial | ✅ Durable Objects | ✅ Checkpointer + 4 backends (CF KV / DO / Redis / Upstash) |
 | **SSE Last-Event-ID resume** | ⚠️ via DurableAgent | ✅ runtime | ❌ | ❌ | ❌ | ✅ EventLog primitive + worker-native |
 | **HITL persisted suspend/resume** | ✅ | ✅ | ❌ | ⚠️ partial | ⚠️ via DO | ✅ stateless `/resume` endpoint, hours-to-days durations |
+| **Embedded local LLM (in-process, offline)** | ⚠️ via Ollama HTTP | ⚠️ via Ollama HTTP | ❌ | ⚠️ via Ollama HTTP | ❌ | ✅ `@agentkit-js/model-local` — node-llama-cpp + grammar-constrained tool calls + multi-mirror downloads (HF / hf-mirror / ModelScope) |
 
 ### Where competitors are stronger
 

@@ -18,7 +18,16 @@
     "@agentkit-js/devtools": "workspace:*",
     "@agentkit-js/evals-runner": "workspace:*"
   },
+  "peerDependencies": {
+    "@agentkit-js/model-local": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@agentkit-js/model-local": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@agentkit-js/model-local": "workspace:*",
     "@anthropic-ai/sdk": "^0.37.0",
     "typescript": "^5.7.0"
   },

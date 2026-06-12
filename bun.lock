@@ -226,9 +226,16 @@
         "@agentkit-js/evals-runner": "workspace:*",
       },
       "devDependencies": {
+        "@agentkit-js/model-local": "workspace:*",
         "@anthropic-ai/sdk": "^0.37.0",
         "typescript": "^5.7.0",
       },
+      "peerDependencies": {
+        "@agentkit-js/model-local": "workspace:*",
+      },
+      "optionalPeers": [
+        "@agentkit-js/model-local",
+      ],
     },
     "packages/cloudflare-worker": {
       "name": "@agentkit-js/cloudflare-worker",
@@ -447,6 +454,24 @@
       "peerDependencies": {
         "openai": ">=4.80.0",
       },
+    },
+    "packages/model-local": {
+      "name": "@agentkit-js/model-local",
+      "version": "0.1.0",
+      "dependencies": {
+        "@agentkit-js/core": "workspace:*",
+      },
+      "devDependencies": {
+        "typescript": "^5.7.0",
+        "vitest": "^2.1.0",
+        "zod": "^3.24.0",
+      },
+      "peerDependencies": {
+        "node-llama-cpp": ">=3.18.0",
+      },
+      "optionalPeers": [
+        "node-llama-cpp",
+      ],
     },
     "packages/model-minimax": {
       "name": "@agentkit-js/model-minimax",
@@ -707,6 +732,8 @@
     "@agentkit-js/model-deepseek": ["@agentkit-js/model-deepseek@workspace:packages/model-deepseek"],
 
     "@agentkit-js/model-doubao": ["@agentkit-js/model-doubao@workspace:packages/model-doubao"],
+
+    "@agentkit-js/model-local": ["@agentkit-js/model-local@workspace:packages/model-local"],
 
     "@agentkit-js/model-minimax": ["@agentkit-js/model-minimax@workspace:packages/model-minimax"],
 

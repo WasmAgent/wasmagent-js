@@ -329,3 +329,55 @@ describe("runCommand", () => {
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("calculator"));
   });
 });
+
+// ── modelCommand (L6, 2026-06-12) ─────────────────────────────────────────────
+
+describe("modelCommand", () => {
+  // Each test sets up a temp cache dir so we don't touch the real ~/.agentkit.
+  let stdoutSpy: ReturnType<typeof vi.spyOn>;
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+  let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    exitSpy = vi.spyOn(process, "exit").mockImplementation(((_code?: number) => {
+      throw new Error(`exit ${_code}`);
+    }) as never);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+    consoleLogSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+    exitSpy.mockRestore();
+  });
+
+  it("`list` prints every registered alias", async () => {
+    const { modelCommand } = await import("./index.js");
+    await modelCommand(["list"], {});
+    const calls = (consoleLogSpy.mock.calls as unknown[][]).map((c) => String(c[0]));
+    expect(calls.some((s) => s.includes("qwen3.5-0.8b"))).toBe(true);
+    expect(calls.some((s) => s.includes("gemma-3-1b"))).toBe(true);
+    expect(calls.some((s) => s.includes("Apache-2.0"))).toBe(true);
+  });
+
+  it("`pull` without alias prints an error and exits non-zero", async () => {
+    const { modelCommand } = await import("./index.js");
+    await expect(modelCommand(["pull"], {})).rejects.toThrow(/exit 1/);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("agentkit model pull"));
+  });
+
+  it("rejects unknown subcommands", async () => {
+    const { modelCommand } = await import("./index.js");
+    await expect(modelCommand(["whatever"], {})).rejects.toThrow(/exit 1/);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Unknown model subcommand")
+    );
+  });
+});
