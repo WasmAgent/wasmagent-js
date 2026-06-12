@@ -16,6 +16,13 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `agentkit devtools --otel-events-file <path>` (D5) — point the
+  zero-deploy local Studio at any GenAI semconv source: NDJSON spans
+  or OTLP/JSON. The `convertGenAiSpansToEvents()` adapter (9 tests)
+  maps `gen_ai.operation.name = invoke_agent | chat | execute_tool`
+  spans to the `LoggedEvent` shape the existing aggregator reads, so
+  Vercel AI SDK / Mastra / OpenAI Agents JS / Anthropic SDK traces
+  render in the same Studio view as agentkit's own runs.
 - `evals-runner` warm-up phase — each model is primed before the
   first eval seed so `p95WallMs` reflects steady-state inference
   rather than cold model loading. `warmupMs` is reported separately.
