@@ -12,6 +12,31 @@ export interface KernelResult {
 /**
  * Capability manifest — explicit allow-list replacing smolagents' DANGEROUS_MODULES
  * / DANGEROUS_FUNCTIONS blacklist (A2 deny-all capability model).
+ *
+ * The first four fields are the original A2 deny-all surface. The fields below
+ * (env / resource limits) round out the "code-mode security policy face"
+ * (S1/A1, 2026-06): a single object that every kernel honours uniformly, so a
+ * caller can move a workload between QuickJS / Pyodide / Wasmtime / Remote
+ * without rewriting policy.
+ *
+ * Honouring matrix (true = enforced; absent = silently ignored, which matches
+ * "deny-all by default" — an absent capability is the same as a 0-length list):
+ *
+ *   field             JsKernel  QuickJSKernel  PyodideKernel  WasmtimeKernel  RemoteSandboxKernel
+ *   allowedHosts          ✅          ✅             ✅              ✅               ✅
+ *   allowedReadPaths      ✅          ✅(*)          ✅(*)           ✅(*)            ✅
+ *   allowedWritePaths     ✅          ✅(*)          ✅(*)           ✅(*)            ✅
+ *   extraCapabilities     ✅          ✅             ✅              ✅               ✅
+ *   env                   ✅          ✅             ✅              ✅               ✅
+ *   cpuMs                 ✅(timeout) ✅(deadline)   ✅(deadline)    ✅(timeout)      ✅(per-call)
+ *   memoryLimitBytes      ⚠️         ✅             ⚠️             ✅               ✅
+ *
+ *   (*) FS access in WASM kernels lands on the host via an explicit __fs__
+ *   bridge (see buildCapabilityGlobals); the bridge enforces allowedReadPaths
+ *   / allowedWritePaths identically to JsKernel.
+ *   ⚠️ Means the runtime does not expose a hard memory limit (Node V8 vm
+ *   inherits the host process limit); the field is accepted but a runtime
+ *   warning is logged so the caller is not silently misled.
  */
 export interface CapabilityManifest {
   /** Allow outbound HTTP to these domains (glob patterns). Empty = no network. */
@@ -22,6 +47,29 @@ export interface CapabilityManifest {
   allowedWritePaths: string[];
   /** Extra named capabilities (e.g. "tool:web_search"). */
   extraCapabilities: string[];
+  /**
+   * Environment variables to expose inside the sandbox as a `process.env`-like
+   * object (`__env__` global). This is an explicit allow-list of *values*, not
+   * a pass-through of the host environment — the kernel never sees `process.env`.
+   *
+   * Empty / absent = no env access. The injected map is read-only inside the
+   * sandbox (frozen). Use sparingly: each entry crosses the trust boundary.
+   */
+  env?: Readonly<Record<string, string>>;
+  /**
+   * Hard ceiling for a single `kernel.run()` invocation, in milliseconds.
+   * Mirrors `KernelOptions.timeoutMs` but lives on the capability manifest so
+   * a host can pin per-tool-call limits without owning kernel construction.
+   * If both are set, the *lower* value wins (defence-in-depth).
+   */
+  cpuMs?: number;
+  /**
+   * Soft ceiling on memory usage, in bytes. Honoured by kernels that expose a
+   * runtime memory limit (QuickJS, Wasmtime, Remote). On kernels without a
+   * native limit (JsKernel, Pyodide), this is recorded but not enforced — see
+   * the matrix above; calling code should treat enforcement as best-effort.
+   */
+  memoryLimitBytes?: number;
 }
 
 /**

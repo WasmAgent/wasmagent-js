@@ -69,6 +69,7 @@ export class VmKernel implements WasmKernel {
     // This prevents capability leakage across successive run() calls.
     this.#context.fetch = undefined;
     this.#context.__fs__ = undefined;
+    this.#context.__env__ = undefined;
 
     if (capabilities) {
       const capGlobals = buildCapabilityGlobals(capabilities);
@@ -77,10 +78,16 @@ export class VmKernel implements WasmKernel {
       }
     }
 
+    // Per-call timeout: capability.cpuMs (if set) tightens the kernel default.
+    const baseTimeout = this.#timeoutMs ?? Number.POSITIVE_INFINITY;
+    const cpuMs = capabilities?.cpuMs;
+    const effectiveTimeout =
+      cpuMs != null && cpuMs > 0 ? Math.min(baseTimeout, cpuMs) : this.#timeoutMs;
+
     const script = new Script(code, { filename: "agent-step.js" });
     let output: unknown;
     try {
-      const runOpts = this.#timeoutMs ? { timeout: this.#timeoutMs } : {};
+      const runOpts = effectiveTimeout != null ? { timeout: effectiveTimeout } : {};
       output = script.runInContext(this.#context, runOpts);
     } catch (err) {
       throw new Error(`KernelError: ${err instanceof Error ? err.message : String(err)}`);

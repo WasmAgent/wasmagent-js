@@ -123,6 +123,76 @@ describe("JsKernel capability enforcement (A2)", () => {
   });
 });
 
+// ─── S1/A1 unified policy face: env + cpuMs (2026-06) ───────────────────────
+// These tests pin the cross-kernel contract added in the A1 milestone:
+// the same CapabilityManifest produces the same observable surface in
+// JsKernel/VmKernel (here) and QuickJSKernel (in kernel-quickjs's own tests).
+
+describe("buildCapabilityGlobals env (S1/A1)", () => {
+  it("does not inject __env__ when env is absent or empty", () => {
+    expect(buildCapabilityGlobals({}).__env__).toBeUndefined();
+    expect(buildCapabilityGlobals({ env: {} }).__env__).toBeUndefined();
+  });
+
+  it("injects __env__ when env has entries and freezes it", () => {
+    const globals = buildCapabilityGlobals({ env: { OPENAI_API_KEY: "sk-x", REGION: "us" } });
+    expect(globals.__env__).toEqual({ OPENAI_API_KEY: "sk-x", REGION: "us" });
+    expect(Object.isFrozen(globals.__env__)).toBe(true);
+  });
+
+  it("clones the input map so caller mutations do not leak in", () => {
+    const src = { K: "v" };
+    const globals = buildCapabilityGlobals({ env: src });
+    src.K = "mutated";
+    expect((globals.__env__ as Record<string, string>).K).toBe("v");
+  });
+});
+
+describe("JsKernel env injection (S1/A1)", () => {
+  it("__env__ is undefined without env capability", async () => {
+    const kernel = new JsKernel();
+    const result = await kernel.run("typeof __env__");
+    expect(result.output).toBe("undefined");
+  });
+
+  it("__env__ exposes only the explicitly granted values", async () => {
+    const kernel = new JsKernel();
+    const result = await kernel.run("__env__.MY_KEY", {
+      env: { MY_KEY: "secret-123" },
+    });
+    expect(result.output).toBe("secret-123");
+  });
+
+  it("env from one run does not leak into the next when the second omits it", async () => {
+    const kernel = new JsKernel();
+    await kernel.run("globalThis.__seen__ = __env__.K", { env: { K: "first" } });
+    const result = await kernel.run("typeof __env__");
+    expect(result.output).toBe("undefined");
+  });
+});
+
+describe("JsKernel cpuMs override (S1/A1)", () => {
+  it("cpuMs tightens the kernel default and rejects long-running scripts faster", async () => {
+    // Construct with a generous default; per-call cpuMs must shrink it.
+    const kernel = new JsKernel({ timeoutMs: 5_000 });
+    const start = Date.now();
+    await expect(kernel.run("while(true){}", { cpuMs: 100 })).rejects.toThrow(
+      /timed out after 100ms/
+    );
+    const elapsed = Date.now() - start;
+    // Allow generous slack for CI noise — the point is "much less than 5_000".
+    expect(elapsed).toBeLessThan(2_000);
+  }, 10_000);
+
+  it("cpuMs cannot widen a tight constructor timeout", async () => {
+    const kernel = new JsKernel({ timeoutMs: 50 });
+    // cpuMs:5000 must NOT extend the 50ms default — defence-in-depth.
+    await expect(kernel.run("while(true){}", { cpuMs: 5_000 })).rejects.toThrow(
+      /timed out after 50ms/
+    );
+  }, 10_000);
+});
+
 import { mkdtemp, writeFile as nodeWriteFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

@@ -1,0 +1,73 @@
+{
+  "name": "@agentkit-js/aisdk",
+  "version": "0.1.0",
+  "description": "Drop agentkit-js sandbox kernels into the Vercel AI SDK as a `tool()` — edge-safe code execution with one capability manifest, no E2B / OS sandbox needed",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "ai": "^4.0.0 || ^5.0.0 || ^6.0.0",
+    "zod": "^3.22.0 || ^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ai": {
+      "optional": false
+    },
+    "zod": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "ai": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "zod": "^3.22.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "ai-sdk",
+    "vercel",
+    "agent",
+    "sandbox",
+    "code-execution",
+    "tool",
+    "agentkit"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "directory": "packages/aisdk"
+  },
+  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/aisdk#readme",
+  "bugs": {
+    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "author": "agentkit-js contributors"
+}

@@ -84,6 +84,7 @@ parentPort?.on(
     // does not leave capabilities from the previous call in the sandbox.
     delete sandbox.fetch;
     delete sandbox.__fs__;
+    delete sandbox.__env__;
     if (msg.capabilities) {
       const capGlobals = buildCapabilityGlobals(msg.capabilities);
       for (const [k, v] of Object.entries(capGlobals)) {

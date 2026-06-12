@@ -227,10 +227,34 @@ export class QuickJSKernel implements WasmKernel {
       this.#injectFetchWrapper(ctx, capabilities.allowedHosts);
     }
 
+    // Code-mode unified policy face (S1/A1, 2026-06): env injection mirrors
+    // buildCapabilityGlobals so the same manifest yields the same `__env__`
+    // surface in QuickJS as in JsKernel/VmKernel.
+    if (capabilities?.env && Object.keys(capabilities.env).length > 0) {
+      this.#injectEnv(ctx, capabilities.env);
+    }
+    // Memory limit: QuickJS exposes a hard runtime cap. We only honour the
+    // *lower* of the constructor default and the per-call request — never widen.
+    if (capabilities?.memoryLimitBytes && capabilities.memoryLimitBytes > 0 && this.#runtime) {
+      try {
+        // setMemoryLimit is available on QuickJSRuntime; -1 disables the limit.
+        // Cast through unknown so we don't depend on a specific quickjs-emscripten
+        // type version exposing the method on its public surface.
+        const rt = this.#runtime as unknown as { setMemoryLimit?: (n: number) => void };
+        rt.setMemoryLimit?.(capabilities.memoryLimitBytes);
+      } catch {
+        // Best effort — older quickjs-emscripten builds did not export the helper.
+      }
+    }
+
     // Q1: use a flag instead of message-string matching to detect interrupts.
     // The interrupt handler sets #timedOut = true before the QuickJS error propagates.
     this.#timedOut = false;
-    const deadline = Date.now() + this.#timeoutMs;
+    // Per-call timeout: cpuMs (if set) tightens the kernel default; never widens.
+    const cpuMs = capabilities?.cpuMs;
+    const effectiveTimeout =
+      cpuMs != null && cpuMs > 0 ? Math.min(this.#timeoutMs, cpuMs) : this.#timeoutMs;
+    const deadline = Date.now() + effectiveTimeout;
     this.#runtime?.setInterruptHandler(() => {
       if (Date.now() > deadline) {
         this.#timedOut = true;
@@ -296,6 +320,20 @@ export class QuickJSKernel implements WasmKernel {
         });
         if (!ok) throw new Error("CapabilityDenied: fetch to \\"" + host + "\\" not in allowedHosts");
       }
+    `)
+      ?.dispose?.();
+  }
+
+  /**
+   * Inject the unified `__env__` global (S1/A1 code-mode policy face).
+   * The map is JSON-stringified into the QuickJS context and frozen so
+   * sandbox code cannot mutate it. Mirrors `buildCapabilityGlobals` from core.
+   */
+  #injectEnv(ctx: QuickJSContext, env: Readonly<Record<string, string>>): void {
+    const envJson = JSON.stringify(env);
+    ctx
+      .evalCode(`
+      var __env__ = Object.freeze(${envJson});
     `)
       ?.dispose?.();
   }

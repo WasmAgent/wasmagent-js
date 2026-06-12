@@ -36,6 +36,10 @@ if (isMain) {
       name: { type: "string" },
       output: { type: "string", default: "." },
       lang: { type: "string", default: "ts" },
+      // A4 (S3, 2026-06): `agentkit devtools` flags. `events` doubles as both
+      // the run-command filter and the devtools NDJSON input path.
+      "events-file": { type: "string" },
+      port: { type: "string", default: "4317" },
       help: { type: "boolean", short: "h", default: false },
     },
     allowPositionals: true,
@@ -54,6 +58,9 @@ if (isMain) {
       break;
     case "init-tool":
       await initToolCommand(values);
+      break;
+    case "devtools":
+      await devtoolsCommand(values);
       break;
     default:
       console.error(`Unknown command: ${command}`);
@@ -424,10 +431,12 @@ agentkit — TypeScript agent runtime (agentkit-js v0.1.0)
 Usage:
   agentkit run "<task>" [options]
   agentkit init-tool --name <tool-name> [options]
+  agentkit devtools --events-file <ndjson> [--port 4317]
 
 Commands:
   run "<task>"              Run an agent on a task
   init-tool                 Scaffold a new ToolDefinition file (TypeScript or Rust/WASM)
+  devtools                  Start the local Studio (zero-deploy runs overview)
 
 run options:
   --model <id>             Model ID (default: claude-sonnet-4-6)
@@ -442,10 +451,184 @@ init-tool options:
   --lang <lang>            Template language: "ts" (default) or "rust" (WASM)
   --output <dir>           Output directory (default: current directory)
 
+devtools options:
+  --events-file <path>     NDJSON event log file produced by EventLog.exportNdjson()
+                           or any file with one LoggedEvent JSON per line.
+  --port <port>            HTTP port (default: 4317)
+
 Examples:
   agentkit run "What is 2+2?"
   agentkit run "Analyse data" --stream | jq .
   agentkit run "Search AI news" --events final_answer,error
   agentkit init-tool --name web-search --output ./tools
+  agentkit devtools --events-file ./events.ndjson
 `);
+}
+
+// ── A4: devtools command — local Studio, zero-deploy ─────────────────────────
+
+/**
+ * A4 (S3, 2026-06): start a local "Studio" HTTP server on the supplied
+ * NDJSON event log. The server serves:
+ *
+ *   - GET  /                  static HTML overview page (vanilla, no React)
+ *   - GET  /api/runs          per-run summaries from RunsAggregator
+ *   - GET  /api/rollup        corpus rollup (cost / tokens / median+p95 / errors)
+ *
+ * Why an HTML+JSON server and not a desktop GUI: per the S3 brief, Studio
+ * must stay zero-deploy and runtime-agnostic. Plain HTML lets us serve from
+ * Node, Bun, Workers; the React overlay (in `@agentkit-js/devtools/react`)
+ * is opt-in for callers who already have a Vite/Next pipeline.
+ */
+export async function devtoolsCommand(
+  opts: Record<string, string | boolean | undefined>
+): Promise<void> {
+  const { createServer } = await import("node:http");
+  const { readFile } = await import("node:fs/promises");
+  // Lazy import — devtools is its own peer with React types; we don't want
+  // run/init-tool callers to load it.
+  const { groupByTraceId, rollupRuns, summariseRun } = (await import("@agentkit-js/devtools")) as {
+    groupByTraceId: (e: unknown[]) => Map<string, unknown[]>;
+    rollupRuns: (s: unknown[]) => unknown;
+    summariseRun: (e: unknown[]) => unknown;
+  };
+
+  const eventsPath = opts["events-file"];
+  if (!eventsPath || typeof eventsPath !== "string") {
+    console.error("Error: --events-file <path> is required.");
+    console.error("  Example: agentkit devtools --events-file ./events.ndjson");
+    process.exit(1);
+  }
+  const port = Number.parseInt((opts.port as string) ?? "4317", 10);
+
+  // Read once on startup; the file is small (event logs for a single agent
+  // run rarely exceed a few MB) and re-reading on every request would
+  // surprise users who expect "this view reflects the file at startup".
+  // Re-running the CLI is the refresh story; explicit > magic.
+  const raw = await readFile(eventsPath, "utf8");
+  const events: unknown[] = [];
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      events.push(JSON.parse(trimmed));
+    } catch {
+      // Skip malformed lines but report once at startup so the user knows
+      // there's noise in their file.
+      console.error(`Skipping malformed NDJSON line: ${trimmed.slice(0, 80)}…`);
+    }
+  }
+
+  const grouped = groupByTraceId(events);
+  const summaries = [...grouped.values()].map(summariseRun);
+  const rollup = rollupRuns(summaries);
+
+  const server = createServer((req, res) => {
+    const url = new URL(req.url ?? "/", `http://localhost:${port}`);
+    if (url.pathname === "/api/runs") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(summaries));
+      return;
+    }
+    if (url.pathname === "/api/rollup") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(rollup));
+      return;
+    }
+    if (url.pathname === "/" || url.pathname === "/index.html") {
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      res.end(renderStudioHtml());
+      return;
+    }
+    res.writeHead(404, { "content-type": "text/plain" });
+    res.end("not found");
+  });
+
+  await new Promise<void>((resolve) => server.listen(port, resolve));
+  console.log(`agentkit Studio: http://localhost:${port} (events: ${eventsPath})`);
+  console.log(
+    `Tracking ${summaries.length} run${summaries.length === 1 ? "" : "s"} ` +
+      `(${(rollup as { totalCostUsd: number }).totalCostUsd.toFixed(4)} USD total).`
+  );
+  console.log("Press Ctrl-C to stop.");
+}
+
+function renderStudioHtml(): string {
+  // Inline page so the CLI binary stays single-file. The page fetches
+  // /api/rollup + /api/runs once and renders a metric card + a runs table.
+  // No React, no build step — runs in Bun, Node 20+, plain browsers.
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>agentkit Studio</title>
+  <style>
+    body{font:14px/1.5 system-ui,Segoe UI,Helvetica,Arial,sans-serif;margin:24px;color:#222;}
+    h1{margin:0 0 4px;font-size:18px;}
+    .sub{color:#666;font-size:12px;margin-bottom:16px;}
+    .cards{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:12px;margin-bottom:24px;}
+    .card{border:1px solid #ddd;border-radius:8px;padding:12px;background:#fafafa;}
+    .card h3{margin:0;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.5px;}
+    .card .v{font-size:22px;font-weight:600;margin-top:4px;}
+    table{width:100%;border-collapse:collapse;font-size:13px;}
+    th,td{padding:6px 10px;border-bottom:1px solid #eee;text-align:left;}
+    th{background:#f5f5f5;font-weight:600;}
+    .ok{color:#0a7;}
+    .fail{color:#c00;}
+    .num{text-align:right;font-variant-numeric:tabular-nums;}
+  </style>
+</head>
+<body>
+  <h1>agentkit Studio</h1>
+  <div class="sub">A4 — local runs overview · pure-logic aggregator from <code>@agentkit-js/devtools</code></div>
+  <div id="cards" class="cards"></div>
+  <table>
+    <thead><tr>
+      <th>Trace</th><th>Outcome</th><th class="num">Wall (ms)</th><th class="num">Steps</th>
+      <th class="num">Tokens</th><th class="num">USD</th><th>Final answer</th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <script>
+    function fmtMs(n){return Math.round(n).toLocaleString();}
+    function fmtUsd(n){return '$'+n.toFixed(4);}
+    function fmtTokens(t){return (t.input+t.output).toLocaleString();}
+    Promise.all([fetch('/api/rollup').then(r=>r.json()),fetch('/api/runs').then(r=>r.json())])
+      .then(([rollup,runs])=>{
+        const cards=document.getElementById('cards');
+        const cardData=[
+          ['Total runs', rollup.totalRuns],
+          ['Total cost', fmtUsd(rollup.totalCostUsd)],
+          ['Median wall', fmtMs(rollup.medianWallMs)+' ms'],
+          ['p95 wall', fmtMs(rollup.p95WallMs)+' ms'],
+          ['Error rate', (rollup.errorRate*100).toFixed(1)+'%'],
+          ['Input tokens', rollup.totalInputTokens.toLocaleString()],
+          ['Output tokens', rollup.totalOutputTokens.toLocaleString()],
+          ['Cache-read tokens', rollup.totalCacheReadTokens.toLocaleString()],
+        ];
+        cards.style.gridTemplateColumns='repeat('+Math.min(cardData.length,4)+',minmax(180px,1fr))';
+        for(const [h,v] of cardData){
+          const c=document.createElement('div');c.className='card';
+          c.innerHTML='<h3>'+h+'</h3><div class="v">'+v+'</div>';
+          cards.appendChild(c);
+        }
+        const tb=document.getElementById('rows');
+        runs.sort((a,b)=>b.startTs-a.startTs);
+        for(const r of runs){
+          const tr=document.createElement('tr');
+          tr.innerHTML=
+            '<td>'+r.traceId+'</td>'+
+            '<td class="'+(r.outcome==='complete'?'ok':r.outcome==='failed'?'fail':'')+'">'+r.outcome+'</td>'+
+            '<td class="num">'+fmtMs(r.wallMs)+'</td>'+
+            '<td class="num">'+r.steps+'</td>'+
+            '<td class="num">'+fmtTokens(r.tokens)+'</td>'+
+            '<td class="num">'+fmtUsd(r.costUsd)+'</td>'+
+            '<td>'+(r.finalAnswer?String(r.finalAnswer).slice(0,60):'')+'</td>';
+          tb.appendChild(tr);
+        }
+      })
+      .catch(e=>{document.body.innerHTML+='<pre style="color:#c00">'+e.message+'</pre>';});
+  </script>
+</body>
+</html>`;
 }

@@ -6,8 +6,11 @@ export {
 } from "./AnthropicModel.js";
 export type { FallbackModelOptions } from "./FallbackModel.js";
 export { FallbackModel } from "./FallbackModel.js";
-export type { OpenAICompatModelOptions } from "./OpenAICompatModel.js";
-export { OpenAICompatModel } from "./OpenAICompatModel.js";
+export type {
+  GenericOpenAICompatModelOptions,
+  OpenAICompatModelOptions,
+} from "./OpenAICompatModel.js";
+export { GenericOpenAICompatModel, OpenAICompatModel } from "./OpenAICompatModel.js";
 export type { OpenAIModelId, OpenAIModelOptions } from "./OpenAIModel.js";
 export { OpenAIModel, OpenAIModels, repairJson } from "./OpenAIModel.js";
 

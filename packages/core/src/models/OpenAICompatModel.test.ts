@@ -105,3 +105,36 @@ describe("convertCompatMessages", () => {
     expect(assistantMsg?.reasoning_content).toBeUndefined();
   });
 });
+
+// ── A5 (S, 2026-06): GenericOpenAICompatModel — concrete entry point ─────────
+
+import { GenericOpenAICompatModel } from "./OpenAICompatModel.js";
+
+describe("GenericOpenAICompatModel", () => {
+  it("constructs without subclassing and reports providerId", () => {
+    const m = new GenericOpenAICompatModel("qwen2.5:14b", "http://localhost:11434/v1");
+    expect(m.providerId).toBe("compat/qwen2.5:14b");
+    expect(m.modelId).toBe("qwen2.5:14b");
+    // Default capabilities follow OpenAI's plain Chat Completions surface.
+    expect(m.capabilities.metered).toBe(true);
+    expect(m.capabilities.supportsReasoningEffort).toBe(false);
+  });
+
+  it("propagates extraCapabilities into the capabilities snapshot", () => {
+    const m = new GenericOpenAICompatModel("foo", "http://x", {
+      extraCapabilities: { localEndpoint: true },
+    });
+    expect(m.capabilities.localEndpoint).toBe(true);
+  });
+
+  it("accepts reasoningContentField for non-OpenAI providers like DeepSeek/Doubao", () => {
+    // We don't make a network call — just confirm the constructor accepts the
+    // option. Behavioural coverage of the field lives in the per-provider
+    // model-* package tests; here we pin the public-API shape.
+    const m = new GenericOpenAICompatModel("deepseek-r1", "https://api.deepseek.com/v1", {
+      reasoningContentField: "reasoning_content",
+      reasoningRoundTrip: "tool-turns-only",
+    });
+    expect(m.providerId).toBe("compat/deepseek-r1");
+  });
+});

@@ -23,8 +23,11 @@
  *   }
  */
 
+// B2 (2026-06): Cloudflare Browser Run binding bridge — keeps all CDP
+// message handling in `cdp.ts` while accepting the Workers binding shape.
+export type { BrowserRunOpenable, BrowserRunSessionOpts } from "./browserRun.js";
+export { openBrowserRunSession } from "./browserRun.js";
 export type { BrowserToolset } from "./buildBrowserTools.js";
-
 export { buildBrowserTools } from "./buildBrowserTools.js";
 export type { CdpSessionOpts } from "./cdp.js";
 export { openCdpSession } from "./cdp.js";

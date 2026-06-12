@@ -16,6 +16,8 @@ const benchmarks = [
   "context-editing.mjs",
   "parallel-agents.mjs",
   "cost-comparison.mjs",
+  // S1/A1: code-mode bootstrap O(1) vs direct-MCP O(N).
+  "code-mode-tokens.mjs",
 ];
 
 let failed = 0;
