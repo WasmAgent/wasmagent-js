@@ -1,0 +1,174 @@
+# @agentkit-js/evals-runner
+
+> Multi-model multi-axis evaluation harness for any OpenAI-compatible
+> endpoint. Built on the agentkit-js scorer + EventLog + RunsAggregator
+> primitives, plus a TypeScript port of the canonical paired-statistics
+> machinery (McNemar exact / Wilson CI / paired bootstrap / G1 gate).
+
+agentkit-js stays **independent**: this package adds an evaluation layer
+on top of the runtime's primitives, but agentkit's runtime keeps no
+knowledge of any specific model author or research line. Use it the same
+way you'd use `lm-evaluation-harness` — just point at a base URL.
+
+## Why this exists
+
+The accuracy-only benchmarks academic projects ship (GSM8K, IFEval,
+MMLU, HumanEval) ignore the things production model selection actually
+needs:
+
+- **Long-context recall** — does the model retrieve a fact from the
+  middle of a 16K document?
+- **Multi-turn memory** — can it use a 28-turn dialog history?
+- **Trajectory quality** — does an agent loop recover from a failed step?
+- **Latency under budget** — accuracy is irrelevant if p95 wall blows
+  the budget.
+- **Cost per correct answer** — the only axis that decides deployment.
+
+Six reference suites cover those gaps. Plus the statistical primitives
+that turn a 6-item run into a defensible claim:
+
+- `mcnemarExact(b, c)` — exact paired test
+- `wilsonCI(s, n)` — proportion CI
+- `pairedBootstrap(cand, base)` — distribution-free delta CI
+- `buildG1Report(seeds[])` — pooled-across-seeds gate matching the
+  ≥3-seed discipline standard in the field
+
+## Install
+
+```bash
+npm install @agentkit-js/evals-runner @agentkit-js/core
+```
+
+## Quick start (CLI)
+
+```bash
+# List the 6 reference suites:
+agentkit evals list
+
+# Run multi-turn memory + cost-per-correct against 2 models, 3 seeds:
+agentkit evals run \
+  --suite=multi-turn-memory,cost-per-correct \
+  --models="qwen2.5:0.5b@http://localhost:11434/v1,gpt-4o-mini@https://api.openai.com/v1" \
+  --seeds=0,1,2 \
+  --report-file=./eval-report.md
+```
+
+Markdown output: a Pareto-flagged summary table, a per-suite item × model
+matrix, a configuration footer. Drop into a PR or commit message verbatim.
+
+## Programmatic use
+
+```ts
+import {
+  runEvaluation,
+  multiTurnMemorySuite,
+  costPerCorrectSuite,
+  renderReportMarkdown,
+} from "@agentkit-js/evals-runner";
+
+const report = await runEvaluation({
+  models: [
+    {
+      id: "qwen2.5:0.5b",
+      baseUrl: "http://localhost:11434/v1",
+      apiKey: "ollama",
+      pricePer1MInput: 0,    // local — free
+      pricePer1MOutput: 0,
+    },
+    {
+      id: "gpt-4o-mini",
+      baseUrl: "https://api.openai.com/v1",
+      apiKey: process.env.OPENAI_API_KEY,
+      pricePer1MInput: 0.15,
+      pricePer1MOutput: 0.60,
+    },
+  ],
+  suites: [multiTurnMemorySuite, costPerCorrectSuite],
+  seeds: [0, 1, 2],
+});
+
+console.log(renderReportMarkdown(report));
+```
+
+## Reference suites
+
+| Suite                    | What it measures                                                       |
+| ------------------------ | ---------------------------------------------------------------------- |
+| `multi-turn-memory`      | LongMemEval-style 6-item conversation-history recall, 5 categories     |
+| `long-context-recall`    | Needle-in-haystack at 10% / 50% / 90% depth in a ~16K-token document   |
+| `cost-per-correct`       | Same items as multi-turn-memory; reports USD per passing answer        |
+| `tool-sequence`          | 3-step JSON-encoded tool-call plans matched against an expected order  |
+| `agent-trajectory`       | Plan + reasoning emission scored by trajectory validity + length       |
+| `latency-under-budget`   | Multi-turn memory under a 2 s wall-clock + 256-token budget per item   |
+
+All 6 suites use **synthetic / hand-built fixtures**. None of the items
+overlap with publicly published training corpora (GSM8K / MMLU / IFEval /
+HumanEval / Alpaca etc.) — that is a deliberate choice so a model fine-
+tuned on those public benchmarks does NOT silently leak through. Adding
+your own suites is encouraged; see `BenchmarkSuite` in `src/types.ts`.
+
+## Statistical primitives
+
+```ts
+import {
+  mcnemarExact,
+  wilsonCI,
+  pairedBootstrap,
+  buildG1Report,
+} from "@agentkit-js/evals-runner/stats";
+
+// Exact McNemar paired test:
+const { p } = mcnemarExact(/* b */ 25, /* c */ 5);
+// → { p: 3.249e-4, b: 25, c: 5, n: 30 }
+
+// Wilson CI on a binomial proportion:
+const [lo, hi] = wilsonCI(/* successes */ 50, /* total */ 100);
+// → [0.40383, 0.59617]
+
+// G1 gate over ≥3 seeds:
+const g1 = buildG1Report("v1.2 vs baseline", [seed0, seed1, seed2]);
+// → { passes: true, pooled: { mcnemarP: 1e-12, ... }, ... }
+```
+
+All primitives have parity tests against scipy reference values
+(`src/stats/index.test.ts`).
+
+## What is NOT in this package
+
+- **Auto-quantize / auto-merge / auto-train.** This is an evaluation
+  harness, not a model-tuning tool. It tells you which model wins; what
+  you do with that information lives in your tuning pipeline.
+- **GSM8K / MMLU / IFEval / HumanEval suites.** These are common
+  training-data leakage vectors. Use `lm-evaluation-harness` if you need
+  them; this package focuses on axes those benchmarks don't cover.
+- **A leaderboard SaaS.** The output is markdown + JSON; ship it
+  yourself.
+
+## Design points
+
+- **Provider-agnostic.** A `ModelSpec` is `{ id, baseUrl, modelId,
+  apiKey }` — point at Ollama, OpenRouter, vLLM, AI Gateway, OpenAI,
+  Anthropic-compat, or anything else.
+- **Deterministic by default.** `temperature=0`. Three seeds enforced.
+  Reports `σ across seeds` so you can see when a model's "win" is noise.
+- **Pareto-first reporting.** The default summary flags
+  non-dominated models on `(meanAcc, totalCostUsd, p95WallMs)` per
+  suite — because in real selection you don't want one number, you
+  want the deployment trade-off surface.
+
+## Roadmap (v0.2)
+
+- IRT subset selection — pick the most informative N items from a
+  larger pool. Lets you publish 50-item numbers as confidently as 500.
+- Conformal CI — distribution-free CI for use when bootstrap
+  assumptions don't hold.
+- Per-model concurrency hooks for clouds with high parallelism budgets.
+- Real `ToolCallingAgent` loop in `agent-trajectory` (currently
+  string-presence heuristic).
+
+## See also
+
+- [`docs/guides/evals-runner.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/evals-runner.md)
+  — full guide with Ollama / OpenRouter / Gateway recipes.
+- [`docs/guides/openai-compat-recipes.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/openai-compat-recipes.md)
+  — same model-spec format used by the rest of agentkit.

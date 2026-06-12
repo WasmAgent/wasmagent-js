@@ -36,6 +36,7 @@ const ORDER = [
   "a2-aisdk-mastra.mjs",
   "edge-codemode-adversarial.mjs",
   "edge-cross-package.mjs",
+  "edge-evals-runner.mjs",
   "a1-codemode.mjs",
   "edge-mcp-protocol.mjs",
   "edge-studio-robustness.mjs",

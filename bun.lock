@@ -94,6 +94,7 @@
         "@agentkit-js/cli": "workspace:*",
         "@agentkit-js/core": "workspace:*",
         "@agentkit-js/devtools": "workspace:*",
+        "@agentkit-js/evals-runner": "workspace:*",
         "@agentkit-js/kernel-quickjs": "workspace:*",
         "@agentkit-js/mastra-sandbox": "workspace:*",
         "@agentkit-js/mcp-server": "workspace:*",
@@ -202,6 +203,7 @@
       "dependencies": {
         "@agentkit-js/core": "workspace:*",
         "@agentkit-js/devtools": "workspace:*",
+        "@agentkit-js/evals-runner": "workspace:*",
       },
       "devDependencies": {
         "@anthropic-ai/sdk": "^0.37.0",
@@ -270,6 +272,22 @@
       "optionalPeers": [
         "react",
       ],
+    },
+    "packages/evals-runner": {
+      "name": "@agentkit-js/evals-runner",
+      "version": "0.1.0",
+      "bin": {
+        "agentkit-evals": "./dist/cli.js",
+      },
+      "dependencies": {
+        "@agentkit-js/core": "workspace:*",
+        "@agentkit-js/devtools": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.7.0",
+        "vitest": "^2.1.0",
+      },
     },
     "packages/kernel-pyodide": {
       "name": "@agentkit-js/kernel-pyodide",
@@ -625,6 +643,8 @@
     "@agentkit-js/core": ["@agentkit-js/core@workspace:packages/core"],
 
     "@agentkit-js/devtools": ["@agentkit-js/devtools@workspace:packages/devtools"],
+
+    "@agentkit-js/evals-runner": ["@agentkit-js/evals-runner@workspace:packages/evals-runner"],
 
     "@agentkit-js/integration-tests": ["@agentkit-js/integration-tests@workspace:tests/integration"],
 
