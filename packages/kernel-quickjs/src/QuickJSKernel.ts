@@ -220,7 +220,14 @@ export class QuickJSKernel implements WasmKernel {
     this.#logs = [];
 
     ctx
-      .evalCode("__logs__ = []; var __finalAnswer__ = undefined; var __final_answer__ = undefined;")
+      .evalCode(
+        // Reset per-call sentinels AND clear capability globals from any
+        // previous run so a manifest that omits a capability does not leak
+        // a stale value from an earlier call. Mirrors the JsKernelWorker /
+        // VmKernel reset pattern (see packages/core/src/executor/).
+        "__logs__ = []; var __finalAnswer__ = undefined; var __final_answer__ = undefined;" +
+          " var fetch = undefined; var __env__ = undefined; var __allowed_hosts__ = undefined;"
+      )
       ?.dispose?.();
 
     if (capabilities?.allowedHosts?.length) {
@@ -310,6 +317,24 @@ export class QuickJSKernel implements WasmKernel {
 
   #injectFetchWrapper(ctx: QuickJSContext, allowedHosts: string[]): void {
     const hostsJson = JSON.stringify(allowedHosts);
+    // We inject:
+    //   __allowed_hosts__: the configured allow-list.
+    //   __check_host__:    helper that throws CapabilityDenied if a host is
+    //                      not on the list. Pre-2026-06 this was the only
+    //                      thing exposed, which violated the "unified policy
+    //                      face" promise — `typeof fetch` was `undefined`
+    //                      in QuickJS even when allowedHosts had entries
+    //                      (regression vs JsKernel/VmKernel where `fetch`
+    //                      is a real callable function).
+    //   fetch:             a real callable that runs the allow-list check
+    //                      and then rejects with a clear "no transport"
+    //                      error. QuickJS-in-WASM has no built-in network
+    //                      transport; consumers wanting actual outbound
+    //                      requests should either wire a host bridge or
+    //                      use RemoteSandboxKernel where the transport
+    //                      exists naturally. The shim makes `typeof fetch`
+    //                      report "function" when allowedHosts is granted,
+    //                      matching the cross-kernel honouring matrix.
     ctx
       .evalCode(`
       var __allowed_hosts__ = ${hostsJson};
@@ -319,6 +344,20 @@ export class QuickJSKernel implements WasmKernel {
           return host === h;
         });
         if (!ok) throw new Error("CapabilityDenied: fetch to \\"" + host + "\\" not in allowedHosts");
+      }
+      function fetch(input, init) {
+        var url = typeof input === "string" ? input : (input && input.url) || "";
+        var host = "";
+        try {
+          var m = url.match(/^https?:\\/\\/([^\\/?#]+)/i);
+          host = m ? m[1] : "";
+        } catch (e) { host = ""; }
+        __check_host__(host);
+        return Promise.reject(new Error(
+          "QuickJSKernel.fetch: no transport bound. allowedHosts=[" +
+          __allowed_hosts__.join(",") + "] passed; install a fetch transport " +
+          "via the host bridge or use RemoteSandboxKernel."
+        ));
       }
     `)
       ?.dispose?.();

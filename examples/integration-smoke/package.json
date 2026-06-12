@@ -1,0 +1,24 @@
+{
+  "name": "agentkit-integration-smoke",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Local-only end-to-end smoke scripts that drive the public package surface (A1/A2/A4/A5 etc.). NOT part of CI — run them by hand to verify a fresh build.",
+  "type": "module",
+  "scripts": {
+    "a1": "node a1-codemode.mjs",
+    "a2": "node a2-aisdk-mastra.mjs",
+    "a4": "node a4-studio-http.mjs",
+    "a5": "node a5-openai-compat.mjs",
+    "cross": "node cross-kernel.mjs"
+  },
+  "dependencies": {
+    "@agentkit-js/aisdk": "workspace:*",
+    "@agentkit-js/cli": "workspace:*",
+    "@agentkit-js/core": "workspace:*",
+    "@agentkit-js/devtools": "workspace:*",
+    "@agentkit-js/kernel-quickjs": "workspace:*",
+    "@agentkit-js/mastra-sandbox": "workspace:*",
+    "@agentkit-js/mcp-server": "workspace:*",
+    "zod": "^3.22.0"
+  }
+}
