@@ -1,6 +1,6 @@
 {
   "name": "@agentkit-js/tools-rag",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "RAG / embedding tools for agentkit-js — ModelEmbedder + ragTool + Pinecone/Qdrant/Local connectors",
   "type": "module",
   "main": "./dist/index.js",

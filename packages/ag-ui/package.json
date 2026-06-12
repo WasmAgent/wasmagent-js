@@ -1,6 +1,6 @@
 {
   "name": "@agentkit-js/ag-ui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AG-UI protocol adapter for @agentkit-js/core — maps private AgentEvent stream to AG-UI 16-class events",
   "type": "module",
   "main": "./dist/index.js",

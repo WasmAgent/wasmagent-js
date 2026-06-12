@@ -1,6 +1,6 @@
 {
   "name": "@agentkit-js/kernel-remote",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "RemoteSandboxKernel — microVM third isolation tier for agentkit-js via E2B / Cloudflare Sandbox",
   "type": "module",
   "main": "./dist/index.js",

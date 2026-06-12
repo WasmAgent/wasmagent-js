@@ -1,6 +1,6 @@
 {
   "name": "@agentkit-js/otel-exporter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "OTLP/HTTP span exporter for @agentkit-js/core OtelBridge — production-ready OpenTelemetry export",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@agentkit-js/mcp-server",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Expose any agentkit-js agent as a Model Context Protocol (MCP) server — sync tools/call + 2025-11-25 Tasks for long-running agent work",
   "type": "module",
   "main": "./dist/index.js",

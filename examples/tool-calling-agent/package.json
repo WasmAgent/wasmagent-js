@@ -1,6 +1,6 @@
 {
   "name": "tool-calling-agent-example",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "ToolCallingAgent example with McpToolCollection and LazyObservationHandle",
   "type": "module",

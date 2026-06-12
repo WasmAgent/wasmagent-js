@@ -1,6 +1,6 @@
 {
   "name": "@agentkit-js/kernel-wasmtime",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "WasmtimeKernel — true WASM sandbox for agentkit-js via Javy (QuickJS→WASM) + Node's native WebAssembly API",
   "type": "module",
   "main": "./dist/index.js",
