@@ -5,11 +5,19 @@
   "description": "Local-only end-to-end smoke scripts that drive the public package surface (A1/A2/A4/A5 etc.). NOT part of CI — run them by hand to verify a fresh build.",
   "type": "module",
   "scripts": {
-    "a1": "node a1-codemode.mjs",
-    "a2": "node a2-aisdk-mastra.mjs",
-    "a4": "node a4-studio-http.mjs",
-    "a5": "node a5-openai-compat.mjs",
-    "cross": "node cross-kernel.mjs"
+    "all": "node run-all.mjs",
+    "a1": "bun a1-codemode.mjs",
+    "a2": "bun a2-aisdk-mastra.mjs",
+    "a4": "bun a4-studio-http.mjs",
+    "a5": "bun a5-openai-compat.mjs",
+    "cross": "bun cross-kernel.mjs",
+    "edge:sandbox": "bun edge-sandbox-escape.mjs",
+    "edge:state": "bun edge-state-pollution.mjs",
+    "edge:mcp": "bun edge-mcp-protocol.mjs",
+    "edge:cm": "bun edge-codemode-adversarial.mjs",
+    "edge:caps": "bun edge-capability-boundaries.mjs",
+    "edge:studio": "bun edge-studio-robustness.mjs",
+    "edge:cross": "bun edge-cross-package.mjs"
   },
   "dependencies": {
     "@agentkit-js/aisdk": "workspace:*",

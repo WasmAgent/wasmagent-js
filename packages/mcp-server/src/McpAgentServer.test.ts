@@ -189,7 +189,10 @@ describe("McpAgentServer — tools/call (sync path)", () => {
       agent: fakeAgent(),
     });
     const r = await s.handle(rpc("tools/call", { arguments: {} }));
-    expect(r.response.error?.code).toBe(-32603); // wrapped in INTERNAL because thrown inside try
+    // 2026-06: top-level catch now honours the McpInvalidParams.code
+    // field (was previously flattened to -32603). See
+    // examples/integration-smoke/edge-mcp-protocol.mjs which caught the drift.
+    expect(r.response.error?.code).toBe(-32602);
     expect(r.response.error?.message).toMatch(/'name'/);
   });
 

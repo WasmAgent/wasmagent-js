@@ -24,6 +24,7 @@ import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from
 export class VmKernel implements WasmKernel {
   #context: ReturnType<typeof createContext>;
   #logs: string[] = [];
+  #disposed = false;
   readonly #timeoutMs: number | undefined;
 
   constructor(opts?: KernelOptions) {
@@ -62,6 +63,9 @@ export class VmKernel implements WasmKernel {
   }
 
   async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
+    if (this.#disposed) {
+      throw new Error("KernelError: cannot run() on a disposed VmKernel");
+    }
     this.#logs = [];
     this.#context.__finalAnswer__ = undefined;
 
@@ -118,6 +122,7 @@ export class VmKernel implements WasmKernel {
   }
 
   async [Symbol.asyncDispose](): Promise<void> {
+    this.#disposed = true;
     this.#logs = [];
   }
 }

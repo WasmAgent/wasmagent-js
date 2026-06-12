@@ -36,6 +36,7 @@ function resolveWorkerPath(): string {
  */
 export class JsKernel implements WasmKernel {
   #worker: Worker | null = null;
+  #disposed = false;
   readonly #timeoutMs: number;
   #serial = 0;
 
@@ -59,6 +60,9 @@ export class JsKernel implements WasmKernel {
   }
 
   async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
+    if (this.#disposed) {
+      throw new Error("KernelError: cannot run() on a disposed JsKernel");
+    }
     // Lazy init: spawn worker on first run(), not at construction time.
     const worker = this.#getOrSpawnWorker();
 
@@ -126,6 +130,7 @@ export class JsKernel implements WasmKernel {
   }
 
   async [Symbol.asyncDispose](): Promise<void> {
+    this.#disposed = true;
     if (this.#worker) {
       await this.#worker.terminate();
       this.#worker = null;

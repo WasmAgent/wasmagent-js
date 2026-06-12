@@ -95,6 +95,7 @@ export class QuickJSKernel implements WasmKernel {
   #runtime: QuickJSRuntime | null = null;
   #ctx: QuickJSContext | null = null;
   #module: QuickJSModule | null = null;
+  #disposed = false;
   readonly #timeoutMs: number;
   readonly #variant: unknown;
   readonly #variantLoader: ((v: unknown) => Promise<QuickJSModule>) | undefined;
@@ -214,6 +215,9 @@ export class QuickJSKernel implements WasmKernel {
   }
 
   async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
+    if (this.#disposed) {
+      throw new Error("KernelError: cannot run() on a disposed QuickJSKernel");
+    }
     const ctx = await this.#ensureContext();
     const { Scope } = await import("quickjs-emscripten");
     const ScopeStatic = Scope as unknown as ScopeStatic;
@@ -277,7 +281,94 @@ export class QuickJSKernel implements WasmKernel {
       let isFinalAnswer = false;
 
       try {
-        const resultHandle = scope.manage(ctx.unwrapResult(ctx.evalCode(code, "agent-step.js")));
+        let resultHandle: QHandle = scope.manage(
+          ctx.unwrapResult(ctx.evalCode(code, "agent-step.js"))
+        ) as QHandle;
+
+        // 2026-06: support async IIFE return values. If the script's last
+        // expression evaluates to a Promise (an object with a callable
+        // `.then`), resolve it before serialising. Without this, scripts
+        // written as `(async function(){ ... })()` — the natural shape
+        // used by ProgrammaticOrchestrator's code-mode wrapper — produced
+        // `output = {}` (JSON.stringify of an unresolved Promise),
+        // breaking every multi-tool code-mode script on QuickJS.
+        // Discovery: examples/integration-smoke/edge-sandbox-escape.mjs
+        // AsyncFunction-via-await vector failed with `out: {}`.
+        let isPromise = false;
+        if (ctx.typeof(resultHandle as QHandle) === "object") {
+          // Probe for `.then` being a function — duck-typing matches what
+          // host JS Promise A+ runtimes do. We skip plain `{ then: 1 }`
+          // edge cases this way.
+          let thenHandle: (QHandle & { dispose(): void }) | null = null;
+          try {
+            thenHandle = ctx.getProp(resultHandle, "then") as QHandle & { dispose(): void };
+            isPromise = ctx.typeof(thenHandle as QHandle) === "function";
+          } catch {
+            isPromise = false;
+          } finally {
+            if (thenHandle) {
+              try {
+                thenHandle.dispose();
+              } catch {
+                /* ignore */
+              }
+            }
+          }
+        }
+        if (isPromise) {
+          // Drive any microjobs the script left pending so the Promise can
+          // settle. We start the resolvePromise() promise, then poll the
+          // QuickJS pending-job queue until it's empty AND the host await
+          // settles. resolvePromise() returns a *host* Promise that waits
+          // on the QuickJS-internal Promise — but QuickJS won't make
+          // forward progress until executePendingJobs is called, so we
+          // run a small driver that interleaves the two until we settle
+          // or the kernel timeout fires (interrupt handler trips
+          // `#timedOut`).
+          const settledP = (
+            ctx as unknown as {
+              resolvePromise(h: QHandle): Promise<{ value?: QHandle; error?: QHandle }>;
+            }
+          ).resolvePromise(resultHandle as QHandle);
+
+          let settled: { value?: QHandle; error?: QHandle } | null = null;
+          let driverErr: unknown = null;
+          settledP
+            .then((v) => {
+              settled = v;
+            })
+            .catch((e) => {
+              driverErr = e;
+              settled = {};
+            });
+
+          // Spin a microtask-yielding loop: drain → await macrotask →
+          // re-check. The interrupt handler trips on cpuMs/timeoutMs.
+          while (settled === null) {
+            this.#drainPendingJobs();
+            // Yield so the host await can observe completion.
+            await new Promise<void>((r) => setImmediate(r));
+            if (this.#timedOut) {
+              throw new Error(`KernelError: Script execution timed out after ${this.#timeoutMs}ms`);
+            }
+          }
+          if (driverErr) throw driverErr;
+          const final = settled as { value?: QHandle; error?: QHandle };
+          if (final.error) {
+            const errMsg = ctx.dump(final.error as QHandle);
+            try {
+              (final.error as QHandle & { dispose?: () => void }).dispose?.();
+            } catch {
+              /* ignore */
+            }
+            throw new Error(typeof errMsg === "string" ? errMsg : JSON.stringify(errMsg));
+          }
+          if (final.value) {
+            resultHandle = scope.manage(
+              final.value as unknown as { dispose(): void }
+            ) as unknown as QHandle;
+          }
+        }
 
         // Q1/Q3: serialise output via callFunction(JSON.stringify) — no global writes,
         // and circular refs / functions throw KernelSerializationError here.
@@ -438,6 +529,7 @@ export class QuickJSKernel implements WasmKernel {
   }
 
   async [Symbol.asyncDispose](): Promise<void> {
+    this.#disposed = true;
     this.#disposeContextHandles();
     this.#drainPendingJobs();
     if (this.#ctx) {

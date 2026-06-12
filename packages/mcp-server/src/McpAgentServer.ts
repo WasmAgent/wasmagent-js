@@ -107,9 +107,20 @@ export class McpAgentServer {
     } catch (err) {
       // Top-level catch so a buggy handler can't crash the host; surface as
       // an MCP error code instead.
+      //
+      // Honour `err.code` when the thrower is an MCP-typed error (e.g.
+      // `McpInvalidParams`, code = -32602): the JSON-RPC contract is that
+      // the wire code matches the failure category, not a generic INTERNAL.
+      // Discovery: examples/integration-smoke/edge-mcp-protocol.mjs
+      // observed -32603 for a missing-`name`-param call where -32602 is
+      // required.
+      const errCode =
+        err && typeof err === "object" && typeof (err as { code?: unknown }).code === "number"
+          ? ((err as { code: number }).code as number)
+          : ERR_INTERNAL;
       return errResponse(
         request.id ?? null,
-        ERR_INTERNAL,
+        errCode,
         err instanceof Error ? err.message : String(err)
       );
     }

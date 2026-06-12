@@ -176,15 +176,34 @@ export class ProgrammaticOrchestrator {
       // Reset the per-run __ptc_calls__ array so each re-run sees the same
       // sequence of recorded calls. __ptc_results__ persists across runs
       // (the host-injected cache).
+      //
+      // We attach to `__ptc_pending_first__` the first call (by index) for
+      // which the result is not yet cached at the moment callTool is hit.
+      // The earlier "use last call" approach broke under Promise.all: all N
+      // calls are recorded before any rejects, so `__ptc_calls__[len-1]`
+      // pointed at an already-resolved call on subsequent iterations and
+      // the host's defensive "re-requested after resolution" guard fired.
       const runScript = `(async function() {
         __ptc_calls__ = [];
+        var __ptc_pending_first__ = null;
         try {
           var __r = await (async function() { ${script} })();
           return JSON.stringify({ done: true, result: typeof __r === 'string' ? __r : (__r == null ? '' : JSON.stringify(__r)) });
         } catch (e) {
           var msg = (e && e.message) || String(e);
           if (msg.indexOf(${JSON.stringify(`${PENDING_MARKER}:`)}) === 0) {
-            return JSON.stringify({ done: false, pending: __ptc_calls__[__ptc_calls__.length - 1] });
+            // Find the FIRST recorded call whose result is not yet in
+            // __ptc_results__ — that is the one the host needs to resolve
+            // before progress can continue.
+            var first = null;
+            for (var i = 0; i < __ptc_calls__.length; i++) {
+              var c = __ptc_calls__[i];
+              if (!Object.prototype.hasOwnProperty.call(__ptc_results__, c.key)) {
+                first = c;
+                break;
+              }
+            }
+            return JSON.stringify({ done: false, pending: first || __ptc_calls__[__ptc_calls__.length - 1] });
           }
           return JSON.stringify({ done: true, error: msg });
         }
@@ -213,7 +232,23 @@ export class ProgrammaticOrchestrator {
         if (parsed.error) {
           throw new Error(parsed.error);
         }
-        output = parsed.result ?? "";
+        const finalResult = parsed.result ?? "";
+        // Catch the case where the script wrote a try/catch around
+        // `await callTool(...)` and silently swallowed our PENDING_MARKER
+        // rejection — the script then "completes" with the marker text
+        // visible in its return value. We detect by checking whether ANY
+        // pending call existed but no resolution was performed in this
+        // iteration. The marker substring is the second signal.
+        if (typeof finalResult === "string" && finalResult.includes(PENDING_MARKER)) {
+          throw new Error(
+            "ProgrammaticOrchestrator: script swallowed the pause marker " +
+              "(__PTC_PENDING__) inside a try/catch around callTool. Code-mode " +
+              "scripts must let callTool's rejection propagate so the host " +
+              "can resolve the call and re-run; do NOT catch errors that " +
+              "begin with __PTC_PENDING__."
+          );
+        }
+        output = finalResult;
         break;
       }
 
