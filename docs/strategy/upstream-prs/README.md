@@ -1,11 +1,12 @@
 # Upstream PR drafts (D1 follow-up + 2026-06-12 Direction 1)
 
-> Last refreshed: **2026-06-12**.
+> Last refreshed: **2026-06-12** (post-maintainer-response update).
 
 This directory holds **drafts**, three of which have been filed
-(one PR, two issues after the local working copy of the target file
-revealed the original PR shape would have been wrong) and one new
-high-priority draft awaiting a pre-submission shim.
+(one PR — open with maintainer-bot conditions; one issue — closed
+by Mastra maintainer with explicit "no third-party additions";
+one issue — open, no response yet) and one new high-priority
+draft awaiting a pre-submission shim.
 
 The strategic context lives in
 [`../2026-06-competitiveness.md`](../2026-06-competitiveness.md) (L1
@@ -16,14 +17,86 @@ worth more than an in-repo adapter.
 
 ## Submission record
 
-| Draft                                         | Target repo                       | What was filed                                      |
-|-----------------------------------------------|-----------------------------------|-----------------------------------------------------|
-| [`awesome-mcp-servers-frameworks-entry.md`](awesome-mcp-servers-frameworks-entry.md) | `punkpeye/awesome-mcp-servers` | **PR** [#7910](https://github.com/punkpeye/awesome-mcp-servers/pull/7910) — added to `Code Execution` section, single-line diff |
-| [`mastra-mcp-overview-link.md`](mastra-mcp-overview-link.md)                 | `mastra-ai/mastra`                | **Issue** [#17884](https://github.com/mastra-ai/mastra/issues/17884) — `docs/mcp/overview.mdx` has no clean insertion point; asked for content-shape decision before PR |
-| [`vercel-ai-sdk-mcp-example.md`](vercel-ai-sdk-mcp-example.md)               | `vercel/ai`                       | **Issue** [#16063](https://github.com/vercel/ai/issues/16063) — example placement (`examples/mcp-*` vs `sandboxed-tools` vs cookbook) needs maintainer nod first |
-| [`cloudflare-codemode-byo-executor.md`](cloudflare-codemode-byo-executor.md) | `cloudflare/agents`               | **DRAFT** — pre-submission gate: land `agentkitCodemodeExecutor` shim in `@agentkit-js/aisdk` first. Direction 1 priority entry. |
+| Draft                                         | Target repo                       | What was filed                                                                                                                                                                                                                                                |
+|-----------------------------------------------|-----------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`awesome-mcp-servers-frameworks-entry.md`](awesome-mcp-servers-frameworks-entry.md) | `punkpeye/awesome-mcp-servers` | **PR** [#7910](https://github.com/punkpeye/awesome-mcp-servers/pull/7910) — 🟡 OPEN. Glama bot ([2026-06-12](https://github.com/punkpeye/awesome-mcp-servers/pull/7910#issuecomment-4689364380)) requires (1) listing on `glama.ai/mcp/servers` with health checks and (2) Glama score badge in the entry. Action: Glama listing + PR amendment. |
+| [`mastra-mcp-overview-link.md`](mastra-mcp-overview-link.md)                 | `mastra-ai/mastra`                | **Issue** [#17884](https://github.com/mastra-ai/mastra/issues/17884) — 🔴 **CLOSED** by maintainer @roaminro ([2026-06-12](https://github.com/mastra-ai/mastra/issues/17884#issuecomment-4691748965)): *"we're not adding any new third-party projects to that section at the moment."* See "Maintainer responses" below for what this means strategically.                |
+| [`vercel-ai-sdk-mcp-example.md`](vercel-ai-sdk-mcp-example.md)               | `vercel/ai`                       | **Issue** [#16063](https://github.com/vercel/ai/issues/16063) — 🟡 OPEN, no maintainer response as of 2026-06-12. Standing by per the issue body's request for content-shape preference.                                                                       |
+| [`cloudflare-codemode-byo-executor.md`](cloudflare-codemode-byo-executor.md) | `cloudflare/agents`               | **DRAFT** — pre-submission gate: land `agentkitCodemodeExecutor` shim in `@agentkit-js/aisdk` first. Direction 1 priority entry.                                                                                                                              |
 
-## Why two were issues, not PRs
+## Maintainer responses (2026-06-12)
+
+The strategy memo's
+[falsifiability test](../2026-06-competitiveness.md#5-how-to-challenge-this-memo)
+is in part exactly *this* — does the upstream-runtime story land
+with upstream maintainers? Three responses arrived inside the
+first day; here is what each one tells us.
+
+### `awesome-mcp-servers#7910` — conditional acceptance
+
+The Glama bot requirement is mechanical (Glama listing + badge),
+not a maintainer rejection. Path forward:
+
+1. List `@agentkit-js/mcp-server` at `glama.ai/mcp/servers`. The
+   server already starts and answers introspection (CI verifies
+   it); no code change needed for the listing itself.
+2. Wait for Glama's health-check pass (typical ~24h ingestion).
+3. Amend the PR body with the Glama score badge:
+
+   ```markdown
+   [![telleroutlook/agentkit-js MCP server](https://glama.ai/mcp/servers/telleroutlook/agentkit-js/badges/score.svg)](https://glama.ai/mcp/servers/telleroutlook/agentkit-js)
+   ```
+
+This is the unambiguous follow-up: do the mechanical work, the
+PR moves. Tracked as the next concrete action under Direction 1.
+
+### `mastra-ai/mastra#17884` — explicit decline
+
+`@roaminro` (Mastra MEMBER) closed the issue with: *"we're not
+adding any new third-party projects to that section at the
+moment."* This is **not** a content-shape disagreement (the
+draft anticipated several content-shape options); it is a
+blanket policy on the docs surface for the moment.
+
+What this means:
+
+- **Strategic data point, not a defeat.** Mastra is a clear case
+  of "no upstream slot via official docs *right now*." The L1
+  thesis ("be embedded by leaders") still holds via the **other**
+  surfaces: `@agentkit-js/mastra-sandbox` is already a working
+  sandbox-provider package; whether or not the Mastra docs link
+  to it, Mastra users can opt in directly.
+- **Falsifiability tally.** One blanket decline counts as one
+  data point against the easy version of L1 ("upstream docs will
+  list us"). The harder version ("downloads materialize through
+  any path, doc-listed or not") has not been falsified — that is
+  what
+  [`docs/strategy/leaderboard-plan.md`](../leaderboard-plan.md)
+  and the upstream adapter download tracking are for.
+- **Re-attempt window.** The phrase *"at the moment"* is a soft
+  policy, not a permanent NACK. A re-pitch makes sense **after**
+  agentkit lands a public benchmark number (Direction 2) or a
+  large enough Mastra-side adoption signal that the policy
+  resets. Until then, do not re-open #17884; that is poor
+  manners and the maintainer's preference is already on record.
+
+The draft `mastra-mcp-overview-link.md` is left in this directory
+as the historical record of the ask. A follow-up draft
+(`mastra-re-pitch-after-benchmark.md`) will be added once a
+trigger condition is met; it is *not* prepared now because doing
+so would invite premature re-opening of a closed thread.
+
+### `vercel/ai#16063` — open, awaiting response
+
+No maintainer response as of 2026-06-12. The issue requests a
+content-shape decision (`examples/mcp/` vs `examples/sandboxed-tools/`
+vs cookbook entry) before opening a PR; behaviour is to **wait**
+rather than ping. If 30 days pass with no response we ping once,
+politely, with a one-line nudge — that is the standard etiquette
+for issue-thread maintenance and keeps the strategy memo's
+"behave like a guest in their repo" line honest.
+
+## Why two were issues, not PRs (original notes — kept for context)
 
 The drafts assumed both target pages had a clean insertion point. The
 local working copies, read on submission day, did not:
@@ -34,7 +107,9 @@ local working copies, read on submission day, did not:
   server *library*, not a registry — adding it as a tab would be
   the wrong shape. The honest move is to ask the maintainers if
   they'd accept a separate "Open-source MCP server libraries"
-  section, with agentkit as one of multiple seed entries.
+  section, with agentkit as one of multiple seed entries. *(Resolved
+  2026-06-12: maintainer declined the section. See "Maintainer
+  responses" above.)*
 - **vercel/ai** — `examples/mcp/` uses `experimental_createMCPClient`
   to *consume* an MCP server, which is a different shape from
   `tool()` + sandbox-kernel. Naming the new dir `mcp-agentkit/` would

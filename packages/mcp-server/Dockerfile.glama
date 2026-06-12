@@ -1,0 +1,43 @@
+# packages/mcp-server/Dockerfile.glama
+#
+# Used only for Glama's MCP-server health check at glama.ai/mcp/servers.
+# Boots the agentkit-mcp-server stdio binary so Glama can verify that
+# the server starts, answers `initialize` and `tools/list`, and shuts
+# down cleanly. NOT a production deployment image — for production,
+# install `@agentkit-js/mcp-server` from npm and write a small
+# `server.ts` that calls `runStdio()` with a real tool registry.
+#
+# Build (locally, to verify the image works before submitting to
+# Glama):
+#
+#   docker build -f packages/mcp-server/Dockerfile.glama -t agentkit-mcp .
+#   echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"glama-test","version":"0"}}}' | docker run --rm -i agentkit-mcp
+#
+# Expected: a single JSON-RPC response on stdout advertising
+# protocolVersion 2025-11-25 and the agentkit-mcp-server serverInfo.
+
+FROM node:20-slim
+
+WORKDIR /app
+
+# Bun is the project's build tool of choice; install it once.
+# git is needed because we clone the repo (npm tarball lacks the
+# workspace layout Glama would otherwise need).
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates curl unzip \
+ && rm -rf /var/lib/apt/lists/* \
+ && curl -fsSL https://bun.sh/install | bash \
+ && ln -s /root/.bun/bin/bun /usr/local/bin/bun
+
+# Pin to a specific commit at image-build time. When the Dockerfile is
+# updated for a new release, bump this SHA so the listing image is
+# reproducible.
+ARG GIT_REF=main
+RUN git clone --depth 1 --branch ${GIT_REF} https://github.com/telleroutlook/agentkit-js.git . \
+ && bun install --frozen-lockfile || bun install \
+ && bun run build
+
+# Glama exec's the container with no args; the bin entry is responsible
+# for starting the stdio server. The bin path resolves to
+# packages/mcp-server/dist/stdio.js per the package.json `bin` field.
+WORKDIR /app/packages/mcp-server
+CMD ["node", "dist/stdio.js"]
