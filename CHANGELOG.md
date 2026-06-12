@@ -16,6 +16,23 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **bscode `/recipes` live route — Direction 6 reverse-funnel
+  upgraded from docs to live page (2026-06-13).** The first round
+  of Direction 6 shipped only `docs/their-framework-our-kernel.md`
+  in the bscode repo. Now `apps/web/src/app/recipes/page.tsx` is
+  a clickable Next.js route that shows all five framework recipes
+  (Vercel AI SDK 6, Cloudflare codemode, Mastra, Anthropic Claude
+  Agent SDK, OpenAI Agents JS) with copy-snippet / copy-npm-install
+  / "try a live patch" / "open framework docs" buttons. Live patches
+  hit `apps/web/src/app/api/recipes/run/route.ts` (POST handler with
+  7 vitest cases). Each upstream link carries
+  `?utm_source=bscode-<framework>-recipe` so attribution back to
+  agentkit-js is preserved end-to-end. The bscode home page navbar
+  gains a purple "their framework + our kernel →" pill alongside
+  the existing green "npm add @agentkit-js/core →" pill so the
+  reverse-funnel pitch is visible from the very first paint.
+  bscode commit
+  [`19bc56d`](https://github.com/telleroutlook/bscode/commit/19bc56d).
 - **swe-bench-lite harness — `loadTasks` + `dispatchCodemode` (mock-mode)
   landed (2026-06-13).** `examples/benchmarks/swe-bench-lite.mjs` is no
   longer pure skeleton:
