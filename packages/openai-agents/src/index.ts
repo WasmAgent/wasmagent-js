@@ -167,3 +167,8 @@ export function codeModeAgentTool(
     },
   };
 }
+
+
+// ── D3 (2026-06-13): cross-framework memory product surface ─────────────────
+export { memoryAgentTool, ObservationalMemory } from "./memory.js";
+export type { MemoryToolOptions } from "./memory.js";

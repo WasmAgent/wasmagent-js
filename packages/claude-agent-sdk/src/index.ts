@@ -198,3 +198,8 @@ export function codeModeClaudeTool(opts: CodeModeClaudeToolOptions): ClaudeAgent
     },
   };
 }
+
+
+// ── D3 (2026-06-13): cross-framework memory product surface ─────────────────
+export { memoryClaudeTool, ObservationalMemory } from "./memory.js";
+export type { MemoryToolOptions } from "./memory.js";
