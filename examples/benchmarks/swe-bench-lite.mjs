@@ -440,11 +440,89 @@ function countToolCallsFromLogs(logs) {
   return n;
 }
 
-// eslint-disable-next-line no-unused-vars
-async function dispatchDirect(_task, _answerer) {
-  // TODO: same tool surface, but exposed as N direct MCP tools.
-  // Same answerer model, same task — only the dispatch shape varies.
-  throw new Error("dispatchDirect: not yet implemented");
+/**
+ * Direct-MCP dispatch: same fake repo tool surface as dispatchCodemode,
+ * but the answerer issues one tool call per round instead of one
+ * `execute_code` script. Used as the comparator cell in the Pareto
+ * report so we can measure the bootstrap-token / round-trip difference
+ * the code-mode pattern claims.
+ *
+ * Stub-mode (the only mode wired today): `answerer.callsFor(task)`
+ * returns the ordered list of `[toolName, args]` pairs the answerer
+ * "would have emitted". The harness applies them sequentially and
+ * accumulates the patch the same way dispatchCodemode does.
+ *
+ * @typedef {object} StubDirectAnswerer
+ * @property {"stub-direct"} kind
+ * @property {(task: SweBenchTask) => Array<[string, Record<string, unknown>]>} callsFor
+ *
+ * @param {SweBenchTask} task
+ * @param {StubDirectAnswerer | RealAnswerer} answerer
+ * @returns {Promise<{patch: string, toolCallCount: number, error?: string, logs: string[]}>}
+ */
+async function dispatchDirect(task, answerer) {
+  const repo = new Map();
+  let pendingPatch = "";
+  let calls = 0;
+  const logs = [];
+  const tools = {
+    async readFile({ path }) {
+      calls += 1;
+      logs.push(`[direct] readFile ${path}`);
+      if (!repo.has(path)) repo.set(path, `// stub contents of ${path}\n`);
+      return { content: repo.get(path) };
+    },
+    async writeFile({ path, content }) {
+      calls += 1;
+      logs.push(`[direct] writeFile ${path} (${content.length} bytes)`);
+      const before = repo.get(path) ?? "";
+      repo.set(path, content);
+      pendingPatch += `--- a/${path}\n+++ b/${path}\n@@ -1,1 +1,1 @@\n-${before.trim()}\n+${content.trim()}\n`;
+      return { ok: true };
+    },
+    async gitDiff() {
+      calls += 1;
+      return { patch: pendingPatch };
+    },
+    async runTestsInRepo() {
+      calls += 1;
+      return { note: "deferred to containerised judge" };
+    },
+  };
+
+  if (answerer.kind !== "stub-direct") {
+    throw new Error(
+      `dispatchDirect: real-mode answerer ('${answerer.kind}') not wired yet. ` +
+        "Stub-direct mode is the only path until the funded run lands."
+    );
+  }
+
+  let lastError;
+  try {
+    const callPlan = answerer.callsFor(task);
+    if (!Array.isArray(callPlan)) {
+      throw new TypeError("callsFor must return an array of [toolName, args] pairs");
+    }
+    for (const [name, args] of callPlan) {
+      const fn = /** @type {Record<string, (...args: unknown[]) => Promise<unknown>>} */ (
+        /** @type {unknown} */ (tools)
+      )[name];
+      if (typeof fn !== "function") {
+        throw new Error(`unknown tool: ${name}`);
+      }
+      await fn(args);
+    }
+  } catch (e) {
+    lastError = e.message ?? String(e);
+  }
+
+  const out = {
+    patch: pendingPatch,
+    toolCallCount: calls,
+    logs,
+  };
+  if (lastError !== undefined) out.error = lastError;
+  return out;
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -455,13 +533,112 @@ async function runTests(_task, _patch) {
   throw new Error("runTests: not yet implemented");
 }
 
-// eslint-disable-next-line no-unused-vars
-async function reportPareto(_results, _outPath) {
-  // TODO: write the Pareto report (accuracy × USD/correct × p95 wall ×
-  // J/correct), per dispatch shape, per answerer. Format: same as
-  // evals-runner's reportEvaluationsPareto so we get free
-  // McNemar / Wilson CI / paired-bootstrap framing.
-  throw new Error("reportPareto: not yet implemented");
+/**
+ * Render a Pareto-shaped markdown report from a list of dispatch
+ * results. Mirrors the shape of `@agentkit-js/evals-runner`'s report
+ * (accuracy × USD/correct × p95 wall × tool-call count) so the
+ * publication run can drop in real numbers without rewriting the
+ * format. Stub-mode populates the cells where it can; the real
+ * judge / answerer fill in the rest.
+ *
+ * @param {Array<{
+ *   instance_id: string,
+ *   dispatch: "codemode" | "direct",
+ *   answerer: string,
+ *   patch: string,
+ *   toolCallCount: number,
+ *   wallMs: number,
+ *   resolved: boolean | null,
+ *   usd: number | null,
+ *   error?: string,
+ * }>} results
+ * @param {string} outPath  Absolute path to write the markdown to.
+ * @returns {Promise<{path: string, summary: Record<string, unknown>}>}
+ */
+async function reportPareto(results, outPath) {
+  if (!Array.isArray(results)) {
+    throw new TypeError("reportPareto: results must be an array");
+  }
+
+  // Group by (dispatch × answerer); compute per-cell stats.
+  /** @type {Map<string, typeof results>} */
+  const cells = new Map();
+  for (const r of results) {
+    const k = `${r.dispatch}|${r.answerer}`;
+    if (!cells.has(k)) cells.set(k, []);
+    cells.get(k).push(r);
+  }
+
+  /** @type {Array<{cell: string, n: number, resolvedKnown: number, resolvedRate: number | null, p95Ms: number | null, meanCalls: number, errorRate: number, usdMean: number | null}>} */
+  const rows = [];
+  for (const [cell, rs] of cells) {
+    const n = rs.length;
+    const resolvedKnown = rs.filter((r) => typeof r.resolved === "boolean").length;
+    const resolvedTrue = rs.filter((r) => r.resolved === true).length;
+    const resolvedRate = resolvedKnown > 0 ? resolvedTrue / resolvedKnown : null;
+    const wallSorted = rs.map((r) => r.wallMs).sort((a, b) => a - b);
+    const p95Idx = Math.max(0, Math.ceil(wallSorted.length * 0.95) - 1);
+    const p95Ms = wallSorted.length > 0 ? wallSorted[p95Idx] : null;
+    const meanCalls =
+      n > 0 ? rs.reduce((s, r) => s + (r.toolCallCount ?? 0), 0) / n : 0;
+    const errorRate = n > 0 ? rs.filter((r) => r.error != null).length / n : 0;
+    const usdKnown = rs.filter((r) => typeof r.usd === "number");
+    const usdMean =
+      usdKnown.length > 0 ? usdKnown.reduce((s, r) => s + r.usd, 0) / usdKnown.length : null;
+    rows.push({ cell, n, resolvedKnown, resolvedRate, p95Ms, meanCalls, errorRate, usdMean });
+  }
+
+  // Format cells. `null` reports as `—` so a stub-mode run is
+  // visually distinguishable from a measured zero.
+  const fmtPct = (v) => (v == null ? "—" : `${(v * 100).toFixed(1)}%`);
+  const fmtMs = (v) => (v == null ? "—" : `${v.toFixed(0)}ms`);
+  const fmtUsd = (v) => (v == null ? "—" : `$${v.toFixed(4)}`);
+  const fmtNum = (v) => (Number.isFinite(v) ? v.toFixed(2) : "—");
+
+  const lines = [
+    "# SWE-bench-lite — code-mode vs direct dispatch (Pareto)",
+    "",
+    `> Generated ${new Date().toISOString()} by examples/benchmarks/swe-bench-lite.mjs.`,
+    "> Funded-run gates remaining: containerised judge (\\`runTests\\`) and",
+    "> real-mode Anthropic / OpenAI answerers. Stub-mode cells leave",
+    "> resolved% / p95 / USD as `—` so a publication run is visually",
+    "> distinguishable from this scaffold.",
+    "",
+    "| dispatch × answerer | n | resolved | p95 wall | mean tool calls | error rate | $/instance |",
+    "|---|---:|---:|---:|---:|---:|---:|",
+  ];
+  for (const r of rows) {
+    lines.push(
+      `| ${r.cell} | ${r.n} | ${fmtPct(r.resolvedRate)} | ${fmtMs(r.p95Ms)} | ${fmtNum(
+        r.meanCalls
+      )} | ${fmtPct(r.errorRate)} | ${fmtUsd(r.usdMean)} |`
+    );
+  }
+  lines.push("");
+  lines.push("## Methodology");
+  lines.push("");
+  lines.push(
+    "Methodology + pre-run checklist live at the top of",
+    "`examples/benchmarks/swe-bench-lite.mjs`. The Pareto axes —",
+    "accuracy × USD/correct × p95 wall × tool-call count — match the",
+    "`@agentkit-js/evals-runner` reports so a reader can compare cells",
+    "across benchmarks without translating shapes."
+  );
+
+  const md = lines.join("\n") + "\n";
+
+  // Best-effort write; surface the path so callers can chain other
+  // tools (CI artifact upload, PR-comment bot) against it.
+  await mkdir(dirname(outPath), { recursive: true });
+  await writeFile(outPath, md, "utf8");
+  return {
+    path: outPath,
+    summary: {
+      cells: rows.length,
+      totalResults: results.length,
+      anyResolved: rows.some((r) => (r.resolvedRate ?? 0) > 0),
+    },
+  };
 }
 
 async function smokeRun() {
@@ -552,6 +729,68 @@ async function smokeRun() {
     ok("dispatchCodemode real-mode should have thrown", false);
   } catch (e) {
     ok("dispatchCodemode rejects real-mode with clear message", String(e.message).includes("real-mode"));
+  }
+
+  // 5. dispatchDirect end-to-end through the stub-direct answerer.
+  //    Same fake repo surface, but the answerer emits a flat call
+  //    plan instead of a code-mode script. The two patches end up
+  //    different shapes (direct issues N rounds; code-mode issues
+  //    one) — exactly the variable the Pareto report measures.
+  let directResult;
+  try {
+    directResult = await dispatchDirect(t, {
+      kind: "stub-direct",
+      callsFor: (task) => [
+        ["readFile", { path: "src/main.js" }],
+        [
+          "writeFile",
+          { path: "src/main.js", content: `// fixed for ${task.instance_id}\n` },
+        ],
+        ["gitDiff", {}],
+      ],
+    });
+    ok("dispatchDirect runs without unhandled error", !directResult.error);
+    ok("dispatchDirect produces a non-empty patch", typeof directResult.patch === "string" && directResult.patch.length > 0);
+    ok("dispatchDirect counts the issued tool calls", directResult.toolCallCount === 3);
+  } catch (e) {
+    ok(`dispatchDirect threw: ${e.message}`, false);
+  }
+
+  // 6. reportPareto writes a markdown file with the cells we expect.
+  //    We feed it two synthetic results (one codemode, one direct)
+  //    so the table has both rows and the file is non-empty.
+  try {
+    const tmpReport = resolvePath(".cache/swe-bench-lite/smoke-report.md");
+    const fakeResults = [
+      {
+        instance_id: t.instance_id,
+        dispatch: "codemode",
+        answerer: "stub",
+        patch: "stub-codemode-patch",
+        toolCallCount: 4,
+        wallMs: 12,
+        resolved: null,
+        usd: null,
+      },
+      {
+        instance_id: t.instance_id,
+        dispatch: "direct",
+        answerer: "stub-direct",
+        patch: directResult?.patch ?? "stub-direct-patch",
+        toolCallCount: directResult?.toolCallCount ?? 3,
+        wallMs: 9,
+        resolved: null,
+        usd: null,
+      },
+    ];
+    const written = await reportPareto(fakeResults, tmpReport);
+    const contents = await readFile(written.path, "utf8");
+    ok("reportPareto wrote a non-empty markdown file", contents.length > 100);
+    ok("reportPareto report has the codemode row", contents.includes("codemode|stub"));
+    ok("reportPareto report has the direct row", contents.includes("direct|stub-direct"));
+    ok("reportPareto summary cells count matches input", written.summary.cells === 2);
+  } catch (e) {
+    ok(`reportPareto threw: ${e.message}`, false);
   }
 
   console.log("# SWE-bench-lite — smoke run output");
