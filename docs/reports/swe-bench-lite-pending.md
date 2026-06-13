@@ -88,18 +88,37 @@ node examples/benchmarks/swe-bench-lite.mjs --report \
 
 ## What we need before running
 
-The pre-run checklist lives in the harness file's docblock:
+The pre-run checklist lives in the harness file's docblock; gate-by-gate
+status as of 2026-06-13:
 
-- SWE-bench-lite dataset accessible (HuggingFace
-  `princeton-nlp/SWE-bench_Lite`, 300 instances).
-- Containerised test runner (no host execution).
-- Cache-token plumbing on the answerer adapter.
-- A 5-task dry run within ±10% of a known reference pass-rate.
+- ✅ **SWE-bench-lite dataset accessible.** `loadTasks(count)` paginates
+  `princeton-nlp/SWE-bench_Lite` via the HuggingFace datasets-server
+  API, caches to `.cache/swe-bench-lite/test.json`. Verify live with
+  `node examples/benchmarks/swe-bench-lite.mjs --load-tasks=3`.
+- ✅ **Containerised test runner.** `runTests(task, patch)` builds
+  `examples/benchmarks/judge/Dockerfile` on first call and runs
+  `docker run --rm -v $tmp:/work agentkit-swe-judge:latest`. The
+  judge (`judge.py`, ~250 lines) clones at `base_commit`, applies
+  `test_patch` + the agent patch, runs pytest per node-id from
+  `fail_to_pass` ∪ `pass_to_pass`, writes `result.json`.
+  `.github/workflows/swe-bench-judge.yml` exercises the docker
+  round-trip on a 1-task empty-patch case for $0 (workflow_dispatch).
+- ⚠️ **Cache-token plumbing on the answerer adapter.** Stub-mode
+  answerers in `dispatchCodemode` / `dispatchDirect` are wired and
+  testable; real-mode (Anthropic / OpenAI) throws a clear "not
+  wired yet" error. Lands when funded API access does.
+- ⚠️ **A 5-task dry run within ±10% of a known reference pass-rate.**
+  Blocked on the previous gate — needs the real-mode answerer.
 
-When all five gates are green and the API budget is committed, the
-run produces this page. Until then, the file stays as a placeholder
-+ a clear pointer to the harness, exactly the same pattern as
+When the two remaining gates are green and the API budget is
+committed, the run produces this page. Until then, the file stays
+as a placeholder + a clear pointer to the harness, exactly the
+same pattern as
 [`longmemeval-500-pending.md`](longmemeval-500-pending.md).
+
+The `--smoke` exerciser (26 offline checks, 0 network, 0 docker
+required) is a CI-friendly regression guard that the wiring stays
+intact while we wait on funding.
 
 ## Tracking
 

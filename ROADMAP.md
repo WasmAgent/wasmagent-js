@@ -105,15 +105,21 @@ the same A6 commit; see also the embedded "Why" lines below).
   [`docs/strategy/leaderboard-plan.md`](docs/strategy/leaderboard-plan.md).
 
 - **SWE-bench-lite-class code-mode dispatch run.** Promoted from
-  "considering" to "in flight" 2026-06-12 with the skeleton harness
-  at [`examples/benchmarks/swe-bench-lite.mjs`](examples/benchmarks/swe-bench-lite.mjs)
-  and the placeholder report at
+  "considering" → "in flight" 2026-06-12; harness completed
+  2026-06-13 — every implementation slot in
+  [`examples/benchmarks/swe-bench-lite.mjs`](examples/benchmarks/swe-bench-lite.mjs)
+  is now wired (`loadTasks` over the HuggingFace datasets-server
+  API, `dispatchCodemode` + `dispatchDirect` end-to-end stub-mode
+  paths, `runTests` containerised judge at
+  [`examples/benchmarks/judge/`](examples/benchmarks/judge/), and
+  `reportPareto` markdown writer). 26-check `--smoke` is the CI
+  regression guard. Placeholder report:
   [`docs/reports/swe-bench-lite-pending.md`](docs/reports/swe-bench-lite-pending.md).
-  Direction 2 of the 2026-06-12 optimization brief; comparator
-  Cloudflare Code Mode MCP has not published a SWE-bench number,
-  so the first credible run owns the citation slot. Pre-run
-  checklist (containerised judge, cache-token plumbing, dry-run
-  gate) lives in the harness file's docblock.
+  Remaining gates before publication: real-mode (Anthropic /
+  OpenAI) answerer wiring + funded API budget. Direction 2 of the
+  2026-06-12 optimization brief; comparator Cloudflare Code Mode
+  MCP has not published a SWE-bench number, so the first credible
+  run owns the citation slot.
 
 ## Considering (post-Q3, no commitment)
 
