@@ -1,0 +1,808 @@
+{
+  "startedAt": "2026-06-13T08:30:02.744Z",
+  "totalMs": 514660,
+  "models": [
+    {
+      "id": "evo-qwen3-1b7-q3km:latest",
+      "modelId": "evo-qwen3-1b7-q3km:latest",
+      "baseUrl": "http://localhost:11434/v1",
+      "apiKey": "ollama"
+    },
+    {
+      "id": "evomerge-qwen3-v2:latest",
+      "modelId": "evomerge-qwen3-v2:latest",
+      "baseUrl": "http://localhost:11434/v1",
+      "apiKey": "ollama"
+    }
+  ],
+  "suites": [
+    {
+      "name": "mt-tool-exec.arm-f-param-only",
+      "title": "Arm (f) param-only two-pass (grammar-pinned name + args)",
+      "description": "Per step: pass 1 grammar-pins tool-name choice from a closed enum; pass 2 grammar-pins args for that exact tool. The model never makes both decisions in the same call. Tests whether wrong-name + wrong-arg-name is the failure mode that scaffold can address; if it is, accuracy lifts and the bottleneck moves elsewhere."
+    }
+  ],
+  "seeds": [
+    0
+  ],
+  "aggregates": [
+    {
+      "modelId": "evo-qwen3-1b7-q3km:latest",
+      "suiteName": "mt-tool-exec.arm-f-param-only",
+      "seedAccs": [
+        0.5
+      ],
+      "meanAcc": 0.5,
+      "wilsonLo": 0.1876163063291083,
+      "wilsonHi": 0.8123836936708917,
+      "seedStd": 0,
+      "totalTokens": 44770,
+      "totalCostUsd": 0,
+      "medianWallMs": 12711,
+      "p95WallMs": 70108.25,
+      "warmupMs": 0,
+      "totalCells": 6,
+      "passedCells": 3
+    },
+    {
+      "modelId": "evomerge-qwen3-v2:latest",
+      "suiteName": "mt-tool-exec.arm-f-param-only",
+      "seedAccs": [
+        0.6666666666666666
+      ],
+      "meanAcc": 0.6666666666666666,
+      "wilsonLo": 0.29999331491929243,
+      "wilsonHi": 0.9032285889854148,
+      "seedStd": 0,
+      "totalTokens": 24590,
+      "totalCostUsd": 0,
+      "medianWallMs": 25227,
+      "p95WallMs": 135430.5,
+      "warmupMs": 0,
+      "totalCells": 6,
+      "passedCells": 4
+    }
+  ],
+  "cells": [
+    {
+      "modelId": "evo-qwen3-1b7-q3km:latest",
+      "seed": 0,
+      "itemId": "fs-1step-read",
+      "trace": {
+        "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-1step-read",
+        "task": "Read the file at notes/handbook.md and return its contents in your final answer.",
+        "events": [
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-1step-read",
+            "parentTraceId": null,
+            "timestampMs": 1781339402744,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evo-qwen3-1b7-q3km:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-1step-read",
+            "parentTraceId": null,
+            "timestampMs": 1781339411815,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evo-qwen3-1b7-q3km:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 1107,
+              "outputTokens": 1261,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-1step-read",
+            "parentTraceId": null,
+            "timestampMs": 1781339411815,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "DONE"
+            }
+          }
+        ],
+        "finalAnswer": "DONE",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": true,
+      "wallMs": 9071,
+      "tokens": {
+        "input": 1107,
+        "output": 1261,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "evo-qwen3-1b7-q3km:latest",
+      "seed": 0,
+      "itemId": "fs-2step-rename",
+      "trace": {
+        "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-rename",
+        "task": "Rename notes/draft.md to notes/final.md.",
+        "events": [
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-rename",
+            "parentTraceId": null,
+            "timestampMs": 1781339411816,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evo-qwen3-1b7-q3km:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-rename",
+            "parentTraceId": null,
+            "timestampMs": 1781339420874,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evo-qwen3-1b7-q3km:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 582,
+              "outputTokens": 1391,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-rename",
+            "parentTraceId": null,
+            "timestampMs": 1781339420874,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "DONE"
+            }
+          }
+        ],
+        "finalAnswer": "DONE",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": false,
+      "wallMs": 9058,
+      "tokens": {
+        "input": 582,
+        "output": 1391,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "evo-qwen3-1b7-q3km:latest",
+      "seed": 0,
+      "itemId": "fs-2step-write",
+      "trace": {
+        "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-write",
+        "task": "Create a new file at logs/today.txt with the content 'startup complete'.",
+        "events": [
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-write",
+            "parentTraceId": null,
+            "timestampMs": 1781339420874,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evo-qwen3-1b7-q3km:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-write",
+            "parentTraceId": null,
+            "timestampMs": 1781339425963,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evo-qwen3-1b7-q3km:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 608,
+              "outputTokens": 773,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-write",
+            "parentTraceId": null,
+            "timestampMs": 1781339425963,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "DONE"
+            }
+          }
+        ],
+        "finalAnswer": "DONE",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": true,
+      "wallMs": 5089,
+      "tokens": {
+        "input": 608,
+        "output": 773,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "evo-qwen3-1b7-q3km:latest",
+      "seed": 0,
+      "itemId": "fs-3step-archive",
+      "trace": {
+        "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-archive",
+        "task": "Move every file whose path starts with 'inbox/' into 'archive/' (preserving the filename).",
+        "events": [
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-archive",
+            "parentTraceId": null,
+            "timestampMs": 1781339425963,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evo-qwen3-1b7-q3km:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-archive",
+            "parentTraceId": null,
+            "timestampMs": 1781339462592,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evo-qwen3-1b7-q3km:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 3308,
+              "outputTokens": 5665,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-archive",
+            "parentTraceId": null,
+            "timestampMs": 1781339462592,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "DONE"
+            }
+          }
+        ],
+        "finalAnswer": "DONE",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": false,
+      "wallMs": 36629,
+      "tokens": {
+        "input": 3308,
+        "output": 5665,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "evo-qwen3-1b7-q3km:latest",
+      "seed": 0,
+      "itemId": "fs-3step-summarise-write",
+      "trace": {
+        "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-summarise-write",
+        "task": "Read notes/handbook.md, then create a file at notes/summary.md whose content begins with 'Summary:' and references the project codename from the handbook.",
+        "events": [
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-summarise-write",
+            "parentTraceId": null,
+            "timestampMs": 1781339462592,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evo-qwen3-1b7-q3km:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-summarise-write",
+            "parentTraceId": null,
+            "timestampMs": 1781339478943,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evo-qwen3-1b7-q3km:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 1225,
+              "outputTokens": 2524,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-summarise-write",
+            "parentTraceId": null,
+            "timestampMs": 1781339478943,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "DONE"
+            }
+          }
+        ],
+        "finalAnswer": "DONE",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": true,
+      "wallMs": 16351,
+      "tokens": {
+        "input": 1225,
+        "output": 2524,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "evo-qwen3-1b7-q3km:latest",
+      "seed": 0,
+      "itemId": "fs-3step-cleanup",
+      "trace": {
+        "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-cleanup",
+        "task": "Delete every .tmp file in the sandbox.",
+        "events": [
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-cleanup",
+            "parentTraceId": null,
+            "timestampMs": 1781339478943,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evo-qwen3-1b7-q3km:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-cleanup",
+            "parentTraceId": null,
+            "timestampMs": 1781339560211,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evo-qwen3-1b7-q3km:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 13824,
+              "outputTokens": 12502,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evo-qwen3-1b7-q3km:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-cleanup",
+            "parentTraceId": null,
+            "timestampMs": 1781339560211,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "DONE"
+            }
+          }
+        ],
+        "finalAnswer": "DONE",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": false,
+      "wallMs": 81268,
+      "tokens": {
+        "input": 13824,
+        "output": 12502,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "evomerge-qwen3-v2:latest",
+      "seed": 0,
+      "itemId": "fs-1step-read",
+      "trace": {
+        "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-1step-read",
+        "task": "Read the file at notes/handbook.md and return its contents in your final answer.",
+        "events": [
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-1step-read",
+            "parentTraceId": null,
+            "timestampMs": 1781339560212,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evomerge-qwen3-v2:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-1step-read",
+            "parentTraceId": null,
+            "timestampMs": 1781339582334,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evomerge-qwen3-v2:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 619,
+              "outputTokens": 1023,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-1step-read",
+            "parentTraceId": null,
+            "timestampMs": 1781339582334,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "DONE"
+            }
+          }
+        ],
+        "finalAnswer": "DONE",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": true,
+      "wallMs": 22122,
+      "tokens": {
+        "input": 619,
+        "output": 1023,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "evomerge-qwen3-v2:latest",
+      "seed": 0,
+      "itemId": "fs-2step-rename",
+      "trace": {
+        "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-rename",
+        "task": "Rename notes/draft.md to notes/final.md.",
+        "events": [
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-rename",
+            "parentTraceId": null,
+            "timestampMs": 1781339582334,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evomerge-qwen3-v2:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-rename",
+            "parentTraceId": null,
+            "timestampMs": 1781339601561,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evomerge-qwen3-v2:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 582,
+              "outputTokens": 962,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-rename",
+            "parentTraceId": null,
+            "timestampMs": 1781339601561,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "DONE"
+            }
+          }
+        ],
+        "finalAnswer": "DONE",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": false,
+      "wallMs": 19227,
+      "tokens": {
+        "input": 582,
+        "output": 962,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "evomerge-qwen3-v2:latest",
+      "seed": 0,
+      "itemId": "fs-2step-write",
+      "trace": {
+        "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-write",
+        "task": "Create a new file at logs/today.txt with the content 'startup complete'.",
+        "events": [
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-write",
+            "parentTraceId": null,
+            "timestampMs": 1781339601561,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evomerge-qwen3-v2:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-write",
+            "parentTraceId": null,
+            "timestampMs": 1781339623796,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evomerge-qwen3-v2:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 188,
+              "outputTokens": 1126,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-2step-write",
+            "parentTraceId": null,
+            "timestampMs": 1781339623796,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "DONE"
+            }
+          }
+        ],
+        "finalAnswer": "DONE",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": false,
+      "wallMs": 22235,
+      "tokens": {
+        "input": 188,
+        "output": 1126,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "evomerge-qwen3-v2:latest",
+      "seed": 0,
+      "itemId": "fs-3step-archive",
+      "trace": {
+        "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-archive",
+        "task": "Move every file whose path starts with 'inbox/' into 'archive/' (preserving the filename).",
+        "events": [
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-archive",
+            "parentTraceId": null,
+            "timestampMs": 1781339623796,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evomerge-qwen3-v2:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-archive",
+            "parentTraceId": null,
+            "timestampMs": 1781339751017,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evomerge-qwen3-v2:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 2461,
+              "outputTokens": 6184,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-archive",
+            "parentTraceId": null,
+            "timestampMs": 1781339751017,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "DONE"
+            }
+          }
+        ],
+        "finalAnswer": "DONE",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": true,
+      "wallMs": 127221,
+      "tokens": {
+        "input": 2461,
+        "output": 6184,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "evomerge-qwen3-v2:latest",
+      "seed": 0,
+      "itemId": "fs-3step-summarise-write",
+      "trace": {
+        "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-summarise-write",
+        "task": "Read notes/handbook.md, then create a file at notes/summary.md whose content begins with 'Summary:' and references the project codename from the handbook.",
+        "events": [
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-summarise-write",
+            "parentTraceId": null,
+            "timestampMs": 1781339751017,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evomerge-qwen3-v2:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-summarise-write",
+            "parentTraceId": null,
+            "timestampMs": 1781339779236,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evomerge-qwen3-v2:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 1226,
+              "outputTokens": 1351,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-summarise-write",
+            "parentTraceId": null,
+            "timestampMs": 1781339779236,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "DONE"
+            }
+          }
+        ],
+        "finalAnswer": "DONE",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": true,
+      "wallMs": 28219,
+      "tokens": {
+        "input": 1226,
+        "output": 1351,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "evomerge-qwen3-v2:latest",
+      "seed": 0,
+      "itemId": "fs-3step-cleanup",
+      "trace": {
+        "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-cleanup",
+        "task": "Delete every .tmp file in the sandbox.",
+        "events": [
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-cleanup",
+            "parentTraceId": null,
+            "timestampMs": 1781339779236,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evomerge-qwen3-v2:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-cleanup",
+            "parentTraceId": null,
+            "timestampMs": 1781339917403,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evomerge-qwen3-v2:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 2260,
+              "outputTokens": 6608,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evomerge-qwen3-v2:latest::mt-tool-exec.arm-f-param-only::0::fs-3step-cleanup",
+            "parentTraceId": null,
+            "timestampMs": 1781339917403,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "DONE"
+            }
+          }
+        ],
+        "finalAnswer": "DONE",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": true,
+      "wallMs": 138167,
+      "tokens": {
+        "input": 2260,
+        "output": 6608,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    }
+  ],
+  "pareto": [
+    {
+      "suiteName": "mt-tool-exec.arm-f-param-only",
+      "front": [
+        {
+          "modelId": "evo-qwen3-1b7-q3km:latest",
+          "meanAcc": 0.5,
+          "totalCostUsd": 0,
+          "p95WallMs": 70108.25
+        },
+        {
+          "modelId": "evomerge-qwen3-v2:latest",
+          "meanAcc": 0.6666666666666666,
+          "totalCostUsd": 0,
+          "p95WallMs": 135430.5
+        }
+      ]
+    }
+  ],
+  "warmup": false
+}
