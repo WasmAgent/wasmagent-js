@@ -419,11 +419,12 @@ async function runOnePoProgram(args: {
     if (!code) {
       error = `model returned no JS code block; raw head: ${raw.slice(0, 200)}`;
     } else {
-      // Strip a trailing IIFE invocation if the model wrote `(async () => {
-      // ... })()` AND a separate `;` — PO wraps the script itself, so the
-      // model's IIFE is fine; we only need to extract its body. PO also
-      // tolerates a top-level `await callTool(...)` directly because of
-      // the IIFE wrapping it does internally.
+      // Normalise: PO wraps whatever it receives in an outer async IIFE
+      // and awaits it, so a model-emitted IIFE becomes a no-op expression
+      // statement (PO's __r is undefined, toolCallCount=0). Strip the
+      // outer wrapper if the model wrote one — its body is what PO needs.
+      // Verified 2026-06-13 by direct probe (Run C post-mortem).
+      const body = stripIifeWrapper(code);
       try {
         const reg = new ToolRegistry();
         for (const t of cell.tools) reg.register(t);
@@ -431,7 +432,7 @@ async function runOnePoProgram(args: {
           kernelFactory() as never,
           reg,
         );
-        const poResult = await orchestrator.run(code);
+        const poResult = await orchestrator.run(body);
         answer = poResult.finalOutput;
       } catch (e) {
         error = `kernel/PO: ${e instanceof Error ? e.message : String(e)}`;
@@ -463,6 +464,41 @@ function extractFencedJs(response: string): string | null {
     /```(?:js|javascript|ts|typescript)?\n([\s\S]*?)(?:^|\n)```/m.exec(response) ??
     /```\n([\s\S]*?)(?:^|\n)```/m.exec(response);
   return m?.[1]?.trim() ?? null;
+}
+
+/**
+ * Strip an outer `(async () => { ... })()` or `(async function() { ... })()`
+ * wrapper if present, returning just the body. ProgrammaticOrchestrator
+ * itself wraps whatever it receives in `(async function() { ${script} })()`
+ * (see ProgrammaticOrchestrator.ts:190), so a model-provided IIFE becomes
+ * an *expression statement that's never returned* — the kernel runs it but
+ * the wrapper's `__r` ends up undefined and `toolCallCount: 0`.
+ *
+ * The CodeAct prompt teaches the model to emit IIFEs because that's the
+ * natural authoring shape (it lets `await` parse), so we normalise here
+ * rather than asking the model to emit body-only — which it tends to
+ * forget on later items, and which fights the prompt's worked example.
+ *
+ * Confirmed by direct probe (2026-06-13, see Run C post-mortem):
+ *   - IIFE-wrapped program → PO produces "" + 0 tool calls
+ *   - Body-only program    → PO drives all tool calls, judge passes
+ *
+ * The matchers are deliberately permissive (allow `=>`, `function`,
+ * trailing semicolon optional, leading whitespace) because small models
+ * vary the wrapper shape; we strip whichever variant we see.
+ */
+function stripIifeWrapper(code: string): string {
+  // Try arrow-IIFE first (the most common shape after our prompt).
+  // Pattern: ( async ( ) => { <body> } ) ( ) ;?
+  const arrowMatch =
+    /^\s*\(\s*async\s*\(\s*\)\s*=>\s*\{([\s\S]*)\}\s*\)\s*\(\s*\)\s*;?\s*$/.exec(code);
+  if (arrowMatch?.[1] !== undefined) return arrowMatch[1].trim();
+  // function-IIFE variant.
+  const fnMatch =
+    /^\s*\(\s*async\s+function\s*\(\s*\)\s*\{([\s\S]*)\}\s*\)\s*\(\s*\)\s*;?\s*$/.exec(code);
+  if (fnMatch?.[1] !== undefined) return fnMatch[1].trim();
+  // Not an IIFE — return as-is (PO will wrap it itself).
+  return code;
 }
 
 export const armCodeSuite: BenchmarkSuite = {
