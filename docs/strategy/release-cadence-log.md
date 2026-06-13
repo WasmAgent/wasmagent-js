@@ -39,6 +39,7 @@ etc.). The point is to make the cadence falsifiable.
 | Date (ISO) | Tag                  | Type     | Notes                                                                 |
 |------------|----------------------|----------|-----------------------------------------------------------------------|
 | 2026-06-12 | (initial publish)    | release  | First npm publish of `@agentkit-js/core@0.2.0` and the 31-package family. CHANGELOG `[Unreleased]` baseline starts here. |
+| 2026-06-13 | (no tag — mid-cycle) | status   | Mid-cycle status row. `[Unreleased]` has accumulated: Direction 1 codemode shim + mcp-server stdio entry; Direction 2 swe-bench-lite `loadTasks` / `dispatchCodemode` / `dispatchDirect` / `reportPareto`; Direction 6 bscode `/recipes` live route. Next bi-weekly tag window: ≤ 2026-06-26. Status rows do NOT count as releases — they exist so a reader can tell `[Unreleased]` has work landing without us silently waiting on the deadline. |
 
 Subsequent rows land on the same commit that adds the
 `CHANGELOG.md` section heading for the new version. The commit
