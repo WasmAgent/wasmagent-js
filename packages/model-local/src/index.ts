@@ -7,7 +7,7 @@
  *   import { LocalModel } from "@agentkit-js/model-local";
  *   import { CodeAgent } from "@agentkit-js/core";
  *
- *   const model = new LocalModel({ source: { model: "qwen3.5-0.8b" } });
+ *   const model = new LocalModel({ source: { model: "qwen2.5-1.5b" } });
  *   const agent = new CodeAgent({ model, tools: [] });
  *   for await (const ev of agent.run("compute 2+2")) console.log(ev);
  *   ```

@@ -23,7 +23,7 @@ import { LocalModel, localFirst } from "@agentkit-js/model-local";
 import { AnthropicModel, CodeAgent } from "@agentkit-js/core";
 
 // Pick one of three sources:
-const local = new LocalModel({ source: { model: "qwen3.5-0.8b" } });        // alias
+const local = new LocalModel({ source: { model: "qwen2.5-1.5b" } });        // alias
 // or:        new LocalModel({ source: { path: "./my-model.gguf" } });       // user GGUF
 // or:        new LocalModel({ source: { url: "https://..." } });            // direct URL
 
@@ -49,7 +49,7 @@ const model = localFirst(
 
 Three resolution layers, high → low precedence:
 
-1. **Programmatic** — `new LocalModel({ source: { model: "qwen3.5-0.8b" }, mirror: "modelscope" })`
+1. **Programmatic** — `new LocalModel({ source: { model: "qwen2.5-1.5b" }, mirror: "modelscope" })`
 2. **Environment** — `AGENTKIT_MODEL_MIRROR=hf-mirror` (or `modelscope`, or any URL prefix)
 3. **Registry default** — HuggingFace first, then mirrors
 
@@ -62,7 +62,7 @@ Custom CDN: pass any URL prefix as `mirror`, and the downloader will append the 
 
 ```bash
 # One-line CLI override:
-AGENTKIT_MODEL_MIRROR=modelscope npx agentkit model pull qwen3.5-0.8b
+AGENTKIT_MODEL_MIRROR=modelscope npx agentkit model pull qwen2.5-1.5b
 ```
 
 ⚠️ **Mirror trust model**: every download is sha256-verified against the registry value (which is anchored to the HuggingFace original). Mirrors are *transport channels*, not trust roots.
@@ -73,7 +73,7 @@ Sub-1B models routinely emit malformed JSON when asked to call tools. `LocalMode
 
 ```ts
 const model = new LocalModel({
-  source: { model: "qwen3.5-0.8b" },
+  source: { model: "qwen2.5-1.5b" },
   enableGrammar: true,  // default
 });
 ```
@@ -87,16 +87,16 @@ Set `enableGrammar: false` to compare A/B against free-form sampling — useful 
 agentkit model list
 
 # Pull (resumable, sha256-verified, multi-mirror).
-agentkit model pull qwen3.5-0.8b
+agentkit model pull qwen2.5-1.5b
 
 # Force a mirror.
-agentkit model pull qwen3.5-0.8b --mirror modelscope
+agentkit model pull qwen2.5-1.5b --mirror modelscope
 
 # Verify a cached file's sha256.
-agentkit model verify qwen3.5-0.8b
+agentkit model verify qwen2.5-1.5b
 
 # Free up disk.
-agentkit model rm qwen3.5-0.8b
+agentkit model rm qwen2.5-1.5b
 ```
 
 `agentkit-js/cli` declares `@agentkit-js/model-local` as an **optional peer** — if you don't install this package, the CLI falls back to a clean error message rather than crashing.
@@ -125,18 +125,18 @@ These are documented combinations of the existing `FallbackModel` from `@agentki
 
 | Alias | Best for | License | Size |
 |---|---|---|---|
-| `qwen2.5-0.5b` | Tool calling on tiny footprint — **3/3 form/picked/semantic on cert** (real-machine, 2026-06-12) | Apache-2.0 | ~380 MB (q4_0) |
-| `qwen3-0.6b` | English/code, smaller footprint | Apache-2.0 | ~400 MB (q4_k_m) |
-| `qwen3.5-0.8b` | Chinese + English, 262K context | Apache-2.0 | ~530 MB (q4_k_m) |
-| `gemma-3-1b` | English tasks, broad community | Gemma ToU | ~720 MB (q4_k_m) |
-| `llama-3.2-1b` | English/code, 128K context | Llama 3.2 Community | ~800 MB (q4_k_m) |
+| `qwen2.5-0.5b` | Tool calling on tiny footprint — **3/3 form/picked/semantic on cert** (real-machine, 2026-06-12) | Apache-2.0 | ~409 MB (q4_0, sha256 pinned 2026-06-13) |
+| `qwen3-0.6b` | English/code, only Q8_0 quant published | Apache-2.0 | ~610 MB (q8_0, sha256 pinned 2026-06-13) |
+| `qwen2.5-1.5b` | Chinese + English, 32K context (Stage-0 ≤2GB winner per evomerge GSM8K 70.5%) | Apache-2.0 | ~1.07 GB (q4_k_m, sha256 pinned 2026-06-13) |
+| `gemma-3-1b` | English tasks, ggml-org mirror | Gemma ToU | ~769 MB (q4_k_m, sha256 pinned 2026-06-13) |
+| `llama-3.2-1b` | English/code, 128K context, lmstudio-community mirror | Llama 3.2 Community | ~770 MB (q4_k_m, sha256 pinned 2026-06-13) |
 
 See `docs/reports/local-model-cert-2026-06-12.md` in the agentkit-js repo for the full real-machine baseline.
 
 Run the cert harness on any of them (or your own GGUF):
 
 ```bash
-node examples/benchmarks/local-model-cert.mjs --model qwen3.5-0.8b --kernel quickjs
+node examples/benchmarks/local-model-cert.mjs --model qwen2.5-1.5b --kernel quickjs
 node examples/benchmarks/local-model-cert.mjs --path ./my-model.gguf --out report.md
 ```
 

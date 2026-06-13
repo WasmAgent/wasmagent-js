@@ -104,13 +104,15 @@ describe("LocalModel construction", () => {
   });
 
   it("uses the registry contextWindow when source is a known alias", () => {
-    const m = new LocalModel({ source: { model: "qwen3.5-0.8b" } });
-    expect(m.capabilities.contextWindow).toBe(262_144);
+    // qwen2.5-1.5b is the V3-pinned reference alias (32K context window).
+    // Replaces the dropped qwen3.5-0.8b which never existed on HF.
+    const m = new LocalModel({ source: { model: "qwen2.5-1.5b" } });
+    expect(m.capabilities.contextWindow).toBe(32_768);
     expect(m.capabilities.localEndpoint).toBe(true);
     expect(m.capabilities.metered).toBe(false);
     expect(m.capabilities.supportsGrammar).toBe(true);
     expect(m.capabilities.cacheStrategy).toBe("none");
-    expect(m.providerId).toBe("local-qwen3.5-0.8b");
+    expect(m.providerId).toBe("local-qwen2.5-1.5b");
   });
 
   it("throws a clean dependency error when node-llama-cpp is not installed", async () => {

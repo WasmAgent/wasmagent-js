@@ -37,6 +37,7 @@ export {
   latencyUnderBudgetSuite,
   longContextRecallSuite,
   multiTurnMemorySuite,
+  multiTurnToolExecSuite,
   REFERENCE_SUITES,
   toolSequenceSuite,
 } from "./suites/index.js";
@@ -57,6 +58,7 @@ export type {
   ModelProvider,
   ModelSpec,
   RunEvaluationOptions,
+  RunItemResult,
   RunResult,
   SuiteAggregate,
 } from "./types.js";

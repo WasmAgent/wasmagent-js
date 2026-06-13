@@ -362,7 +362,9 @@ describe("modelCommand", () => {
     const { modelCommand } = await import("./index.js");
     await modelCommand(["list"], {});
     const calls = (consoleLogSpy.mock.calls as unknown[][]).map((c) => String(c[0]));
-    expect(calls.some((s) => s.includes("qwen3.5-0.8b"))).toBe(true);
+    // qwen3.5-0.8b was retired in V3 (2026-06-13); qwen2.5-1.5b takes its slot
+    // as the Qwen reference alias since it actually exists on HF.
+    expect(calls.some((s) => s.includes("qwen2.5-1.5b"))).toBe(true);
     expect(calls.some((s) => s.includes("gemma-3-1b"))).toBe(true);
     expect(calls.some((s) => s.includes("Apache-2.0"))).toBe(true);
   });

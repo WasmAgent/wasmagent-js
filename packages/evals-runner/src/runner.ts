@@ -228,6 +228,16 @@ async function runCell(args: {
 }): Promise<RunResult> {
   const { suite, model, seed, item, provider } = args;
   const startMs = Date.now();
+
+  // V1: when the suite supplies its own runItem, hand the cell over to
+  // the suite. This is the only way to test "real multi-turn" — the
+  // single-call branch below is fundamentally a calculator-of-text-match
+  // and cannot answer the scaffold-vs-bare question (TinyLLM 2025-11
+  // motivates this distinction explicitly).
+  if (suite.runItem) {
+    return runCellViaSuite({ suite, model, seed, item, startMs });
+  }
+
   const messages = item.messages ?? [
     {
       role: "system" as const,
@@ -321,6 +331,109 @@ async function runCell(args: {
   };
 }
 
+/**
+ * V1 path: the suite owns the cell. We delegate, then build the same
+ * RunResult shape so aggregates / pareto / report don't need to know
+ * which path produced the cell.
+ *
+ * If the suite throws, we mark the cell as errored — the runner never
+ * crashes mid-evaluation; one bad item shouldn't kill a 1000-cell run.
+ * Token + cost accounting falls back to zeros when the suite couldn't
+ * compute them (local Ollama: prices are zero anyway, so this is honest).
+ */
+async function runCellViaSuite(args: {
+  suite: BenchmarkSuite;
+  model: ModelSpec;
+  seed: number;
+  item: BenchmarkItem;
+  startMs: number;
+}): Promise<RunResult> {
+  const { suite, model, seed, item, startMs } = args;
+  let res: Awaited<ReturnType<NonNullable<BenchmarkSuite["runItem"]>>>;
+  try {
+    res = await suite.runItem!({ item, model, seed });
+  } catch (e) {
+    const err = e instanceof Error ? e.message : String(e);
+    res = { answer: null, passed: false, error: err };
+  }
+  const wallMs = res.wallMs ?? Date.now() - startMs;
+  const inputTokens = res.tokens?.input ?? 0;
+  const outputTokens = res.tokens?.output ?? 0;
+  const cacheRead = res.tokens?.cacheRead ?? 0;
+  const error = res.error ?? null;
+
+  // Synthesise (or pass through) a trace.
+  const traceId = `${model.id}::${suite.name}::${seed}::${item.id}`;
+  const events: AgentEvent[] = (res.events as AgentEvent[] | undefined) ?? [
+    {
+      traceId,
+      parentTraceId: null,
+      timestampMs: startMs,
+      channel: "model",
+      event: "model_start",
+      data: { modelId: model.modelId ?? model.id, step: 1 },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any,
+    {
+      traceId,
+      parentTraceId: null,
+      timestampMs: startMs + wallMs,
+      channel: "model",
+      event: "model_done",
+      data: {
+        modelId: model.modelId ?? model.id,
+        step: 1,
+        finishReason: error ? "error" : "stop",
+        inputTokens,
+        outputTokens,
+        estimatedUsd: priceUsd(model, inputTokens, outputTokens),
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any,
+    {
+      traceId,
+      parentTraceId: null,
+      timestampMs: startMs + wallMs,
+      channel: "text",
+      event: error ? "error" : "final_answer",
+      data: error ? { error } : { answer: res.answer ?? "" },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any,
+  ];
+  const trace = {
+    traceId,
+    task: item.task,
+    events,
+    finalAnswer: error ? null : (res.answer ?? ""),
+    toolCalls: [] as Array<{ toolName: string; args: Record<string, unknown>; callId: string }>,
+    toolResults: [] as Array<{
+      toolName: string;
+      output: unknown;
+      callId: string;
+      isError: boolean;
+    }>,
+  };
+
+  // Scoring: when the suite supplied scores, trust them (it has direct
+  // access to the environment state and judges authoritatively).
+  // Otherwise fall back to running the suite's scorers on the synthesised
+  // trace, same as the single-call path.
+  const scores = res.scores ?? (await runScorers(suite.scorers, trace, item));
+
+  return {
+    modelId: model.id,
+    seed,
+    itemId: item.id,
+    trace,
+    scores,
+    passed: res.passed,
+    wallMs,
+    tokens: { input: inputTokens, output: outputTokens, cacheRead },
+    costUsd: priceUsd(model, inputTokens, outputTokens),
+    error,
+  };
+}
+
 async function runScorers(
   scorers: Scorer[],
   trace: ReturnType<typeof Object>,
@@ -368,11 +481,14 @@ function buildAggregates(
   const out: SuiteAggregate[] = [];
   for (const suite of suites) {
     for (const model of models) {
+      // Filter by traceId rather than item-id membership: the V1 ablation
+      // arms (multi-turn-scaffold-arms.ts) all share the same item IDs
+      // across multiple suites, so item-id membership double-counts.
+      // traceId is shaped `${model.id}::${suite.name}::${seed}::${item.id}`,
+      // which uniquely identifies (suite, cell).
+      const suiteTag = `::${suite.name}::`;
       const cellsForModelSuite = cells.filter(
-        (c) =>
-          c.modelId === model.id &&
-          // suite name is encoded in trace.traceId; cheaper to test the suite-item membership
-          suite.items.some((it) => it.id === c.itemId)
+        (c) => c.modelId === model.id && c.trace.traceId.includes(suiteTag),
       );
       const seedAccs: number[] = [];
       for (const seed of seeds) {

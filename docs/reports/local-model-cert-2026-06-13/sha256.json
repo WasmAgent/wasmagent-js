@@ -1,0 +1,57 @@
+{
+  "qwen2.5-0.5b": {
+    "alias": "qwen2.5-0.5b",
+    "sha256": "7671c0c304e6ce5a7fc577bcb12aba01e2c155cc2efd29b2213c95b18edaf6ed",
+    "sizeBytes": 428730208,
+    "sourceUsed": {
+      "kind": "huggingface",
+      "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf"
+    },
+    "cacheHit": true,
+    "computedAt": "2026-06-13T02:06:41.688Z"
+  },
+  "qwen2.5-1.5b": {
+    "alias": "qwen2.5-1.5b",
+    "sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+    "sizeBytes": 1117320736,
+    "sourceUsed": {
+      "kind": "hf-mirror",
+      "url": "https://hf-mirror.com/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+    },
+    "cacheHit": false,
+    "computedAt": "2026-06-13T02:07:05.710Z"
+  },
+  "qwen3-0.6b": {
+    "alias": "qwen3-0.6b",
+    "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+    "sizeBytes": 639446688,
+    "sourceUsed": {
+      "kind": "hf-mirror",
+      "url": "https://hf-mirror.com/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf"
+    },
+    "cacheHit": false,
+    "computedAt": "2026-06-13T02:07:19.015Z"
+  },
+  "gemma-3-1b": {
+    "alias": "gemma-3-1b",
+    "sha256": "8ccc5cd1f1b3602548715ae25a66ed73fd5dc68a210412eea643eb20eb75a135",
+    "sizeBytes": 806058240,
+    "sourceUsed": {
+      "kind": "hf-mirror",
+      "url": "https://hf-mirror.com/ggml-org/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf"
+    },
+    "cacheHit": false,
+    "computedAt": "2026-06-13T02:07:36.127Z"
+  },
+  "llama-3.2-1b": {
+    "alias": "llama-3.2-1b",
+    "sha256": "f7ede42862ceca07ad1c88a97b67520019c4ac7e5ced250d2e696fa62ab189af",
+    "sizeBytes": 807690688,
+    "sourceUsed": {
+      "kind": "hf-mirror",
+      "url": "https://hf-mirror.com/lmstudio-community/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf"
+    },
+    "cacheHit": false,
+    "computedAt": "2026-06-13T02:07:53.370Z"
+  }
+}
