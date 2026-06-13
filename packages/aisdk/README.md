@@ -3,6 +3,8 @@
 > Drop agentkit-js sandbox kernels into the **Vercel AI SDK** as a `tool()`.
 > Edge-safe code execution, one capability manifest, no E2B / OS sandbox needed.
 
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/telleroutlook/agentkit-js/tree/main/examples/aisdk-quickjs?file=index.mjs)
+
 ## Why this exists
 
 Vercel AI SDK 6 has world-class React DX, streaming UI primitives, and
@@ -124,3 +126,30 @@ for the per-kernel honouring matrix.
   — the same code-mode pattern as a standalone MCP server.
 - [`@agentkit-js/mastra-sandbox`](https://www.npmjs.com/package/@agentkit-js/mastra-sandbox)
   — the same kernels as a Mastra sandbox provider.
+
+## Memory tool (D3, 2026-06-13)
+
+Cross-session memory backed by any `KvBackend` (Cloudflare KV, Redis,
+in-memory Map, …) — same primitive as `createMemoryTool` in
+`@agentkit-js/core`, exposed as a Vercel AI SDK `tool()`:
+
+```ts
+import { generateText } from "ai";
+import { memoryTool } from "@agentkit-js/aisdk";
+import { MapKvBackend } from "@agentkit-js/core";
+
+await generateText({
+  model: openai("gpt-4o-mini"),
+  tools: { memory: memoryTool({ backend: new MapKvBackend() }) },
+  prompt: "Remember that the user's preferred CSV delimiter is `;`.",
+});
+```
+
+The same `memoryTool` is also exposed by `@agentkit-js/claude-agent-sdk`
+(as `memoryClaudeTool`) and `@agentkit-js/openai-agents` (as
+`memoryAgentTool`) — pick the one that matches your framework and the
+backend follows you across them.
+
+`ObservationalMemory` (continuous compression with prompt-cache-stable
+prefix — Mastra OM equivalent) is also re-exported for callers running
+an agentkit `MessageAssembler`.

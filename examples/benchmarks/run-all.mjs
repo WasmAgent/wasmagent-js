@@ -18,6 +18,9 @@ const benchmarks = [
   "cost-comparison.mjs",
   // S1/A1: code-mode bootstrap O(1) vs direct-MCP O(N).
   "code-mode-tokens.mjs",
+  // D1 (2026-06-13): Portal federation — bootstrap stays O(1) across M
+  // upstream servers, beating both direct multi-MCP and per-server code-mode.
+  "portal-tokens.mjs",
 ];
 
 let failed = 0;

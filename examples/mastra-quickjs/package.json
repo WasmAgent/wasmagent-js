@@ -1,0 +1,14 @@
+{
+  "name": "mastra-quickjs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "D5 — Mastra agent with agentkit-js QuickJS sandbox provider (StackBlitz-runnable)",
+  "type": "module",
+  "scripts": { "start": "node index.mjs" },
+  "dependencies": {
+    "@agentkit-js/mastra-sandbox": "workspace:*",
+    "@agentkit-js/kernel-quickjs": "workspace:*",
+    "quickjs-emscripten": "^0.31.0",
+    "@jitl/quickjs-wasmfile-release-sync": "^0.31.0"
+  }
+}

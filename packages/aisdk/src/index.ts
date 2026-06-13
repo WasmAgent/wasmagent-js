@@ -161,3 +161,11 @@ export {
   type CodemodeProvidersOrFns,
   type CodemodeResolvedProvider,
 } from "./codemodeExecutor.js";
+
+// ── D3 (2026-06-13): cross-framework memory product surface ─────────────────
+// The agentkit memory primitives (`createMemoryTool`, `ObservationalMemory`)
+// were previously only consumable from inside agentkit. The `memoryTool`
+// adapter below makes them usable from a Vercel AI SDK project without an
+// agentkit agent loop. See `./memory.ts` for the rationale.
+export { memoryTool, ObservationalMemory } from "./memory.js";
+export type { MemoryToolOptions } from "./memory.js";

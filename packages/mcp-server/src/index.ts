@@ -52,6 +52,13 @@ export type { CodeModeServerOptions } from "./codeMode.js";
 export { createCodeModeServer } from "./codeMode.js";
 export { createFetchHandler } from "./fetchHandler.js";
 export { McpAgentServer } from "./McpAgentServer.js";
+// D1 — neutral multi-server Portal (S1 strategic line, 2026-06-13):
+//   Federate N upstream MCP servers (or any ToolRegistry) behind the same
+//   two-tool code-mode surface. Same token math as direct code-mode, plus
+//   one auditable CapabilityManifest spanning all upstreams. Runtime-neutral
+//   counterpart to Cloudflare's announced MCP Server Portals.
+export { createPortalServer } from "./portal.js";
+export type { CreatePortalServerOptions, McpPortalUpstream } from "./portal.js";
 export { InMemoryTaskStore } from "./taskStore.js";
 export type {
   McpAgentServerOptions,

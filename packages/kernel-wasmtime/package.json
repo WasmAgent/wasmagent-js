@@ -47,7 +47,8 @@
     "url": "https://github.com/telleroutlook/agentkit-js/issues"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "files": [
     "dist",

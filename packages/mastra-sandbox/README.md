@@ -4,6 +4,8 @@
 > isolation with no external infrastructure — drop-in alternative to
 > Blaxel / E2B / Daytona providers.
 
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/telleroutlook/agentkit-js/tree/main/examples/mastra-quickjs?file=index.mjs)
+
 ## Why this exists
 
 Mastra (mastra.ai) opened its sandbox-provider contract in 2026-02 so users
