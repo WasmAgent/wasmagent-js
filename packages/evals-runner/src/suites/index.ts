@@ -9,6 +9,8 @@ export {
   armCodeSuite,
   armFullSuite,
   armGrammarSuite,
+  armParamOnlyOnePassSuite,
+  armParamOnlySuite,
   armSelfConsistencySuite,
 } from "./multi-turn-scaffold-arms.js";
 export { multiTurnToolExecSuite } from "./multi-turn-tool-exec.js";
