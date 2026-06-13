@@ -1,0 +1,79 @@
+# .github/workflows/swe-bench-judge.yml
+#
+# Builds the SWE-bench-lite judge container image and verifies the
+# judge round-trips on a single sample instance. NOT triggered on
+# every push — only on a manual dispatch (workflow_dispatch) so we
+# do not burn CI cycles for a benchmark that only ships periodic
+# publication runs.
+#
+# What this workflow does:
+#   1. Build examples/benchmarks/judge/Dockerfile.
+#   2. Run the smoke test of swe-bench-lite.mjs to verify the JS
+#      harness still wires up.
+#   3. Run runTests(task, patch) against ONE real SWE-bench-lite
+#      instance with a deliberately-empty patch — expected outcome
+#      is `applied: false` (empty patch should fail to apply or
+#      yield resolved: false). This proves the docker round-trip
+#      end-to-end without burning a model.
+#
+# What this workflow does NOT do:
+#   - Run a model. Real-answerer mode is funded-only; the workflow
+#     intentionally uses an empty patch so the cost is $0.
+#   - Run all 300 SWE-bench-lite instances. That is a publication
+#     run; a separate workflow with funded API keys handles it.
+#   - Block any other CI job. This is workflow_dispatch only, never
+#     a required check.
+
+name: swe-bench-lite-judge
+
+on:
+  workflow_dispatch:
+    inputs:
+      instance_id:
+        description: "SWE-bench-lite instance_id to judge (default: first task)"
+        required: false
+        default: ""
+      tasks:
+        description: "How many tasks to load from HF (1-10 OK; > 10 needs proxy access on the runner)"
+        required: false
+        default: "1"
+
+permissions:
+  contents: read
+
+jobs:
+  judge-roundtrip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install workspace deps
+        run: bun install --frozen-lockfile || bun install
+
+      - name: Build dist
+        run: bun run build
+
+      - name: Smoke (no docker required)
+        run: node examples/benchmarks/swe-bench-lite.mjs --smoke
+
+      - name: Build judge image
+        run: docker build -t agentkit-swe-judge:latest examples/benchmarks/judge/
+
+      - name: Round-trip judge against one task with an empty patch
+        # The empty-patch case is expected to yield resolved=false; we
+        # only verify the result.json shape so a future "real patch"
+        # run has the wiring ready.
+        run: |
+          node examples/benchmarks/judge-roundtrip-ci.mjs \
+            --tasks=${{ inputs.tasks || 1 }} \
+            ${{ inputs.instance_id && format('--instance={0}', inputs.instance_id) || '' }}

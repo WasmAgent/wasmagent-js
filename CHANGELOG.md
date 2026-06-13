@@ -16,6 +16,37 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **swe-bench-lite container judge — `runTests` slot filled
+  (2026-06-13).** The last unfilled slot in `examples/benchmarks/swe-bench-lite.mjs`
+  now ships:
+  - `examples/benchmarks/judge/Dockerfile` — Python 3.11 + git +
+    build essentials (~150 MB image).
+  - `examples/benchmarks/judge/judge.py` (~250 lines) — clones the
+    task repo at `base_commit`, applies `test_patch` + the agent
+    patch, runs pytest per node-id from `fail_to_pass` ∪
+    `pass_to_pass`, writes a `result.json` with passed/failed splits.
+    `resolved` is true iff applied AND every fail_to_pass passes
+    AND every pass_to_pass still passes.
+  - `runTests(task, patch, opts?)` in the harness — builds the
+    image on first call (or trusts `--skipBuild`), runs
+    `docker run --rm -v $tmp:/work agentkit-swe-judge:latest`,
+    parses the result back. NEVER touches the host (the brief's
+    pre-run-checklist hard gate). On hosts without docker
+    (the typical contributor laptop / unprivileged CI runner),
+    returns a well-typed result with `error: "docker not available"`
+    so smoke / Pareto report scaffolding still works.
+  - `.github/workflows/swe-bench-judge.yml` — `workflow_dispatch`-only
+    workflow that builds the image, runs the smoke test, then runs
+    `examples/benchmarks/judge-roundtrip-ci.mjs` (a 1-task empty-patch
+    round-trip that proves docker → judge → result.json end-to-end
+    without a model). Cost: $0.
+  - `swe-bench-lite.mjs` exports `loadTasks`, `dispatchCodemode`,
+    `dispatchDirect`, `runTests`, `reportPareto` for programmatic
+    use; the CLI dispatch is now wrapped in an `isMain` guard so
+    importing the module does NOT trigger the CLI exit-2 path.
+  - `--smoke` is now 26 offline checks (was 19): adds 7 runTests
+    shape assertions covering well-typed object, boolean fields,
+    array shapes, error-on-no-docker fallback path, wallMs sanity.
 - **bscode `/recipes` live route — Direction 6 reverse-funnel
   upgraded from docs to live page (2026-06-13).** The first round
   of Direction 6 shipped only `docs/their-framework-our-kernel.md`
