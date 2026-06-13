@@ -1,0 +1,808 @@
+{
+  "startedAt": "2026-06-13T05:16:41.001Z",
+  "totalMs": 9466,
+  "models": [
+    {
+      "id": "qwen2.5:0.5b",
+      "modelId": "qwen2.5:0.5b",
+      "baseUrl": "http://localhost:11434/v1",
+      "apiKey": "ollama"
+    },
+    {
+      "id": "evomerge-qwen25-1b5:latest",
+      "modelId": "evomerge-qwen25-1b5:latest",
+      "baseUrl": "http://localhost:11434/v1",
+      "apiKey": "ollama"
+    }
+  ],
+  "suites": [
+    {
+      "name": "mt-tool-exec.arm-c-code",
+      "title": "Arm (c) ProgrammaticOrchestrator + QuickJSKernel (CodeAct)",
+      "description": "One model call → one async IIFE program → ProgrammaticOrchestrator drives the kernel and re-runs with cached tool results. Tests the compress-the-rounds hypothesis (CodeAct, MS Agent Framework 2026-04). 2026-06-13 fix: previous attempt used CodeAgent + bare kernel and had no tool injection; replaced."
+    }
+  ],
+  "seeds": [
+    0
+  ],
+  "aggregates": [
+    {
+      "modelId": "qwen2.5:0.5b",
+      "suiteName": "mt-tool-exec.arm-c-code",
+      "seedAccs": [
+        0
+      ],
+      "meanAcc": 0,
+      "wilsonLo": 0,
+      "wilsonHi": 0.3903342882858781,
+      "seedStd": 0,
+      "totalTokens": 3784,
+      "totalCostUsd": 0,
+      "medianWallMs": 702.5,
+      "p95WallMs": 1150,
+      "warmupMs": 0,
+      "totalCells": 6,
+      "passedCells": 0
+    },
+    {
+      "modelId": "evomerge-qwen25-1b5:latest",
+      "suiteName": "mt-tool-exec.arm-c-code",
+      "seedAccs": [
+        0.5
+      ],
+      "meanAcc": 0.5,
+      "wilsonLo": 0.1876163063291083,
+      "wilsonHi": 0.8123836936708917,
+      "seedStd": 0,
+      "totalTokens": 3304,
+      "totalCostUsd": 0,
+      "medianWallMs": 682.5,
+      "p95WallMs": 1597.25,
+      "warmupMs": 0,
+      "totalCells": 6,
+      "passedCells": 3
+    }
+  ],
+  "cells": [
+    {
+      "modelId": "qwen2.5:0.5b",
+      "seed": 0,
+      "itemId": "fs-1step-read",
+      "trace": {
+        "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-1step-read",
+        "task": "Read the file at notes/handbook.md and return its contents in your final answer.",
+        "events": [
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-1step-read",
+            "parentTraceId": null,
+            "timestampMs": 1781327801001,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "qwen2.5:0.5b",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-1step-read",
+            "parentTraceId": null,
+            "timestampMs": 1781327801899,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "qwen2.5:0.5b",
+              "step": 1,
+              "finishReason": "error",
+              "inputTokens": 470,
+              "outputTokens": 38,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-1step-read",
+            "parentTraceId": null,
+            "timestampMs": 1781327801899,
+            "channel": "text",
+            "event": "error",
+            "data": {
+              "error": "kernel/PO: Tool \"read_file\" failed: Tool \"read_file\" called with missing/invalid arguments. Required fields: path. Fix: call read_file again with all required arguments filled in. Details: {\"path\":[\"Required\"]}"
+            }
+          }
+        ],
+        "finalAnswer": null,
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": false,
+      "wallMs": 898,
+      "tokens": {
+        "input": 470,
+        "output": 38,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": "kernel/PO: Tool \"read_file\" failed: Tool \"read_file\" called with missing/invalid arguments. Required fields: path. Fix: call read_file again with all required arguments filled in. Details: {\"path\":[\"Required\"]}"
+    },
+    {
+      "modelId": "qwen2.5:0.5b",
+      "seed": 0,
+      "itemId": "fs-2step-rename",
+      "trace": {
+        "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-2step-rename",
+        "task": "Rename notes/draft.md to notes/final.md.",
+        "events": [
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-2step-rename",
+            "parentTraceId": null,
+            "timestampMs": 1781327801899,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "qwen2.5:0.5b",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-2step-rename",
+            "parentTraceId": null,
+            "timestampMs": 1781327803086,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "qwen2.5:0.5b",
+              "step": 1,
+              "finishReason": "error",
+              "inputTokens": 463,
+              "outputTokens": 338,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-2step-rename",
+            "parentTraceId": null,
+            "timestampMs": 1781327803086,
+            "channel": "text",
+            "event": "error",
+            "data": {
+              "error": "kernel/PO: KernelError: unexpected token in expression: '.'"
+            }
+          }
+        ],
+        "finalAnswer": null,
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": false,
+      "wallMs": 1187,
+      "tokens": {
+        "input": 463,
+        "output": 338,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": "kernel/PO: KernelError: unexpected token in expression: '.'"
+    },
+    {
+      "modelId": "qwen2.5:0.5b",
+      "seed": 0,
+      "itemId": "fs-2step-write",
+      "trace": {
+        "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-2step-write",
+        "task": "Create a new file at logs/today.txt with the content 'startup complete'.",
+        "events": [
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-2step-write",
+            "parentTraceId": null,
+            "timestampMs": 1781327803086,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "qwen2.5:0.5b",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-2step-write",
+            "parentTraceId": null,
+            "timestampMs": 1781327803593,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "qwen2.5:0.5b",
+              "step": 1,
+              "finishReason": "error",
+              "inputTokens": 468,
+              "outputTokens": 128,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-2step-write",
+            "parentTraceId": null,
+            "timestampMs": 1781327803593,
+            "channel": "text",
+            "event": "error",
+            "data": {
+              "error": "model returned no JS code block; raw head: async function initFiles() {\n  // Write something before any of the above steps can execute\n  console.log(\"Writing some text and setting up sandbox\");\n  \n  await callTool(\"list_files\", {});\n  \n  try {"
+            }
+          }
+        ],
+        "finalAnswer": null,
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": false,
+      "wallMs": 507,
+      "tokens": {
+        "input": 468,
+        "output": 128,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": "model returned no JS code block; raw head: async function initFiles() {\n  // Write something before any of the above steps can execute\n  console.log(\"Writing some text and setting up sandbox\");\n  \n  await callTool(\"list_files\", {});\n  \n  try {"
+    },
+    {
+      "modelId": "qwen2.5:0.5b",
+      "seed": 0,
+      "itemId": "fs-3step-archive",
+      "trace": {
+        "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-3step-archive",
+        "task": "Move every file whose path starts with 'inbox/' into 'archive/' (preserving the filename).",
+        "events": [
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-3step-archive",
+            "parentTraceId": null,
+            "timestampMs": 1781327803594,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "qwen2.5:0.5b",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-3step-archive",
+            "parentTraceId": null,
+            "timestampMs": 1781327804053,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "qwen2.5:0.5b",
+              "step": 1,
+              "finishReason": "error",
+              "inputTokens": 472,
+              "outputTokens": 114,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-3step-archive",
+            "parentTraceId": null,
+            "timestampMs": 1781327804053,
+            "channel": "text",
+            "event": "error",
+            "data": {
+              "error": "kernel/PO: Tool \"rename_files\" failed: Unknown tool: rename_files"
+            }
+          }
+        ],
+        "finalAnswer": null,
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": false,
+      "wallMs": 459,
+      "tokens": {
+        "input": 472,
+        "output": 114,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": "kernel/PO: Tool \"rename_files\" failed: Unknown tool: rename_files"
+    },
+    {
+      "modelId": "qwen2.5:0.5b",
+      "seed": 0,
+      "itemId": "fs-3step-summarise-write",
+      "trace": {
+        "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-3step-summarise-write",
+        "task": "Read notes/handbook.md, then create a file at notes/summary.md whose content begins with 'Summary:' and references the project codename from the handbook.",
+        "events": [
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-3step-summarise-write",
+            "parentTraceId": null,
+            "timestampMs": 1781327804053,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "qwen2.5:0.5b",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-3step-summarise-write",
+            "parentTraceId": null,
+            "timestampMs": 1781327805092,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "qwen2.5:0.5b",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 485,
+              "outputTokens": 300,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-3step-summarise-write",
+            "parentTraceId": null,
+            "timestampMs": 1781327805092,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": ""
+            }
+          }
+        ],
+        "finalAnswer": "",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": false,
+      "wallMs": 1039,
+      "tokens": {
+        "input": 485,
+        "output": 300,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "qwen2.5:0.5b",
+      "seed": 0,
+      "itemId": "fs-3step-cleanup",
+      "trace": {
+        "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-3step-cleanup",
+        "task": "Delete every .tmp file in the sandbox.",
+        "events": [
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-3step-cleanup",
+            "parentTraceId": null,
+            "timestampMs": 1781327805092,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "qwen2.5:0.5b",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-3step-cleanup",
+            "parentTraceId": null,
+            "timestampMs": 1781327805329,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "qwen2.5:0.5b",
+              "step": 1,
+              "finishReason": "error",
+              "inputTokens": 461,
+              "outputTokens": 47,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "qwen2.5:0.5b::mt-tool-exec.arm-c-code::0::fs-3step-cleanup",
+            "parentTraceId": null,
+            "timestampMs": 1781327805329,
+            "channel": "text",
+            "event": "error",
+            "data": {
+              "error": "model returned no JS code block; raw head: (async () => {\n  let after;\n\n  await callTool(\"delete_file\", { from: \"**/tmp\", to: \".\" });\n\n  after = await callTool(\"list_files\", {});\n  return JSON.stringify(after);\n})();"
+            }
+          }
+        ],
+        "finalAnswer": null,
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": false,
+      "wallMs": 237,
+      "tokens": {
+        "input": 461,
+        "output": 47,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": "model returned no JS code block; raw head: (async () => {\n  let after;\n\n  await callTool(\"delete_file\", { from: \"**/tmp\", to: \".\" });\n\n  after = await callTool(\"list_files\", {});\n  return JSON.stringify(after);\n})();"
+    },
+    {
+      "modelId": "evomerge-qwen25-1b5:latest",
+      "seed": 0,
+      "itemId": "fs-1step-read",
+      "trace": {
+        "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-1step-read",
+        "task": "Read the file at notes/handbook.md and return its contents in your final answer.",
+        "events": [
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-1step-read",
+            "parentTraceId": null,
+            "timestampMs": 1781327805330,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evomerge-qwen25-1b5:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-1step-read",
+            "parentTraceId": null,
+            "timestampMs": 1781327806364,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evomerge-qwen25-1b5:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 470,
+              "outputTokens": 36,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-1step-read",
+            "parentTraceId": null,
+            "timestampMs": 1781327806364,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "{\"content\":\"Project Aurora-Δ — internal handbook v17.\\n\"}"
+            }
+          }
+        ],
+        "finalAnswer": "{\"content\":\"Project Aurora-Δ — internal handbook v17.\\n\"}",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": true,
+      "wallMs": 1034,
+      "tokens": {
+        "input": 470,
+        "output": 36,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "evomerge-qwen25-1b5:latest",
+      "seed": 0,
+      "itemId": "fs-2step-rename",
+      "trace": {
+        "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-2step-rename",
+        "task": "Rename notes/draft.md to notes/final.md.",
+        "events": [
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-2step-rename",
+            "parentTraceId": null,
+            "timestampMs": 1781327806364,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evomerge-qwen25-1b5:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-2step-rename",
+            "parentTraceId": null,
+            "timestampMs": 1781327806904,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evomerge-qwen25-1b5:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 463,
+              "outputTokens": 54,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-2step-rename",
+            "parentTraceId": null,
+            "timestampMs": 1781327806904,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "{\"paths\":[\"notes/final.md\"]}"
+            }
+          }
+        ],
+        "finalAnswer": "{\"paths\":[\"notes/final.md\"]}",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": true,
+      "wallMs": 540,
+      "tokens": {
+        "input": 463,
+        "output": 54,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "evomerge-qwen25-1b5:latest",
+      "seed": 0,
+      "itemId": "fs-2step-write",
+      "trace": {
+        "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-2step-write",
+        "task": "Create a new file at logs/today.txt with the content 'startup complete'.",
+        "events": [
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-2step-write",
+            "parentTraceId": null,
+            "timestampMs": 1781327806904,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evomerge-qwen25-1b5:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-2step-write",
+            "parentTraceId": null,
+            "timestampMs": 1781327807315,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evomerge-qwen25-1b5:latest",
+              "step": 1,
+              "finishReason": "stop",
+              "inputTokens": 468,
+              "outputTokens": 39,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-2step-write",
+            "parentTraceId": null,
+            "timestampMs": 1781327807315,
+            "channel": "text",
+            "event": "final_answer",
+            "data": {
+              "answer": "DONE"
+            }
+          }
+        ],
+        "finalAnswer": "DONE",
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": true,
+      "wallMs": 411,
+      "tokens": {
+        "input": 468,
+        "output": 39,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": null
+    },
+    {
+      "modelId": "evomerge-qwen25-1b5:latest",
+      "seed": 0,
+      "itemId": "fs-3step-archive",
+      "trace": {
+        "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-3step-archive",
+        "task": "Move every file whose path starts with 'inbox/' into 'archive/' (preserving the filename).",
+        "events": [
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-3step-archive",
+            "parentTraceId": null,
+            "timestampMs": 1781327807315,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evomerge-qwen25-1b5:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-3step-archive",
+            "parentTraceId": null,
+            "timestampMs": 1781327808068,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evomerge-qwen25-1b5:latest",
+              "step": 1,
+              "finishReason": "error",
+              "inputTokens": 472,
+              "outputTokens": 82,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-3step-archive",
+            "parentTraceId": null,
+            "timestampMs": 1781327808068,
+            "channel": "text",
+            "event": "error",
+            "data": {
+              "error": "kernel/PO: not a function"
+            }
+          }
+        ],
+        "finalAnswer": null,
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": false,
+      "wallMs": 753,
+      "tokens": {
+        "input": 472,
+        "output": 82,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": "kernel/PO: not a function"
+    },
+    {
+      "modelId": "evomerge-qwen25-1b5:latest",
+      "seed": 0,
+      "itemId": "fs-3step-summarise-write",
+      "trace": {
+        "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-3step-summarise-write",
+        "task": "Read notes/handbook.md, then create a file at notes/summary.md whose content begins with 'Summary:' and references the project codename from the handbook.",
+        "events": [
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-3step-summarise-write",
+            "parentTraceId": null,
+            "timestampMs": 1781327808069,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evomerge-qwen25-1b5:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-3step-summarise-write",
+            "parentTraceId": null,
+            "timestampMs": 1781327809854,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evomerge-qwen25-1b5:latest",
+              "step": 1,
+              "finishReason": "error",
+              "inputTokens": 485,
+              "outputTokens": 211,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-3step-summarise-write",
+            "parentTraceId": null,
+            "timestampMs": 1781327809854,
+            "channel": "text",
+            "event": "error",
+            "data": {
+              "error": "kernel/PO: KernelError: expecting '}'"
+            }
+          }
+        ],
+        "finalAnswer": null,
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": false,
+      "wallMs": 1785,
+      "tokens": {
+        "input": 485,
+        "output": 211,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": "kernel/PO: KernelError: expecting '}'"
+    },
+    {
+      "modelId": "evomerge-qwen25-1b5:latest",
+      "seed": 0,
+      "itemId": "fs-3step-cleanup",
+      "trace": {
+        "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-3step-cleanup",
+        "task": "Delete every .tmp file in the sandbox.",
+        "events": [
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-3step-cleanup",
+            "parentTraceId": null,
+            "timestampMs": 1781327809855,
+            "channel": "model",
+            "event": "model_start",
+            "data": {
+              "modelId": "evomerge-qwen25-1b5:latest",
+              "step": 1
+            }
+          },
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-3step-cleanup",
+            "parentTraceId": null,
+            "timestampMs": 1781327810467,
+            "channel": "model",
+            "event": "model_done",
+            "data": {
+              "modelId": "evomerge-qwen25-1b5:latest",
+              "step": 1,
+              "finishReason": "error",
+              "inputTokens": 461,
+              "outputTokens": 63,
+              "estimatedUsd": 0
+            }
+          },
+          {
+            "traceId": "evomerge-qwen25-1b5:latest::mt-tool-exec.arm-c-code::0::fs-3step-cleanup",
+            "parentTraceId": null,
+            "timestampMs": 1781327810467,
+            "channel": "text",
+            "event": "error",
+            "data": {
+              "error": "kernel/PO: value is not iterable"
+            }
+          }
+        ],
+        "finalAnswer": null,
+        "toolCalls": [],
+        "toolResults": []
+      },
+      "scores": {},
+      "passed": false,
+      "wallMs": 612,
+      "tokens": {
+        "input": 461,
+        "output": 63,
+        "cacheRead": 0
+      },
+      "costUsd": 0,
+      "error": "kernel/PO: value is not iterable"
+    }
+  ],
+  "pareto": [
+    {
+      "suiteName": "mt-tool-exec.arm-c-code",
+      "front": [
+        {
+          "modelId": "qwen2.5:0.5b",
+          "meanAcc": 0,
+          "totalCostUsd": 0,
+          "p95WallMs": 1150
+        },
+        {
+          "modelId": "evomerge-qwen25-1b5:latest",
+          "meanAcc": 0.5,
+          "totalCostUsd": 0,
+          "p95WallMs": 1597.25
+        }
+      ]
+    }
+  ],
+  "warmup": false
+}
