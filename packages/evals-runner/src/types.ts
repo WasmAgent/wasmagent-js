@@ -72,6 +72,16 @@ export interface BenchmarkItem extends EvalSample {
  * Authors of new suites only need to write a function that returns this
  * object; everything else (running, statistics, reporting) is handled
  * by `runEvaluation`.
+ *
+ * **Two execution paths**: the runner's default single-call path (suitable
+ * for QA-style tasks where the model produces an answer in one shot) OR a
+ * suite-supplied `runItem` hook that takes ownership of executing the
+ * cell. The hook is what V1 (multi-turn-tool-exec) needs: a real
+ * `ToolCallingAgent` loop with stateful mock tools, judged on the terminal
+ * state of the environment rather than a string match. Suites that set
+ * `runItem` are the only ones that can answer the question "can scaffolding
+ * pull a 1–2B model's multi-turn accuracy off the cliff" — single-call
+ * suites measure the wrong thing for that question by construction.
  */
 export interface BenchmarkSuite {
   /** Stable id (used as a column key in reports). */
@@ -93,6 +103,58 @@ export interface BenchmarkSuite {
     maxOutputTokens?: number;
     timeoutMs?: number;
   };
+  /**
+   * V1 hook: when present, the runner DOES NOT call the provider directly
+   * for items in this suite. Instead it delegates the full cell execution
+   * to the suite — the suite is then responsible for running whatever it
+   * needs (a `ToolCallingAgent` loop, a `CodeAgent` + sandbox, a custom
+   * harness) and returning the trace plus pass/fail decision.
+   *
+   * The hook receives the runner-built ModelSpec; the canonical way to
+   * turn that into a `Model` is `new GenericOpenAICompatModel(spec.modelId
+   * ?? spec.id, spec.baseUrl, { apiKey, ... })`. `seed` is forwarded so
+   * the suite can plumb it into the model call (deterministic providers
+   * honour it, others ignore it). `signal` is for cooperative abort.
+   *
+   * Returning `tokens` is best-effort — set zeros if the harness can't
+   * compute them; the runner will still aggregate wall-clock and pass
+   * rate. `wallMs` is computed by the runner around the call so the suite
+   * doesn't have to, but if the suite measures it itself it can return
+   * it and the runner will use that value verbatim.
+   */
+  runItem?: (args: {
+    item: BenchmarkItem;
+    model: ModelSpec;
+    seed: number;
+    signal?: AbortSignal;
+  }) => Promise<RunItemResult>;
+}
+
+/**
+ * The shape a `runItem` hook returns when a suite owns its execution path.
+ * Mirrors the relevant subset of `RunResult` — the runner stamps the rest
+ * (modelId / seed / itemId / costUsd) before pushing the cell.
+ */
+export interface RunItemResult {
+  /** Final answer text (used as fallback display in reports). */
+  answer: string | null;
+  /** True if the suite's terminal-state judge accepted the run. */
+  passed: boolean;
+  /** Wall-clock ms — runner will overwrite if not provided. */
+  wallMs?: number;
+  /** Tokens consumed during the run (best-effort). */
+  tokens?: { input: number; output: number; cacheRead?: number };
+  /** Error message if the harness threw, else null. */
+  error?: string | null;
+  /**
+   * Optional events the suite recorded — emitted into the synthesised
+   * AgentTrace so existing scorers (and the dashboard) keep working.
+   * If absent, the runner stitches a minimal model_start/done/final_answer
+   * trace from `answer` + `wallMs`.
+   */
+  events?: Array<unknown>;
+  /** Per-scorer override scores — bypasses the runner's scorer loop when present. */
+  scores?: Record<string, number>;
 }
 
 // ── Per-cell + per-suite results ────────────────────────────────────────────
