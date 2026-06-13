@@ -36,9 +36,10 @@
 
 import type { AgentEvent, Model, ToolDefinition } from "@agentkit-js/core";
 import {
-  CodeAgent,
   GenericOpenAICompatModel,
+  ProgrammaticOrchestrator,
   ToolCallingAgent,
+  ToolRegistry,
 } from "@agentkit-js/core";
 import type { BenchmarkSuite, ModelSpec, RunItemResult } from "../types.js";
 import { __test__, multiTurnToolExecSuite } from "./multi-turn-tool-exec.js";
@@ -226,22 +227,42 @@ export const armGrammarSuite: BenchmarkSuite = {
   runItem: runArmB,
 };
 
-// ── Arm (c) code — CodeAgent + ProgrammaticOrchestrator + QuickJSKernel ─────
+// ── Arm (c) code — ProgrammaticOrchestrator + QuickJSKernel ─────────────────
 //
-// The PTC/CodeAct hypothesis. CodeAgent emits one Python-or-JS-shaped
-// program that calls multiple tools inside a sandbox; intermediate results
-// don't enter the LLM context. Microsoft 2026-04 + Anthropic 2025-11 numbers
+// The PTC/CodeAct hypothesis: emit one program that calls multiple tools
+// inside a sandbox; intermediate results stay inside the kernel and never
+// re-enter the LLM context. Microsoft 2026-04 + Anthropic 2025-11 numbers
 // show this is where the largest token + latency wins live.
 //
-// Implementation: we let CodeAgent consume the same tool list, with a
-// QuickJSKernel as the sandbox. The agent's prompt template asks for a
-// JS expression that uses the tool functions; QuickJSKernel evaluates it
-// with each tool injected as a function. ProgrammaticOrchestrator is
-// CodeAgent's default orchestrator since the M4 milestone.
+// 2026-06-13 fix: Run B's arm (c) used CodeAgent + bare QuickJSKernel.
+// That's wrong — `CodeAgent` runs `kernel.run(code)` directly, with NO
+// `callTool()` injected; the kernel is just a JS sandbox. Tools are only
+// reachable through `ProgrammaticOrchestrator`, which sets up the
+// re-run-with-cached-results bridge that makes `await callTool(name,
+// args)` actually do something. Run B's stderr full of "the sandbox
+// can't move files" was the model correctly observing it had no tools.
+//
+// New shape: PO consumes the model's single program output. The arm
+// becomes:
+//
+//   1. Build a CodeAct-style prompt that names every tool's signature
+//      and tells the model to emit ONE async IIFE program.
+//   2. Generate once (no agent loop, by design — that's what arm (a)
+//      is for).
+//   3. Extract code, hand to PO.run() — PO injects callTool, drives
+//      the kernel, returns finalOutput.
+//   4. Judge by terminal state of the fixture (same path as every
+//      other arm).
+//
+// Why no agent loop here: CodeAct's whole point is "one shot, many
+// tool calls". An agent loop on top of that is double-counting; if
+// the program needs more than one round to plan, the V2 plan
+// already has arm (a)/(d)/(e) for that.
 async function runArmC(args: { item: typeof ITEMS[number]; model: ModelSpec }): Promise<RunItemResult> {
   const cell = prepareCell(args.item.id);
   const m = buildModel(args.model);
   const startMs = Date.now();
+
   // Lazy-load QuickJSKernel — it's a heavy peer dep, only mount when arm (c) runs.
   let kernelMod: { QuickJSKernel: new () => unknown };
   try {
@@ -256,26 +277,199 @@ async function runArmC(args: { item: typeof ITEMS[number]; model: ModelSpec }): 
       error: `arm (c) requires @agentkit-js/kernel-quickjs: ${e instanceof Error ? e.message : String(e)}`,
     };
   }
-  const kernel = new kernelMod.QuickJSKernel();
-  // CodeAgent compresses N tool round-trips into one program block. The
-  // PTC win comes from CodeAgent's natural shape — intermediate results
-  // stay inside the kernel and never re-enter the LLM context.
-  const agent = new CodeAgent({
+
+  const result = await runOnePoProgram({
+    item: args.item,
+    cell,
     model: m,
-    tools: cell.tools,
-    maxSteps: 8,
-    systemPrompt: SYSTEM_PROMPT,
-    kernel: kernel as unknown as never,
+    kernelFactory: () => new kernelMod.QuickJSKernel() as unknown,
   });
-  const r = await drainAgent(agent.run(args.item.task));
-  return shapeResult(cell, startMs, r);
+  result.wallMs = Date.now() - startMs;
+  return result;
+}
+
+/**
+ * Build a CodeAct-style system prompt that lists every tool with its
+ * signature, examples, and the rule "emit ONE async IIFE that does the
+ * whole task by awaiting callTool(...)". The shape is what
+ * ProgrammaticOrchestrator's `await callTool(name, args)` bridge actually
+ * accepts, written in a way small instruct models (≤2B) can follow.
+ *
+ * The crucial bits the prompt must contain (Run B post-mortem):
+ *   - The word "callTool" — without seeing it, models invent tool-call
+ *     conventions like `tools.move_file(...)` or `<tool_use>` JSON, and
+ *     PO ignores all of them.
+ *   - The wrapper signature `(async () => { ... })()` — small models
+ *     omit the IIFE and emit raw await statements that fail to parse.
+ *   - At least one full worked example. Run B's stderr showed many
+ *     models writing valid-looking JS but with the wrong tool name
+ *     casing or arg key names. A worked example pins both.
+ */
+function buildPoPrompt(tools: ToolDefinition[]): string {
+  const toolDocs = tools
+    .map((t) => {
+      const schema = t.rawInputJsonSchema ?? safeZodToJsonSchema(t.inputSchema);
+      const argShape = describeArgShape(schema);
+      return `- \`callTool("${t.name}", ${argShape})\` — ${t.description}`;
+    })
+    .join("\n");
+
+  return `You drive a sandbox by emitting ONE JavaScript program that calls tools.
+
+The sandbox provides exactly one global: \`callTool(name, args)\`. It returns
+a Promise that resolves to the tool's result (already JSON-parsed when the
+tool returns an object). All tool calls MUST go through callTool — there is
+no \`fs\`, no \`fetch\`, no DOM, no \`require\`, no other API. The tools you have:
+
+${toolDocs}
+
+REQUIRED OUTPUT SHAPE — one fenced JavaScript code block, structured as an
+async IIFE so \`await\` parses:
+
+\`\`\`js
+(async () => {
+  // ... your tool calls here ...
+  return "DONE";
+})();
+\`\`\`
+
+WORKED EXAMPLE. If the task were "rename old.txt to new.txt and confirm",
+the program would be:
+
+\`\`\`js
+(async () => {
+  await callTool("move_file", { from: "old.txt", to: "new.txt" });
+  const after = await callTool("list_files", {});
+  return JSON.stringify(after);
+})();
+\`\`\`
+
+Notes:
+  - Use the EXACT tool names listed above; casing matters.
+  - The argument keys must match the schema — read each tool's signature.
+  - The program runs once. Do all the steps in the same IIFE.
+  - The return value of the IIFE is shown to the user; everything else
+    stays inside the sandbox.
+  - Do not write prose outside the code block. Do not say "I cannot run
+    this in a sandbox" — you are IN the sandbox; callTool works.`;
+}
+
+function safeZodToJsonSchema(_schema: unknown): { type: string; properties?: Record<string, unknown>; required?: string[] } {
+  // Small models do better with a hand-written description than with a full
+  // JSON Schema; we fall through to a generic shape and rely on
+  // describeArgShape() to render either path.
+  return { type: "object" };
+}
+
+function describeArgShape(schema: { type?: string; properties?: Record<string, unknown>; required?: string[] }): string {
+  if (!schema || schema.type !== "object" || !schema.properties) return "{}";
+  const keys = Object.keys(schema.properties);
+  if (keys.length === 0) return "{}";
+  return `{ ${keys.map((k) => `${k}: ...`).join(", ")} }`;
+}
+
+/**
+ * Single-shot CodeAct rollout: prompt the model once, extract the program,
+ * hand it to ProgrammaticOrchestrator. Used by arm (c) (one rollout) and
+ * arm (e) (k=5 rollouts inside a self-consistency wrapper).
+ *
+ * Errors at the model layer / extraction layer / kernel layer all surface
+ * as `error` on the RunItemResult; the suite-level judge then runs against
+ * whatever state the partial run left behind. (For most failure modes the
+ * judge sees an unchanged fixture and returns false, which is correct.)
+ */
+async function runOnePoProgram(args: {
+  item: typeof ITEMS[number];
+  cell: PreparedCell;
+  model: Model;
+  kernelFactory: () => unknown;
+}): Promise<RunItemResult> {
+  const { item, cell, model, kernelFactory } = args;
+  const systemPrompt = buildPoPrompt(cell.tools);
+
+  // Generate the program. We use `model.generate` directly because we
+  // don't want any agent-loop semantics — this is intentionally a
+  // single LLM call, the program does the rest.
+  let raw = "";
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let error: string | null = null;
+  try {
+    for await (const ev of model.generate(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: item.task },
+      ],
+      { stream: true },
+    )) {
+      if (ev.type === "text_delta" && ev.delta) raw += ev.delta;
+      else if (ev.type === "usage" && ev.usage) {
+        inputTokens += ev.usage.inputTokens ?? 0;
+        outputTokens += ev.usage.outputTokens ?? 0;
+      }
+    }
+  } catch (e) {
+    error = e instanceof Error ? e.message : String(e);
+  }
+
+  let answer: string | null = null;
+
+  if (!error) {
+    const code = extractFencedJs(raw);
+    if (!code) {
+      error = `model returned no JS code block; raw head: ${raw.slice(0, 200)}`;
+    } else {
+      // Strip a trailing IIFE invocation if the model wrote `(async () => {
+      // ... })()` AND a separate `;` — PO wraps the script itself, so the
+      // model's IIFE is fine; we only need to extract its body. PO also
+      // tolerates a top-level `await callTool(...)` directly because of
+      // the IIFE wrapping it does internally.
+      try {
+        const reg = new ToolRegistry();
+        for (const t of cell.tools) reg.register(t);
+        const orchestrator = new ProgrammaticOrchestrator(
+          kernelFactory() as never,
+          reg,
+        );
+        const poResult = await orchestrator.run(code);
+        answer = poResult.finalOutput;
+      } catch (e) {
+        error = `kernel/PO: ${e instanceof Error ? e.message : String(e)}`;
+      }
+    }
+  }
+
+  let passed = false;
+  try {
+    passed = cell.judge();
+  } catch {
+    passed = false;
+  }
+  if (error) passed = false;
+
+  return {
+    answer,
+    passed,
+    wallMs: 0, // filled in by caller
+    tokens: { input: inputTokens, output: outputTokens },
+    error,
+  };
+}
+
+/** Extract a fenced JS / JavaScript / TS code block; tolerates language tag absence. */
+function extractFencedJs(response: string): string | null {
+  // Same regex shape as CodeAgent's extractCode, restricted to JS-family.
+  const m =
+    /```(?:js|javascript|ts|typescript)?\n([\s\S]*?)(?:^|\n)```/m.exec(response) ??
+    /```\n([\s\S]*?)(?:^|\n)```/m.exec(response);
+  return m?.[1]?.trim() ?? null;
 }
 
 export const armCodeSuite: BenchmarkSuite = {
   name: "mt-tool-exec.arm-c-code",
-  title: "Arm (c) CodeAgent + PTC + QuickJSKernel",
+  title: "Arm (c) ProgrammaticOrchestrator + QuickJSKernel (CodeAct)",
   description:
-    "Replaces the per-tool-call loop with a single program that calls multiple tools inside a sandbox. Tests the compress-the-rounds hypothesis (CodeAct, MS Agent Framework 2026-04).",
+    "One model call → one async IIFE program → ProgrammaticOrchestrator drives the kernel and re-runs with cached tool results. Tests the compress-the-rounds hypothesis (CodeAct, MS Agent Framework 2026-04). 2026-06-13 fix: previous attempt used CodeAgent + bare kernel and had no tool injection; replaced.",
   items: ITEMS,
   scorers: [],
   runItem: runArmC,
@@ -346,12 +540,26 @@ export const armSelfConsistencySuite: BenchmarkSuite = {
   runItem: runArmD,
 };
 
-// ── Arm (e) full — grammar + code + self-consistency ────────────────────────
+// ── Arm (e) full — CodeAct + SC k=5 (terminal-state majority) ────────────────
 //
-// The "everything compatible" stack. Grammar pins form, CodeAgent
-// compresses turns, SC votes over k=5 rollouts. ObservationalMemory is
-// what the bare ToolCallingAgent already uses for its assembler — there's
-// no "off" mode to compare against, so we don't add a separate knob.
+// The plan calls for "(b) + (c) + (d) + ObservationalMemory". But (b)
+// grammar=json and (c) CodeAct are STRUCTURALLY INCOMPATIBLE: format=json
+// forces the entire model output to be a JSON object, which means the
+// fenced JS code block (c) needs is unreachable. Run B got 1/6 on arm
+// (e) because SC k=5 happened to mask the contradiction in one rollout
+// — that's noise, not signal.
+//
+// Resolution: arm (e) stacks the COMPATIBLE layers: CodeAct (one program
+// that PO drives) + SC k=5 over fresh rollouts (terminal-state majority).
+// Grammar is a tool-form constraint; CodeAct doesn't emit tool_use blocks
+// to begin with, so grammar has no surface to apply to. We name this
+// behaviour explicitly in the suite description so future runs don't
+// re-introduce the contradiction.
+//
+// ObservationalMemory is what every rollout's PO already uses internally
+// (the kernel's call cache between re-runs is exactly that pattern).
+// There's no "off" knob to compare against, so we don't add a separate
+// arm for it — same call as Run B.
 async function runArmE(args: { item: typeof ITEMS[number]; model: ModelSpec }): Promise<RunItemResult> {
   const k = 5;
   const startMs = Date.now();
@@ -371,50 +579,39 @@ async function runArmE(args: { item: typeof ITEMS[number]; model: ModelSpec }): 
   let totalIn = 0;
   let totalOut = 0;
   let lastError: string | null = null;
-  let lastResult: RunResult | null = null;
+  let lastAnswer: string | null = null;
   let passVotes = 0;
   for (let i = 0; i < k; i++) {
     const cell = prepareCell(args.item.id);
-    const m = buildModel(args.model, { format: ARM_B_FORMAT });
-    const kernel = new kernelMod.QuickJSKernel();
-    const agent = new CodeAgent({
+    const m = buildModel(args.model);
+    const r = await runOnePoProgram({
+      item: args.item,
+      cell,
       model: m,
-      tools: cell.tools,
-      maxSteps: 8,
-      systemPrompt: SYSTEM_PROMPT,
-      kernel: kernel as unknown as never,
+      kernelFactory: () => new kernelMod.QuickJSKernel() as unknown,
     });
-    const r = await drainAgent(agent.run(args.item.task));
     if (r.error) lastError = r.error;
-    let passed = false;
-    try {
-      passed = cell.judge();
-    } catch {
-      passed = false;
-    }
-    if (r.error) passed = false;
-    if (passed) passVotes++;
-    totalIn += r.inputTokens;
-    totalOut += r.outputTokens;
-    lastResult = r;
+    if (r.passed) passVotes++;
+    totalIn += r.tokens?.input ?? 0;
+    totalOut += r.tokens?.output ?? 0;
+    lastAnswer = r.answer;
   }
   const passed = passVotes > k / 2;
   const wallMs = Date.now() - startMs;
   return {
-    answer: lastResult?.finalAnswer ?? null,
+    answer: lastAnswer,
     passed,
     wallMs,
     tokens: { input: totalIn, output: totalOut },
     error: passed ? null : lastError,
-    ...(lastResult?.events ? { events: lastResult.events } : {}),
   };
 }
 
 export const armFullSuite: BenchmarkSuite = {
   name: "mt-tool-exec.arm-e-full",
-  title: "Arm (e) full stack (grammar + CodeAgent + SC k=5)",
+  title: "Arm (e) full stack (CodeAct + SC k=5 terminal-state vote)",
   description:
-    "G0 candidate arm: every layer of scaffolding agentkit ships, applied at once. ≥50% on a 1.5B model is the green-light threshold.",
+    "G0 candidate arm. CodeAct (one program per rollout, PO drives the kernel) × 5 fresh rollouts × terminal-state majority. NOTE: grammar=json is intentionally OFF here because format=json (arm b) and JS-code-fence (arm c) are structurally incompatible — see comment in source. ≥50% on a 1.5B model is the G0 green-light threshold.",
   items: ITEMS,
   scorers: [],
   runItem: runArmE,
