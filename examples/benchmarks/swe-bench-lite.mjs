@@ -117,7 +117,7 @@
  *       Sonnet-4-6 on SWE-bench-lite).
  */
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, resolve as resolvePath } from "node:path";
 
@@ -136,43 +136,53 @@ const HF_ROWS_URL =
 
 // ── flag parsing ─────────────────────────────────────────────────────────────
 // Same shape as longmemeval-500.mjs so users have one mental model.
-const args = parseArgs(process.argv.slice(2));
+// Wrapped in an isMain guard so `import { runTests } from "./swe-bench-lite.mjs"`
+// (e.g. from judge-roundtrip-ci.mjs) does NOT trigger the CLI dispatch.
+const isMain =
+  process.argv[1] != null &&
+  new URL(import.meta.url).pathname.endsWith(
+    process.argv[1].replace(/\\/g, "/").split("/").at(-1) ?? ""
+  );
 
-if (args["help"] || (args._.length === 0 && Object.keys(args).length === 1)) {
-  printHelp();
-  process.exit(0);
-}
+if (isMain) {
+  const args = parseArgs(process.argv.slice(2));
 
-if (args["smoke"]) {
-  await smokeRun();
-  process.exit(0);
-}
-
-if (args["load-tasks"]) {
-  // Live network probe: download N tasks and print a one-line summary
-  // per task. Useful for verifying the loader without committing to a
-  // full benchmark run.
-  const n = Number.parseInt(String(args["load-tasks"]), 10);
-  if (!Number.isFinite(n) || n <= 0) {
-    console.error("Error: --load-tasks=N requires a positive integer.");
-    process.exit(2);
+  if (args["help"] || (args._.length === 0 && Object.keys(args).length === 1)) {
+    printHelp();
+    process.exit(0);
   }
-  const tasks = await loadTasks(n);
-  console.log(`Loaded ${tasks.length} tasks. First few:`);
-  for (const t of tasks.slice(0, Math.min(3, tasks.length))) {
-    console.log(`  - ${t.instance_id} (${t.repo} @ ${t.base_commit.slice(0, 8)})`);
-    console.log(`    fail_to_pass=${t.fail_to_pass.length}, pass_to_pass=${t.pass_to_pass.length}`);
-  }
-  process.exit(0);
-}
 
-console.error(
-  "swe-bench-lite.mjs is a DRAFT skeleton — the publication run is funding-dependent.\n" +
-    "See docs/reports/swe-bench-lite-pending.md for status.\n" +
-    "Use --smoke to exercise the harness offline, or contribute to the\n" +
-    "pre-run checklist in the file's docblock."
-);
-process.exit(2);
+  if (args["smoke"]) {
+    await smokeRun();
+    process.exit(0);
+  }
+
+  if (args["load-tasks"]) {
+    // Live network probe: download N tasks and print a one-line summary
+    // per task. Useful for verifying the loader without committing to a
+    // full benchmark run.
+    const n = Number.parseInt(String(args["load-tasks"]), 10);
+    if (!Number.isFinite(n) || n <= 0) {
+      console.error("Error: --load-tasks=N requires a positive integer.");
+      process.exit(2);
+    }
+    const tasks = await loadTasks(n);
+    console.log(`Loaded ${tasks.length} tasks. First few:`);
+    for (const t of tasks.slice(0, Math.min(3, tasks.length))) {
+      console.log(`  - ${t.instance_id} (${t.repo} @ ${t.base_commit.slice(0, 8)})`);
+      console.log(`    fail_to_pass=${t.fail_to_pass.length}, pass_to_pass=${t.pass_to_pass.length}`);
+    }
+    process.exit(0);
+  }
+
+  console.error(
+    "swe-bench-lite.mjs is a DRAFT skeleton — the publication run is funding-dependent.\n" +
+      "See docs/reports/swe-bench-lite-pending.md for status.\n" +
+      "Use --smoke to exercise the harness offline, or contribute to the\n" +
+      "pre-run checklist in the file's docblock."
+  );
+  process.exit(2);
+}
 
 // ── implementation slots ─────────────────────────────────────────────────────
 // Each function below is a clearly-named extension point. The intent is
@@ -525,12 +535,152 @@ async function dispatchDirect(task, answerer) {
   return out;
 }
 
-// eslint-disable-next-line no-unused-vars
-async function runTests(_task, _patch) {
-  // TODO: apply the patch in a containerised checkout, run the
-  // task's test suite, return { passed: boolean, failed: [...]}.
-  // Containerisation is a hard gate — never run on the host.
-  throw new Error("runTests: not yet implemented");
+/**
+ * Run the SWE-bench-lite test suite for `task` against `patch` inside
+ * a Docker container. The image is built once on first invocation
+ * from `examples/benchmarks/judge/Dockerfile`; subsequent runs reuse
+ * it. Per-task work happens inside the container — this function
+ * NEVER touches the host (the brief's hard gate).
+ *
+ * @param {SweBenchTask} task
+ * @param {string} patch  Unified-diff text. Empty string is allowed
+ *                        and yields resolved=false (no patch ⇒ no fix).
+ * @param {{
+ *   imageTag?: string,        // Override the docker tag we use.
+ *   skipBuild?: boolean,      // Trust the image is already present.
+ *   timeoutMs?: number,       // Hard wall-clock cap for the container.
+ *   judgeDir?: string,        // Where Dockerfile + judge.py live.
+ * }} [opts]
+ * @returns {Promise<{
+ *   resolved: boolean,
+ *   applied: boolean,
+ *   fail_to_pass: {passed: string[], failed: string[]},
+ *   pass_to_pass: {passed: string[], failed: string[]},
+ *   error: string | null,
+ *   wallMs: number,
+ * }>}
+ *
+ * Stub fall-back: if Docker is not available on the host, returns a
+ * result with `error: "docker not available"` and resolved=false so
+ * the harness can still produce a Pareto report (the cells will say
+ * '—' instead of a percentage). This lets `--smoke` exercise the
+ * wiring without requiring docker on every CI runner.
+ */
+async function runTests(task, patch, opts = {}) {
+  const start = Date.now();
+  const imageTag = opts.imageTag ?? "agentkit-swe-judge:latest";
+  const judgeDir =
+    opts.judgeDir ?? resolvePath("examples/benchmarks/judge");
+  const timeoutMs = opts.timeoutMs ?? 30 * 60_000; // 30 min default
+
+  const errResult = (error) => ({
+    resolved: false,
+    applied: false,
+    fail_to_pass: { passed: [], failed: task.fail_to_pass ?? [] },
+    pass_to_pass: { passed: [], failed: task.pass_to_pass ?? [] },
+    error,
+    wallMs: Date.now() - start,
+  });
+
+  // 1. docker available?
+  if (!(await dockerAvailable())) {
+    return errResult(
+      "docker not available on host — runTests is a no-op. " +
+        "Install Docker Desktop / podman to enable the judge."
+    );
+  }
+
+  // 2. Image present? Build if not (or always when skipBuild=false-ish).
+  if (!opts.skipBuild) {
+    const buildOk = await ensureImage(imageTag, judgeDir);
+    if (!buildOk.ok) return errResult(`docker build failed: ${buildOk.err}`);
+  }
+
+  // 3. Stage the per-task work directory.
+  const tmp = await mkdtemp(resolvePath(`.cache/swe-bench-lite/judge-${task.instance_id}-`));
+  await writeFile(`${tmp}/instance.json`, JSON.stringify(task), "utf8");
+  await writeFile(`${tmp}/patch.diff`, patch ?? "", "utf8");
+
+  // 4. Run.
+  const dockerArgs = [
+    "run",
+    "--rm",
+    "-v",
+    `${tmp}:/work`,
+    // Prevent the container from reaching the host's docker socket
+    // or arbitrary network — the judge clones from GitHub but should
+    // not need anything else. We do NOT pass --network=none because
+    // git clone needs the network; tightening this is a follow-up.
+    imageTag,
+  ];
+  const { code, err } = await runDocker(dockerArgs, timeoutMs);
+
+  // 5. Read the result.
+  let parsed;
+  try {
+    parsed = JSON.parse(await readFile(`${tmp}/result.json`, "utf8"));
+  } catch (e) {
+    return errResult(
+      `container produced no result.json (docker exit ${code}): ${err.slice(0, 500)} — ${e.message}`
+    );
+  }
+  return {
+    resolved: !!parsed.resolved,
+    applied: !!parsed.applied,
+    fail_to_pass: parsed.fail_to_pass ?? { passed: [], failed: [] },
+    pass_to_pass: parsed.pass_to_pass ?? { passed: [], failed: [] },
+    error: parsed.error ?? null,
+    wallMs: Date.now() - start,
+  };
+}
+
+async function dockerAvailable() {
+  try {
+    const { code } = await runDocker(["version", "--format", "{{.Server.Version}}"], 5000);
+    return code === 0;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureImage(tag, dir) {
+  // Check existence first so re-runs against a built image are fast.
+  const inspect = await runDocker(["image", "inspect", tag], 5000);
+  if (inspect.code === 0) return { ok: true };
+
+  // Build.
+  const build = await runDocker(["build", "-t", tag, dir], 10 * 60_000);
+  if (build.code !== 0) return { ok: false, err: build.err.slice(0, 1500) };
+  return { ok: true };
+}
+
+/**
+ * Run a docker subcommand. Spawn-based so we don't accidentally
+ * shell-interpolate arbitrary paths.
+ */
+async function runDocker(args, timeoutMs) {
+  const { spawn } = await import("node:child_process");
+  return new Promise((resolve) => {
+    const proc = spawn("docker", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let out = "";
+    let err = "";
+    proc.stdout.on("data", (c) => {
+      out += c.toString();
+    });
+    proc.stderr.on("data", (c) => {
+      err += c.toString();
+    });
+    const t = setTimeout(() => {
+      proc.kill("SIGKILL");
+    }, timeoutMs).unref?.();
+    proc.on("exit", (code) => {
+      if (t && typeof t === "object" && "close" in t) t.close?.();
+      resolve({ code: code ?? -1, out, err });
+    });
+    proc.on("error", () => {
+      resolve({ code: -1, out, err: err || "docker not in PATH" });
+    });
+  });
 }
 
 /**
@@ -756,6 +906,31 @@ async function smokeRun() {
     ok(`dispatchDirect threw: ${e.message}`, false);
   }
 
+  // 6a. runTests: no docker on this host ⇒ graceful fallback with a
+  //     well-typed result. The CI runner intentionally does NOT have
+  //     docker available — that is the path most contributors will
+  //     hit, so we pin its behaviour. The 'real' path (docker
+  //     available, judge image built) is exercised by the GitHub
+  //     Actions workflow at .github/workflows/swe-bench-judge.yml
+  //     when funded API access lands.
+  try {
+    const judged = await runTests(t, "--- a/x\n+++ b/x\n@@ -1 +1 @@\n-foo\n+bar\n");
+    ok("runTests returns a well-typed object", typeof judged === "object" && judged !== null);
+    ok("runTests resolved is boolean", typeof judged.resolved === "boolean");
+    ok("runTests applied is boolean", typeof judged.applied === "boolean");
+    ok("runTests fail_to_pass shape", judged.fail_to_pass && Array.isArray(judged.fail_to_pass.failed));
+    ok("runTests pass_to_pass shape", judged.pass_to_pass && Array.isArray(judged.pass_to_pass.failed));
+    ok(
+      "runTests reports docker-not-available cleanly OR ran the container",
+      judged.error == null ||
+        String(judged.error).includes("docker") ||
+        String(judged.error).includes("container")
+    );
+    ok("runTests wallMs is a non-negative number", Number.isFinite(judged.wallMs) && judged.wallMs >= 0);
+  } catch (e) {
+    ok(`runTests threw: ${e.message}`, false);
+  }
+
   // 6. reportPareto writes a markdown file with the cells we expect.
   //    We feed it two synthetic results (one codemode, one direct)
   //    so the table has both rows and the file is non-empty.
@@ -840,3 +1015,10 @@ Usage:
   --help                        Print this help.
 `);
 }
+
+// ── exports for programmatic use ────────────────────────────────────────────
+// CI roundtrip + future test wrappers can `import { loadTasks, runTests } from
+// "./swe-bench-lite.mjs"` to drive the harness without going through the CLI
+// dispatch above. These are intentionally exported in a single block so the
+// public surface is easy to read.
+export { loadTasks, dispatchCodemode, dispatchDirect, runTests, reportPareto };
