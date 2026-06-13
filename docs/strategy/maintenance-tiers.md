@@ -120,6 +120,35 @@ independent SemVer. ◆ packages that track an upstream still in
 flux stay 0.x past 1.0; ▽ packages stay 0.x indefinitely until
 demand signals warrant promotion.
 
+## bscode funnel-cost reduction (2026-06-13)
+
+The brief's Direction 4 also calls out bscode itself: "considere把 Web
+IDE 部分降为可选 (使漏斗维护成本与其转化价值匹配)." First-round
+progress 2026-06-13 (bscode commit linked from agentkit-js
+[`CHANGELOG.md`](../../CHANGELOG.md)):
+
+- The new `/recipes` reverse-funnel route is **architecturally
+  separate** from the IDE — it imports only `useState` from React;
+  every IDE component (Editor / Terminal / FileTree / FileBrowser
+  / WebTerminal / WebContainer hooks / JSZip) is excluded from the
+  `/recipes` chunk.
+- The 535-line `FrameworkApiMap` modal on the IDE home (`/`) is now
+  `next/dynamic` lazy-loaded with `{ssr: false}` and only mounts on
+  open. Removes the modal markup from the `/` first-paint chunk.
+- `JobsPanel` (577 LOC) lives on its own `/jobs` route already, so
+  it's a separate chunk by virtue of Next's app-dir routing.
+
+Funnel-cost takeaway: a visitor arriving via
+`?source=bscode-<framework>-recipe` UTM (the reverse-funnel
+audience) downloads roughly the `/recipes/page.tsx` chunk (~6 KB
+of React + the inline recipe data) — orders of magnitude smaller
+than the IDE shell. The IDE itself remains useful as a CodeAgent
+demo for visitors who arrive at `/`; the brief's "降为可选" is now
+delivered by routing, not by ripping the IDE out.
+
+Further reductions tracked under `governance:bscode-shrink` issues
+(target: total LOC ≤ agentkit-js framework LOC by 2026-Q4).
+
 ## Falsifiability
 
 If after two quarters no ▽ package has either (a) been promoted
