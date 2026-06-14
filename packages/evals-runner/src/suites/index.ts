@@ -1,7 +1,9 @@
 export { agentTrajectorySuite } from "./agent-trajectory.js";
 export { costPerCorrectSuite } from "./cost-per-correct.js";
 export { latencyUnderBudgetSuite } from "./latency-under-budget.js";
+export { locomoRefinedSuite } from "./locomo-refined.js";
 export { longContextRecallSuite } from "./long-context-recall.js";
+export { memoryAgentBenchSuite } from "./memory-agent-bench.js";
 export { multiTurnMemorySuite } from "./multi-turn-memory.js";
 export {
   ABLATION_ARMS,
@@ -20,12 +22,14 @@ import type { BenchmarkSuite } from "../types.js";
 import { agentTrajectorySuite } from "./agent-trajectory.js";
 import { costPerCorrectSuite } from "./cost-per-correct.js";
 import { latencyUnderBudgetSuite } from "./latency-under-budget.js";
+import { locomoRefinedSuite } from "./locomo-refined.js";
 import { longContextRecallSuite } from "./long-context-recall.js";
+import { memoryAgentBenchSuite } from "./memory-agent-bench.js";
 import { multiTurnMemorySuite } from "./multi-turn-memory.js";
 import { multiTurnToolExecSuite } from "./multi-turn-tool-exec.js";
 import { toolSequenceSuite } from "./tool-sequence.js";
 
-/** All 7 reference suites, indexed by name. */
+/** All 9 reference suites, indexed by name. */
 export const REFERENCE_SUITES: Record<string, BenchmarkSuite> = {
   [multiTurnMemorySuite.name]: multiTurnMemorySuite,
   [longContextRecallSuite.name]: longContextRecallSuite,
@@ -34,4 +38,6 @@ export const REFERENCE_SUITES: Record<string, BenchmarkSuite> = {
   [agentTrajectorySuite.name]: agentTrajectorySuite,
   [latencyUnderBudgetSuite.name]: latencyUnderBudgetSuite,
   [multiTurnToolExecSuite.name]: multiTurnToolExecSuite,
+  [locomoRefinedSuite.name]: locomoRefinedSuite,
+  [memoryAgentBenchSuite.name]: memoryAgentBenchSuite,
 };

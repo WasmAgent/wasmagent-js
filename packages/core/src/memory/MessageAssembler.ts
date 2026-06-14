@@ -2,6 +2,7 @@ import type { ModelMessage } from "../models/types.js";
 import { estimateTokens } from "../models/types.js";
 import type { Step } from "../types/events.js";
 import type { LazyObservationHandle } from "./LazyObservationHandle.js";
+import type { MemoryBlockSet } from "./MemoryBlocks.js";
 
 /**
  * Message assembler for cache-friendly prefix construction (B1/B2).
@@ -35,6 +36,19 @@ export interface AssemblerConfig {
    * History segments (B2) always use "5m" regardless of this setting.
    */
   systemPrefixTtl?: "5m" | "1h";
+  /**
+   * Letta-style core memory blocks — editable agent state visible in every
+   * call. Renders as a separate user-role message AFTER the cached system
+   * prefix so editing a block does not invalidate the prefix cache. See
+   * `MemoryBlocks.ts` for the design rationale (we deliberately diverge
+   * from Letta's "render in system prompt" placement to preserve B1
+   * cache stability).
+   *
+   * The set is held by reference: edits via `blocks.append()` /
+   * `blocks.replace()` (or via the `core_memory_*` tools) take effect on
+   * the next `build()` without any rebuild call.
+   */
+  memoryBlocks?: MemoryBlockSet;
 }
 
 /** Options for L2-1 context editing (reversible tool result cleanup). */
@@ -108,7 +122,15 @@ export class MessageAssembler {
   build(): ModelMessage[] {
     const fewShot = this.#config.fewShotExamples?.length ?? 0;
     const scratchpadSlot = this.#scratchpad !== null ? 1 : 0;
-    const total = 1 + fewShot + scratchpadSlot + this.#flatMsgCount;
+    // Memory blocks render into a single user-role message when at least
+    // one block is present. We probe `render()` rather than `size`
+    // because an empty render (e.g. all blocks have empty values + no
+    // labels worth showing) would still produce a slot with empty body
+    // and waste a context turn — render() returns "" in that case and
+    // we skip.
+    const blocksRendered = this.#config.memoryBlocks?.render() ?? "";
+    const memoryBlocksSlot = blocksRendered.length > 0 ? 1 : 0;
+    const total = 1 + fewShot + scratchpadSlot + memoryBlocksSlot + this.#flatMsgCount;
     const messages: ModelMessage[] = new Array(total);
     let idx = 0;
 
@@ -116,6 +138,13 @@ export class MessageAssembler {
 
     if (fewShot) {
       for (const m of this.#config.fewShotExamples as ModelMessage[]) messages[idx++] = m;
+    }
+
+    if (memoryBlocksSlot) {
+      messages[idx++] = {
+        role: "user",
+        content: blocksRendered,
+      };
     }
 
     if (this.#scratchpad !== null) {

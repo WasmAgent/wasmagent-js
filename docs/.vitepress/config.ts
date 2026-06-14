@@ -28,7 +28,8 @@ const enSidebar = {
       text: "Core patterns",
       items: [
         { text: "Durable runtime", link: "/guides/durable-runtime" },
-        { text: "Memory patterns", link: "/guides/memory-patterns" },
+        { text: "Memory (overview + decision tree)", link: "/guides/memory" },
+        { text: "Memory patterns (reference)", link: "/guides/memory-patterns" },
         { text: "Observational memory", link: "/guides/observational-memory" },
         { text: "Skills & lifecycle hooks", link: "/guides/skills-and-hooks" },
         { text: "DevTools (time travel)", link: "/guides/devtools" },

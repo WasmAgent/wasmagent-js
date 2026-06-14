@@ -188,6 +188,7 @@ export type {
   Embedder,
   EmbedResult,
   HybridRetrieverOpts,
+  MemoryBlock,
   MemoryEntry,
   MemoryNamespace,
   MemoryToolOptions,
@@ -204,6 +205,7 @@ export type {
 export {
   Bm25Indexer,
   bm25Tokenize,
+  coreMemoryTools,
   createMemoryTool,
   HybridRetriever,
   hybridRetriever,
@@ -212,6 +214,7 @@ export {
   KvBackendVectorStore,
   LazyObservationHandle,
   MapKvBackend,
+  MemoryBlockSet,
   MessageAssembler,
   makeRetrievalTool,
   ObservationalMemory,

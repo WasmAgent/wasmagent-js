@@ -5,6 +5,8 @@ export { HybridRetriever, hybridRetriever } from "./HybridRetriever.js";
 export { LazyObservationHandle } from "./LazyObservationHandle.js";
 export type { MemoryToolOptions } from "./MemoryTool.js";
 export { createMemoryTool, MapKvBackend } from "./MemoryTool.js";
+export type { MemoryBlock } from "./MemoryBlocks.js";
+export { coreMemoryTools, MemoryBlockSet } from "./MemoryBlocks.js";
 export type { AssemblerConfig, EditToolResultsOptions } from "./MessageAssembler.js";
 export { MessageAssembler } from "./MessageAssembler.js";
 export type {

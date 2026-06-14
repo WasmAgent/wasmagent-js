@@ -161,6 +161,14 @@
         "quickjs-emscripten": "^0.31.0",
       },
     },
+    "examples/mcp-memory-server": {
+      "name": "@agentkit-js-example/mcp-memory-server",
+      "version": "0.1.0",
+      "dependencies": {
+        "@agentkit-js/core": "workspace:*",
+        "@agentkit-js/mcp-server": "workspace:*",
+      },
+    },
     "examples/mcp-portal": {
       "name": "mcp-portal",
       "version": "0.1.0",
@@ -762,6 +770,8 @@
     },
   },
   "packages": {
+    "@agentkit-js-example/mcp-memory-server": ["@agentkit-js-example/mcp-memory-server@workspace:examples/mcp-memory-server"],
+
     "@agentkit-js/a2a": ["@agentkit-js/a2a@workspace:packages/a2a"],
 
     "@agentkit-js/ag-ui": ["@agentkit-js/ag-ui@workspace:packages/ag-ui"],
