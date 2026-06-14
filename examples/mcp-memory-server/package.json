@@ -1,0 +1,15 @@
+{
+  "name": "@agentkit-js-example/mcp-memory-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal MCP memory server backed by @agentkit-js/core StructuredMemory. Drop into any MCP host (Claude Desktop, Cursor, Glama).",
+  "main": "./index.mjs",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@agentkit-js/core": "workspace:*",
+    "@agentkit-js/mcp-server": "workspace:*"
+  }
+}
