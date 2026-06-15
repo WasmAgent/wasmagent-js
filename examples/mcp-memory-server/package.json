@@ -4,6 +4,13 @@
   "private": true,
   "type": "module",
   "description": "Minimal MCP memory server backed by @agentkit-js/core StructuredMemory. Drop into any MCP host (Claude Desktop, Cursor, Glama).",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/telleroutlook/agentkit-js#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "directory": "examples/mcp-memory-server"
+  },
   "main": "./index.mjs",
   "scripts": {
     "start": "node index.mjs"
