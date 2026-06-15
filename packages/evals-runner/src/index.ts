@@ -27,9 +27,17 @@ export {
   binomialCDF,
   buildG1Report,
   invNormalCDF,
+  iptClassify,
+  iptShortcutRate,
   mcnemarExact,
   pairedBootstrap,
   wilsonCI,
+} from "./stats/index.js";
+export type {
+  IptCohort,
+  IptPair,
+  IptPairVerdict,
+  IptVerdict,
 } from "./stats/index.js";
 export {
   agentTrajectorySuite,

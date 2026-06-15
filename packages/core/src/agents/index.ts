@@ -11,6 +11,8 @@ export type {
 export { AgentTeam, longestAnswerScorer } from "./AgentTeam.js";
 export type { CodeAgentOptions } from "./CodeAgent.js";
 export { CodeAgent } from "./CodeAgent.js";
+export type { Goal, GoalAgentOptions, GoalOutcome, GoalRunResult } from "./GoalAgent.js";
+export { GoalAgent } from "./GoalAgent.js";
 export type { HandoffAgent, HandoffOptions, HandoffResult } from "./Handoff.js";
 export { handoff, handoffGenerator } from "./Handoff.js";
 export type { AsToolOptions, SubagentRunnable } from "./Subagent.js";
