@@ -185,7 +185,7 @@ export function codeModeClaudeTool(opts: CodeModeClaudeToolOptions): ClaudeAgent
       const orchestrator = new ProgrammaticOrchestrator(
         opts.kernel,
         opts.tools,
-        opts.capabilities ?? {},
+        opts.capabilities ?? {}
       );
       const result = await orchestrator.run(code);
       return {
@@ -199,7 +199,6 @@ export function codeModeClaudeTool(opts: CodeModeClaudeToolOptions): ClaudeAgent
   };
 }
 
-
+export type { MemoryToolOptions } from "./memory.js";
 // ── D3 (2026-06-13): cross-framework memory product surface ─────────────────
 export { memoryClaudeTool, ObservationalMemory } from "./memory.js";
-export type { MemoryToolOptions } from "./memory.js";

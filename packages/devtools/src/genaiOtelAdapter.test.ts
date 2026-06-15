@@ -3,12 +3,8 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { convertGenAiSpansToEvents, type GenAiSpan, parseGenAiInput } from "./genaiOtelAdapter.js";
 import { groupByTraceId, summariseRun } from "./RunsAggregator.js";
-import {
-  convertGenAiSpansToEvents,
-  type GenAiSpan,
-  parseGenAiInput,
-} from "./genaiOtelAdapter.js";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 

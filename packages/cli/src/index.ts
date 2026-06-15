@@ -556,7 +556,9 @@ export async function devtoolsCommand(
   if (!eventsPath && !otelPath) {
     console.error("Error: --events-file <path> or --otel-events-file <path> is required.");
     console.error("  agentkit devtools --events-file ./events.ndjson");
-    console.error("  agentkit devtools --otel-events-file ./trace.ndjson  # any GenAI semconv source");
+    console.error(
+      "  agentkit devtools --otel-events-file ./trace.ndjson  # any GenAI semconv source"
+    );
     process.exit(1);
   }
   const port = Number.parseInt((opts.port as string) ?? "4317", 10);
@@ -843,9 +845,7 @@ export async function modelCommand(
 
   let local: typeof import("@agentkit-js/model-local");
   try {
-    local = (await import("@agentkit-js/model-local")) as typeof import(
-      "@agentkit-js/model-local"
-    );
+    local = (await import("@agentkit-js/model-local")) as typeof import("@agentkit-js/model-local");
   } catch (err) {
     console.error(
       "Error: @agentkit-js/model-local is not installed.\n" +
@@ -972,4 +972,3 @@ export async function modelCommand(
   console.error(`Unknown model subcommand: ${sub}. Use list | pull | verify | rm.`);
   process.exit(1);
 }
-

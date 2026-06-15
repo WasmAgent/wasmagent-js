@@ -159,11 +159,10 @@ export function iptShortcutRate(cohort: IptCohort): IptVerdict {
   const perPair: IptPairVerdict[] = cohort.map((pair) => {
     if (pair.perturbed.length === 0) {
       throw new Error(
-        `iptShortcutRate: pair "${pair.id}" has no perturbations; IPT requires ≥1 perturbation per pair`,
+        `iptShortcutRate: pair "${pair.id}" has no perturbations; IPT requires ≥1 perturbation per pair`
       );
     }
-    const perturbedPassRate =
-      pair.perturbed.filter((p) => p).length / pair.perturbed.length;
+    const perturbedPassRate = pair.perturbed.filter((p) => p).length / pair.perturbed.length;
     const originalPassNum = pair.original ? 1 : 0;
     // Rectified one-sided gap: only count cases where the model passed
     // the original (so "shortcut" is meaningful) and failed perturbations.
@@ -176,12 +175,10 @@ export function iptShortcutRate(cohort: IptCohort): IptVerdict {
     };
   });
 
-  const passRateOriginal =
-    perPair.filter((p) => p.originalPass).length / perPair.length;
+  const passRateOriginal = perPair.filter((p) => p.originalPass).length / perPair.length;
   const passRatePerturbed =
     perPair.reduce((acc, p) => acc + p.perturbedPassRate, 0) / perPair.length;
-  const shortcutRate =
-    perPair.reduce((acc, p) => acc + p.shortcutSignal, 0) / perPair.length;
+  const shortcutRate = perPair.reduce((acc, p) => acc + p.shortcutSignal, 0) / perPair.length;
 
   return {
     cohortSize: perPair.length,

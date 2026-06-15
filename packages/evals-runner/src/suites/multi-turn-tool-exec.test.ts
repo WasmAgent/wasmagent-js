@@ -12,10 +12,10 @@
  *      to end without an actual LLM.
  */
 
-import { describe, expect, it } from "vitest";
 import type { Model, StreamEvent } from "@agentkit-js/core";
-import { __test__, multiTurnToolExecSuite } from "./multi-turn-tool-exec.js";
+import { describe, expect, it } from "vitest";
 import type { ModelSpec, RunItemResult } from "../types.js";
+import { __test__, multiTurnToolExecSuite } from "./multi-turn-tool-exec.js";
 
 const { fsFixture, calFixture, cartFixture, ITEMS, META } = __test__;
 
@@ -92,10 +92,19 @@ describe("multi-turn-tool-exec — fixtures + judges", () => {
   });
 
   it("Calendar fixture: find_free_slot returns null when day is full", async () => {
-    const events: Record<string, { id: string; title: string; day: string; startMin: number; endMin: number }> = {};
+    const events: Record<
+      string,
+      { id: string; title: string; day: string; startMin: number; endMin: number }
+    > = {};
     // Block every 30-min slot from 9:00 to 18:00.
     for (let s = 540; s + 30 <= 1080; s += 30) {
-      events[String(s)] = { id: String(s), title: "x", day: "2026-07-01", startMin: s, endMin: s + 30 };
+      events[String(s)] = {
+        id: String(s),
+        title: "x",
+        day: "2026-07-01",
+        startMin: s,
+        endMin: s + 30,
+      };
     }
     const fix = calFixture(events);
     const state = fix.makeState();
@@ -248,7 +257,7 @@ describe("multi-turn-tool-exec — judge predicate pinning", () => {
           "3": { id: "3", title: "1:1", day: "2026-07-04", startMin: 600, endMin: 630 },
         },
         nextId: 4,
-      }),
+      })
     ).toBe(false);
   });
 
@@ -265,7 +274,7 @@ describe("multi-turn-tool-exec — judge predicate pinning", () => {
           "1": { id: "1", title: "noisy", day: "2026-07-10", startMin: 540, endMin: 600 },
         },
         nextId: 2,
-      }),
+      })
     ).toBe(false);
     // events cleared but no file → false
     expect(meta.judge({ files: {} }, calOk)).toBe(false);

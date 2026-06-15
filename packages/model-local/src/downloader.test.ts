@@ -18,8 +18,8 @@ import {
   effectiveMirror,
   filenameForSource,
 } from "./downloader.js";
-import { LocalModelChecksumError, LocalModelDownloadError } from "./types.js";
 import type { RegisteredModel } from "./registry.js";
+import { LocalModelChecksumError, LocalModelDownloadError } from "./types.js";
 
 let dir: string;
 const ORIGINAL_ENV_DIR = process.env.AGENTKIT_MODEL_DIR;

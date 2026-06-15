@@ -7,8 +7,9 @@
  * tool description matches core (so callers don't see drift between
  * frameworks).
  */
-import { describe, expect, it } from "vitest";
+
 import { MapKvBackend } from "@agentkit-js/core";
+import { describe, expect, it } from "vitest";
 import { memoryTool } from "./memory.js";
 
 describe("memoryTool (D3 — AI SDK shape)", () => {

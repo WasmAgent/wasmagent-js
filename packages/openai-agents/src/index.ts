@@ -64,7 +64,7 @@ const sandboxedJsInput = z.object({
     .string()
     .describe(
       "JavaScript expression or block. The value of the final expression " +
-        "(or the value assigned to `__finalAnswer__`) is returned.",
+        "(or the value assigned to `__finalAnswer__`) is returned."
     ),
 });
 
@@ -91,7 +91,7 @@ export interface SandboxedJsAgentToolOptions {
  * differs.
  */
 export function sandboxedJsAgentTool(
-  opts: SandboxedJsAgentToolOptions,
+  opts: SandboxedJsAgentToolOptions
 ): OpenAiAgentTool<{ code: string }, { output: unknown; logs: string[] }> {
   return {
     name: opts.name ?? "sandboxed_js",
@@ -116,7 +116,7 @@ const codeModeInput = z.object({
     .describe(
       "JavaScript snippet. May call `callTool(name, args)` against any " +
         "registered downstream tool. Return the final value (or assign to " +
-        "`__finalAnswer__`); intermediate tool outputs are discarded.",
+        "`__finalAnswer__`); intermediate tool outputs are discarded."
     ),
 });
 
@@ -139,7 +139,7 @@ export interface CodeModeAgentToolOptions extends SandboxedJsAgentToolOptions {
  * for the token-savings benchmark (≤14% of direct-tool-use at N=30).
  */
 export function codeModeAgentTool(
-  opts: CodeModeAgentToolOptions,
+  opts: CodeModeAgentToolOptions
 ): OpenAiAgentTool<{ code: string }, { output: string; toolCallCount: number }> {
   return {
     name: opts.name ?? "execute_code",
@@ -154,7 +154,7 @@ export function codeModeAgentTool(
       const orchestrator = new ProgrammaticOrchestrator(
         opts.kernel,
         opts.tools,
-        opts.capabilities ?? {},
+        opts.capabilities ?? {}
       );
       const result = await orchestrator.run(code);
       return {
@@ -168,7 +168,6 @@ export function codeModeAgentTool(
   };
 }
 
-
+export type { MemoryToolOptions } from "./memory.js";
 // ── D3 (2026-06-13): cross-framework memory product surface ─────────────────
 export { memoryAgentTool, ObservationalMemory } from "./memory.js";
-export type { MemoryToolOptions } from "./memory.js";

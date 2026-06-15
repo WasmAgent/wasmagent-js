@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { iptClassify, iptShortcutRate, type IptCohort } from "./ipt.js";
+import { type IptCohort, iptClassify, iptShortcutRate } from "./ipt.js";
 
 describe("iptShortcutRate — clean cohort (model invariant)", () => {
   it("all original pass + all perturbations pass = 0 shortcut", () => {
@@ -72,9 +72,7 @@ describe("iptShortcutRate — shortcut cohort (RLVR-style cheating)", () => {
 
 describe("iptShortcutRate — partial perturbations (mixed signal)", () => {
   it("model passes original + 1 of 2 perturbations = 0.5 signal for that pair", () => {
-    const cohort: IptCohort = [
-      { id: "mixed-1", original: true, perturbed: [true, false] },
-    ];
+    const cohort: IptCohort = [{ id: "mixed-1", original: true, perturbed: [true, false] }];
     const v = iptShortcutRate(cohort);
     expect(v.perPair[0]?.perturbedPassRate).toBe(0.5);
     expect(v.perPair[0]?.shortcutSignal).toBe(0.5);
@@ -82,9 +80,7 @@ describe("iptShortcutRate — partial perturbations (mixed signal)", () => {
   });
 
   it("3 perturbations, 1 fails = ~0.33 signal", () => {
-    const cohort: IptCohort = [
-      { id: "mixed-2", original: true, perturbed: [true, true, false] },
-    ];
+    const cohort: IptCohort = [{ id: "mixed-2", original: true, perturbed: [true, true, false] }];
     const v = iptShortcutRate(cohort);
     expect(v.perPair[0]?.perturbedPassRate).toBeCloseTo(0.667, 2);
     expect(v.perPair[0]?.shortcutSignal).toBeCloseTo(0.333, 2);
@@ -96,9 +92,7 @@ describe("iptShortcutRate — original-fail edge cases", () => {
     // The shortcut hypothesis is "memorise the canonical form".
     // If the model fails the canonical form but passes perturbations,
     // it's certainly NOT exhibiting that shortcut. Rectified to 0.
-    const cohort: IptCohort = [
-      { id: "weird-1", original: false, perturbed: [true, true] },
-    ];
+    const cohort: IptCohort = [{ id: "weird-1", original: false, perturbed: [true, true] }];
     const v = iptShortcutRate(cohort);
     expect(v.perPair[0]?.shortcutSignal).toBe(0);
     expect(v.shortcutRate).toBe(0);
@@ -149,9 +143,9 @@ describe("iptShortcutRate — error paths", () => {
   });
 
   it("throws on a pair with empty perturbations array", () => {
-    expect(() =>
-      iptShortcutRate([{ id: "broken", original: true, perturbed: [] }]),
-    ).toThrow(/has no perturbations/);
+    expect(() => iptShortcutRate([{ id: "broken", original: true, perturbed: [] }])).toThrow(
+      /has no perturbations/
+    );
   });
 });
 
@@ -168,14 +162,38 @@ describe("iptClassify — threshold boundaries", () => {
   });
 
   it("0.10 exactly is suspicious", () => {
-    expect(iptClassify({ cohortSize: 1, passRateOriginal: 1, passRatePerturbed: 0.9, shortcutRate: 0.1, perPair: [] })).toBe("suspicious");
+    expect(
+      iptClassify({
+        cohortSize: 1,
+        passRateOriginal: 1,
+        passRatePerturbed: 0.9,
+        shortcutRate: 0.1,
+        perPair: [],
+      })
+    ).toBe("suspicious");
   });
 
   it("just below 0.25 is suspicious", () => {
-    expect(iptClassify({ cohortSize: 1, passRateOriginal: 1, passRatePerturbed: 0.751, shortcutRate: 0.249, perPair: [] })).toBe("suspicious");
+    expect(
+      iptClassify({
+        cohortSize: 1,
+        passRateOriginal: 1,
+        passRatePerturbed: 0.751,
+        shortcutRate: 0.249,
+        perPair: [],
+      })
+    ).toBe("suspicious");
   });
 
   it("0.25 exactly is likely-shortcut", () => {
-    expect(iptClassify({ cohortSize: 1, passRateOriginal: 1, passRatePerturbed: 0.75, shortcutRate: 0.25, perPair: [] })).toBe("likely-shortcut");
+    expect(
+      iptClassify({
+        cohortSize: 1,
+        passRateOriginal: 1,
+        passRatePerturbed: 0.75,
+        shortcutRate: 0.25,
+        perPair: [],
+      })
+    ).toBe("likely-shortcut");
   });
 });

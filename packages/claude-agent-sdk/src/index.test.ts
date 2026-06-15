@@ -29,9 +29,9 @@ describe("sandboxedJsClaudeTool", () => {
       kernel: new JsKernel(),
       capabilities: { allowedHosts: ["api.example.com"] },
     });
-    await expect(
-      t.handler({ code: "fetch('https://evil.com/data')" }),
-    ).rejects.toThrow(/CapabilityDenied/);
+    await expect(t.handler({ code: "fetch('https://evil.com/data')" })).rejects.toThrow(
+      /CapabilityDenied/
+    );
   });
 
   it("exposes a JSON Schema input_schema with required `code`", () => {

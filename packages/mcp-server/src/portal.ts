@@ -42,7 +42,7 @@ import type {
   WasmKernel,
 } from "@agentkit-js/core";
 import { ToolRegistry as ToolRegistryCtor } from "@agentkit-js/core";
-import { createCodeModeServer, type CodeModeServerOptions } from "./codeMode.js";
+import { type CodeModeServerOptions, createCodeModeServer } from "./codeMode.js";
 import type { McpAgentServer } from "./McpAgentServer.js";
 import type { McpServerInfo, McpTaskStore } from "./types.js";
 

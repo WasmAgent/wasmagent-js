@@ -88,10 +88,7 @@ export type CodemodeProvidersOrFns =
  * who construct an executor by hand have a type to assert against.
  */
 export interface CodemodeExecutor {
-  execute(
-    code: string,
-    providersOrFns: CodemodeProvidersOrFns
-  ): Promise<CodemodeExecuteResult>;
+  execute(code: string, providersOrFns: CodemodeProvidersOrFns): Promise<CodemodeExecuteResult>;
 }
 
 // ── agentkit options ────────────────────────────────────────────────────────
@@ -127,9 +124,7 @@ export interface AgentkitCodemodeExecutorOptions {
  *                 `@cloudflare/codemode` and may shift if the upstream
  *                 contract changes during stabilization.
  */
-export function agentkitCodemodeExecutor(
-  opts: AgentkitCodemodeExecutorOptions
-): CodemodeExecutor {
+export function agentkitCodemodeExecutor(opts: AgentkitCodemodeExecutorOptions): CodemodeExecutor {
   // Defensive read: rejects malformed opts at construction time, before
   // the LLM emits its first script. The empty-body validations below are
   // load-bearing — a missing `kernel` would otherwise surface as a
@@ -139,9 +134,7 @@ export function agentkitCodemodeExecutor(
     throw new TypeError("agentkitCodemodeExecutor: opts is required");
   }
   if (!opts.kernel || typeof opts.kernel.run !== "function") {
-    throw new TypeError(
-      "agentkitCodemodeExecutor: opts.kernel must be a WasmKernel (with .run())"
-    );
+    throw new TypeError("agentkitCodemodeExecutor: opts.kernel must be a WasmKernel (with .run())");
   }
 
   return {
@@ -186,7 +179,7 @@ export function agentkitCodemodeExecutor(
       const resolved = new Map<string, string>();
       const aggregatedLogs: string[] = [];
       let lastError: string | undefined;
-      let lastResult: unknown = undefined;
+      let lastResult: unknown;
 
       for (let iter = 0; iter < maxIter; iter++) {
         const runScript = buildRunScript(code, PENDING_MARKER);
@@ -198,8 +191,7 @@ export function agentkitCodemodeExecutor(
         // code), so this is a faithful console capture.
         if (Array.isArray(exec.logs)) aggregatedLogs.push(...exec.logs);
 
-        const rawOut =
-          typeof exec.output === "string" ? exec.output : JSON.stringify(exec.output);
+        const rawOut = typeof exec.output === "string" ? exec.output : JSON.stringify(exec.output);
 
         let parsed: {
           done: boolean;
@@ -250,8 +242,7 @@ export function agentkitCodemodeExecutor(
           const argv = Array.isArray(args) ? (args as unknown[]) : [args];
           const callArgs = target.positional ? argv : [argv[0]];
           const value = await target.fn(...callArgs);
-          resultStr =
-            typeof value === "string" ? value : JSON.stringify(value ?? null);
+          resultStr = typeof value === "string" ? value : JSON.stringify(value ?? null);
         } catch (e) {
           // Tool threw — surface the message inside the kernel as a
           // rejected promise on the next re-run (script can catch it).
@@ -318,10 +309,7 @@ function flattenProviders(p: CodemodeProvidersOrFns): Map<string, FlatProvider> 
  * starts with `__CODEMODE_PENDING__:` — we surface that as a final
  * error instead of looping forever.
  */
-function buildToolsObjectLiteral(
-  flat: Map<string, FlatProvider>,
-  marker: string
-): string {
+function buildToolsObjectLiteral(flat: Map<string, FlatProvider>, marker: string): string {
   // Group dotted names back into a tree so the proxy can branch:
   // single-segment ("add") -> leaf at the root
   // two-segment  ("weather.getCurrent") -> nested object

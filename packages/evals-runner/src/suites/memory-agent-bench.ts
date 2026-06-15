@@ -230,7 +230,10 @@ const TEMPLATES: MABTemplate[] = [
     id: "mab-LRU-4",
     competency: "LRU",
     history: [
-      { role: "user", content: "I went to Tokyo, then Seoul, then Bangkok, then Singapore on my trip." },
+      {
+        role: "user",
+        content: "I went to Tokyo, then Seoul, then Bangkok, then Singapore on my trip.",
+      },
       { role: "assistant", content: "Sounds great." },
       ...noise(8),
     ],
@@ -303,7 +306,10 @@ const TEMPLATES: MABTemplate[] = [
       { role: "user", content: "I'm allergic to cats." },
       { role: "assistant", content: "Noted." },
       ...noise(6),
-      { role: "user", content: "Correction: I was misdiagnosed. I'm actually allergic to dogs, not cats." },
+      {
+        role: "user",
+        content: "Correction: I was misdiagnosed. I'm actually allergic to dogs, not cats.",
+      },
       { role: "assistant", content: "Updated." },
       ...noise(4),
     ],

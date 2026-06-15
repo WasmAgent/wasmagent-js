@@ -18,6 +18,7 @@ const okModel = (id: string, output: string): Model => ({
 
 const failingModel = (id: string): Model => ({
   providerId: id,
+  // biome-ignore lint/correctness/useYield: this generator throws immediately to simulate an unhealthy provider — it never yields by design
   async *generate() {
     throw new Error(`${id} down`);
   },

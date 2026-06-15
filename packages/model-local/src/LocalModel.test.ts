@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { LocalModel, __setLlamaModuleForTests, renderMessagesAsPrompt } from "./LocalModel.js";
+import { __setLlamaModuleForTests, LocalModel, renderMessagesAsPrompt } from "./LocalModel.js";
 import { LocalModelDependencyError } from "./types.js";
 
 interface RecordedPrompt {
@@ -137,10 +137,10 @@ describe("LocalModel.generate (free-form)", () => {
     let usage: { inputTokens: number; outputTokens: number } | undefined;
     let stop = "";
     let collected = "";
-    for await (const ev of m.generate(
-      [{ role: "user", content: "say hi" }],
-      { temperature: 0.4, maxTokens: 100 }
-    )) {
+    for await (const ev of m.generate([{ role: "user", content: "say hi" }], {
+      temperature: 0.4,
+      maxTokens: 100,
+    })) {
       events.push(ev.type);
       if (ev.type === "text_delta") collected += ev.delta ?? "";
       if (ev.type === "stop") stop = ev.stopReason ?? "";

@@ -13,9 +13,9 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  MODEL_REGISTRY,
   getRegisteredModel,
   listRegisteredModels,
+  MODEL_REGISTRY,
   orderSources,
 } from "./registry.js";
 

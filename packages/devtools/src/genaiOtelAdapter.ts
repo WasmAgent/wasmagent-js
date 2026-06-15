@@ -155,7 +155,7 @@ export function convertGenAiSpansToEvents(spans: GenAiSpan[]): GenAiConversionRe
           data: { task },
         });
         const finalEv = (span.events ?? []).find((e) =>
-          ["gen_ai.choice", "final_answer", "agent.final_answer"].includes(String(e.name ?? "")),
+          ["gen_ai.choice", "final_answer", "agent.final_answer"].includes(String(e.name ?? ""))
         );
         if (finalEv) {
           const ans =

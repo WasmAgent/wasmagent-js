@@ -52,7 +52,7 @@ thesis, not by code size or test count.
 | `@agentkit-js/aisdk`                     | ◆    | Vercel AI SDK adapter. Primary contributor pipeline; in flight upstream (issue #16063).               |
 | `@agentkit-js/mastra-sandbox`            | ◆    | Mastra sandbox provider; in flight upstream (issue #17884).                                           |
 | `@agentkit-js/claude-agent-sdk`          | ◆    | Anthropic Claude Agent SDK adapter. Tracks v0/v1 SDK type evolution.                                  |
-| `@agentkit-js/openai-agents`             | ◆    | OpenAI Agents JS adapter. Tracks `@openai/agents` Tool<T> shape.                                      |
+| `@agentkit-js/openai-agents`             | ◆    | OpenAI Agents JS adapter. Tracks `@openai/agents` `Tool<T>` shape.                                      |
 | `@agentkit-js/devtools`                  | ◆    | Cross-framework local Studio (D5 GenAI semconv ingest). Direction 5 promotes this further.            |
 | `@agentkit-js/otel-exporter`             | ◆    | OTLP/HTTP exporter. Companion to devtools' framework-agnostic story.                                  |
 | `@agentkit-js/agent-prompts`             | ◆    | Reusable system prompts. Small surface, but feeds adapter packages.                                   |
@@ -104,7 +104,7 @@ maintenance posture.
   [`ROADMAP.md`](../../ROADMAP.md) S1) actively recommends this
   package, OR organic npm downloads cross 1k/week sustained.
 - **◆ → ▽:** if a ◆ package's upstream contract has been stable
-  for two minor versions and download data shows < 100/week
+  for two minor versions and download data shows fewer than 100/week
   sustained for two consecutive quarters. Demotion lands with the
   same banner above.
 - **★ → other:** unanimous maintainer agreement and a strategy

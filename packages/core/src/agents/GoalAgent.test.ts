@@ -57,12 +57,17 @@ describe("GoalAgent — pre-loop check", () => {
     const events: unknown[] = [];
     for await (const ev of agent.run({
       describe: "stub goal",
-      verify: async () => ({ ok: true } as const),
+      verify: async () => ({ ok: true }) as const,
     })) {
       events.push(ev);
     }
     const done = events.find((e) => (e as { event?: string }).event === "goal_done") as {
-      data: { outcome: string; iterationCount: number; totalInputTokens: number; totalOutputTokens: number };
+      data: {
+        outcome: string;
+        iterationCount: number;
+        totalInputTokens: number;
+        totalOutputTokens: number;
+      };
     };
     expect(done).toBeDefined();
     expect(done.data.outcome).toBe("verified");
@@ -110,7 +115,7 @@ describe("GoalAgent — iteration loop", () => {
       events.push(ev);
     }
     const iterStarts = events.filter(
-      (e) => (e as { event?: string }).event === "goal_iteration_start",
+      (e) => (e as { event?: string }).event === "goal_iteration_start"
     ) as Array<{ data: { iteration: number; hint?: string } }>;
     expect(iterStarts.length).toBe(2); // verify passes after iter 2
     expect(iterStarts[0]?.data.iteration).toBe(1);
@@ -146,7 +151,7 @@ describe("GoalAgent — iteration loop", () => {
     const events: unknown[] = [];
     for await (const ev of agent.run({
       describe: "stub goal",
-      verify: async () => ({ ok: false, hint: "still failing" } as const),
+      verify: async () => ({ ok: false, hint: "still failing" }) as const,
     })) {
       events.push(ev);
     }
@@ -181,7 +186,7 @@ describe("GoalAgent — iteration loop", () => {
       events.push(ev);
     }
     const iterStarts = events.filter(
-      (e) => (e as { event?: string }).event === "goal_iteration_start",
+      (e) => (e as { event?: string }).event === "goal_iteration_start"
     ) as Array<{ data: { iteration: number; hint?: string } }>;
     // iter 1 has the pre-loop hint
     expect(iterStarts[0]?.data.hint).toBe("pre-loop hint");
@@ -221,12 +226,17 @@ describe("GoalAgent — budget", () => {
     const events: unknown[] = [];
     for await (const ev of agent.run({
       describe: "stub goal",
-      verify: async () => ({ ok: false, hint: "incomplete" } as const),
+      verify: async () => ({ ok: false, hint: "incomplete" }) as const,
     })) {
       events.push(ev);
     }
     const done = events.find((e) => (e as { event?: string }).event === "goal_done") as {
-      data: { outcome: string; iterationCount: number; totalInputTokens: number; totalOutputTokens: number };
+      data: {
+        outcome: string;
+        iterationCount: number;
+        totalInputTokens: number;
+        totalOutputTokens: number;
+      };
     };
     expect(done.data.outcome).toBe("budget");
     expect(done.data.iterationCount).toBe(2);
@@ -242,7 +252,7 @@ describe("GoalAgent — budget", () => {
     const events: unknown[] = [];
     for await (const ev of agent.run({
       describe: "stub goal",
-      verify: async () => ({ ok: false } as const),
+      verify: async () => ({ ok: false }) as const,
     })) {
       events.push(ev);
     }

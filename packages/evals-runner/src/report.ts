@@ -24,13 +24,22 @@ export function renderReportMarkdown(report: EvaluationReport): string {
   const out: string[] = [];
 
   // ── NOT-FOR-CLAIMS watermark ──────────────────────────────────────────────
-  const maxN = Math.max(...report.aggregates.map((a) => a.totalCells / Math.max(report.seeds.length, 1)), 0);
+  const maxN = Math.max(
+    ...report.aggregates.map((a) => a.totalCells / Math.max(report.seeds.length, 1)),
+    0
+  );
   const nSeeds = report.seeds.length;
   const notForClaims = nSeeds < 3 || maxN < MIN_N_FOR_CLAIMS;
   if (notForClaims) {
-    out.push(`> ⚠️ **NOT-FOR-CLAIMS**: This run has ${nSeeds} seed(s) and ≤${Math.ceil(maxN)} items/suite.`);
-    out.push(`> Paired McNemar requires ≥3 seeds and ≥${MIN_N_FOR_CLAIMS} items for a statistically valid comparison.`);
-    out.push(`> Wilson CIs here are for exploration only — differences ≤10pp are indistinguishable at this n.`);
+    out.push(
+      `> ⚠️ **NOT-FOR-CLAIMS**: This run has ${nSeeds} seed(s) and ≤${Math.ceil(maxN)} items/suite.`
+    );
+    out.push(
+      `> Paired McNemar requires ≥3 seeds and ≥${MIN_N_FOR_CLAIMS} items for a statistically valid comparison.`
+    );
+    out.push(
+      `> Wilson CIs here are for exploration only — differences ≤10pp are indistinguishable at this n.`
+    );
     out.push("");
   }
 
@@ -139,7 +148,9 @@ export function renderReportMarkdown(report: EvaluationReport): string {
     out.push("");
 
     if (notForClaims) {
-      out.push(`> ⚠️ **NOT-FOR-CLAIMS**: n < ${MIN_N_FOR_CLAIMS} items or seeds < 3. These p-values are exploratory only.`);
+      out.push(
+        `> ⚠️ **NOT-FOR-CLAIMS**: n < ${MIN_N_FOR_CLAIMS} items or seeds < 3. These p-values are exploratory only.`
+      );
       out.push("");
     } else {
       out.push(`> Pooled across seeds. b = candidate-correct/baseline-wrong; c = opposite.`);
@@ -196,8 +207,13 @@ export function renderReportMarkdown(report: EvaluationReport): string {
 
           const { p } = mcnemarExact(b, c);
           const deltaAcc = pooledN > 0 ? (pooledCandPass - pooledBasePass) / pooledN : 0;
-          const verdictIcon = notForClaims ? "—" :
-            p < 0.05 ? (deltaAcc > 0 ? "✅ sig. better" : "❌ sig. worse") : "≈ not significant";
+          const verdictIcon = notForClaims
+            ? "—"
+            : p < 0.05
+              ? deltaAcc > 0
+                ? "✅ sig. better"
+                : "❌ sig. worse"
+              : "≈ not significant";
 
           out.push(
             `| \`${cand.id}\` | \`${base.id}\` ` +
@@ -209,7 +225,9 @@ export function renderReportMarkdown(report: EvaluationReport): string {
         }
       }
       if (notForClaims) {
-        out.push(`> † p-values marked with † are NOT-FOR-CLAIMS (n < ${MIN_N_FOR_CLAIMS} or seeds < 3).`);
+        out.push(
+          `> † p-values marked with † are NOT-FOR-CLAIMS (n < ${MIN_N_FOR_CLAIMS} or seeds < 3).`
+        );
       }
       out.push("");
     }
@@ -248,4 +266,3 @@ export function renderReportCompact(aggregates: SuiteAggregate[]): string {
     )
     .join("\n");
 }
-

@@ -33,7 +33,12 @@ function pad(tail: Array<{ role: "user" | "assistant"; content: string }>, noise
 
 interface ItemTemplate {
   category: string;
-  makeItem: (variant: { id: string; entity: string; value: string; extra?: string }) => BenchmarkItem;
+  makeItem: (variant: {
+    id: string;
+    entity: string;
+    value: string;
+    extra?: string;
+  }) => BenchmarkItem;
 }
 
 const SINGLE_SESSION_TEMPLATES: ItemTemplate[] = [
@@ -46,11 +51,17 @@ const SINGLE_SESSION_TEMPLATES: ItemTemplate[] = [
       expectedAnswer: value,
       expectedAnswerMatcher: (a) => new RegExp(`\\b${value}\\b`, "i").test(a),
       messages: [
-        { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+        {
+          role: "system",
+          content: "Use the conversation history to answer. Reply with the answer ONLY.",
+        },
         { role: "user", content: `I just adopted a ${value} named Pepper.` },
         { role: "assistant", content: `Congrats on adopting Pepper!` },
         { role: "user", content: `She is 14 weeks old today.` },
-        { role: "assistant", content: `${value.charAt(0).toUpperCase() + value.slice(1)} puppies are full of energy at that age.` },
+        {
+          role: "assistant",
+          content: `${value.charAt(0).toUpperCase() + value.slice(1)} puppies are full of energy at that age.`,
+        },
         { role: "user", content: `What breed is my ${entity}?` },
       ],
     }),
@@ -64,7 +75,10 @@ const SINGLE_SESSION_TEMPLATES: ItemTemplate[] = [
       expectedAnswer: value,
       expectedAnswerMatcher: (a) => new RegExp(`\\b${value}\\b`, "i").test(a),
       messages: [
-        { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+        {
+          role: "system",
+          content: "Use the conversation history to answer. Reply with the answer ONLY.",
+        },
         { role: "user", content: `My favourite colour is teal.` },
         { role: "assistant", content: `Cool choice.` },
         { role: "user", content: `And my favourite ${entity} is ${value}.` },
@@ -85,7 +99,10 @@ const MULTI_SESSION_TEMPLATES: ItemTemplate[] = [
       expectedAnswer: value,
       expectedAnswerMatcher: (a) => new RegExp(value, "i").test(a),
       messages: [
-        { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+        {
+          role: "system",
+          content: "Use the conversation history to answer. Reply with the answer ONLY.",
+        },
         { role: "user", content: `(session 1) My ${entity} is ${value}.` },
         { role: "assistant", content: `Noted.` },
         { role: "user", content: `(session 2) I live in Singapore.` },
@@ -103,7 +120,10 @@ const MULTI_SESSION_TEMPLATES: ItemTemplate[] = [
       expectedAnswer: value,
       expectedAnswerMatcher: (a) => new RegExp(`\\b${value}\\b`, "i").test(a),
       messages: [
-        { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+        {
+          role: "system",
+          content: "Use the conversation history to answer. Reply with the answer ONLY.",
+        },
         { role: "user", content: `(session 1) My ${entity} is ${value}.` },
         { role: "assistant", content: `Got it.` },
         { role: "user", content: `(session 2) I have been using this for two years.` },
@@ -124,7 +144,10 @@ const KNOWLEDGE_UPDATE_TEMPLATES: ItemTemplate[] = [
       expectedAnswer: value,
       expectedAnswerMatcher: (a) => new RegExp(value, "i").test(a),
       messages: [
-        { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+        {
+          role: "system",
+          content: "Use the conversation history to answer. Reply with the answer ONLY.",
+        },
         { role: "user", content: `I have a ${extra ?? "Toyota Corolla"}.` },
         { role: "assistant", content: `Classic choice.` },
         { role: "user", content: `Actually, I sold it and got a ${value} last week.` },
@@ -142,7 +165,10 @@ const KNOWLEDGE_UPDATE_TEMPLATES: ItemTemplate[] = [
       expectedAnswer: value,
       expectedAnswerMatcher: (a) => new RegExp(value, "i").test(a),
       messages: [
-        { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+        {
+          role: "system",
+          content: "Use the conversation history to answer. Reply with the answer ONLY.",
+        },
         { role: "user", content: `I used to work at ${extra ?? "Globex Corp"}.` },
         { role: "assistant", content: `I see.` },
         { role: "user", content: `I recently joined ${value}.` },
@@ -163,7 +189,10 @@ const TEMPORAL_REASONING_TEMPLATES: ItemTemplate[] = [
       expectedAnswer: value,
       expectedAnswerMatcher: (a) => new RegExp(value, "i").test(a),
       messages: [
-        { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+        {
+          role: "system",
+          content: "Use the conversation history to answer. Reply with the answer ONLY.",
+        },
         { role: "user", content: `I started a new job at ${entity} on January 5, 2025.` },
         { role: "assistant", content: `Congrats!` },
         { role: "user", content: `Today is January 5, 2026.` },
@@ -181,7 +210,10 @@ const TEMPORAL_REASONING_TEMPLATES: ItemTemplate[] = [
       expectedAnswer: value,
       expectedAnswerMatcher: (a) => new RegExp(value, "i").test(a),
       messages: [
-        { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+        {
+          role: "system",
+          content: "Use the conversation history to answer. Reply with the answer ONLY.",
+        },
         { role: "user", content: `My ${entity} was born in March 2021.` },
         { role: "assistant", content: `Aw, how cute!` },
         { role: "user", content: `Today is March 2026.` },
@@ -251,7 +283,10 @@ const PREFERENCE_UPDATE_TEMPLATES: ItemTemplate[] = [
       expectedAnswer: value,
       expectedAnswerMatcher: (a) => new RegExp(`\\b${value}\\b`, "i").test(a),
       messages: [
-        { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+        {
+          role: "system",
+          content: "Use the conversation history to answer. Reply with the answer ONLY.",
+        },
         { role: "user", content: `I used to love ${extra ?? "vanilla"} ice cream.` },
         { role: "assistant", content: `Classic flavour.` },
         { role: "user", content: `But now my favourite ${entity} is ${value}.` },
@@ -267,8 +302,22 @@ const PREFERENCE_UPDATE_TEMPLATES: ItemTemplate[] = [
 const DOG_BREEDS = ["beagle", "labrador", "poodle", "corgi", "husky", "dachshund"];
 const NUMBERS = ["17", "42", "7", "99", "13", "31"];
 const BIRTHDATES = ["march 12", "july 4", "october 31", "february 28", "june 15", "september 9"];
-const CARS = ["Rivian R1S", "Tesla Model S", "BMW iX", "Polestar 2", "Hyundai Ioniq 6", "Volvo EX30"];
-const OLD_CARS = ["Toyota Camry", "Honda Civic", "Ford Focus", "Chevrolet Malibu", "VW Golf", "Nissan Altima"];
+const CARS = [
+  "Rivian R1S",
+  "Tesla Model S",
+  "BMW iX",
+  "Polestar 2",
+  "Hyundai Ioniq 6",
+  "Volvo EX30",
+];
+const OLD_CARS = [
+  "Toyota Camry",
+  "Honda Civic",
+  "Ford Focus",
+  "Chevrolet Malibu",
+  "VW Golf",
+  "Nissan Altima",
+];
 const COMPANIES = ["Acme Corp", "Globex Inc", "Initech", "Umbrella Corp", "Waystar Royco", "Hooli"];
 const NEW_COMPANIES = ["DeepMind", "OpenAI", "Anthropic", "Mistral", "Cohere", "Stability AI"];
 const COLOURS = ["blue", "green", "yellow", "red", "purple", "teal"];
@@ -295,7 +344,10 @@ function generateItems(): BenchmarkItem[] {
     expectedAnswer: "beagle",
     expectedAnswerMatcher: (a) => /\bbeagle\b/i.test(a),
     messages: [
-      { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+      {
+        role: "system",
+        content: "Use the conversation history to answer. Reply with the answer ONLY.",
+      },
       { role: "user", content: "I just adopted a beagle named Pepper." },
       { role: "assistant", content: "Congrats on adopting Pepper!" },
       { role: "user", content: "She is 14 weeks old today." },
@@ -310,7 +362,10 @@ function generateItems(): BenchmarkItem[] {
     expectedAnswer: "march 12",
     expectedAnswerMatcher: (a) => /march\s*1?2/i.test(a),
     messages: [
-      { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+      {
+        role: "system",
+        content: "Use the conversation history to answer. Reply with the answer ONLY.",
+      },
       { role: "user", content: "(session 1) My birthday is March 12." },
       { role: "assistant", content: "Noted." },
       { role: "user", content: "(session 2) I live in Singapore." },
@@ -325,7 +380,10 @@ function generateItems(): BenchmarkItem[] {
     expectedAnswer: "rivian r1s",
     expectedAnswerMatcher: (a) => /rivian/i.test(a),
     messages: [
-      { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+      {
+        role: "system",
+        content: "Use the conversation history to answer. Reply with the answer ONLY.",
+      },
       { role: "user", content: "I drive a Tesla Model 3." },
       { role: "assistant", content: "Nice EV." },
       { role: "user", content: "Actually, I sold the Model 3 and bought a Rivian R1S last week." },
@@ -340,7 +398,10 @@ function generateItems(): BenchmarkItem[] {
     expectedAnswer: "1 year",
     expectedAnswerMatcher: (a) => /\b1\s*year|\bone\s*year|12\s*months/i.test(a),
     messages: [
-      { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+      {
+        role: "system",
+        content: "Use the conversation history to answer. Reply with the answer ONLY.",
+      },
       { role: "user", content: "I started a new job at Acme Corp on January 5, 2025." },
       { role: "assistant", content: "Congrats!" },
       { role: "user", content: "Today is January 5, 2026." },
@@ -355,7 +416,10 @@ function generateItems(): BenchmarkItem[] {
     expectedAnswer: "17",
     expectedAnswerMatcher: (a) => /\b17\b/.test(a),
     messages: [
-      { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+      {
+        role: "system",
+        content: "Use the conversation history to answer. Reply with the answer ONLY.",
+      },
       { role: "user", content: "My favourite colour is teal." },
       { role: "assistant", content: "Cool choice." },
       { role: "user", content: "And my favourite number is 17." },
@@ -418,7 +482,13 @@ function generateItems(): BenchmarkItem[] {
   }
 
   // Multi-session: job/hobby
-  const hobbies = ["favourite hobby", "main sport", "musical instrument", "programming language", "reading genre"];
+  const hobbies = [
+    "favourite hobby",
+    "main sport",
+    "musical instrument",
+    "programming language",
+    "reading genre",
+  ];
   const hobbyVals = ["painting", "tennis", "guitar", "Python", "mystery novels"];
   for (let i = 0; i < hobbies.length; i++) {
     items.push(
@@ -470,7 +540,10 @@ function generateItems(): BenchmarkItem[] {
       expectedAnswer: dur,
       expectedAnswerMatcher: (a) => new RegExp(dur, "i").test(a),
       messages: [
-        { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+        {
+          role: "system",
+          content: "Use the conversation history to answer. Reply with the answer ONLY.",
+        },
         { role: "user", content: `I started at ${company} in ${month} ${Number(year)}.` },
         { role: "assistant", content: `Exciting role!` },
         { role: "user", content: `Today is ${month} ${Number(year) + Number(dur[0])}.` },
@@ -524,7 +597,10 @@ function generateItems(): BenchmarkItem[] {
       expectedAnswer: pet,
       expectedAnswerMatcher: (a) => new RegExp(`\\b${pet}\\b`, "i").test(a),
       messages: [
-        { role: "system", content: "Use the conversation history to answer. Reply with the answer ONLY." },
+        {
+          role: "system",
+          content: "Use the conversation history to answer. Reply with the answer ONLY.",
+        },
         { role: "user", content: `I used to want a dog.` },
         { role: "assistant", content: `Dogs are great companions.` },
         { role: "user", content: `But now I really want a ${pet}.` },

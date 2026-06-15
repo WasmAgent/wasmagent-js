@@ -261,10 +261,13 @@ describe("estimateJoulesPerCorrect — energy efficiency estimate", () => {
       passedCells: 5,
     };
     const r1 = estimateJoulesPerCorrect({ ...base, modelId: "small-model" }, { tdpWatts: 5 });
-    const r2 = estimateJoulesPerCorrect({ ...base, modelId: "large-model", medianWallMs: 5000 }, { tdpWatts: 40 });
+    const r2 = estimateJoulesPerCorrect(
+      { ...base, modelId: "large-model", medianWallMs: 5000 },
+      { tdpWatts: 40 }
+    );
     const table = renderEnergyTable([r2, r1], "multi-turn-memory");
     // small-model should come first (lower J/correct)
-    const lines = table.split("\n").filter(l => l.startsWith("| `"));
+    const lines = table.split("\n").filter((l) => l.startsWith("| `"));
     expect(lines[0]).toContain("small-model");
     expect(lines[1]).toContain("large-model");
   });

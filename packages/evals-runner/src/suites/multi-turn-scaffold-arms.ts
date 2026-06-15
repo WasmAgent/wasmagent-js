@@ -62,9 +62,21 @@ const { META, ITEMS } = __test__ as {
 // judge is read back from META (same structural tag we use in V1).
 
 type FixtureMeta =
-  | { family: "fs"; fixture: { makeState: () => unknown; makeTools: (s: unknown) => ToolDefinition[] }; judge: (s: unknown) => boolean }
-  | { family: "cal"; fixture: { makeState: () => unknown; makeTools: (s: unknown) => ToolDefinition[] }; judge: (s: unknown) => boolean }
-  | { family: "cart"; fixture: { makeState: () => unknown; makeTools: (s: unknown) => ToolDefinition[] }; judge: (s: unknown) => boolean }
+  | {
+      family: "fs";
+      fixture: { makeState: () => unknown; makeTools: (s: unknown) => ToolDefinition[] };
+      judge: (s: unknown) => boolean;
+    }
+  | {
+      family: "cal";
+      fixture: { makeState: () => unknown; makeTools: (s: unknown) => ToolDefinition[] };
+      judge: (s: unknown) => boolean;
+    }
+  | {
+      family: "cart";
+      fixture: { makeState: () => unknown; makeTools: (s: unknown) => ToolDefinition[] };
+      judge: (s: unknown) => boolean;
+    }
   | {
       family: "mixed";
       fsFix: { makeState: () => unknown; makeTools: (s: unknown) => ToolDefinition[] };
@@ -125,9 +137,7 @@ interface RunResult {
   error: string | null;
 }
 
-async function drainAgent(
-  gen: AsyncGenerator<AgentEvent>,
-): Promise<RunResult> {
+async function drainAgent(gen: AsyncGenerator<AgentEvent>): Promise<RunResult> {
   let finalAnswer: string | null = null;
   let inputTokens = 0;
   let outputTokens = 0;
@@ -154,11 +164,7 @@ async function drainAgent(
   return { finalAnswer, events, inputTokens, outputTokens, error };
 }
 
-function shapeResult(
-  cell: PreparedCell,
-  startMs: number,
-  r: RunResult,
-): RunItemResult {
+function shapeResult(cell: PreparedCell, startMs: number, r: RunResult): RunItemResult {
   const wallMs = Date.now() - startMs;
   let passed = false;
   try {
@@ -204,7 +210,10 @@ export const armBareSuite: BenchmarkSuite = {
 // failure mode the BFCL paper identifies as dominant for <1B models.
 const ARM_B_FORMAT = { type: "json" as const }; // Ollama accepts "json" globally — sufficient for arm (b)
 
-async function runArmB(args: { item: typeof ITEMS[number]; model: ModelSpec }): Promise<RunItemResult> {
+async function runArmB(args: {
+  item: (typeof ITEMS)[number];
+  model: ModelSpec;
+}): Promise<RunItemResult> {
   const cell = prepareCell(args.item.id);
   const m = buildModel(args.model, { format: ARM_B_FORMAT });
   const startMs = Date.now();
@@ -259,7 +268,10 @@ export const armGrammarSuite: BenchmarkSuite = {
 // tool calls". An agent loop on top of that is double-counting; if
 // the program needs more than one round to plan, the V2 plan
 // already has arm (a)/(d)/(e) for that.
-async function runArmC(args: { item: typeof ITEMS[number]; model: ModelSpec }): Promise<RunItemResult> {
+async function runArmC(args: {
+  item: (typeof ITEMS)[number];
+  model: ModelSpec;
+}): Promise<RunItemResult> {
   const cell = prepareCell(args.item.id);
   const m = buildModel(args.model);
   const startMs = Date.now();
@@ -355,14 +367,22 @@ Notes:
     this in a sandbox" — you are IN the sandbox; callTool works.`;
 }
 
-function safeZodToJsonSchema(_schema: unknown): { type: string; properties?: Record<string, unknown>; required?: string[] } {
+function safeZodToJsonSchema(_schema: unknown): {
+  type: string;
+  properties?: Record<string, unknown>;
+  required?: string[];
+} {
   // Small models do better with a hand-written description than with a full
   // JSON Schema; we fall through to a generic shape and rely on
   // describeArgShape() to render either path.
   return { type: "object" };
 }
 
-function describeArgShape(schema: { type?: string; properties?: Record<string, unknown>; required?: string[] }): string {
+function describeArgShape(schema: {
+  type?: string;
+  properties?: Record<string, unknown>;
+  required?: string[];
+}): string {
   if (!schema || schema.type !== "object" || !schema.properties) return "{}";
   const keys = Object.keys(schema.properties);
   if (keys.length === 0) return "{}";
@@ -380,7 +400,7 @@ function describeArgShape(schema: { type?: string; properties?: Record<string, u
  * judge sees an unchanged fixture and returns false, which is correct.)
  */
 async function runOnePoProgram(args: {
-  item: typeof ITEMS[number];
+  item: (typeof ITEMS)[number];
   cell: PreparedCell;
   model: Model;
   kernelFactory: () => unknown;
@@ -401,7 +421,7 @@ async function runOnePoProgram(args: {
         { role: "system", content: systemPrompt },
         { role: "user", content: item.task },
       ],
-      { stream: true },
+      { stream: true }
     )) {
       if (ev.type === "text_delta" && ev.delta) raw += ev.delta;
       else if (ev.type === "usage" && ev.usage) {
@@ -429,10 +449,7 @@ async function runOnePoProgram(args: {
       try {
         const reg = new ToolRegistry();
         for (const t of cell.tools) reg.register(t);
-        const orchestrator = new ProgrammaticOrchestrator(
-          kernelFactory() as never,
-          reg,
-        );
+        const orchestrator = new ProgrammaticOrchestrator(kernelFactory() as never, reg);
         const poResult = await orchestrator.run(body);
         answer = poResult.finalOutput;
       } catch (e) {
@@ -491,8 +508,9 @@ function extractFencedJs(response: string): string | null {
 function stripIifeWrapper(code: string): string {
   // Try arrow-IIFE first (the most common shape after our prompt).
   // Pattern: ( async ( ) => { <body> } ) ( ) ;?
-  const arrowMatch =
-    /^\s*\(\s*async\s*\(\s*\)\s*=>\s*\{([\s\S]*)\}\s*\)\s*\(\s*\)\s*;?\s*$/.exec(code);
+  const arrowMatch = /^\s*\(\s*async\s*\(\s*\)\s*=>\s*\{([\s\S]*)\}\s*\)\s*\(\s*\)\s*;?\s*$/.exec(
+    code
+  );
   if (arrowMatch?.[1] !== undefined) return arrowMatch[1].trim();
   // function-IIFE variant.
   const fnMatch =
@@ -524,10 +542,18 @@ export const armCodeSuite: BenchmarkSuite = {
 // model-call pipelines. We re-implement the agent-level voting here
 // because state-transition voting requires comparing terminal states,
 // which is suite-specific. The core SC runner stays untouched.
-async function runArmD(args: { item: typeof ITEMS[number]; model: ModelSpec }): Promise<RunItemResult> {
+async function runArmD(args: {
+  item: (typeof ITEMS)[number];
+  model: ModelSpec;
+}): Promise<RunItemResult> {
   const k = 5;
   const startMs = Date.now();
-  const results: { passed: boolean; tokens: { input: number; output: number }; events: AgentEvent[]; finalAnswer: string | null }[] = [];
+  const results: {
+    passed: boolean;
+    tokens: { input: number; output: number };
+    events: AgentEvent[];
+    finalAnswer: string | null;
+  }[] = [];
   let totalIn = 0;
   let totalOut = 0;
   let lastError: string | null = null;
@@ -551,7 +577,12 @@ async function runArmD(args: { item: typeof ITEMS[number]; model: ModelSpec }): 
     if (r.error) passed = false;
     totalIn += r.inputTokens;
     totalOut += r.outputTokens;
-    results.push({ passed, tokens: { input: r.inputTokens, output: r.outputTokens }, events: r.events, finalAnswer: r.finalAnswer });
+    results.push({
+      passed,
+      tokens: { input: r.inputTokens, output: r.outputTokens },
+      events: r.events,
+      finalAnswer: r.finalAnswer,
+    });
   }
   const passVotes = results.filter((r) => r.passed).length;
   const passed = passVotes > k / 2;
@@ -597,7 +628,10 @@ export const armSelfConsistencySuite: BenchmarkSuite = {
 // (the kernel's call cache between re-runs is exactly that pattern).
 // There's no "off" knob to compare against, so we don't add a separate
 // arm for it — same call as Run B.
-async function runArmE(args: { item: typeof ITEMS[number]; model: ModelSpec }): Promise<RunItemResult> {
+async function runArmE(args: {
+  item: (typeof ITEMS)[number];
+  model: ModelSpec;
+}): Promise<RunItemResult> {
   const k = 5;
   const startMs = Date.now();
   let kernelMod: { QuickJSKernel: new () => unknown };
@@ -725,7 +759,7 @@ interface StructuredCallResult {
 async function runOneStructuredCall(
   model: Model,
   messages: ModelMessage[],
-  responseFormat: { type: "json_schema"; schema: object; name: string; strict?: boolean },
+  responseFormat: { type: "json_schema"; schema: object; name: string; strict?: boolean }
 ): Promise<StructuredCallResult> {
   let text = "";
   let inputTokens = 0;
@@ -785,8 +819,7 @@ function makeArgsSchemaCache(): (tool: ToolDefinition) => object {
     const cached = cache.get(tool.name);
     if (cached) return cached;
     const schema =
-      tool.rawInputJsonSchema ??
-      (toStrictJsonSchema(tool.inputSchema as never) as object);
+      tool.rawInputJsonSchema ?? (toStrictJsonSchema(tool.inputSchema as never) as object);
     cache.set(tool.name, schema);
     return schema;
   };
@@ -803,7 +836,7 @@ function makeArgsSchemaCache(): (tool: ToolDefinition) => object {
  */
 function buildOnePassSchema(
   tools: ToolDefinition[],
-  argsSchema: (t: ToolDefinition) => object,
+  argsSchema: (t: ToolDefinition) => object
 ): object {
   const toolBranches = tools.map((t) => ({
     type: "object",
@@ -853,7 +886,7 @@ function appendToolUse(
   toolUseId: string,
   toolName: string,
   args: Record<string, unknown>,
-  result: { output: unknown; isError: boolean },
+  result: { output: unknown; isError: boolean }
 ): void {
   messages.push({
     role: "assistant",
@@ -883,7 +916,10 @@ function appendToolUse(
  *
  * Bounded by ARM_F_MAX_STEPS for parity with arms a/b/d.
  */
-async function runArmF(args: { item: typeof ITEMS[number]; model: ModelSpec }): Promise<RunItemResult> {
+async function runArmF(args: {
+  item: (typeof ITEMS)[number];
+  model: ModelSpec;
+}): Promise<RunItemResult> {
   const cell = prepareCell(args.item.id);
   const m = buildModel(args.model);
   const startMs = Date.now();
@@ -928,7 +964,8 @@ async function runArmF(args: { item: typeof ITEMS[number]; model: ModelSpec }): 
     let choice: string;
     try {
       const parsed = JSON.parse(pass1.text) as { choice?: unknown };
-      if (typeof parsed.choice !== "string") throw new Error(`pass1 returned no .choice: ${pass1.text}`);
+      if (typeof parsed.choice !== "string")
+        throw new Error(`pass1 returned no .choice: ${pass1.text}`);
       choice = parsed.choice;
     } catch (e) {
       lastError = `pass1 parse step ${step}: ${e instanceof Error ? e.message : String(e)}`;
@@ -965,7 +1002,8 @@ async function runArmF(args: { item: typeof ITEMS[number]; model: ModelSpec }): 
     let toolArgs: Record<string, unknown>;
     try {
       const parsed = JSON.parse(pass2.text);
-      if (typeof parsed !== "object" || parsed === null) throw new Error(`pass2 not an object: ${pass2.text}`);
+      if (typeof parsed !== "object" || parsed === null)
+        throw new Error(`pass2 not an object: ${pass2.text}`);
       toolArgs = parsed as Record<string, unknown>;
     } catch (e) {
       lastError = `pass2 parse step ${step}: ${e instanceof Error ? e.message : String(e)}`;
@@ -975,13 +1013,10 @@ async function runArmF(args: { item: typeof ITEMS[number]; model: ModelSpec }): 
     // Execute.
     const callId = `f-${step}-${choice}`;
     const callResult = await registry.call({ toolName: choice, args: toolArgs, callId });
-    appendToolUse(
-      messages,
-      callId,
-      choice,
-      toolArgs,
-      { output: callResult.error ? callResult.error.message : callResult.output, isError: !!callResult.error },
-    );
+    appendToolUse(messages, callId, choice, toolArgs, {
+      output: callResult.error ? callResult.error.message : callResult.output,
+      isError: !!callResult.error,
+    });
   }
 
   // Judge against the cell's terminal state.
@@ -1017,7 +1052,10 @@ export const armParamOnlySuite: BenchmarkSuite = {
  * grammar-pinned call per step. Cheaper; lets us measure whether the
  * second pass is worth the round-trip cost.
  */
-async function runArmFOnePass(args: { item: typeof ITEMS[number]; model: ModelSpec }): Promise<RunItemResult> {
+async function runArmFOnePass(args: {
+  item: (typeof ITEMS)[number];
+  model: ModelSpec;
+}): Promise<RunItemResult> {
   const cell = prepareCell(args.item.id);
   const m = buildModel(args.model);
   const startMs = Date.now();
@@ -1080,13 +1118,10 @@ async function runArmFOnePass(args: { item: typeof ITEMS[number]; model: ModelSp
         : {};
     const callId = `f1-${step}-${parsed.name}`;
     const callResult = await registry.call({ toolName: parsed.name, args: toolArgs, callId });
-    appendToolUse(
-      messages,
-      callId,
-      parsed.name,
-      toolArgs,
-      { output: callResult.error ? callResult.error.message : callResult.output, isError: !!callResult.error },
-    );
+    appendToolUse(messages, callId, parsed.name, toolArgs, {
+      output: callResult.error ? callResult.error.message : callResult.output,
+      isError: !!callResult.error,
+    });
   }
 
   let passed = false;
@@ -1115,8 +1150,6 @@ export const armParamOnlyOnePassSuite: BenchmarkSuite = {
   scorers: [],
   runItem: runArmFOnePass,
 };
-
-
 
 // ── Suite registry for the ablation script ──────────────────────────────────
 export const ABLATION_ARMS: Record<string, BenchmarkSuite> = {

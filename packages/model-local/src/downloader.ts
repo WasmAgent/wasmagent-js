@@ -36,10 +36,10 @@ import { dirname, join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import {
-  type ModelSource,
-  type RegisteredModel,
   getRegisteredModel,
+  type ModelSource,
   orderSources,
+  type RegisteredModel,
 } from "./registry.js";
 import { LocalModelChecksumError, LocalModelDownloadError } from "./types.js";
 
