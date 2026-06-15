@@ -16,42 +16,42 @@
  * grammar-constrained tool calling, and the `localFirst` routing preset.
  */
 
-export { LocalModel, renderMessagesAsPrompt, __setLlamaModuleForTests } from "./LocalModel.js";
 export {
-  type LocalModelOptions,
-  type LocalModelSource,
-  type MirrorPreset,
-  LocalModelError,
-  LocalModelDependencyError,
-  LocalModelDownloadError,
-  LocalModelChecksumError,
-} from "./types.js";
-export {
-  type RegisteredModel,
-  type ModelSource,
-  type SourceKind,
-  MODEL_REGISTRY,
-  getRegisteredModel,
-  listRegisteredModels,
-  orderSources,
-} from "./registry.js";
-export {
-  type DownloadOptions,
   computeSha256,
+  type DownloadOptions,
   defaultCacheDir,
+  downloadGGUF,
+  downloadUrl,
   effectiveMirror,
   filenameForSource,
   resolveModel,
-  downloadGGUF,
-  downloadUrl,
 } from "./downloader.js";
 export {
-  type ExtractedTool,
-  type ParsedToolCallOutput,
+  buildResponseFormatSchema,
   buildToolCallSchema,
   buildToolPromptAddendum,
-  buildResponseFormatSchema,
+  type ExtractedTool,
   extractTools,
+  type ParsedToolCallOutput,
   parseToolCallOutput,
 } from "./grammar.js";
-export { localFirst, offlineOnly, devLocalOr } from "./presets.js";
+export { __setLlamaModuleForTests, LocalModel, renderMessagesAsPrompt } from "./LocalModel.js";
+export { devLocalOr, localFirst, offlineOnly } from "./presets.js";
+export {
+  getRegisteredModel,
+  listRegisteredModels,
+  MODEL_REGISTRY,
+  type ModelSource,
+  orderSources,
+  type RegisteredModel,
+  type SourceKind,
+} from "./registry.js";
+export {
+  LocalModelChecksumError,
+  LocalModelDependencyError,
+  LocalModelDownloadError,
+  LocalModelError,
+  type LocalModelOptions,
+  type LocalModelSource,
+  type MirrorPreset,
+} from "./types.js";

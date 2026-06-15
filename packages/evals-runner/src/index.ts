@@ -19,9 +19,26 @@
  *   - { estimateJoulesPerCorrect, renderEnergyTable } — P16-8 ④ energy axis.
  */
 
+export type {
+  EnergyReport,
+  EnergySpec,
+} from "./energy.js";
+// Energy estimation (P16-8 ④)
+export {
+  estimateJoulesPerCorrect,
+  renderEnergyRow,
+  renderEnergyTable,
+} from "./energy.js";
 export { renderReportCompact, renderReportMarkdown } from "./report.js";
 export { defaultProvider, runEvaluation } from "./runner.js";
-export type { G1Report, SeedResult } from "./stats/index.js";
+export type {
+  G1Report,
+  IptCohort,
+  IptPair,
+  IptPairVerdict,
+  IptVerdict,
+  SeedResult,
+} from "./stats/index.js";
 // Stats primitives — also under "@agentkit-js/evals-runner/stats".
 export {
   binomialCDF,
@@ -32,12 +49,6 @@ export {
   mcnemarExact,
   pairedBootstrap,
   wilsonCI,
-} from "./stats/index.js";
-export type {
-  IptCohort,
-  IptPair,
-  IptPairVerdict,
-  IptVerdict,
 } from "./stats/index.js";
 export {
   agentTrajectorySuite,
@@ -51,16 +62,6 @@ export {
   REFERENCE_SUITES,
   toolSequenceSuite,
 } from "./suites/index.js";
-// Energy estimation (P16-8 ④)
-export {
-  estimateJoulesPerCorrect,
-  renderEnergyRow,
-  renderEnergyTable,
-} from "./energy.js";
-export type {
-  EnergyReport,
-  EnergySpec,
-} from "./energy.js";
 export type {
   BenchmarkItem,
   BenchmarkSuite,
@@ -72,4 +73,3 @@ export type {
   RunResult,
   SuiteAggregate,
 } from "./types.js";
-

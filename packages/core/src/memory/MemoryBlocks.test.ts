@@ -6,8 +6,8 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { coreMemoryTools, MemoryBlockSet } from "./MemoryBlocks.js";
 import { MessageAssembler } from "./MessageAssembler.js";
-import { MemoryBlockSet, coreMemoryTools } from "./MemoryBlocks.js";
 
 describe("MemoryBlockSet — container ops", () => {
   it("installs initial blocks and lists them in insertion order", () => {
@@ -31,7 +31,7 @@ describe("MemoryBlockSet — container ops", () => {
         { label: "a", value: "1" },
         { label: "b", value: "2" },
       ],
-      { maxBlocks: 2 },
+      { maxBlocks: 2 }
     );
     expect(() => blocks.install({ label: "c", value: "3" })).toThrow(/max 2 blocks reached/);
     // re-install of existing label is not bounded by maxBlocks
@@ -41,7 +41,7 @@ describe("MemoryBlockSet — container ops", () => {
 
   it("install() rejects initial value over charLimit", () => {
     expect(
-      () => new MemoryBlockSet([{ label: "p", value: "x".repeat(100), charLimit: 50 }]),
+      () => new MemoryBlockSet([{ label: "p", value: "x".repeat(100), charLimit: 50 }])
     ).toThrow(/exceeds charLimit 50/);
   });
 
@@ -89,9 +89,7 @@ describe("MemoryBlockSet — render", () => {
   });
 
   it("renders block label + value, wrapped in <core_memory> markers", () => {
-    const blocks = new MemoryBlockSet([
-      { label: "persona", value: "I am an assistant." },
-    ]);
+    const blocks = new MemoryBlockSet([{ label: "persona", value: "I am an assistant." }]);
     const r = blocks.render();
     expect(r.startsWith("<core_memory>")).toBe(true);
     expect(r.endsWith("</core_memory>")).toBe(true);

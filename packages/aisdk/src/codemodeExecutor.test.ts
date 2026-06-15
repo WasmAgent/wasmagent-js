@@ -31,16 +31,13 @@ describe("agentkitCodemodeExecutor — construction", () => {
 describe("agentkitCodemodeExecutor — flat Record providers", () => {
   it("calls a single tool and returns its result", async () => {
     const exec = agentkitCodemodeExecutor({ kernel: new JsKernel() });
-    const got = await exec.execute(
-      `return await tools.add({ a: 2, b: 3 });`,
-      {
-        // Object-arg fn: receives the arg object as a single parameter.
-        add: async (a: unknown) => {
-          const { a: x, b: y } = a as { a: number; b: number };
-          return x + y;
-        },
-      }
-    );
+    const got = await exec.execute(`return await tools.add({ a: 2, b: 3 });`, {
+      // Object-arg fn: receives the arg object as a single parameter.
+      add: async (a: unknown) => {
+        const { a: x, b: y } = a as { a: number; b: number };
+        return x + y;
+      },
+    });
     expect(got.error).toBeUndefined();
     expect(got.result).toBe(5);
   });
@@ -67,20 +64,17 @@ describe("agentkitCodemodeExecutor — flat Record providers", () => {
 describe("agentkitCodemodeExecutor — namespaced ResolvedProvider[]", () => {
   it("dispatches via the namespaced shape", async () => {
     const exec = agentkitCodemodeExecutor({ kernel: new JsKernel() });
-    const got = await exec.execute(
-      `return await tools.weather.getCurrent({ location: 'SF' });`,
-      [
-        {
-          name: "weather",
-          fns: {
-            getCurrent: async (a: unknown) => {
-              const { location } = a as { location: string };
-              return `Weather in ${location}: 72F`;
-            },
+    const got = await exec.execute(`return await tools.weather.getCurrent({ location: 'SF' });`, [
+      {
+        name: "weather",
+        fns: {
+          getCurrent: async (a: unknown) => {
+            const { location } = a as { location: string };
+            return `Weather in ${location}: 72F`;
           },
         },
-      ]
-    );
+      },
+    ]);
     expect(got.result).toBe("Weather in SF: 72F");
   });
 
@@ -91,8 +85,7 @@ describe("agentkitCodemodeExecutor — namespaced ResolvedProvider[]", () => {
         name: "math",
         positionalArgs: true,
         fns: {
-          sum: async (...nums: unknown[]) =>
-            (nums as number[]).reduce((s, n) => s + n, 0),
+          sum: async (...nums: unknown[]) => (nums as number[]).reduce((s, n) => s + n, 0),
         },
       },
     ]);
@@ -103,10 +96,7 @@ describe("agentkitCodemodeExecutor — namespaced ResolvedProvider[]", () => {
 describe("agentkitCodemodeExecutor — console + errors", () => {
   it("captures console.log into logs[]", async () => {
     const exec = agentkitCodemodeExecutor({ kernel: new JsKernel() });
-    const got = await exec.execute(
-      `console.log("hello"); console.warn("warned"); return 42;`,
-      {}
-    );
+    const got = await exec.execute(`console.log("hello"); console.warn("warned"); return 42;`, {});
     expect(got.result).toBe(42);
     // Each kernel collects console.* into KernelResult.logs and we
     // accumulate those across iterations. JsKernel formats as

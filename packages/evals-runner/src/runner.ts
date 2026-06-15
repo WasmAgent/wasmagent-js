@@ -92,10 +92,7 @@ export function defaultProvider(): ModelProvider {
  * If the call fails, we swallow the error (warm-up failure is non-fatal)
  * and return 0.
  */
-async function warmupModel(
-  model: ModelSpec,
-  provider: ModelProvider,
-): Promise<number> {
+async function warmupModel(model: ModelSpec, provider: ModelProvider): Promise<number> {
   const start = Date.now();
   try {
     await provider.call({
@@ -181,13 +178,7 @@ export async function runEvaluation(
     }
   }
 
-  const aggregates = buildAggregates(
-    opts.models,
-    opts.suites,
-    seeds,
-    cells,
-    warmupMsByModelId,
-  );
+  const aggregates = buildAggregates(opts.models, opts.suites, seeds, cells, warmupMsByModelId);
   const pareto = buildParetoFront(opts.suites, aggregates);
 
   return {
@@ -476,7 +467,7 @@ function buildAggregates(
   suites: BenchmarkSuite[],
   seeds: number[],
   cells: RunResult[],
-  warmupMsByModelId: Map<string, number>,
+  warmupMsByModelId: Map<string, number>
 ): SuiteAggregate[] {
   const out: SuiteAggregate[] = [];
   for (const suite of suites) {
@@ -488,7 +479,7 @@ function buildAggregates(
       // which uniquely identifies (suite, cell).
       const suiteTag = `::${suite.name}::`;
       const cellsForModelSuite = cells.filter(
-        (c) => c.modelId === model.id && c.trace.traceId.includes(suiteTag),
+        (c) => c.modelId === model.id && c.trace.traceId.includes(suiteTag)
       );
       const seedAccs: number[] = [];
       for (const seed of seeds) {
@@ -592,4 +583,3 @@ function percentile(sortedAsc: number[], p: number): number {
   const frac = rank - lower;
   return (sortedAsc[lower] as number) * (1 - frac) + (sortedAsc[upper] as number) * frac;
 }
-

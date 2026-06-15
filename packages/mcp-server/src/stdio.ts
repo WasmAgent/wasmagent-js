@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * stdio.ts — newline-delimited JSON-RPC over stdin/stdout.
  *
@@ -39,11 +40,10 @@
  * configs from the network.
  */
 
+import { resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { pathToFileURL } from "node:url";
-import { resolve } from "node:path";
-import { VmKernel } from "@agentkit-js/core";
-import { ToolRegistry } from "@agentkit-js/core";
+import { ToolRegistry, VmKernel } from "@agentkit-js/core";
 import { createCodeModeServer } from "./codeMode.js";
 import type { McpAgentServer } from "./McpAgentServer.js";
 
@@ -185,10 +185,7 @@ async function main(): Promise<number> {
     }
     const abs = resolve(process.cwd(), configPath);
     const mod = (await import(pathToFileURL(abs).href)) as { default?: unknown };
-    if (
-      !mod.default ||
-      typeof (mod.default as { handle?: unknown }).handle !== "function"
-    ) {
+    if (!mod.default || typeof (mod.default as { handle?: unknown }).handle !== "function") {
       logStderr(`config module ${abs} must default-export an McpAgentServer (with .handle())`);
       return 2;
     }

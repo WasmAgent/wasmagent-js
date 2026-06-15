@@ -42,8 +42,8 @@
  * on long runs.
  */
 
-import type { ToolDefinition } from "../tools/types.js";
 import { z } from "zod";
+import type { ToolDefinition } from "../tools/types.js";
 
 export interface MemoryBlock {
   /**
@@ -141,7 +141,10 @@ export class MemoryBlockSet {
    * "summarise the last N events", and the most recent context is
    * usually more relevant than the oldest.
    */
-  replace(label: string, text: string): { ok: true; truncated: boolean } | { ok: false; error: string } {
+  replace(
+    label: string,
+    text: string
+  ): { ok: true; truncated: boolean } | { ok: false; error: string } {
     const block = this.#blocks.get(label);
     if (!block) return { ok: false, error: `no block with label '${label}'` };
     const limit = block.charLimit ?? DEFAULT_CHAR_LIMIT;
@@ -181,13 +184,13 @@ export class MemoryBlockSet {
   #install(block: MemoryBlock): void {
     if (!this.#blocks.has(block.label) && this.#blocks.size >= this.#maxBlocks) {
       throw new Error(
-        `MemoryBlockSet: cannot add block '${block.label}': max ${this.#maxBlocks} blocks reached`,
+        `MemoryBlockSet: cannot add block '${block.label}': max ${this.#maxBlocks} blocks reached`
       );
     }
     const limit = block.charLimit ?? DEFAULT_CHAR_LIMIT;
     if (block.value.length > limit) {
       throw new Error(
-        `MemoryBlockSet: initial value for '${block.label}' (${block.value.length} chars) exceeds charLimit ${limit}`,
+        `MemoryBlockSet: initial value for '${block.label}' (${block.value.length} chars) exceeds charLimit ${limit}`
       );
     }
     this.#blocks.set(block.label, { ...block, charLimit: limit });
@@ -214,7 +217,10 @@ export function coreMemoryTools(blocks: MemoryBlockSet): ToolDefinition[] {
   const labelArg = z.string().min(1);
   const textArg = z.string();
 
-  const appendTool: ToolDefinition<{ label: string; text: string }, { ok: boolean; message: string }> = {
+  const appendTool: ToolDefinition<
+    { label: string; text: string },
+    { ok: boolean; message: string }
+  > = {
     name: "core_memory_append",
     description:
       "Append text to a labelled core-memory block. Use to add new observations or facts " +
@@ -230,7 +236,10 @@ export function coreMemoryTools(blocks: MemoryBlockSet): ToolDefinition[] {
     },
   };
 
-  const replaceTool: ToolDefinition<{ label: string; text: string }, { ok: boolean; message: string; truncated: boolean }> = {
+  const replaceTool: ToolDefinition<
+    { label: string; text: string },
+    { ok: boolean; message: string; truncated: boolean }
+  > = {
     name: "core_memory_replace",
     description:
       "Replace the contents of a labelled core-memory block. Overwrites prior content. " +

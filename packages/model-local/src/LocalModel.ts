@@ -31,16 +31,16 @@ import type {
   ModelMessage,
   StreamEvent,
 } from "@agentkit-js/core/models";
+import { downloadGGUF, downloadUrl } from "./downloader.js";
 import {
-  type ParsedToolCallOutput,
   buildResponseFormatSchema,
   buildToolCallSchema,
   buildToolPromptAddendum,
   extractTools,
+  type ParsedToolCallOutput,
   parseToolCallOutput,
 } from "./grammar.js";
-import { downloadGGUF, downloadUrl } from "./downloader.js";
-import { MODEL_REGISTRY, getRegisteredModel } from "./registry.js";
+import { getRegisteredModel, MODEL_REGISTRY } from "./registry.js";
 import {
   LocalModelDependencyError,
   LocalModelError,
@@ -157,8 +157,7 @@ export class LocalModel implements Model {
     }
     this.#opts = opts;
 
-    this.providerId =
-      opts.providerId ?? aliasFromSource(opts.source) ?? "local-llama";
+    this.providerId = opts.providerId ?? aliasFromSource(opts.source) ?? "local-llama";
 
     // Pre-fill capabilities from the registry when the source is a known alias.
     let contextWindow = 4096;
@@ -227,7 +226,7 @@ export class LocalModel implements Model {
     const tools = extractTools(opts.tools);
     const enableGrammar = this.#opts.enableGrammar !== false;
 
-    let grammar: unknown = undefined;
+    let grammar: unknown;
     let promptAddendum = "";
     let mode: "tool" | "json" | "free" = "free";
 
@@ -271,7 +270,8 @@ export class LocalModel implements Model {
         }
       }
 
-      const parsed = mode === "tool" ? parseToolCallOutput(collected) : ({} as ParsedToolCallOutput);
+      const parsed =
+        mode === "tool" ? parseToolCallOutput(collected) : ({} as ParsedToolCallOutput);
 
       if (mode === "tool" && parsed.toolCall) {
         yield {

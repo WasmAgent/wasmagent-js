@@ -67,13 +67,9 @@ export function estimateJoulesPerCorrect(
   const totalWallMs = aggregate.medianWallMs * aggregate.totalCells;
   const totalJoules = (totalWallMs / 1000) * tdpWatts;
 
-  const tokensPerSecond =
-    totalWallMs > 0
-      ? (aggregate.totalTokens / totalWallMs) * 1000
-      : 0;
+  const tokensPerSecond = totalWallMs > 0 ? (aggregate.totalTokens / totalWallMs) * 1000 : 0;
 
-  const joulesPerToken =
-    aggregate.totalTokens > 0 ? totalJoules / aggregate.totalTokens : 0;
+  const joulesPerToken = aggregate.totalTokens > 0 ? totalJoules / aggregate.totalTokens : 0;
 
   const joulesPerCorrect =
     aggregate.passedCells > 0 ? totalJoules / aggregate.passedCells : Infinity;
@@ -113,16 +109,13 @@ export function renderEnergyRow(r: EnergyReport): string {
 /**
  * Render full energy comparison table for a suite.
  */
-export function renderEnergyTable(
-  reports: EnergyReport[],
-  suiteTitle: string
-): string {
+export function renderEnergyTable(reports: EnergyReport[], suiteTitle: string): string {
   const lines: string[] = [];
   lines.push(`### Energy efficiency — \`${suiteTitle}\``);
   lines.push("");
   lines.push(
     `> TDP assumed ${reports[0]?.tdpWatts ?? 20}W (Apple Silicon active inference estimate). ` +
-    `For hardware-accurate J/correct, run \`sudo powermetrics --samplers gpu_power\` externally.`
+      `For hardware-accurate J/correct, run \`sudo powermetrics --samplers gpu_power\` externally.`
   );
   lines.push("");
   lines.push("| Model | Accuracy | Wall/correct | Throughput | J/correct |");
@@ -135,7 +128,7 @@ export function renderEnergyTable(
   lines.push("");
   lines.push(
     "> J/correct = total-joules ÷ correct-answers. " +
-    "Lower is better — this captures both accuracy and throughput."
+      "Lower is better — this captures both accuracy and throughput."
   );
   return lines.join("\n");
 }

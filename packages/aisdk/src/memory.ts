@@ -41,11 +41,12 @@
  * can drop it in directly. End-to-end Vercel AI SDK integration is
  * tracked under D3 phase 2 — see ROADMAP for the message-list shim plan.
  */
-import type { ZodType } from "zod";
+
 import {
   createMemoryTool as createMemoryToolCore,
   type MemoryToolOptions,
 } from "@agentkit-js/core";
+import type { ZodType } from "zod";
 
 import type { AiSdkToolDefinition } from "./index.js";
 
@@ -57,9 +58,7 @@ import type { AiSdkToolDefinition } from "./index.js";
  * Returned shape is structurally compatible with the AI SDK's `tool()`
  * helper — pass directly into `tools: { memory: memoryTool({...}) }`.
  */
-export function memoryTool(
-  opts: MemoryToolOptions,
-): AiSdkToolDefinition<unknown, string> {
+export function memoryTool(opts: MemoryToolOptions): AiSdkToolDefinition<unknown, string> {
   const core = createMemoryToolCore(opts);
   return {
     description: core.description,
@@ -72,9 +71,8 @@ export function memoryTool(
   };
 }
 
-// Re-export the underlying types for callers wiring custom backends.
-export type { MemoryToolOptions };
-
 // Re-export ObservationalMemory so AI SDK consumers running an agentkit
 // MessageAssembler can wire it up without an extra import.
 export { ObservationalMemory } from "@agentkit-js/core";
+// Re-export the underlying types for callers wiring custom backends.
+export type { MemoryToolOptions };

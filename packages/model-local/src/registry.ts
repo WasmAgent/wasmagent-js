@@ -75,7 +75,8 @@ export interface RegisteredModel {
 export const MODEL_REGISTRY: Record<string, RegisteredModel> = {
   "qwen2.5-0.5b": {
     alias: "qwen2.5-0.5b",
-    description: "Qwen 2.5 0.5B Instruct — smallest viable model; 100% tool-call form/picked/semantic on cert (379 MB q4_0)",
+    description:
+      "Qwen 2.5 0.5B Instruct — smallest viable model; 100% tool-call form/picked/semantic on cert (379 MB q4_0)",
     sources: [
       {
         kind: "huggingface",
@@ -100,7 +101,8 @@ export const MODEL_REGISTRY: Record<string, RegisteredModel> = {
   },
   "qwen2.5-1.5b": {
     alias: "qwen2.5-1.5b",
-    description: "Qwen 2.5 1.5B Instruct (Q4_K_M) — Stage-0 ≤2GB winner from evomerge eval (GSM8K 70.5% Q8_0). Sweet spot for tool-calling on consumer laptops.",
+    description:
+      "Qwen 2.5 1.5B Instruct (Q4_K_M) — Stage-0 ≤2GB winner from evomerge eval (GSM8K 70.5% Q8_0). Sweet spot for tool-calling on consumer laptops.",
     sources: [
       {
         kind: "huggingface",
@@ -125,7 +127,8 @@ export const MODEL_REGISTRY: Record<string, RegisteredModel> = {
   },
   "qwen3-0.6b": {
     alias: "qwen3-0.6b",
-    description: "Qwen 3 0.6B (Q8_0) — official Qwen3 GGUF only ships Q8_0 quant for 0.6B (Q4_K_M not published). Best for instruction-following at <1GB.",
+    description:
+      "Qwen 3 0.6B (Q8_0) — official Qwen3 GGUF only ships Q8_0 quant for 0.6B (Q4_K_M not published). Best for instruction-following at <1GB.",
     sources: [
       {
         kind: "huggingface",
@@ -150,7 +153,8 @@ export const MODEL_REGISTRY: Record<string, RegisteredModel> = {
   },
   "gemma-3-1b": {
     alias: "gemma-3-1b",
-    description: "Gemma 3 1B Instruct (Q4_K_M) — English tasks, Google. Mirror via ggml-org repo (the original google/* GGUF repo is QAT-only with broken canonical URL).",
+    description:
+      "Gemma 3 1B Instruct (Q4_K_M) — English tasks, Google. Mirror via ggml-org repo (the original google/* GGUF repo is QAT-only with broken canonical URL).",
     sources: [
       {
         kind: "huggingface",
@@ -171,7 +175,8 @@ export const MODEL_REGISTRY: Record<string, RegisteredModel> = {
   },
   "llama-3.2-1b": {
     alias: "llama-3.2-1b",
-    description: "Llama 3.2 1B Instruct (Q4_K_M) — English/code, Meta. Mirror via lmstudio-community (the meta-llama/* GGUF repo is gated and the canonical URL 404s for unauthenticated downloads).",
+    description:
+      "Llama 3.2 1B Instruct (Q4_K_M) — English/code, Meta. Mirror via lmstudio-community (the meta-llama/* GGUF repo is gated and the canonical URL 404s for unauthenticated downloads).",
     sources: [
       {
         kind: "huggingface",

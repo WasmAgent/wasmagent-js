@@ -15,9 +15,7 @@ import type { z } from "zod";
 
 import type { OpenAiAgentTool } from "./index.js";
 
-export function memoryAgentTool(
-  opts: MemoryToolOptions,
-): OpenAiAgentTool<unknown, string> {
+export function memoryAgentTool(opts: MemoryToolOptions): OpenAiAgentTool<unknown, string> {
   const core = createMemoryToolCore(opts);
   return {
     name: "memory",

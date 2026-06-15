@@ -179,7 +179,7 @@ function calFixture(initialEvents: CalState["events"]): MockFixture<CalState> {
               title: z.string(),
               startMin: z.number(),
               endMin: z.number(),
-            }),
+            })
           ),
         }),
         readOnly: true,
@@ -254,9 +254,9 @@ function calFixture(initialEvents: CalState["events"]): MockFixture<CalState> {
 
 // ── Cart fixture ────────────────────────────────────────────────────────────
 
-function cartFixture(catalog: Record<string, { name: string; unitPrice: number }>): MockFixture<
-  CartState
-> {
+function cartFixture(
+  catalog: Record<string, { name: string; unitPrice: number }>
+): MockFixture<CartState> {
   return {
     makeState: () => ({ items: {}, checkedOut: false, checkoutTotal: null }),
     makeTools: (state) => [
@@ -319,7 +319,7 @@ function cartFixture(catalog: Record<string, { name: string; unitPrice: number }
               name: z.string(),
               qty: z.number(),
               lineTotal: z.number(),
-            }),
+            })
           ),
           total: z.number(),
         }),
@@ -347,10 +347,7 @@ function cartFixture(catalog: Record<string, { name: string; unitPrice: number }
         async forward() {
           if (state.checkedOut) throw new Error("cart already checked out");
           if (Object.keys(state.items).length === 0) throw new Error("cart is empty");
-          const total = Object.values(state.items).reduce(
-            (a, b) => a + b.qty * b.unitPrice,
-            0,
-          );
+          const total = Object.values(state.items).reduce((a, b) => a + b.qty * b.unitPrice, 0);
           state.checkedOut = true;
           state.checkoutTotal = total;
           return { total };
@@ -367,19 +364,13 @@ function cartFixture(catalog: Record<string, { name: string; unitPrice: number }
 // title, exact total) — verbose explanations don't pass; only the right
 // terminal state does.
 
-export function fsJudge(
-  predicate: (state: FsState) => boolean,
-): (s: FsState) => boolean {
+export function fsJudge(predicate: (state: FsState) => boolean): (s: FsState) => boolean {
   return predicate;
 }
-export function calJudge(
-  predicate: (state: CalState) => boolean,
-): (s: CalState) => boolean {
+export function calJudge(predicate: (state: CalState) => boolean): (s: CalState) => boolean {
   return predicate;
 }
-export function cartJudge(
-  predicate: (state: CartState) => boolean,
-): (s: CartState) => boolean {
+export function cartJudge(predicate: (state: CartState) => boolean): (s: CartState) => boolean {
   return predicate;
 }
 
@@ -412,7 +403,7 @@ function defineFsItem(
   task: string,
   difficulty: 1 | 2 | 3 | 4,
   initialFiles: Record<string, string>,
-  judge: (s: FsState) => boolean,
+  judge: (s: FsState) => boolean
 ): BenchmarkItem {
   META[id] = { family: "fs", fixture: fsFixture(initialFiles), judge };
   return {
@@ -429,7 +420,7 @@ function defineCalItem(
   task: string,
   difficulty: 1 | 2 | 3 | 4,
   initialEvents: CalState["events"],
-  judge: (s: CalState) => boolean,
+  judge: (s: CalState) => boolean
 ): BenchmarkItem {
   META[id] = { family: "cal", fixture: calFixture(initialEvents), judge };
   return {
@@ -446,7 +437,7 @@ function defineCartItem(
   task: string,
   difficulty: 1 | 2 | 3 | 4,
   catalog: Record<string, { name: string; unitPrice: number }>,
-  judge: (s: CartState) => boolean,
+  judge: (s: CartState) => boolean
 ): BenchmarkItem {
   META[id] = { family: "cart", fixture: cartFixture(catalog), judge };
   return {
@@ -464,7 +455,7 @@ function defineMixedItem(
   difficulty: 3 | 4,
   initialFiles: Record<string, string>,
   initialEvents: CalState["events"],
-  judge: (fs: FsState, cal: CalState) => boolean,
+  judge: (fs: FsState, cal: CalState) => boolean
 ): BenchmarkItem {
   META[id] = {
     family: "mixed",
@@ -488,21 +479,21 @@ const ITEMS: BenchmarkItem[] = [
     "Read the file at notes/handbook.md and return its contents in your final answer.",
     1,
     { "notes/handbook.md": FS_README },
-    () => true, // 1-step read is judged trivially passing — the act of calling read is enough
+    () => true // 1-step read is judged trivially passing — the act of calling read is enough
   ),
   defineFsItem(
     "fs-2step-rename",
     "Rename notes/draft.md to notes/final.md.",
     2,
     { "notes/draft.md": FS_NOTES },
-    (s) => "notes/final.md" in s.files && !("notes/draft.md" in s.files),
+    (s) => "notes/final.md" in s.files && !("notes/draft.md" in s.files)
   ),
   defineFsItem(
     "fs-2step-write",
     "Create a new file at logs/today.txt with the content 'startup complete'.",
     2,
     {},
-    (s) => s.files["logs/today.txt"] === "startup complete",
+    (s) => s.files["logs/today.txt"] === "startup complete"
   ),
   defineFsItem(
     "fs-3step-archive",
@@ -526,7 +517,7 @@ const ITEMS: BenchmarkItem[] = [
         s.files["archive/b.txt"] === "beta" &&
         s.files["archive/c.txt"] === "gamma"
       );
-    },
+    }
   ),
   defineFsItem(
     "fs-3step-summarise-write",
@@ -536,7 +527,7 @@ const ITEMS: BenchmarkItem[] = [
     (s) =>
       typeof s.files["notes/summary.md"] === "string" &&
       s.files["notes/summary.md"].startsWith("Summary:") &&
-      s.files["notes/summary.md"].includes("Aurora"),
+      s.files["notes/summary.md"].includes("Aurora")
   ),
   defineFsItem(
     "fs-3step-cleanup",
@@ -548,9 +539,7 @@ const ITEMS: BenchmarkItem[] = [
       "c.tmp": "z",
       "keep.txt": "keep",
     },
-    (s) =>
-      !Object.keys(s.files).some((p) => p.endsWith(".tmp")) &&
-      s.files["keep.txt"] === "keep",
+    (s) => !Object.keys(s.files).some((p) => p.endsWith(".tmp")) && s.files["keep.txt"] === "keep"
   ),
   defineFsItem(
     "fs-4step-organise",
@@ -573,7 +562,7 @@ const ITEMS: BenchmarkItem[] = [
         paths.includes("binary.bin") &&
         paths.length === 5
       );
-    },
+    }
   ),
   defineFsItem(
     "fs-4step-merge",
@@ -583,7 +572,7 @@ const ITEMS: BenchmarkItem[] = [
     (s) =>
       s.files["merged.txt"] === "Hello, world!" &&
       !("part1.txt" in s.files) &&
-      !("part2.txt" in s.files),
+      !("part2.txt" in s.files)
   ),
 
   // ── Calendar family (8 items) ──────────────────────────────────────────
@@ -594,7 +583,7 @@ const ITEMS: BenchmarkItem[] = [
     {
       "1": { id: "1", title: "standup", day: "2026-07-01", startMin: 600, endMin: 630 },
     },
-    () => true,
+    () => true
   ),
   defineCalItem(
     "cal-2step-create",
@@ -604,11 +593,8 @@ const ITEMS: BenchmarkItem[] = [
     (s) =>
       Object.values(s.events).some(
         (e) =>
-          e.title === "Lunch" &&
-          e.day === "2026-07-02" &&
-          e.startMin === 750 &&
-          e.endMin === 780,
-      ),
+          e.title === "Lunch" && e.day === "2026-07-02" && e.startMin === 750 && e.endMin === 780
+      )
   ),
   defineCalItem(
     "cal-2step-delete",
@@ -618,7 +604,7 @@ const ITEMS: BenchmarkItem[] = [
       "1": { id: "1", title: "standup", day: "2026-07-03", startMin: 540, endMin: 570 },
       "2": { id: "2", title: "review", day: "2026-07-03", startMin: 900, endMin: 960 },
     },
-    (s) => Object.values(s.events).every((e) => e.title !== "standup"),
+    (s) => Object.values(s.events).every((e) => e.title !== "standup")
   ),
   defineCalItem(
     "cal-3step-find-and-book",
@@ -635,8 +621,8 @@ const ITEMS: BenchmarkItem[] = [
           e.day === "2026-07-04" &&
           e.endMin - e.startMin === 30 &&
           // not overlapping with the existing two
-          e.startMin >= 660,
-      ),
+          e.startMin >= 660
+      )
   ),
   defineCalItem(
     "cal-3step-reschedule",
@@ -648,14 +634,8 @@ const ITEMS: BenchmarkItem[] = [
     (s) =>
       Object.values(s.events).some(
         (e) =>
-          e.title === "review" &&
-          e.day === "2026-07-05" &&
-          e.startMin === 960 &&
-          e.endMin === 1020,
-      ) &&
-      Object.values(s.events).every(
-        (e) => !(e.title === "review" && e.startMin === 840),
-      ),
+          e.title === "review" && e.day === "2026-07-05" && e.startMin === 960 && e.endMin === 1020
+      ) && Object.values(s.events).every((e) => !(e.title === "review" && e.startMin === 840))
   ),
   defineCalItem(
     "cal-3step-conflict-check",
@@ -670,8 +650,8 @@ const ITEMS: BenchmarkItem[] = [
           e.title === "planning" &&
           e.day === "2026-07-06" &&
           e.endMin - e.startMin === 60 &&
-          e.startMin >= 660,
-      ),
+          e.startMin >= 660
+      )
   ),
   defineCalItem(
     "cal-4step-cleanup",
@@ -684,7 +664,7 @@ const ITEMS: BenchmarkItem[] = [
     },
     (s) =>
       Object.values(s.events).every((e) => e.endMin - e.startMin >= 30) &&
-      Object.values(s.events).some((e) => e.title === "real"),
+      Object.values(s.events).some((e) => e.title === "real")
   ),
   defineCalItem(
     "cal-4step-batch-create",
@@ -699,9 +679,12 @@ const ITEMS: BenchmarkItem[] = [
         { title: "afternoon", startMin: 900 },
       ];
       return expect.every((x) =>
-        e.some((ev) => ev.title === x.title && ev.startMin === x.startMin && ev.endMin - ev.startMin === 30),
+        e.some(
+          (ev) =>
+            ev.title === x.title && ev.startMin === x.startMin && ev.endMin - ev.startMin === 30
+        )
       );
-    },
+    }
   ),
 
   // ── Cart family (8 items) ──────────────────────────────────────────────
@@ -710,21 +693,21 @@ const ITEMS: BenchmarkItem[] = [
     "Add 1 unit of sku 'A1' to the cart.",
     1,
     { A1: { name: "alpha", unitPrice: 5 }, A2: { name: "beta", unitPrice: 7 } },
-    (s) => s.items.A1?.qty === 1,
+    (s) => s.items.A1?.qty === 1
   ),
   defineCartItem(
     "cart-2step-add-and-checkout",
     "Add 2 units of sku 'A1' to the cart, then check out.",
     2,
     { A1: { name: "alpha", unitPrice: 5 } },
-    (s) => s.items.A1?.qty === 2 && s.checkedOut && s.checkoutTotal === 10,
+    (s) => s.items.A1?.qty === 2 && s.checkedOut && s.checkoutTotal === 10
   ),
   defineCartItem(
     "cart-2step-add-multi",
     "Add 1 unit of A1 and 3 units of A2 to the cart. Do not check out.",
     2,
     { A1: { name: "alpha", unitPrice: 5 }, A2: { name: "beta", unitPrice: 7 } },
-    (s) => s.items.A1?.qty === 1 && s.items.A2?.qty === 3 && !s.checkedOut,
+    (s) => s.items.A1?.qty === 1 && s.items.A2?.qty === 3 && !s.checkedOut
   ),
   defineCartItem(
     "cart-3step-budget",
@@ -735,25 +718,21 @@ const ITEMS: BenchmarkItem[] = [
       A2: { name: "beta", unitPrice: 12 },
       A3: { name: "gamma", unitPrice: 8 },
     },
-    (s) => s.items.A2?.qty === 1 && s.checkedOut && s.checkoutTotal === 12,
+    (s) => s.items.A2?.qty === 1 && s.checkedOut && s.checkoutTotal === 12
   ),
   defineCartItem(
     "cart-3step-add-remove",
     "Add 2 of A1 and 1 of A2; then remove A1 from the cart and check out.",
     3,
     { A1: { name: "alpha", unitPrice: 5 }, A2: { name: "beta", unitPrice: 7 } },
-    (s) =>
-      !("A1" in s.items) &&
-      s.items.A2?.qty === 1 &&
-      s.checkedOut &&
-      s.checkoutTotal === 7,
+    (s) => !("A1" in s.items) && s.items.A2?.qty === 1 && s.checkedOut && s.checkoutTotal === 7
   ),
   defineCartItem(
     "cart-3step-verify-total",
     "Add 4 of A1; verify with view_cart that the running total is exactly 20; then check out.",
     3,
     { A1: { name: "alpha", unitPrice: 5 } },
-    (s) => s.items.A1?.qty === 4 && s.checkedOut && s.checkoutTotal === 20,
+    (s) => s.items.A1?.qty === 4 && s.checkedOut && s.checkoutTotal === 20
   ),
   defineCartItem(
     "cart-4step-bulk",
@@ -769,7 +748,7 @@ const ITEMS: BenchmarkItem[] = [
       s.items.A2?.qty === 1 &&
       s.items.A3?.qty === 1 &&
       s.checkedOut &&
-      s.checkoutTotal === 21,
+      s.checkoutTotal === 21
   ),
   defineCartItem(
     "cart-4step-budget-cap",
@@ -781,7 +760,7 @@ const ITEMS: BenchmarkItem[] = [
       s.checkoutTotal !== null &&
       s.checkoutTotal >= 15 &&
       s.checkoutTotal < 30 &&
-      Object.keys(s.items).every((k) => k === "A1" || k === "A2"),
+      Object.keys(s.items).every((k) => k === "A1" || k === "A2")
   ),
 
   // ── Mixed family (6 items) ─────────────────────────────────────────────
@@ -797,8 +776,8 @@ const ITEMS: BenchmarkItem[] = [
           e.title === "Q3 board sync" &&
           e.day === "2026-07-09" &&
           e.startMin === 840 &&
-          e.endMin === 870,
-      ),
+          e.endMin === 870
+      )
   ),
   defineMixedItem(
     "mixed-3step-archive-day",
@@ -811,7 +790,7 @@ const ITEMS: BenchmarkItem[] = [
     },
     (fs, cal) =>
       fs.files["archive/2026-07-10.txt"] === "cleared" &&
-      Object.values(cal.events).every((e) => e.day !== "2026-07-10"),
+      Object.values(cal.events).every((e) => e.day !== "2026-07-10")
   ),
   defineMixedItem(
     "mixed-4step-reschedule-and-log",
@@ -824,7 +803,7 @@ const ITEMS: BenchmarkItem[] = [
     },
     (fs, cal) =>
       Object.values(cal.events).every((e) => e.day !== "2026-07-11") &&
-      fs.files["logs/2026-07-11.txt"] === "ev-A\nev-B",
+      fs.files["logs/2026-07-11.txt"] === "ev-A\nev-B"
   ),
   defineMixedItem(
     "mixed-4step-summary",
@@ -839,8 +818,8 @@ const ITEMS: BenchmarkItem[] = [
           e.title === "Strategy review" &&
           e.day === "2026-07-12" &&
           e.startMin === 600 &&
-          e.endMin === 660,
-      ),
+          e.endMin === 660
+      )
   ),
   defineMixedItem(
     "mixed-4step-purge",
@@ -853,7 +832,7 @@ const ITEMS: BenchmarkItem[] = [
     (fs, cal) =>
       !Object.keys(fs.files).some((p) => p.startsWith("inbox/")) &&
       fs.files["keep.txt"] === "keep" &&
-      Object.values(cal.events).every((e) => e.day !== "2026-07-13"),
+      Object.values(cal.events).every((e) => e.day !== "2026-07-13")
   ),
   defineMixedItem(
     "mixed-3step-rename-and-create",
@@ -866,11 +845,8 @@ const ITEMS: BenchmarkItem[] = [
       !("docs/old.txt" in fs.files) &&
       Object.values(cal.events).some(
         (e) =>
-          e.title === "verify" &&
-          e.day === "2026-07-14" &&
-          e.startMin === 540 &&
-          e.endMin === 570,
-      ),
+          e.title === "verify" && e.day === "2026-07-14" && e.startMin === 540 && e.endMin === 570
+      )
   ),
 ];
 
@@ -888,10 +864,7 @@ const SYSTEM_PROMPT =
   "You may need multiple tool calls — keep going until the task is complete. " +
   "When you are certain the task is done, reply with the single line 'DONE.' as your final answer (no tool call).";
 
-async function runOne(args: {
-  item: BenchmarkItem;
-  model: ModelSpec;
-}): Promise<RunItemResult> {
+async function runOne(args: { item: BenchmarkItem; model: ModelSpec }): Promise<RunItemResult> {
   const { item, model } = args;
   const meta = META[item.id];
   if (!meta) {
@@ -957,8 +930,7 @@ async function runOne(args: {
     if (meta.family === "fs" && stateFs) passed = meta.judge(stateFs);
     else if (meta.family === "cal" && stateCal) passed = meta.judge(stateCal);
     else if (meta.family === "cart" && stateCart) passed = meta.judge(stateCart);
-    else if (meta.family === "mixed" && stateFs && stateCal)
-      passed = meta.judge(stateFs, stateCal);
+    else if (meta.family === "mixed" && stateFs && stateCal) passed = meta.judge(stateFs, stateCal);
   } catch {
     passed = false;
   }

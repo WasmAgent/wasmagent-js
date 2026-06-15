@@ -187,6 +187,20 @@ export default defineConfig({
   srcExclude: ["**/node_modules/**", "**/dist/**", "**/.vitepress/cache/**"],
 
   // Some guides link to `../../examples/*` and `../../packages/*` paths that exist
-  // in the repository but are outside the docs site. Allow those.
-  ignoreDeadLinks: [/examples\//, /packages\//],
+  // in the repository but are outside the docs site. Allow those, plus repo-root
+  // governance files (LICENSE / CHANGELOG / ROADMAP / SECURITY / CONTRIBUTING /
+  // GOVERNANCE / bun.lock) and links into the user's local memory directory
+  // (`./../../../.claude/...`) — those are valid on GitHub but not on the docs
+  // site. Also allow the cross-doc references to memory.md / reward-hacking.md
+  // that aren't yet published on the docs site.
+  ignoreDeadLinks: [
+    /examples\//,
+    /packages\//,
+    /\.\.\/(\.\.\/)*(LICENSE|CHANGELOG|ROADMAP|SECURITY|CONTRIBUTING|GOVERNANCE|bun\.lock)$/,
+    /\.claude\//,
+    /openai-compat-recipes$/,
+    /^\.\/memory$/,
+    /^\.\/reward-hacking$/,
+    /\/reports\/index$/,
+  ],
 });
