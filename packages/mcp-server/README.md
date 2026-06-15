@@ -1,5 +1,7 @@
 # @agentkit-js/mcp-server
 
+[![Glama MCP server](https://glama.ai/mcp/servers/telleroutlook/agentkit-js/badges/score.svg)](https://glama.ai/mcp/servers/telleroutlook/agentkit-js)
+
 Expose any agentkit-js agent as a Model Context Protocol (MCP) server.
 
 > Part of [agentkit-js](https://github.com/telleroutlook/agentkit-js) — a TypeScript + WASM agent runtime.
