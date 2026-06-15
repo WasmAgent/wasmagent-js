@@ -4,6 +4,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![CI](https://github.com/telleroutlook/agentkit-js/actions/workflows/ci.yml/badge.svg)](https://github.com/telleroutlook/agentkit-js/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-vitepress-brightgreen.svg)](https://telleroutlook.github.io/agentkit-js/)
+[![Glama MCP server](https://glama.ai/mcp/servers/telleroutlook/agentkit-js/badges/score.svg)](https://glama.ai/mcp/servers/telleroutlook/agentkit-js)
 
 **TypeScript agent runtime with WASM sandboxing, prompt-cache optimization, and parallel quality runners.**
 
