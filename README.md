@@ -28,7 +28,7 @@ npm add @agentkit-js/core openai
 
 There are several mature TypeScript agent frameworks. Here is an honest assessment of where agentkit-js fits.
 
-> **Last verified: 2026-06-13.** Each ⚠️/❌ cell links to its source on the column header's project. The "sandbox" rows have been re-framed (D2, 2026-06-13) so that having *some* sandbox is no longer the differentiator — three competitors now ship one. The remaining axes — **isolation tier composability**, **cross-runtime neutrality**, **offline closure** — are what no other framework offers in one package.
+> **Last verified: 2026-06-15.** Each ⚠️/❌ cell links to its source on the column header's project. The "sandbox" rows have been re-framed (D2, 2026-06-13) so that having *some* sandbox is no longer the differentiator — three competitors now ship one. The remaining axes — **isolation tier composability**, **cross-runtime neutrality**, **offline closure** — are what no other framework offers in one package.
 
 | | [Vercel AI SDK](https://github.com/vercel/ai) | [LangGraph.js](https://github.com/langchain-ai/langgraphjs) | [OpenAI Agents JS](https://github.com/openai/openai-agents-js) | [Mastra](https://github.com/mastra-ai/mastra) | [CF Agents SDK](https://github.com/cloudflare/agents) | **agentkit-js** |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|

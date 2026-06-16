@@ -1,6 +1,6 @@
 # Packages
 
-agentkit-js is a 30-package monorepo published under the `@agentkit-js/*` scope on npm.
+agentkit-js is a 33-package monorepo published under the `@agentkit-js/*` scope on npm.
 
 ## Runtime
 
@@ -13,7 +13,6 @@ agentkit-js is a 30-package monorepo published under the `@agentkit-js/*` scope 
 | [`@agentkit-js/react`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/react) | `useAgentRun()` SSE streaming hook |
 | [`@agentkit-js/agent-prompts`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/agent-prompts) | Reusable prompt fragments |
 | [`@agentkit-js/ui-cards`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/ui-cards) · [`ui-cards-react`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/ui-cards-react) | `\`\`\`card:*` block parser + components |
-
 ## Code execution kernels
 
 | Package | Tier | Edge-safe |
@@ -33,6 +32,12 @@ See the [kernel decision tree](/kernels/comparison) for picking the right one.
 |---|---|
 | [`@agentkit-js/model-anthropic`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/model-anthropic) | Auto cache breakpoints, 1-hour TTL |
 | [`@agentkit-js/model-openai`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/model-openai) | OpenAI / Azure OpenAI |
+
+### Local LLM (offline / privacy / cost)
+
+| Package | Notes |
+|---|---|
+| [`@agentkit-js/model-local`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/model-local) | `node-llama-cpp` adapter; multi-mirror registry (HF / hf-mirror / ModelScope); JSON-schema grammar; `localFirst` / `offlineOnly` / `devLocalOr` routing presets |
 
 ### Chinese model providers
 
@@ -62,6 +67,8 @@ See the [kernel decision tree](/kernels/comparison) for picking the right one.
 | [`@agentkit-js/mcp-server`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/mcp-server) | Expose any agent as MCP server; `createCodeModeServer()` for the docs-search + execute-code two-tool surface |
 | [`@agentkit-js/aisdk`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/aisdk) | Vercel AI SDK 4–6 integration: `sandboxedJsTool()` + `codeModeTool()` |
 | [`@agentkit-js/mastra-sandbox`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/mastra-sandbox) | Mastra sandbox-provider contract backed by an agentkit kernel |
+| [`@agentkit-js/claude-agent-sdk`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/claude-agent-sdk) | Anthropic Claude Agent SDK adapter — wrap an agentkit kernel as a Claude SDK tool |
+| [`@agentkit-js/openai-agents`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/openai-agents) | OpenAI Agents JS adapter — `Tool<T>` shape backed by an agentkit kernel |
 | [`@agentkit-js/a2a`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/a2a) | A2A (Agent2Agent) inbound + outbound |
 | [`@agentkit-js/ag-ui`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/ag-ui) | AG-UI inbound transport |
 
