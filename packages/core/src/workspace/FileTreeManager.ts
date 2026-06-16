@@ -15,7 +15,7 @@
  * GPT-Engineer's file hash tracking in improve_loop.
  */
 
-import { createHash } from "node:crypto";
+import { byteLength, syncHash16 } from "../util/runtime.js";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -273,9 +273,12 @@ export class FileTreeManager {
     return {
       path,
       content,
-      hash: createHash("sha256").update(content).digest("hex").slice(0, 16),
+      // Edge-portable file-version hash. 64-bit FNV-1a-like — used only
+      // for "did this file change?" tracking, never as a security
+      // signal. See packages/core/src/util/runtime.ts for rationale.
+      hash: syncHash16(content),
       lines: content.split("\n").length,
-      byteSize: Buffer.byteLength(content, "utf8"),
+      byteSize: byteLength(content),
       lastModifiedMs: Date.now(),
     };
   }

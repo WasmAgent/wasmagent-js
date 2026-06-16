@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID } from "../util/runtime.js";
 import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
 import { ParallelForkJoinRunner } from "../enhancement/ParallelForkJoinRunner.js";
 import { ReflectRefineRunner } from "../enhancement/ReflectRefineRunner.js";

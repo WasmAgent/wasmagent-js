@@ -195,7 +195,31 @@ export abstract class OpenAICompatModel implements Model {
     }
 
     if (opts.tools && opts.tools.length > 0) {
-      params.tools = opts.tools.map((t) => ({ type: "function", function: t }));
+      // OpenAI chat.completions wire format requires `function.parameters`
+      // (JSON Schema). agentkit's ToolRegistry.toJsonSchema emits Anthropic-
+      // style `function.input_schema` because that's the canonical key
+      // Anthropic's Messages API uses; we rename per-call here so each
+      // model adapter speaks its own provider's wire format. Lenient
+      // endpoints (OpenAI, OpenRouter, qwen2.5:0.5b template) silently
+      // default the missing parameters to {} and fall back to text
+      // generation; strict templates (some Ollama fine-tunes — verified
+      // 2026-06-16 against evomerge-t10-1b7-v7f, evo-qwen3-1b7-q3km,
+      // p17-c3-baseline_clean100) reject with HTTP 400 "Unrecognized
+      // schema". Renaming is the fix; no other field changes.
+      params.tools = opts.tools.map((t) => {
+        const tool = t as Record<string, unknown>;
+        const { input_schema: inputSchema, ...rest } = tool;
+        return {
+          type: "function",
+          function: {
+            ...rest,
+            // Empty-object default matches what OpenAI expects when a tool
+            // takes no arguments — never omit `parameters`, strict templates
+            // reject the missing key.
+            parameters: inputSchema ?? { type: "object", properties: {} },
+          },
+        };
+      });
       params.tool_choice = "auto";
     }
 

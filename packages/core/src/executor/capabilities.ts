@@ -1,6 +1,76 @@
-import { readFile, writeFile } from "node:fs/promises";
-import { resolve, sep } from "node:path";
+// Edge-portability note (2026-06-16): node:fs/promises and node:path are
+// only used by the FS-allow-list helpers below (`assertPathAllowed`,
+// `buildCapabilityGlobals`'s __fs__ branch). Those branches are
+// Node-only by construction — Cloudflare Workers and Vercel Edge have
+// no real filesystem and so callers there configure
+// `allowedReadPaths` / `allowedWritePaths` empty (deny-all), which
+// short-circuits the import below. We therefore lazy-import the Node
+// modules instead of bare-importing them at module scope, so the
+// module is parseable on edge bundlers; the import only runs when
+// FS capabilities are actually requested.
 import type { CapabilityManifest } from "./types.js";
+
+let _nodeFs: typeof import("node:fs/promises") | undefined;
+async function _loadNodeFsP(): Promise<typeof import("node:fs/promises")> {
+  if (!_nodeFs) {
+    _nodeFs = await import("node:fs/promises");
+  }
+  return _nodeFs;
+}
+
+/**
+ * Sync portable path resolver — used by `assertPathAllowed` to keep
+ * that function's sync signature stable across runtimes. Mimics
+ * `node:path.resolve` + `path.sep` semantics for POSIX and Windows
+ * paths, lexical only (no symlink following — same as `node:path`).
+ *
+ * Why we don't `await import("node:path")`: `assertPathAllowed` is
+ * called inside Object literal property setters, where async isn't
+ * an option without changing the public API shape. The lexical
+ * resolution we need (joining segments, collapsing `..`/`.`,
+ * detecting prefix containment) is a small subset of `node:path`
+ * that's straightforward to inline.
+ */
+function _resolveSync(path: string): string {
+  // Detect drive-letter style ("C:\foo") or UNC ("\\server\share").
+  const isWindowsAbs = /^[A-Za-z]:[\\/]/.test(path) || path.startsWith("\\\\");
+  const isPosixAbs = path.startsWith("/");
+
+  if (!isWindowsAbs && !isPosixAbs) {
+    // Best-effort cwd resolution. On edge runtimes we use "/" so the
+    // result is purely lexical; on Node we use process.cwd() to match
+    // node:path.resolve.
+    const cwd =
+      typeof globalThis !== "undefined" &&
+      // biome-ignore lint/suspicious/noExplicitAny: feature-detect optional Node global
+      typeof (globalThis as any).process?.cwd === "function"
+        ? // biome-ignore lint/suspicious/noExplicitAny: same
+          ((globalThis as any).process.cwd() as string)
+        : "/";
+    path = `${cwd}/${path}`;
+  }
+
+  // Normalise separators to forward slash for the collapse pass.
+  const sep = isWindowsAbs ? "\\" : "/";
+  const parts = path.split(/[/\\]+/).filter((p) => p !== "" && p !== ".");
+  const stack: string[] = [];
+  for (const part of parts) {
+    if (part === "..") {
+      stack.pop();
+    } else {
+      stack.push(part);
+    }
+  }
+  if (isWindowsAbs) {
+    // Preserve drive prefix. parts[0] for "C:\foo" is "C:" — re-join.
+    return stack.join(sep);
+  }
+  return `/${stack.join(sep)}`;
+}
+
+function _sepFor(path: string): string {
+  return /^[A-Za-z]:[\\/]/.test(path) || path.startsWith("\\\\") ? "\\" : "/";
+}
 
 const MAX_REDIRECT_HOPS = 5;
 
@@ -85,9 +155,10 @@ export function assertPathAllowed(
       `CapabilityDenied: ${operation} access to "${path}" is denied (no paths allowed)`
     );
   }
-  const resolved = resolve(path);
+  const resolved = _resolveSync(path);
+  const sep = _sepFor(path);
   const isAllowed = allowedPaths.some((prefix) => {
-    const resolvedPrefix = resolve(prefix);
+    const resolvedPrefix = _resolveSync(prefix);
     return resolved === resolvedPrefix || resolved.startsWith(resolvedPrefix + sep);
   });
   if (!isAllowed) {
@@ -123,17 +194,19 @@ export function buildCapabilityGlobals(
        * Read a file at `path` (string). Returns a Promise<string> (UTF-8).
        * Throws CapabilityDenied if `path` is not within allowedReadPaths.
        */
-      readFile: (path: string): Promise<string> => {
+      readFile: async (path: string): Promise<string> => {
         assertPathAllowed(path, readPaths, "read");
-        return readFile(path, "utf8");
+        const fs = await _loadNodeFsP();
+        return fs.readFile(path, "utf8");
       },
       /**
        * Write `data` to `path`. Returns a Promise<void>.
        * Throws CapabilityDenied if `path` is not within allowedWritePaths.
        */
-      writeFile: (path: string, data: string): Promise<void> => {
+      writeFile: async (path: string, data: string): Promise<void> => {
         assertPathAllowed(path, writePaths, "write");
-        return writeFile(path, data, "utf8");
+        const fs = await _loadNodeFsP();
+        return fs.writeFile(path, data, "utf8");
       },
     };
   }

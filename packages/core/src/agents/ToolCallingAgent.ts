@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID } from "../util/runtime.js";
 import type { ZodSchema } from "zod";
 import type { Checkpointer } from "../checkpoint/index.js";
 import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";

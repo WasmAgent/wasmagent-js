@@ -222,6 +222,13 @@ export interface ModelMeta {
   outputUsdPerMTok?: number;
   cacheReadUsdPerMTok?: number;
   cacheWriteUsdPerMTok?: number;
+  /**
+   * Anthropic prompt-cache 1-hour TTL write rate. Approximately 2× the
+   * 5-minute (default) write rate; populate per-model when tracking
+   * extended-TTL workflows for accurate cost. When undefined,
+   * `TokenBudget.estimatedUsdFor` falls back to `cacheWriteUsdPerMTok × 2`.
+   */
+  cacheWriteUsdPerMTok1h?: number;
 }
 
 /**
@@ -680,6 +687,15 @@ export class TokenBudget {
   outputTokens = 0;
   cacheReadTokens = 0;
   cacheWriteTokens = 0;
+  /**
+   * Tokens written to the 1-hour TTL cache tier (separate from the
+   * default 5-minute tier on Anthropic). Tracked separately because
+   * Anthropic prices the 1h tier ~2× the 5m tier — folding it into
+   * `cacheWriteTokens` underreports cost by 10–20% on long-context
+   * workflows that explicitly opt into 1h TTL. The TokenUsage event
+   * already carries this field; we now propagate it. (2026-06-16.)
+   */
+  cacheWriteTokens1h = 0;
   calls = 0;
 
   recordUsage(usage: TokenUsage): void {
@@ -687,6 +703,7 @@ export class TokenBudget {
     this.outputTokens += usage.outputTokens;
     this.cacheReadTokens += usage.cacheReadTokens ?? 0;
     this.cacheWriteTokens += usage.cacheWriteTokens ?? 0;
+    this.cacheWriteTokens1h += usage.cacheWriteTokens1h ?? 0;
     this.calls += 1;
   }
 
@@ -722,11 +739,17 @@ export class TokenBudget {
     const outputUsd = meta?.outputUsdPerMTok ?? 15;
     const cacheReadUsd = meta?.cacheReadUsdPerMTok ?? inputUsd * 0.1;
     const cacheWriteUsd = meta?.cacheWriteUsdPerMTok ?? inputUsd * 1.25;
+    // 1-hour TTL cache writes price ~2× the 5-minute tier on Anthropic.
+    // ModelMeta carries cacheWriteUsdPerMTok1h when known; fall back to
+    // 2× the 5m rate when the registry doesn't have a 1h-specific
+    // figure (matches Anthropic's published 2× ratio at 2026-06).
+    const cacheWriteUsd1h = meta?.cacheWriteUsdPerMTok1h ?? cacheWriteUsd * 2;
     return (
       (this.inputTokens * inputUsd +
         this.outputTokens * outputUsd +
         this.cacheReadTokens * cacheReadUsd +
-        this.cacheWriteTokens * cacheWriteUsd) /
+        this.cacheWriteTokens * cacheWriteUsd +
+        this.cacheWriteTokens1h * cacheWriteUsd1h) /
       1_000_000
     );
   }
@@ -750,6 +773,7 @@ export class TokenBudget {
       outputTokens: this.outputTokens,
       cacheReadTokens: this.cacheReadTokens,
       cacheWriteTokens: this.cacheWriteTokens,
+      cacheWriteTokens1h: this.cacheWriteTokens1h,
       calls: this.calls,
     };
   }

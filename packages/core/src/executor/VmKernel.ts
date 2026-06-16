@@ -25,10 +25,15 @@ export class VmKernel implements WasmKernel {
   #context: ReturnType<typeof createContext>;
   #logs: string[] = [];
   #disposed = false;
-  readonly #timeoutMs: number | undefined;
+  readonly #timeoutMs: number;
 
   constructor(opts?: KernelOptions) {
-    this.#timeoutMs = opts?.timeoutMs;
+    // Default 5s — finite by construction. A bare `new VmKernel()`
+    // previously had `undefined` timeout, which let `while(true){}`
+    // hang the host (the kernel runs in-process, not in a worker
+    // thread, so there's no isolation; cf. JsKernel). Match the
+    // QuickJSKernel/WasmtimeKernel default for consistency.
+    this.#timeoutMs = opts?.timeoutMs ?? 5_000;
     this.#context = this.#createSandbox();
   }
 
@@ -83,16 +88,14 @@ export class VmKernel implements WasmKernel {
     }
 
     // Per-call timeout: capability.cpuMs (if set) tightens the kernel default.
-    const baseTimeout = this.#timeoutMs ?? Number.POSITIVE_INFINITY;
     const cpuMs = capabilities?.cpuMs;
     const effectiveTimeout =
-      cpuMs != null && cpuMs > 0 ? Math.min(baseTimeout, cpuMs) : this.#timeoutMs;
+      cpuMs != null && cpuMs > 0 ? Math.min(this.#timeoutMs, cpuMs) : this.#timeoutMs;
 
     const script = new Script(code, { filename: "agent-step.js" });
     let output: unknown;
     try {
-      const runOpts = effectiveTimeout != null ? { timeout: effectiveTimeout } : {};
-      output = script.runInContext(this.#context, runOpts);
+      output = script.runInContext(this.#context, { timeout: effectiveTimeout });
     } catch (err) {
       throw new Error(`KernelError: ${err instanceof Error ? err.message : String(err)}`);
     }

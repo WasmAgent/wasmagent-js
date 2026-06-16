@@ -15,7 +15,7 @@
  * - Shell actions: <boltAction type="shell">command</boltAction>
  */
 
-import { randomUUID } from "node:crypto";
+import { randomUUID } from "../util/runtime.js";
 
 export type ParsedActionType = "file" | "shell" | "code";
 

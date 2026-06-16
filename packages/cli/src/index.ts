@@ -17,6 +17,17 @@ import { parseArgs } from "node:util";
 import type { AgentEvent } from "@agentkit-js/core";
 import { AnthropicModel, AnthropicModels, CodeAgent } from "@agentkit-js/core";
 
+// Source-of-truth for the CLI version. Synced manually from
+// packages/cli/package.json's "version" field on each release. We
+// don't `import "../package.json" with { type: "json" }` because
+// that's a TypeScript 5.4+ flag and the published `dist/` JS lives
+// next to dist/index.js, not the package.json — runtime path
+// resolution of "../package.json" depends on whether the user
+// installed via npm (works) or runs from a workspace symlink (also
+// works, but with a different relative depth). A literal avoids both
+// surprises.
+const CLI_VERSION = "0.2.0";
+
 // Only run CLI dispatch when executed as the entry point, not when imported by tests.
 const isMain =
   process.argv[1] != null &&
@@ -59,9 +70,19 @@ if (isMain) {
       mirror: { type: "string" },
       "cache-dir": { type: "string" },
       help: { type: "boolean", short: "h", default: false },
+      version: { type: "boolean", short: "v", default: false },
     },
     allowPositionals: true,
   });
+
+  if (values.version) {
+    // Print just the version (parse-friendly for CI scripts).
+    // The literal is replaced by the published package version at
+    // build time; the placeholder below matches the source-of-truth in
+    // packages/cli/package.json.
+    console.log(CLI_VERSION);
+    process.exit(0);
+  }
 
   if (values.help || positionals.length === 0) {
     printHelp();
@@ -74,6 +95,11 @@ if (isMain) {
     case "run":
       await runCommand(rest.join(" "), values);
       break;
+    case "init":
+      // Alias — most CLI ecosystems use `init`. Route to init-tool so
+      // both names work; keep init-tool as the canonical (its help
+      // text is more specific). 2026-06-16 audit finding.
+      // falls through
     case "init-tool":
       await initToolCommand(values);
       break;
@@ -85,6 +111,10 @@ if (isMain) {
       break;
     case "model":
       await modelCommand(rest, values);
+      break;
+    case "version":
+    case "--version":
+      console.log(CLI_VERSION);
       break;
     default:
       console.error(`Unknown command: ${command}`);
