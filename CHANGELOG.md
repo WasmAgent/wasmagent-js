@@ -16,6 +16,23 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`@agentkit-js/evals-runner` — `multiTurnMemorySuiteOriginal` exposed
+  (2026-06-16).** The 6-item original variant of the multi-turn-memory
+  suite is now (a) registered in `REFERENCE_SUITES` under the name
+  `"multi-turn-memory-original-6"` and (b) re-exported as a named
+  symbol from the package barrel. Background: as the LoCoMo-style
+  templates expanded the main `multi-turn-memory` suite to 63 items,
+  contract / smoke tests that wanted a fixed denominator had nowhere
+  to go — the original 6-item variant was defined but unreachable.
+  Now both consumption paths work:
+    - `import { REFERENCE_SUITES } from "@agentkit-js/evals-runner"`
+      and pick `REFERENCE_SUITES["multi-turn-memory-original-6"]`,
+    - `import { multiTurnMemorySuiteOriginal } from "@agentkit-js/evals-runner"`
+      and use directly.
+  Caught by `examples/integration-smoke/edge-evals-runner.mjs` as
+  part of the 4-axis audit's full-validation pass.
+
+### Fixed
 - **swe-bench-lite container judge — `runTests` slot filled
   (2026-06-13).** The last unfilled slot in `examples/benchmarks/swe-bench-lite.mjs`
   now ships:

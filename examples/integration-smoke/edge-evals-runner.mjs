@@ -7,10 +7,15 @@
  *   2. Aggregates correctly compute mean acc, Wilson CI, Pareto front.
  *   3. The markdown report has all required sections.
  *   4. The Pareto front identifies non-dominated models.
+ *
+ * 2026-06-16: pinned to `multi-turn-memory-original-6` (the 6-item
+ * contract-test variant). The full `multi-turn-memory` suite grew to
+ * 63 items as LoCoMo-style templates were added — fine for real evals,
+ * but a smoke test wants a fixed denominator so the cell-count and
+ * meanAcc numbers stay stable across suite enrichments.
  */
 import {
   REFERENCE_SUITES,
-  multiTurnMemorySuite,
   renderReportMarkdown,
   runEvaluation,
 } from "@agentkit-js/evals-runner";
@@ -66,7 +71,9 @@ const models = [
     pricePer1MOutput: 20.0,
   },
 ];
-const suite = multiTurnMemorySuite;
+// Pin to the 6-item original variant — see header docstring.
+const suite = REFERENCE_SUITES["multi-turn-memory-original-6"];
+if (!suite) throw new Error("REFERENCE_SUITES['multi-turn-memory-original-6'] missing");
 
 // Run with two providers — small model fails S5, large model fails S4.
 async function runWithProfiles() {
