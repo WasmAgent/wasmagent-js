@@ -371,28 +371,9 @@ The Worker exposes a POST `/run` endpoint. Session state is stored in KV for cos
 
 ## Packages
 
-| Package | Description |
-|---------|-------------|
-| `@agentkit-js/core` | Agent runtime, kernels, models, tools, quality runners, evals, observability, checkpointing, **observational memory (A1)**, **skills + lifecycle hooks (A3)**, **judge scorers (A4)** |
-| `@agentkit-js/devtools` | **Time-travel debugger (A2)** — `EventLogReplay` engine + opt-in `<DevTools />` React UI for step-replay and fork-from-checkpoint |
-| `@agentkit-js/react` | `useAgentRun()` React hook for streaming SSE agent output |
-| `@agentkit-js/ui-cards` | Parser for `\`\`\`card:*` fenced blocks in AI replies (Markdown / D2 / extensible) |
-| `@agentkit-js/ui-cards-react` | React components: MarkdownCard, D2Card, CardRenderer, ChatMessage |
-| `@agentkit-js/agent-prompts` | Composable prompt fragments + `composePrompt()` (reasoning, sandboxes, output contracts, card rules) |
-| `@agentkit-js/tools-web` | Web search adapters: Tavily, Brave, Perplexity (LRU-cached, readOnly+idempotent) |
-| `@agentkit-js/tools-rag` | `HttpEmbedder` + `ragTool` + Pinecone / Qdrant / in-memory connectors |
-| `@agentkit-js/tools-browser` | Browser automation: Playwright session + CDP-bridge session, 5 tools (navigate/click/fill/screenshot/extract) |
-| `@agentkit-js/cli` | `agentkit run` CLI |
-| `@agentkit-js/kernel-pyodide` | CPython-in-WASM (Pyodide) |
-| `@agentkit-js/kernel-quickjs` | QuickJS WASM kernel |
-| `@agentkit-js/kernel-wasmtime` | True WASM sandbox via Javy + WASI (requires `javy` CLI) |
-| `@agentkit-js/cloudflare-worker` | Cloudflare Workers HTTP entry point |
-| `@agentkit-js/model-doubao` | Doubao / Volcengine Ark adapter (thinking tiers, ark-context cache) |
-| `@agentkit-js/model-deepseek` | DeepSeek V4 adapter (thinking:{type}, V4_FLASH) |
-| `@agentkit-js/model-moonshot` | Moonshot / Kimi K2.6 adapter (per-version reasoning field) |
-| `@agentkit-js/model-qwen` | Qwen3 adapter (enable_thinking, thinking_budget, intl region) |
-| `@agentkit-js/model-zhipu` | Zhipu GLM-5 adapter (thinking:{type} via extra_body) |
-| `@agentkit-js/model-minimax` | MiniMax M2/M3 adapter (reasoning_split, &lt;think&gt; tag parsing) |
+agentkit-js is a 33-package monorepo. See **[`docs/packages.md`](docs/packages.md)** for the canonical, tier-classified list (★ Core / ◆ Narrative / ▽ Maintenance), with one-line descriptions of each package and links to its README.
+
+For the maintenance-tier rationale, see [`docs/strategy/maintenance-tiers.md`](docs/strategy/maintenance-tiers.md).
 
 ---
 

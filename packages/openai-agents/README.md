@@ -69,6 +69,21 @@ const agent = new Agent({ name: "ops", tools: [portalTool] });
 // Model sees ONE tool; in-sandbox scripts call N tools via callTool(...).
 ```
 
+## Kernel selection — pick the right tier
+
+`sandboxedJsAgentTool()` and `codeModeAgentTool()` accept any agentkit
+kernel. The choice is independent of the SDK adapter — swap kernels in
+one line, the rest of your code is unchanged:
+
+| Kernel | When to pick it | Edge-safe |
+| ------ | --------------- | --------- |
+| `QuickJSKernel` (`@agentkit-js/kernel-quickjs`) | Default. JS/TS workloads. ~2 MB cold start. | ✅ |
+| `PyodideKernel` (`@agentkit-js/kernel-pyodide`) | Model emits Python (numpy, pandas, regex-heavy). | ✅ (heavy) |
+| `WasmtimeKernel` (`@agentkit-js/kernel-wasmtime`) | Multi-language WASM modules / Javy-compiled JS for max isolation. | ✅ |
+| `RemoteSandboxKernel` (`@agentkit-js/kernel-remote`) | Need full POSIX, native binaries, multi-tenant trust. Backed by E2B / Cloudflare Sandbox. | n/a |
+
+Swap is a one-liner — `kernel: new QuickJSKernel()` becomes `kernel: new PyodideKernel()`. Same `CapabilityManifest`, same OpenAI Agents JS `Tool<T>` shape.
+
 ## Capability manifest
 
 Same `CapabilityManifest` as the other adapters — see

@@ -104,6 +104,21 @@ const { text } = await generateText({
 The model sees one tool, not forty. The script inside calls `callTool(...)`
 N times; only the script's return value re-enters the model context.
 
+## Kernel selection — pick the right tier
+
+`sandboxedJsTool()` and `codeModeTool()` accept any agentkit kernel.
+The choice is independent of the SDK adapter — drop a different kernel
+into the same `kernel:` slot and the rest of your code is unchanged:
+
+| Kernel | When to pick it | Edge-safe |
+| ------ | --------------- | --------- |
+| `QuickJSKernel` (`@agentkit-js/kernel-quickjs`) | Default. JS/TS workloads. ~2 MB cold start. | ✅ |
+| `PyodideKernel` (`@agentkit-js/kernel-pyodide`) | Model emits Python (numpy, pandas, regex-heavy). | ✅ (heavy) |
+| `WasmtimeKernel` (`@agentkit-js/kernel-wasmtime`) | Multi-language WASM modules / Javy-compiled JS for max isolation. | ✅ |
+| `RemoteSandboxKernel` (`@agentkit-js/kernel-remote`) | Need full POSIX, native binaries, multi-tenant trust. Backed by E2B / Cloudflare Sandbox. | n/a |
+
+Swap is a one-liner — `kernel: new QuickJSKernel()` becomes `kernel: new PyodideKernel()`. Same `CapabilityManifest`, same tool-call shape, same SDK loop.
+
 ## Capability manifest
 
 Every kernel honours the same `CapabilityManifest`:
