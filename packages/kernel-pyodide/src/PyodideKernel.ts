@@ -123,20 +123,33 @@ export class PyodideKernel implements WasmKernel {
     const readPaths = capabilities?.allowedReadPaths ?? [];
     const writePaths = capabilities?.allowedWritePaths ?? [];
     const extraCaps = capabilities?.extraCapabilities ?? [];
+    // env: a frozen string-to-string map exposed to the script as `__env__`
+    // (canonical name) and `os.environ` (Python convention). Supplied per
+    // call so each run gets a fresh view; we never leak unset env between
+    // calls. Aligns Pyodide with the JsKernel/QuickJSKernel honouring
+    // matrix in packages/core/src/executor/types.ts.
+    const env = capabilities?.env ?? {};
 
     // Only update the data variables — functions were defined once at init time.
     const hostsJson = JSON.stringify(JSON.stringify(allowedHosts));
     const readJson = JSON.stringify(JSON.stringify(readPaths));
     const writeJson = JSON.stringify(JSON.stringify(writePaths));
     const extraJson = JSON.stringify(JSON.stringify(extraCaps));
+    const envJson = JSON.stringify(JSON.stringify(env));
 
     py.runPython(`
-import json as _j
+import json as _j, os as _os
 _allowed_hosts = _j.loads(${hostsJson})
 __allowed_read_paths__ = _j.loads(${readJson})
 __allowed_write_paths__ = _j.loads(${writeJson})
 __extra_capabilities__ = _j.loads(${extraJson})
-del _j
+__env__ = _j.loads(${envJson})
+# Replace os.environ with the per-call frozen view. Pyodide's MEMFS
+# means this doesn't escape the isolate; Python code that reads
+# os.environ['KEY'] will see the manifest's env, nothing else.
+_os.environ.clear()
+_os.environ.update(__env__)
+del _j, _os
 `);
   }
 

@@ -57,4 +57,49 @@ describe("PyodideKernel (A4)", () => {
     await kernel.run("tmp = 1");
     await expect(kernel[Symbol.asyncDispose]()).resolves.toBeUndefined();
   }, 30_000);
+
+  it("exposes capability env as __env__ and os.environ (frozen per call)", async () => {
+    const kernel = new PyodideKernel();
+
+    // Call 1: env is set; both spellings should be visible.
+    // We return JSON strings to avoid Pyodide JsProxy ↔ deep-equal issues
+    // (Pyodide proxies dict objects; vitest's .toEqual on a JsProxy throws
+    // TypeError: unhashable type). Stringify in Python, parse in JS.
+    const r1 = await kernel.run(
+      `import os, json
+json.dumps({
+  "from_env_global": __env__.get("API_KEY"),
+  "from_os_environ":  os.environ.get("API_KEY"),
+  "all_keys":         sorted(__env__.keys()),
+})`,
+      { env: { API_KEY: "sk-test-1", REGION: "us-east-1" } }
+    );
+    expect(JSON.parse(r1.output as string)).toEqual({
+      from_env_global: "sk-test-1",
+      from_os_environ: "sk-test-1",
+      all_keys: ["API_KEY", "REGION"],
+    });
+
+    // Call 2: a different env wipes the prior call's keys (no leak).
+    const r2 = await kernel.run(
+      `import os, json
+json.dumps({
+  "api_key_now": os.environ.get("API_KEY"),
+  "region_now":  os.environ.get("REGION"),
+  "fresh_key":   os.environ.get("FRESH"),
+})`,
+      { env: { FRESH: "v" } }
+    );
+    expect(JSON.parse(r2.output as string)).toEqual({
+      api_key_now: null,
+      region_now: null,
+      fresh_key: "v",
+    });
+
+    // Call 3: omit env entirely — os.environ should be empty.
+    const r3 = await kernel.run(`import os; len(os.environ)`);
+    expect(r3.output).toBe(0);
+
+    await kernel[Symbol.asyncDispose]();
+  }, 30_000);
 });

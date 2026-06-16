@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { RemoteSandboxKernel } from "./RemoteSandboxKernel.js";
+import { _buildHarnessForTest, RemoteSandboxKernel } from "./RemoteSandboxKernel.js";
 
 describe("RemoteSandboxKernel", () => {
   it("is exported from the package", () => {
@@ -82,5 +82,39 @@ describe("RemoteSandboxKernel", () => {
     // Just check the kernel is structurally correct.
     expect(typeof kernel.reset).toBe("function");
     expect(killCalled).toHaveLength(0); // not killed yet
+  });
+
+  // ── env injection (capability honouring matrix) ──────────────────────────
+  // We test the harness builder directly — no E2B sandbox required, no
+  // network. The same buildHarness() runs inside the remote sandbox at
+  // runtime; if the harness string is right, the runtime behaviour is right.
+  describe("buildHarness — env injection", () => {
+    it("emits __env__ with the manifest's env when set", () => {
+      const harness = _buildHarnessForTest('return __env__.API_KEY;', {
+        env: { API_KEY: "sk-remote", REGION: "eu-west-1" },
+      });
+      expect(harness).toContain('globalThis.__env__ = Object.freeze(');
+      expect(harness).toContain('"API_KEY":"sk-remote"');
+      expect(harness).toContain('"REGION":"eu-west-1"');
+      // Frozen — assignment from user code is silently ignored.
+      expect(harness).toContain("Object.freeze");
+    });
+
+    it("emits __env__ as an empty frozen object when env is omitted", () => {
+      const harness = _buildHarnessForTest("return 1;");
+      expect(harness).toContain('globalThis.__env__ = Object.freeze({})');
+    });
+
+    it("does NOT leak prior call's env into the harness string", () => {
+      // Two independent calls — second has different env. The harness is a
+      // string built per-call, so by construction there's no shared state,
+      // but verify the literal contents differ.
+      const h1 = _buildHarnessForTest("return 1;", { env: { K1: "v1" } });
+      const h2 = _buildHarnessForTest("return 1;", { env: { K2: "v2" } });
+      expect(h1).toContain('"K1":"v1"');
+      expect(h1).not.toContain("K2");
+      expect(h2).toContain('"K2":"v2"');
+      expect(h2).not.toContain("K1");
+    });
   });
 });

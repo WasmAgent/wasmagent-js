@@ -76,7 +76,12 @@ export class WasmtimeKernel implements WasmKernel {
 
   async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
     const allowedHosts = capabilities?.allowedHosts ?? [];
-    const src = buildJavySource(code, allowedHosts, this.#stateJson);
+    const env = capabilities?.env ?? {};
+    // Per-call cpuMs (capability) takes precedence over the constructor
+    // default (opts.timeoutMs). This matches the "capability honouring
+    // matrix" in @agentkit-js/core/executor/types: cpuMs is per-call.
+    const effectiveTimeoutMs = capabilities?.cpuMs ?? this.#timeoutMs;
+    const src = buildJavySource(code, allowedHosts, this.#stateJson, env);
 
     let tmpDir: string | undefined;
     try {
@@ -90,7 +95,7 @@ export class WasmtimeKernel implements WasmKernel {
       // javy embeds QuickJS + the user JS into a single WASM binary that speaks WASI.
       try {
         await execFileAsync(this.#javyPath, ["compile", jsPath, "-o", wasmPath], {
-          timeout: this.#timeoutMs,
+          timeout: effectiveTimeoutMs,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -174,10 +179,12 @@ export class WasmtimeKernel implements WasmKernel {
 export function buildJavySource(
   code: string,
   allowedHosts: string[],
-  stateJson: Record<string, string>
+  stateJson: Record<string, string>,
+  env: Record<string, string> = {}
 ): string {
   const stateJsonLiteral = JSON.stringify(JSON.stringify(stateJson));
   const hostsJsonLiteral = JSON.stringify(allowedHosts);
+  const envJsonLiteral = JSON.stringify(env);
 
   return `// ── Javy harness for WasmtimeKernel ──────────────────────────────────────────
 (function() {
@@ -251,6 +258,11 @@ export function buildJavySource(
   // ── Sentinel variables ─────────────────────────────────────────────────────
   globalThis.__finalAnswer__ = undefined;
   globalThis.__final_answer__ = undefined;
+
+  // ── Capability env (frozen, per-call view) ─────────────────────────────────
+  // Mirrors JsKernel/QuickJSKernel/PyodideKernel: env is the only way for
+  // user code to reach API keys etc. — there's no host process.env leak.
+  globalThis.__env__ = Object.freeze(${envJsonLiteral});
 
   // ── Execute user code ──────────────────────────────────────────────────────
   var __output__ = undefined;

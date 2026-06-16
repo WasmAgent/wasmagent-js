@@ -121,6 +121,52 @@ describe("buildJavySource harness (unit, no javy CLI required)", () => {
     expect(parseEnvelope(stdout).isFinalAnswer).toBe(true);
     expect(parseEnvelope(stdout).finalAnswer).toBeNull();
   });
+
+  it("exposes capability env as __env__ (frozen, per-call)", async () => {
+    // Default (no env arg) → __env__ is an empty object.
+    const srcDefault = buildJavySource("Object.keys(__env__).length", [], {});
+    const { stdout: stdoutDefault } = await simulateHarnessRun(srcDefault, "{}");
+    expect(parseEnvelope(stdoutDefault).output).toBe(0);
+
+    // With env: keys are visible, values match.
+    const src = buildJavySource(
+      `JSON.stringify({
+         api: __env__.API_KEY,
+         region: __env__.REGION,
+         all: Object.keys(__env__).sort(),
+       })`,
+      [],
+      {},
+      { API_KEY: "sk-test", REGION: "us-east-1" }
+    );
+    const { stdout } = await simulateHarnessRun(src, "{}");
+    const parsed = JSON.parse(parseEnvelope(stdout).output as string) as {
+      api: string;
+      region: string;
+      all: string[];
+    };
+    expect(parsed).toEqual({
+      api: "sk-test",
+      region: "us-east-1",
+      all: ["API_KEY", "REGION"],
+    });
+
+    // Frozen: assignment is silently ignored (strict mode would throw —
+    // we run non-strict in the harness — Object.freeze is enough since the
+    // test asserts the value didn't change).
+    const srcFrozen = buildJavySource(
+      `try { __env__.NEW_KEY = "x"; } catch(_) {}
+       JSON.stringify({ has_new: "NEW_KEY" in __env__ })`,
+      [],
+      {},
+      { API_KEY: "sk" }
+    );
+    const { stdout: stdoutFrozen } = await simulateHarnessRun(srcFrozen, "{}");
+    const fparsed = JSON.parse(parseEnvelope(stdoutFrozen).output as string) as {
+      has_new: boolean;
+    };
+    expect(fparsed.has_new).toBe(false);
+  });
 });
 
 describe("WasmtimeKernel API (unit, javy mocked)", () => {

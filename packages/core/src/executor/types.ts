@@ -28,8 +28,8 @@ export interface KernelResult {
  *   allowedWritePaths     ✅          ✅(*)          ✅(*)           ✅(*)            ✅
  *   extraCapabilities     ✅          ✅             ✅              ✅               ✅
  *   env                   ✅          ✅             ✅              ✅               ✅
- *   cpuMs                 ✅(timeout) ✅(deadline)   ✅(deadline)    ✅(timeout)      ✅(per-call)
- *   memoryLimitBytes      ⚠️         ✅             ⚠️             ✅               ✅
+ *   cpuMs                 ✅(timeout) ✅(deadline)   ⚠️(advisory)    ✅(per-call)     ✅(per-call)
+ *   memoryLimitBytes      ⚠️         ✅             ⚠️             ⚠️(no native)    ✅(via E2B)
  *
  *   (*) FS access in WASM kernels lands on the host via an explicit __fs__
  *   bridge (see buildCapabilityGlobals); the bridge enforces allowedReadPaths

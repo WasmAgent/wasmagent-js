@@ -16,6 +16,27 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Kernel `env` capability — full honouring across all WASM tiers
+  (2026-06-16).** The `CapabilityManifest.env` field is now actually
+  consumed by `PyodideKernel`, `WasmtimeKernel`, and `RemoteSandboxKernel`
+  in addition to the long-standing `JsKernel` / `QuickJSKernel` paths.
+  Each kernel now exposes the per-call frozen env map as a `__env__`
+  global to user code (the canonical name shared across tiers); Pyodide
+  additionally clears + repopulates `os.environ` so Python code reading
+  `os.environ['KEY']` sees the manifest's env, nothing else. Locked by
+  contract tests in each kernel's package: PyodideKernel.test.ts,
+  WasmtimeKernel.test.ts (3-call frozen-state assertion),
+  RemoteSandboxKernel.test.ts (harness-builder unit tests).
+- **Kernel `cpuMs` per-call override — Wasmtime / Remote
+  (2026-06-16).** Per-call `capabilities.cpuMs` now takes precedence
+  over the constructor-time `opts.timeoutMs` default in
+  `WasmtimeKernel` and `RemoteSandboxKernel`. Aligns the two with the
+  per-call deadline the JsKernel / QuickJSKernel already honour.
+  Pyodide remains advisory (Pyodide is sync-only inside the WASM
+  isolate; true cpuMs enforcement requires a worker tier — out of
+  scope for this commit). The capability honouring matrix in
+  `packages/core/src/executor/types.ts` now reflects reality
+  (Pyodide cpuMs ⚠️ advisory; Wasmtime memoryLimitBytes ⚠️ no native).
 - **`@agentkit-js/evals-runner` — `multiTurnMemorySuiteOriginal` exposed
   (2026-06-16).** The 6-item original variant of the multi-turn-memory
   suite is now (a) registered in `REFERENCE_SUITES` under the name

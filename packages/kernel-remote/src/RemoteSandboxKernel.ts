@@ -55,7 +55,9 @@ export class RemoteSandboxKernel implements WasmKernel {
 
   async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
     const sandbox = await this.#getSandbox();
-    const timeoutMs = this.#opts.timeoutMs ?? 30_000;
+    // Per-call cpuMs (capability) takes precedence over the constructor
+    // default (opts.timeoutMs).
+    const timeoutMs = capabilities?.cpuMs ?? this.#opts.timeoutMs ?? 30_000;
 
     // Wrap code to capture output and produce a structured result.
     const harness = buildHarness(code, capabilities);
@@ -111,14 +113,22 @@ export class RemoteSandboxKernel implements WasmKernel {
 
 function buildHarness(code: string, capabilities?: Partial<CapabilityManifest>): string {
   const allowedHosts = capabilities?.allowedHosts ?? [];
+  const env = capabilities?.env ?? {};
   const networkGuard =
     allowedHosts.length === 0
       ? "// Network: deny-all (no allowedHosts specified)"
       : `// Network: allowed hosts = ${JSON.stringify(allowedHosts)}`;
+  // Capability env injected as a frozen __env__ global. The remote sandbox
+  // process has its own process.env (sandbox-image defaults); we surface only
+  // the manifest's env via the canonical __env__ name to match the JS kernels.
+  // Code that reads process.env still works (E2B's defaults), but anything
+  // user-supplied per call comes through __env__.
+  const envLiteral = JSON.stringify(env);
 
   return [
     `// agentkit RemoteSandboxKernel harness`,
     networkGuard,
+    `globalThis.__env__ = Object.freeze(${envLiteral});`,
     `try {`,
     `  const __result = await (async () => { ${code} })();`,
     `  process.stdout.write(JSON.stringify({ __output: __result, __isFinalAnswer: false }) + "\\n");`,
@@ -127,6 +137,14 @@ function buildHarness(code: string, capabilities?: Partial<CapabilityManifest>):
     `  process.exit(1);`,
     `}`,
   ].join("\n");
+}
+
+// Exposed for unit testing — build the harness string without a sandbox.
+export function _buildHarnessForTest(
+  code: string,
+  capabilities?: Partial<CapabilityManifest>
+): string {
+  return buildHarness(code, capabilities);
 }
 
 // ── E2B dynamic import ───────────────────────────────────────────────────────
