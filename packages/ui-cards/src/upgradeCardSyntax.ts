@@ -2,13 +2,27 @@
  * Auto-upgrade plain AI output to card blocks when the AI didn't follow
  * the card syntax instructions.
  *
+ * **Cards are reserved for first-class artefacts only — diagrams,
+ * documents, presentations, spreadsheets.** Plain Markdown (headings,
+ * lists, bold, tables in normal chat replies) renders inline in the
+ * chat thread; wrapping it in a card creates a collapsed placeholder
+ * that obscures the content.
+ *
  * Strategy: scan top-level fenced code blocks and raw content sections.
- * If we find a D2 diagram or rich Markdown that isn't already wrapped in
- * a card fence, wrap it automatically.
+ * If we find a D2 diagram that isn't already wrapped in a card fence,
+ * wrap it automatically. Conversational Markdown is left alone.
  *
  * Called before {@link parseCardBlocks} — acts as a pre-processor on
  * AI-generated text. Use it in your UI layer when you want resilience
- * against agents that miss the card-block convention.
+ * against agents that miss the card-block convention for diagrams.
+ *
+ * Historical note (2026-06-17): an earlier version also auto-wrapped
+ * any "rich Markdown" (≥1 heading, ≥2 bold spans, etc.) into a
+ * `card:markdown` block. That mis-fired on routine chat replies — a
+ * "你好" greeting that happened to include a heading-formatted intro
+ * was turned into a card placeholder rather than rendered inline. The
+ * Markdown auto-wrap was removed; explicit `card:markdown` blocks the
+ * agent emits are still parsed and rendered as cards.
  */
 
 /** Returns true if the text looks like D2 diagram source. */
@@ -23,18 +37,6 @@ function looksLikeD2(text: string): boolean {
     (l) => /^[\w一-鿿][\w一-鿿\s]*[:{]/.test(l.trim()) || /->|<-/.test(l)
   );
   return identifierLines.length >= 2;
-}
-
-/** Returns true if the text is rich Markdown worth wrapping in a card. */
-function looksLikeRichMarkdown(text: string): boolean {
-  const t = text.trim();
-  // Has at least one heading
-  const hasHeading = /^#{1,4}\s+\S/m.test(t);
-  // Has a GFM table
-  const hasTable = /^\|.+\|$/m.test(t) && /^\|[-: |]+\|$/m.test(t);
-  // Has multiple bold/italic markers suggesting formatted doc
-  const hasBold = (t.match(/\*\*[^*]+\*\*/g) ?? []).length >= 2;
-  return hasHeading || hasTable || (hasBold && t.split("\n").length > 4);
 }
 
 /**
@@ -59,38 +61,20 @@ function upgradeBareD2(text: string): string {
 }
 
 /**
- * If the response is entirely rich Markdown (no card fences, no HTML),
- * wrap it in a card:markdown block so it renders as a card.
- */
-function upgradeBareMarkdown(text: string): string {
-  // Already has card fences → leave it
-  if (/```card:/.test(text)) return text;
-  // Has HTML → not a Markdown card candidate
-  if (/<[a-z][a-z0-9]*[\s>]/i.test(text)) return text;
-  // Has code fences for other languages (d2/js/ts/py…) → structural response, leave it
-  if (/```[a-z]/.test(text)) return text;
-
-  if (looksLikeRichMarkdown(text)) {
-    return `\`\`\`card:markdown\n${text.trim()}\n\`\`\``;
-  }
-  return text;
-}
-
-/**
  * Upgrade plain AI output to use card-block syntax.
  *
- * Three passes (each idempotent and stable):
+ * Two passes (each idempotent and stable):
  *
  * 1. ` ```d2 ` fences → ` ```card:d2 `
  * 2. Bare D2 content (no fences but looks like D2) → wrapped in ` ```card:d2 `
- * 3. Bare rich Markdown (headings/tables/bold) → wrapped in ` ```card:markdown `
  *
- * Already-fenced card blocks, HTML content, and other-language code
- * fences are left untouched.
+ * Already-fenced card blocks, HTML content, plain Markdown chat
+ * replies, and other-language code fences are left untouched. Plain
+ * Markdown is rendered inline by the chat UI — cards are reserved
+ * for produced artefacts (diagrams, documents, presentations).
  */
 export function upgradeCardSyntax(text: string): string {
   let result = upgradeD2Fence(text);
   result = upgradeBareD2(result);
-  result = upgradeBareMarkdown(result);
   return result;
 }
