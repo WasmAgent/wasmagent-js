@@ -135,6 +135,43 @@ recruiting co-maintainers. Decision rights, the path in, and the SLAs
 we are working to are all written down in
 [`GOVERNANCE.md`](GOVERNANCE.md).
 
+## AI-assisted contributions (transparency policy)
+
+A meaningful portion of the commit history in this repository was
+authored with help from an LLM-based coding assistant (Claude). We
+think this is fine — Apache-2.0 makes no special claim about the
+authoring tool — but we want the practice to be **visible** rather
+than hidden, so reviewers and downstream auditors can form their
+own opinion.
+
+**Our policy, in three rules:**
+
+1. **Every commit is reviewed and accepted by a human maintainer
+   before it lands on `main`.** The maintainer takes responsibility
+   for the change — what the LLM produced is treated as a draft,
+   not a finished patch. If a generated change passes review and
+   ships, the bug it later causes is the maintainer's bug to fix.
+
+2. **Substantial AI-assisted contributions should add a
+   `Co-authored-by:` trailer** of the form
+   `Co-authored-by: Claude <noreply@anthropic.com>` (or the
+   equivalent for whichever assistant you used). This is the same
+   GitHub-recognised trailer used for paired human authorship. It
+   does not transfer copyright (the human author still owns the
+   contribution under Apache-2.0) — it documents the working
+   method.
+
+3. **Don't paste assistant output you don't understand.** If you
+   cannot explain why a generated diff is correct, do not commit
+   it. This is the load-bearing rule; the trailer is bookkeeping.
+
+We are following the patterns the OSI's "AI and open source"
+working group and SFC have been recommending — write down what's
+happening, give the human author the responsibility, and let
+downstream consumers see the working method. If you have feedback
+on this policy, open an issue tagged `governance` and we'll revisit
+it.
+
 ## Code of conduct
 
 Be kind. Disagree on the substance, not the contributor.
