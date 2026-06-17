@@ -59,6 +59,25 @@ export type {
 } from "./kvAdapters.js";
 export { CloudflareKvBackend, DurableObjectKvBackend } from "./kvAdapters.js";
 
+// Cloudflare Workflows engine — same WorkflowDefinition/WorkflowRunHandle
+// surface as @agentkit-js/core's LocalWorkflowEngine, backed by CF Workflows.
+export type {
+  CfStepConfig,
+  CfToolCallContext,
+  CfToolResolver,
+  CfWorkflowBinding,
+  CfWorkflowDuration,
+  CfWorkflowEvent,
+  CfWorkflowInstance,
+  CfWorkflowStep,
+  CloudflareWorkflowEngineOptions,
+  RunWorkflowEntrypointOptions,
+} from "./CloudflareWorkflowEngine.js";
+export {
+  CloudflareWorkflowEngine,
+  runWorkflowEntrypoint,
+} from "./CloudflareWorkflowEngine.js";
+
 import { CloudflareKvBackend as CloudflareKvBackendImpl } from "./kvAdapters.js";
 
 export interface Env {
