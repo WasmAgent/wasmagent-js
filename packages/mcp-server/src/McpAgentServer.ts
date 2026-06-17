@@ -139,8 +139,15 @@ export class McpAgentServer {
       capabilities: {
         // Every server we ship is a tool server with Tasks support; there
         // are no prompts/resources/sampling on this side of the wire.
+        //
+        // MCP spec convention: nested capability flags are objects, not
+        // booleans — an empty `{}` means "feature is enabled" and leaves
+        // room for sub-flags later. mcp-proxy validates this strictly via
+        // Zod (caught when Glama tried to wrap us with `mcp-proxy --`),
+        // and Claude Desktop / Cursor follow the same SDK validators, so
+        // the boolean form would silently break those integrations too.
         tools: { listChanged: false },
-        tasks: { create: true, cancel: true, respond: true },
+        tasks: { create: {}, cancel: {}, respond: {} },
       },
     };
   }
