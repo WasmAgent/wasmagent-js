@@ -1,4 +1,3 @@
-import { randomUUID } from "../util/runtime.js";
 import type { ZodSchema } from "zod";
 import type { Checkpointer } from "../checkpoint/index.js";
 import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
@@ -25,6 +24,7 @@ import type {
   ToolUseStep,
   UserMessageStep,
 } from "../types/events.js";
+import { randomUUID } from "../util/runtime.js";
 import { runPlanningStep, TOOL_DEP_INSTRUCTIONS } from "./prompts.js";
 import type { StopCondition } from "./stopConditions.js";
 import { callFingerprint } from "./stopConditions.js";

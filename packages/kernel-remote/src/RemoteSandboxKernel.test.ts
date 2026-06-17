@@ -90,10 +90,10 @@ describe("RemoteSandboxKernel", () => {
   // runtime; if the harness string is right, the runtime behaviour is right.
   describe("buildHarness — env injection", () => {
     it("emits __env__ with the manifest's env when set", () => {
-      const harness = _buildHarnessForTest('return __env__.API_KEY;', {
+      const harness = _buildHarnessForTest("return __env__.API_KEY;", {
         env: { API_KEY: "sk-remote", REGION: "eu-west-1" },
       });
-      expect(harness).toContain('globalThis.__env__ = Object.freeze(');
+      expect(harness).toContain("globalThis.__env__ = Object.freeze(");
       expect(harness).toContain('"API_KEY":"sk-remote"');
       expect(harness).toContain('"REGION":"eu-west-1"');
       // Frozen — assignment from user code is silently ignored.
@@ -102,7 +102,7 @@ describe("RemoteSandboxKernel", () => {
 
     it("emits __env__ as an empty frozen object when env is omitted", () => {
       const harness = _buildHarnessForTest("return 1;");
-      expect(harness).toContain('globalThis.__env__ = Object.freeze({})');
+      expect(harness).toContain("globalThis.__env__ = Object.freeze({})");
     });
 
     it("does NOT leak prior call's env into the harness string", () => {

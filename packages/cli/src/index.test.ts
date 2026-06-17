@@ -155,13 +155,9 @@ describe("generateTestTemplate", () => {
 // ── runCommand ────────────────────────────────────────────────────────────────
 
 describe("runCommand", () => {
-  // biome-ignore lint/suspicious/noExplicitAny: intentional
   let stdoutSpy: any;
-  // biome-ignore lint/suspicious/noExplicitAny: intentional
   let stderrSpy: any;
-  // biome-ignore lint/suspicious/noExplicitAny: intentional
   let consoleLogSpy: any;
-  // biome-ignore lint/suspicious/noExplicitAny: intentional
   let consoleErrorSpy: any;
 
   beforeEach(() => {

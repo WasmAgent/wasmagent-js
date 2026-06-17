@@ -28,10 +28,7 @@ import { latencyUnderBudgetSuite } from "./latency-under-budget.js";
 import { locomoRefinedSuite } from "./locomo-refined.js";
 import { longContextRecallSuite } from "./long-context-recall.js";
 import { memoryAgentBenchSuite } from "./memory-agent-bench.js";
-import {
-  multiTurnMemorySuite,
-  multiTurnMemorySuiteOriginal,
-} from "./multi-turn-memory.js";
+import { multiTurnMemorySuite, multiTurnMemorySuiteOriginal } from "./multi-turn-memory.js";
 import { multiTurnToolExecSuite } from "./multi-turn-tool-exec.js";
 import { toolSequenceSuite } from "./tool-sequence.js";
 

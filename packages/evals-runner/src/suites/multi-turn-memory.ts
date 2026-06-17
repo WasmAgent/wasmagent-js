@@ -158,7 +158,7 @@ const KNOWLEDGE_UPDATE_TEMPLATES: ItemTemplate[] = [
   },
   {
     category: "knowledge-update",
-    makeItem: ({ id, entity, value, extra }) => ({
+    makeItem: ({ id, entity: _entity, value, extra }) => ({
       id,
       category: "knowledge-update",
       task: `Where do I work now?`,
@@ -179,7 +179,7 @@ const KNOWLEDGE_UPDATE_TEMPLATES: ItemTemplate[] = [
   },
 ];
 
-const TEMPORAL_REASONING_TEMPLATES: ItemTemplate[] = [
+const _TEMPORAL_REASONING_TEMPLATES: ItemTemplate[] = [
   {
     category: "temporal-reasoning",
     makeItem: ({ id, value, entity }) => ({
@@ -250,7 +250,7 @@ const LONG_CONTEXT_TEMPLATES: ItemTemplate[] = [
   },
   {
     category: "long-context",
-    makeItem: ({ id, entity, value }) => ({
+    makeItem: ({ id, entity: _entity, value }) => ({
       id,
       category: "long-context",
       task: `What city am I planning to visit?`,
@@ -326,7 +326,7 @@ const CITIES = ["Tokyo", "Lisbon", "Nairobi", "Reykjavik", "Medellín", "Tallinn
 const ICE_CREAM = ["chocolate", "strawberry", "mango", "pistachio", "matcha", "caramel"];
 const OLD_ICE_CREAM = ["vanilla", "lemon", "coconut", "peach", "raspberry", "blueberry"];
 const PETS = ["cat", "rabbit", "parrot", "hamster", "turtle", "ferret"];
-const DURATION_YEARS = ["1 year", "2 years", "3 years", "4 years", "5 years", "6 years"];
+const _DURATION_YEARS = ["1 year", "2 years", "3 years", "4 years", "5 years", "6 years"];
 
 // ── Item generation ──────────────────────────────────────────────────────────
 
@@ -448,80 +448,62 @@ function generateItems(): BenchmarkItem[] {
     ],
   });
 
-  // Parametrically generated items (variants 1-5 of each template group)
+  // Parametrically generated items (variants 1-5 of each template group).
+  //
+  // The template arrays are populated literally above, so destructuring lets the
+  // compiler know each entry exists; this avoids per-call non-null assertions.
+  // (biome `noNonNullAssertion` was warning on every TEMPLATES[i]! call site.)
+  const [SS0, SS1] = SINGLE_SESSION_TEMPLATES as [ItemTemplate, ItemTemplate];
+  const [MS0, MS1] = MULTI_SESSION_TEMPLATES as [ItemTemplate, ItemTemplate];
+  const [KU0, KU1] = KNOWLEDGE_UPDATE_TEMPLATES as [ItemTemplate, ItemTemplate];
+  const [LC0, LC1] = LONG_CONTEXT_TEMPLATES as [ItemTemplate, ItemTemplate];
+  const [PU0] = PREFERENCE_UPDATE_TEMPLATES as [ItemTemplate];
+
   // Single-session: dog breed variants
-  for (let i = 1; i < DOG_BREEDS.length; i++) {
-    items.push(
-      SINGLE_SESSION_TEMPLATES[0]!.makeItem({
-        id: makeId("SS"),
-        entity: "dog",
-        value: DOG_BREEDS[i]!,
-      })
-    );
+  for (const breed of DOG_BREEDS.slice(1)) {
+    items.push(SS0.makeItem({ id: makeId("SS"), entity: "dog", value: breed }));
   }
 
   // Single-session: favourite number variants
-  for (let i = 1; i < NUMBERS.length; i++) {
-    items.push(
-      SINGLE_SESSION_TEMPLATES[1]!.makeItem({
-        id: makeId("SN"),
-        entity: "number",
-        value: NUMBERS[i]!,
-      })
-    );
+  for (const n of NUMBERS.slice(1)) {
+    items.push(SS1.makeItem({ id: makeId("SN"), entity: "number", value: n }));
   }
 
   // Multi-session: birthday variants
-  for (let i = 1; i < BIRTHDATES.length; i++) {
-    const bd = BIRTHDATES[i]!;
+  for (const bd of BIRTHDATES.slice(1)) {
     const regex = bd.replace(" ", "\\s*");
     items.push({
-      ...MULTI_SESSION_TEMPLATES[0]!.makeItem({ id: makeId("MB"), entity: "birthday", value: bd }),
+      ...MS0.makeItem({ id: makeId("MB"), entity: "birthday", value: bd }),
       expectedAnswerMatcher: (a) => new RegExp(regex, "i").test(a),
     });
   }
 
   // Multi-session: job/hobby
-  const hobbies = [
-    "favourite hobby",
-    "main sport",
-    "musical instrument",
-    "programming language",
-    "reading genre",
+  const hobbyPairs: Array<[string, string]> = [
+    ["favourite hobby", "painting"],
+    ["main sport", "tennis"],
+    ["musical instrument", "guitar"],
+    ["programming language", "Python"],
+    ["reading genre", "mystery novels"],
   ];
-  const hobbyVals = ["painting", "tennis", "guitar", "Python", "mystery novels"];
-  for (let i = 0; i < hobbies.length; i++) {
-    items.push(
-      MULTI_SESSION_TEMPLATES[1]!.makeItem({
-        id: makeId("MH"),
-        entity: hobbies[i]!,
-        value: hobbyVals[i]!,
-      })
-    );
+  for (const [entity, value] of hobbyPairs) {
+    items.push(MS1.makeItem({ id: makeId("MH"), entity, value }));
   }
 
   // Knowledge update: cars
   for (let i = 1; i < CARS.length; i++) {
-    items.push(
-      KNOWLEDGE_UPDATE_TEMPLATES[0]!.makeItem({
-        id: makeId("KU"),
-        entity: "car",
-        value: CARS[i]!,
-        extra: OLD_CARS[i]!,
-      })
-    );
+    const value = CARS[i];
+    const extra = OLD_CARS[i];
+    if (!value || !extra) continue; // CARS / OLD_CARS are zipped lists; skip stragglers.
+    items.push(KU0.makeItem({ id: makeId("KU"), entity: "car", value, extra }));
   }
 
   // Knowledge update: companies
   for (let i = 0; i < Math.min(NEW_COMPANIES.length, 5); i++) {
-    items.push(
-      KNOWLEDGE_UPDATE_TEMPLATES[1]!.makeItem({
-        id: makeId("KC"),
-        entity: "company",
-        value: NEW_COMPANIES[i]!,
-        extra: COMPANIES[i]!,
-      })
-    );
+    const value = NEW_COMPANIES[i];
+    const extra = COMPANIES[i];
+    if (!value || !extra) continue;
+    items.push(KU1.makeItem({ id: makeId("KC"), entity: "company", value, extra }));
   }
 
   // Temporal reasoning: companies (duration)
@@ -555,41 +537,26 @@ function generateItems(): BenchmarkItem[] {
 
   // Long-context: room colour variants
   for (let i = 1; i < COLOURS.length; i++) {
-    items.push(
-      LONG_CONTEXT_TEMPLATES[0]!.makeItem({
-        id: makeId("LC"),
-        entity: ROOMS[i] ?? "room",
-        value: COLOURS[i]!,
-      })
-    );
+    const value = COLOURS[i];
+    if (!value) continue;
+    items.push(LC0.makeItem({ id: makeId("LC"), entity: ROOMS[i] ?? "room", value }));
   }
 
   // Long-context: city variants
-  for (let i = 0; i < CITIES.length; i++) {
-    items.push(
-      LONG_CONTEXT_TEMPLATES[1]!.makeItem({
-        id: makeId("LT"),
-        entity: "travel",
-        value: CITIES[i]!,
-      })
-    );
+  for (const city of CITIES) {
+    items.push(LC1.makeItem({ id: makeId("LT"), entity: "travel", value: city }));
   }
 
   // Preference update: ice cream
   for (let i = 0; i < ICE_CREAM.length; i++) {
-    items.push(
-      PREFERENCE_UPDATE_TEMPLATES[0]!.makeItem({
-        id: makeId("PU"),
-        entity: "ice cream flavour",
-        value: ICE_CREAM[i]!,
-        extra: OLD_ICE_CREAM[i]!,
-      })
-    );
+    const value = ICE_CREAM[i];
+    const extra = OLD_ICE_CREAM[i];
+    if (!value || !extra) continue;
+    items.push(PU0.makeItem({ id: makeId("PU"), entity: "ice cream flavour", value, extra }));
   }
 
   // Preference update: pets
-  for (let i = 0; i < PETS.length; i++) {
-    const pet = PETS[i]!;
+  for (const pet of PETS) {
     items.push({
       id: makeId("PP"),
       category: "preference-update",

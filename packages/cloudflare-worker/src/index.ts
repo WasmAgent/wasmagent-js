@@ -49,16 +49,6 @@ import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
 import cfVariant from "@jitl/quickjs-wasmfile-release-sync";
 import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
 
-// A1 — KvBackend adapters re-exported so consumers can `import {
-// CloudflareKvBackend, DurableObjectKvBackend } from
-// "@agentkit-js/cloudflare-worker"`.
-export type {
-  CloudflareKVNamespace,
-  CloudflareKvBackendOptions,
-  DurableObjectStorageLike,
-} from "./kvAdapters.js";
-export { CloudflareKvBackend, DurableObjectKvBackend } from "./kvAdapters.js";
-
 // Cloudflare Workflows engine — same WorkflowDefinition/WorkflowRunHandle
 // surface as @agentkit-js/core's LocalWorkflowEngine, backed by CF Workflows.
 export type {
@@ -77,6 +67,15 @@ export {
   CloudflareWorkflowEngine,
   runWorkflowEntrypoint,
 } from "./CloudflareWorkflowEngine.js";
+// A1 — KvBackend adapters re-exported so consumers can `import {
+// CloudflareKvBackend, DurableObjectKvBackend } from
+// "@agentkit-js/cloudflare-worker"`.
+export type {
+  CloudflareKVNamespace,
+  CloudflareKvBackendOptions,
+  DurableObjectStorageLike,
+} from "./kvAdapters.js";
+export { CloudflareKvBackend, DurableObjectKvBackend } from "./kvAdapters.js";
 
 import { CloudflareKvBackend as CloudflareKvBackendImpl } from "./kvAdapters.js";
 

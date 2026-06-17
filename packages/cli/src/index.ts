@@ -96,10 +96,10 @@ if (isMain) {
       await runCommand(rest.join(" "), values);
       break;
     case "init":
-      // Alias — most CLI ecosystems use `init`. Route to init-tool so
-      // both names work; keep init-tool as the canonical (its help
-      // text is more specific). 2026-06-16 audit finding.
-      // falls through
+    // Alias — most CLI ecosystems use `init`. Route to init-tool so
+    // both names work; keep init-tool as the canonical (its help
+    // text is more specific). 2026-06-16 audit finding.
+    // falls through
     case "init-tool":
       await initToolCommand(values);
       break;
@@ -876,7 +876,7 @@ export async function modelCommand(
   let local: typeof import("@agentkit-js/model-local");
   try {
     local = (await import("@agentkit-js/model-local")) as typeof import("@agentkit-js/model-local");
-  } catch (err) {
+  } catch (_err) {
     console.error(
       "Error: @agentkit-js/model-local is not installed.\n" +
         "  npm install @agentkit-js/model-local\n" +
@@ -954,6 +954,7 @@ export async function modelCommand(
     }
     const reg = local.getRegisteredModel(alias);
     const path = await import("node:path").then((p) =>
+      // biome-ignore lint/style/noNonNullAssertion: registry guarantees ≥1 source per registered alias
       p.join(cacheDir, local.filenameForSource(reg.sources[0]!))
     );
     const fs = await import("node:fs");
@@ -987,12 +988,13 @@ export async function modelCommand(
     const reg = local.getRegisteredModel(alias);
     const fs = await import("node:fs/promises");
     const path = await import("node:path").then((p) =>
+      // biome-ignore lint/style/noNonNullAssertion: registry guarantees ≥1 source per registered alias
       p.join(cacheDir, local.filenameForSource(reg.sources[0]!))
     );
     try {
       await fs.unlink(path);
       console.log(`✓ removed ${path}`);
-    } catch (e) {
+    } catch (_e) {
       console.error(`Not present: ${path}`);
       process.exit(1);
     }

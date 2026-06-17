@@ -15,7 +15,7 @@
  */
 
 import { toolCallAccuracy } from "@agentkit-js/core";
-import type { BenchmarkItem, BenchmarkSuite, ModelProvider } from "../types.js";
+import type { BenchmarkItem, BenchmarkSuite } from "../types.js";
 
 const ITEMS: BenchmarkItem[] = [
   {

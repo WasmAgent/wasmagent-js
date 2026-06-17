@@ -15,7 +15,7 @@
  */
 
 import { mcnemarExact } from "./stats/mcnemar.js";
-import type { EvaluationReport, RunResult, SuiteAggregate } from "./types.js";
+import type { EvaluationReport, SuiteAggregate } from "./types.js";
 
 /** Minimum item count for a McNemar comparison to be claims-worthy. */
 const MIN_N_FOR_CLAIMS = 50;
@@ -175,7 +175,9 @@ export function renderReportMarkdown(report: EvaluationReport): string {
       for (let i = 0; i < suiteModels.length; i++) {
         for (let j = 0; j < suiteModels.length; j++) {
           if (i === j) continue;
+          // biome-ignore lint/style/noNonNullAssertion: i,j bounded by length above
           const cand = suiteModels[i]!;
+          // biome-ignore lint/style/noNonNullAssertion: i,j bounded by length above
           const base = suiteModels[j]!;
 
           // Build pooled b/c across all seeds and items.

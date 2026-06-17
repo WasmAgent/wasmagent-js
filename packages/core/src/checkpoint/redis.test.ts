@@ -127,7 +127,6 @@ describe("RedisKvBackend (client transport)", () => {
     });
     client = {
       get: async (k) => store.get(k) ?? null,
-      // biome-ignore lint/suspicious/noExplicitAny: matches overload contract
       set: setSpy as any,
       del: async (k) => (store.delete(k) ? 1 : 0),
       scan: async (cursor, _matchKw, pattern) => {
@@ -173,7 +172,6 @@ describe("KvCheckpointer + Redis adapter — kill and resume", () => {
       set: (async (k: string, v: string) => {
         sharedKv.set(k, v);
         return "OK";
-        // biome-ignore lint/suspicious/noExplicitAny: matches overload contract
       }) as any,
       del: async (k) => (sharedKv.delete(k) ? 1 : 0),
       scan: async (_cursor, _matchKw, pattern) => {

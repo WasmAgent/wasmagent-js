@@ -34,14 +34,10 @@
  *     chains still take the fast path.
  */
 
-import type { ToolRegistry } from "../tools/ToolRegistry.js";
 import { resolveRefs } from "../scheduler/deriveDeps.js";
+import type { ToolRegistry } from "../tools/ToolRegistry.js";
 import { InMemoryResourcePool, type ResourcePool } from "./ResourcePool.js";
-import {
-  KvWorkflowStateStore,
-  MemoryKvBackend,
-  type WorkflowStateStore,
-} from "./store.js";
+import { KvWorkflowStateStore, MemoryKvBackend, type WorkflowStateStore } from "./store.js";
 import type {
   WorkflowDefinition,
   WorkflowEvent,
@@ -245,11 +241,7 @@ export class LocalWorkflowEngine {
 
   // ── Run lifecycle ─────────────────────────────────────────────────────────
 
-  #launch(
-    runId: string,
-    def: WorkflowDefinition,
-    record: WorkflowRunRecord
-  ): WorkflowRunHandle {
+  #launch(runId: string, def: WorkflowDefinition, record: WorkflowRunRecord): WorkflowRunHandle {
     const ac = new AbortController();
     let terminalResolve!: (rec: WorkflowRunRecord) => void;
     const terminalPromise = new Promise<WorkflowRunRecord>((resolve) => {
@@ -265,8 +257,7 @@ export class LocalWorkflowEngine {
     // Fire-and-forget; errors are captured into the run record.
     void this.#executeRun(runId, def, record, ac.signal).catch(async (err) => {
       // Distinguish cancellation (operator-initiated, resumable) from genuine failures.
-      const isCancelled =
-        err instanceof WorkflowError && err.code === "cancelled";
+      const isCancelled = err instanceof WorkflowError && err.code === "cancelled";
       if (isCancelled) {
         // #executeRun already persisted the cancelled state via #markCancelled
         // when it noticed signal.aborted between waves. If the abort raced
@@ -308,11 +299,7 @@ export class LocalWorkflowEngine {
     const handle: WorkflowRunHandle = {
       runId,
       cancel: (reason?: string) => {
-        const reasonObj = new WorkflowError(
-          "cancelled",
-          reason ?? "cancelled",
-          { runId }
-        );
+        const reasonObj = new WorkflowError("cancelled", reason ?? "cancelled", { runId });
         ac.abort(reasonObj);
       },
       wait: () => terminalPromise,
@@ -455,12 +442,11 @@ export class LocalWorkflowEngine {
       // compete for the same key — purely serial chains never reach this path
       // with siblings, so they pay no contention cost.
       const settled = await Promise.allSettled(
-        ready.map((step) =>
-          this.#executeStep(runId, step, stepRecords, completedResults, signal)
-        )
+        ready.map((step) => this.#executeStep(runId, step, stepRecords, completedResults, signal))
       );
 
       for (const [i, s] of settled.entries()) {
+        // biome-ignore lint/style/noNonNullAssertion: settled[i] mirrors ready[i] one-to-one
         const step = ready[i]!;
         if (s.status === "fulfilled") {
           const outcome = s.value;
@@ -803,7 +789,6 @@ export class LocalWorkflowEngine {
         return base;
       case "linear":
         return base * attempt;
-      case "exponential":
       default:
         return base * 2 ** (attempt - 1);
     }
@@ -884,7 +869,7 @@ export class LocalWorkflowEngine {
       return;
     }
     const queue: WorkflowEvent[] = [];
-    let waiter: ((v: void) => void) | null = null;
+    let waiter: (() => void) | null = null;
     let closed = false;
     const sub: Subscriber = {
       push: (ev) => {
@@ -908,6 +893,7 @@ export class LocalWorkflowEngine {
     try {
       while (true) {
         if (queue.length > 0) {
+          // biome-ignore lint/style/noNonNullAssertion: length>0 guarantees shift() returns a value
           yield queue.shift()!;
           continue;
         }
@@ -927,17 +913,13 @@ export class LocalWorkflowEngine {
 function validateDefinition(def: WorkflowDefinition): void {
   const ids = new Set<string>();
   for (const s of def.steps) {
-    if (ids.has(s.id))
-      throw new WorkflowError("definition_invalid", `Duplicate step id: ${s.id}`);
+    if (ids.has(s.id)) throw new WorkflowError("definition_invalid", `Duplicate step id: ${s.id}`);
     ids.add(s.id);
   }
   for (const s of def.steps) {
     for (const d of s.dependsOn ?? []) {
       if (!ids.has(d))
-        throw new WorkflowError(
-          "definition_invalid",
-          `Step ${s.id} depends on unknown step ${d}`
-        );
+        throw new WorkflowError("definition_invalid", `Step ${s.id} depends on unknown step ${d}`);
     }
   }
   // Cycle detection (DFS with three-colouring).

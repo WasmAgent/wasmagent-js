@@ -335,6 +335,33 @@ export type {
   ToolUseStep,
   UserMessageStep,
 } from "./types/index.js";
+// Workflow — durable, resumable, resource-aware DAG execution.
+export type {
+  AcquireOptions,
+  LocalWorkflowEngineOptions,
+  PoolConfig,
+  ResourceClaim,
+  ResourceLease,
+  ResourcePool,
+  StartOptions,
+  StepRetryPolicy,
+  WorkflowDefinition,
+  WorkflowEvent,
+  WorkflowEventEnvelope,
+  WorkflowRunHandle,
+  WorkflowRunRecord,
+  WorkflowRunStatus,
+  WorkflowStateStore,
+  WorkflowStep,
+  WorkflowStepRecord,
+  WorkflowStepStatus,
+} from "./workflow/index.js";
+export {
+  InMemoryResourcePool,
+  KvWorkflowStateStore,
+  LocalWorkflowEngine,
+  MemoryKvBackend,
+} from "./workflow/index.js";
 // F3 — BranchableWorkspace: git-worktree-equivalent isolation for parallel agents
 export type {
   BranchMeta,
@@ -364,31 +391,3 @@ export {
   FileTreeManager,
   globalFileTree,
 } from "./workspace/FileTreeManager.js";
-
-// Workflow — durable, resumable, resource-aware DAG execution.
-export type {
-  AcquireOptions,
-  LocalWorkflowEngineOptions,
-  PoolConfig,
-  ResourceClaim,
-  ResourceLease,
-  ResourcePool,
-  StartOptions,
-  StepRetryPolicy,
-  WorkflowDefinition,
-  WorkflowEvent,
-  WorkflowEventEnvelope,
-  WorkflowRunHandle,
-  WorkflowRunRecord,
-  WorkflowRunStatus,
-  WorkflowStateStore,
-  WorkflowStep,
-  WorkflowStepRecord,
-  WorkflowStepStatus,
-} from "./workflow/index.js";
-export {
-  InMemoryResourcePool,
-  KvWorkflowStateStore,
-  LocalWorkflowEngine,
-  MemoryKvBackend,
-} from "./workflow/index.js";

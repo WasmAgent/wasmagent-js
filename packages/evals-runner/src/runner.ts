@@ -262,7 +262,7 @@ async function runCell(args: {
       channel: "model",
       event: "model_start",
       data: { modelId: model.modelId ?? model.id, step: 1 },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: synthetic event payload — boundary type not narrowed
     } as any,
     {
       traceId,
@@ -278,7 +278,7 @@ async function runCell(args: {
         outputTokens,
         estimatedUsd: priceUsd(model, inputTokens, outputTokens),
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: synthetic event payload — boundary type not narrowed
     } as any,
     {
       traceId,
@@ -287,7 +287,7 @@ async function runCell(args: {
       channel: "text",
       event: error ? "error" : "final_answer",
       data: error ? { error } : { answer: content },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: synthetic event payload — boundary type not narrowed
     } as any,
   ];
   const trace = {
@@ -342,6 +342,7 @@ async function runCellViaSuite(args: {
   const { suite, model, seed, item, startMs } = args;
   let res: Awaited<ReturnType<NonNullable<BenchmarkSuite["runItem"]>>>;
   try {
+    // biome-ignore lint/style/noNonNullAssertion: caller path only invokes this when runItem is defined (guarded above)
     res = await suite.runItem!({ item, model, seed });
   } catch (e) {
     const err = e instanceof Error ? e.message : String(e);
@@ -363,7 +364,7 @@ async function runCellViaSuite(args: {
       channel: "model",
       event: "model_start",
       data: { modelId: model.modelId ?? model.id, step: 1 },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: synthetic event payload — boundary type not narrowed
     } as any,
     {
       traceId,
@@ -379,7 +380,7 @@ async function runCellViaSuite(args: {
         outputTokens,
         estimatedUsd: priceUsd(model, inputTokens, outputTokens),
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: synthetic event payload — boundary type not narrowed
     } as any,
     {
       traceId,
@@ -388,7 +389,7 @@ async function runCellViaSuite(args: {
       channel: "text",
       event: error ? "error" : "final_answer",
       data: error ? { error } : { answer: res.answer ?? "" },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: synthetic event payload — boundary type not narrowed
     } as any,
   ];
   const trace = {
@@ -433,7 +434,7 @@ async function runScorers(
   const out: Record<string, number> = {};
   for (const s of scorers) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: synthetic event payload — boundary type not narrowed
       const r = await Promise.resolve(s.score(trace as any, item));
       out[s.name] = r.score;
     } catch (e) {

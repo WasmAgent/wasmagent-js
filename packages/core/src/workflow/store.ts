@@ -52,6 +52,13 @@ export interface WorkflowStateStore {
  */
 export class KvWorkflowStateStore implements WorkflowStateStore {
   readonly #kv: KvBackend;
+  /**
+   * Captured `list()` reference. The constructor verifies the backend
+   * exposes one and throws if not, so storing a non-optional reference
+   * here lets the rest of the class call it without `!` assertions
+   * (every call site is guaranteed reachable).
+   */
+  readonly #list: (prefix: string) => Promise<string[]>;
   /** In-memory monotonic event counter per run, persisted lazily. */
   readonly #eventCounter = new Map<string, number>();
 
@@ -62,6 +69,7 @@ export class KvWorkflowStateStore implements WorkflowStateStore {
       );
     }
     this.#kv = kv;
+    this.#list = kv.list.bind(kv);
   }
 
   // ── Run record ────────────────────────────────────────────────────────────
@@ -74,10 +82,8 @@ export class KvWorkflowStateStore implements WorkflowStateStore {
     return raw ? (JSON.parse(raw) as WorkflowRunRecord) : null;
   }
 
-  async listRuns(filter?: {
-    status?: WorkflowRunRecord["status"];
-  }): Promise<WorkflowRunRecord[]> {
-    const keys = await this.#kv.list!("wf:");
+  async listRuns(filter?: { status?: WorkflowRunRecord["status"] }): Promise<WorkflowRunRecord[]> {
+    const keys = await this.#list("wf:");
     const records: WorkflowRunRecord[] = [];
     for (const k of keys) {
       // Filter to top-level run records (no further ":" after the runId).
@@ -95,7 +101,7 @@ export class KvWorkflowStateStore implements WorkflowStateStore {
 
   async deleteRun(runId: string): Promise<void> {
     const prefix = `wf:${runId}`;
-    const keys = await this.#kv.list!(prefix);
+    const keys = await this.#list(prefix);
     // Delete the run record itself plus all dependents (def, steps, events).
     await Promise.all(keys.map((k) => this.#kv.delete(k)));
     this.#eventCounter.delete(runId);
@@ -123,7 +129,7 @@ export class KvWorkflowStateStore implements WorkflowStateStore {
 
   async listSteps(runId: string): Promise<WorkflowStepRecord[]> {
     const prefix = `wf:${runId}:step:`;
-    const keys = await this.#kv.list!(prefix);
+    const keys = await this.#list(prefix);
     const records: WorkflowStepRecord[] = [];
     for (const k of keys) {
       const raw = await this.#kv.get(k);
@@ -143,7 +149,7 @@ export class KvWorkflowStateStore implements WorkflowStateStore {
 
   async takeEvent(runId: string, type: string): Promise<WorkflowEventEnvelope | null> {
     const prefix = `wf:${runId}:event:`;
-    const keys = (await this.#kv.list!(prefix)).sort();
+    const keys = (await this.#list(prefix)).sort();
     for (const k of keys) {
       const raw = await this.#kv.get(k);
       if (!raw) continue;

@@ -54,8 +54,8 @@ describe("InMemoryResourcePool", () => {
     expect(firstTwoAcq.length).toBe(2);
     // c and d's acq must come AFTER the first release.
     const firstRelease = order.findIndex((s) => s.startsWith("rel:"));
-    const cAcq = order.findIndex((s) => s === "acq:c");
-    const dAcq = order.findIndex((s) => s === "acq:d");
+    const cAcq = order.indexOf("acq:c");
+    const dAcq = order.indexOf("acq:d");
     expect(cAcq).toBeGreaterThan(firstRelease);
     expect(dAcq).toBeGreaterThan(firstRelease);
   });
@@ -65,18 +65,14 @@ describe("InMemoryResourcePool", () => {
     pool.configure("scarce", { capacity: 1 });
     const lease0 = await pool.acquire([{ key: "scarce" }]);
     const order: string[] = [];
-    const low = pool
-      .acquire([{ key: "scarce" }], { priority: 0 })
-      .then((l) => {
-        order.push("low");
-        l.release();
-      });
-    const high = pool
-      .acquire([{ key: "scarce" }], { priority: 10 })
-      .then((l) => {
-        order.push("high");
-        l.release();
-      });
+    const low = pool.acquire([{ key: "scarce" }], { priority: 0 }).then((l) => {
+      order.push("low");
+      l.release();
+    });
+    const high = pool.acquire([{ key: "scarce" }], { priority: 10 }).then((l) => {
+      order.push("high");
+      l.release();
+    });
     // Give the queue a tick to settle.
     await new Promise((r) => setTimeout(r, 10));
     lease0.release();
@@ -135,12 +131,10 @@ describe("InMemoryResourcePool", () => {
     pool.configure("growable", { capacity: 1 });
     const held = await pool.acquire([{ key: "growable" }]);
     let secondAcquired = false;
-    const p = pool
-      .acquire([{ key: "growable" }])
-      .then((l) => {
-        secondAcquired = true;
-        l.release();
-      });
+    const p = pool.acquire([{ key: "growable" }]).then((l) => {
+      secondAcquired = true;
+      l.release();
+    });
     await new Promise((r) => setTimeout(r, 10));
     expect(secondAcquired).toBe(false);
     pool.configure("growable", { capacity: 2 }); // Bump capacity → drain waiter.

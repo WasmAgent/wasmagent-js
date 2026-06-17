@@ -227,6 +227,7 @@ export class InMemoryResourcePool implements ResourcePool {
     const slot = this.#slots.get(key);
     if (!slot) return;
     while (slot.waiters.length > 0) {
+      // biome-ignore lint/style/noNonNullAssertion: length>0 guarantees [0] exists
       const next = slot.waiters[0]!;
       if (next.cancelled) {
         slot.waiters.shift();

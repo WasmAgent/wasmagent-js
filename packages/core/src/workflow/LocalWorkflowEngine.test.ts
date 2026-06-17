@@ -17,12 +17,9 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { ToolRegistry } from "../tools/ToolRegistry.js";
 import type { ToolDefinition } from "../tools/types.js";
-import { InMemoryResourcePool } from "./ResourcePool.js";
-import {
-  KvWorkflowStateStore,
-  MemoryKvBackend,
-} from "./store.js";
 import { LocalWorkflowEngine } from "./LocalWorkflowEngine.js";
+import { InMemoryResourcePool } from "./ResourcePool.js";
+import { KvWorkflowStateStore, MemoryKvBackend } from "./store.js";
 import type { WorkflowDefinition } from "./types.js";
 
 // ── Test tools ─────────────────────────────────────────────────────────────
@@ -468,9 +465,7 @@ describe("LocalWorkflowEngine: sleep + waitForEvent", () => {
     const engine = makeEngine();
     const def: WorkflowDefinition = {
       id: "early-evt",
-      steps: [
-        { id: "evt", toolName: "$waitForEvent", args: { type: "early" }, dependsOn: [] },
-      ],
+      steps: [{ id: "evt", toolName: "$waitForEvent", args: { type: "early" }, dependsOn: [] }],
     };
     // Send first; then create the run. The engine must pick up the buffered event.
     const runId = "early-r";

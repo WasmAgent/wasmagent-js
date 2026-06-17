@@ -13,6 +13,21 @@
  */
 
 export type {
+  LocalWorkflowEngineOptions,
+  StartOptions,
+  WorkflowRunHandle,
+} from "./LocalWorkflowEngine.js";
+export { LocalWorkflowEngine } from "./LocalWorkflowEngine.js";
+export type {
+  AcquireOptions,
+  PoolConfig,
+  ResourceLease,
+  ResourcePool,
+} from "./ResourcePool.js";
+export { InMemoryResourcePool } from "./ResourcePool.js";
+export type { WorkflowStateStore } from "./store.js";
+export { KvWorkflowStateStore, MemoryKvBackend } from "./store.js";
+export type {
   ResourceClaim,
   StepRetryPolicy,
   WorkflowDefinition,
@@ -24,21 +39,3 @@ export type {
   WorkflowStepRecord,
   WorkflowStepStatus,
 } from "./types.js";
-
-export type { WorkflowStateStore } from "./store.js";
-export { KvWorkflowStateStore, MemoryKvBackend } from "./store.js";
-
-export type {
-  AcquireOptions,
-  PoolConfig,
-  ResourceLease,
-  ResourcePool,
-} from "./ResourcePool.js";
-export { InMemoryResourcePool } from "./ResourcePool.js";
-
-export type {
-  LocalWorkflowEngineOptions,
-  StartOptions,
-  WorkflowRunHandle,
-} from "./LocalWorkflowEngine.js";
-export { LocalWorkflowEngine } from "./LocalWorkflowEngine.js";

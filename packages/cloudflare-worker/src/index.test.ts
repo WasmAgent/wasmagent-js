@@ -71,7 +71,6 @@ vi.mock("@agentkit-js/core", () => {
     // implementation so /resume tests can hit them without spinning up the
     // real core module.
     KvCheckpointer: class TestKvCheckpointer {
-      // biome-ignore lint/suspicious/noExplicitAny: matches real shape
       constructor(public kv: any) {}
       async load(traceId: string) {
         const raw = await this.kv.get(traceId);
@@ -93,13 +92,7 @@ vi.mock("@agentkit-js/core", () => {
         await this.save(traceId, snap);
       }
     },
-    resumeFromHuman: async (
-      // biome-ignore lint/suspicious/noExplicitAny: matches real shape
-      cp: any,
-      traceId: string,
-      promptId: string,
-      response: string
-    ) => {
+    resumeFromHuman: async (cp: any, traceId: string, promptId: string, response: string) => {
       const snap = await cp.load(traceId);
       if (!snap?.pendingHumanInput) return false;
       if (snap.pendingHumanInput.promptId !== promptId) return false;

@@ -35,13 +35,13 @@
  */
 
 import {
+  KvWorkflowStateStore,
   type WorkflowDefinition,
   type WorkflowEvent,
   type WorkflowRunHandle,
   type WorkflowRunRecord,
   type WorkflowStateStore,
   type WorkflowStep,
-  KvWorkflowStateStore,
 } from "@agentkit-js/core";
 
 // `resolveRefs` isn't currently exported from core's public surface.
@@ -68,12 +68,18 @@ function resolveRefs(value: unknown, completed: Map<string, unknown>): unknown {
 // We declare the parts we touch rather than depending on
 // @cloudflare/workers-types directly (so this file can be unit-tested).
 
-export interface CfWorkflowDuration {
-  // Cloudflare accepts string durations like "5 seconds" or millisecond numbers.
-}
+// Cloudflare accepts string durations like "5 seconds" or millisecond numbers.
+// We accept either; the actual API at runtime is provided by Cloudflare's
+// @cloudflare/workers-types — keeping the alias here so consumers reading
+// our types see what we expect to pass through.
+export type CfWorkflowDuration = string | number;
 
 export interface CfStepConfig {
-  retries?: { limit: number; delay: string | number; backoff?: "constant" | "linear" | "exponential" };
+  retries?: {
+    limit: number;
+    delay: string | number;
+    backoff?: "constant" | "linear" | "exponential";
+  };
   timeout?: string | number;
 }
 
@@ -214,10 +220,16 @@ export async function runWorkflowEntrypoint(
 
     const result = await (config
       ? step.do(s.id, config, () =>
-          opts.resolveTool({ step: s, args: resolveRefs(s.args, completed) as Record<string, unknown> })
+          opts.resolveTool({
+            step: s,
+            args: resolveRefs(s.args, completed) as Record<string, unknown>,
+          })
         )
       : step.do(s.id, () =>
-          opts.resolveTool({ step: s, args: resolveRefs(s.args, completed) as Record<string, unknown> })
+          opts.resolveTool({
+            step: s,
+            args: resolveRefs(s.args, completed) as Record<string, unknown>,
+          })
         ));
     completed.set(s.id, result);
     await opts.store
@@ -241,9 +253,7 @@ function topoSort(steps: WorkflowStep[]): WorkflowStep[] {
   const visit = (id: string, path: Set<string>): void => {
     if (visited.has(id)) return;
     if (path.has(id)) {
-      throw new Error(
-        `Cycle in workflow definition: ${[...path, id].join(" → ")}`
-      );
+      throw new Error(`Cycle in workflow definition: ${[...path, id].join(" → ")}`);
     }
     path.add(id);
     const s = byId.get(id);
@@ -352,11 +362,7 @@ export class CloudflareWorkflowEngine<Params = unknown> {
         for (;;) {
           const s = await instance.status();
           const mapped = mapCfStatus(s.status);
-          if (
-            mapped === "completed" ||
-            mapped === "failed" ||
-            mapped === "cancelled"
-          ) {
+          if (mapped === "completed" || mapped === "failed" || mapped === "cancelled") {
             const rec: WorkflowRunRecord = {
               runId: instance.id,
               workflowId: "",
@@ -428,7 +434,10 @@ export class CloudflareWorkflowEngine<Params = unknown> {
         }
       }
       const top = await this.#store.loadRun(runId);
-      if (top && (top.status === "completed" || top.status === "failed" || top.status === "cancelled")) {
+      if (
+        top &&
+        (top.status === "completed" || top.status === "failed" || top.status === "cancelled")
+      ) {
         if (top.status === "completed") yield { type: "run_complete", runId, output: top.output };
         else yield { type: "run_failed", runId, error: top.error };
         return;

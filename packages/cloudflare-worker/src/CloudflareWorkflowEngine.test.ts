@@ -6,21 +6,15 @@
  * step.sleep / step.waitForEvent against the runWorkflowEntrypoint helper.
  */
 
+import type { WorkflowDefinition, WorkflowStateStore } from "@agentkit-js/core";
+import { KvWorkflowStateStore, MemoryKvBackend } from "@agentkit-js/core";
 import { describe, expect, it } from "vitest";
 import {
-  KvWorkflowStateStore,
-  MemoryKvBackend,
-} from "@agentkit-js/core";
-import type {
-  WorkflowDefinition,
-  WorkflowStateStore,
-} from "@agentkit-js/core";
-import {
-  CloudflareWorkflowEngine,
   type CfStepConfig,
   type CfWorkflowBinding,
   type CfWorkflowInstance,
   type CfWorkflowStep,
+  CloudflareWorkflowEngine,
   runWorkflowEntrypoint,
 } from "./CloudflareWorkflowEngine.js";
 
@@ -57,10 +51,7 @@ class FakeBinding implements CfWorkflowBinding {
 
     const step = this.#makeStep(state);
     state.status = "running";
-    void this.entry(
-      { instanceId: id, payload: opts?.params, timestamp: new Date(0) },
-      step
-    )
+    void this.entry({ instanceId: id, payload: opts?.params, timestamp: new Date(0) }, step)
       .then((output) => {
         state.status = "complete";
         state.output = output;

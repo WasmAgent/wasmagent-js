@@ -22,7 +22,6 @@ async function collect(
   )) {
     result.push(ev);
   }
-  // biome-ignore lint/suspicious/noExplicitAny: intentional
   return result as any;
 }
 
