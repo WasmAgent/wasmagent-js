@@ -383,7 +383,7 @@ function describeArgShape(schema: {
   properties?: Record<string, unknown>;
   required?: string[];
 }): string {
-  if (!schema || schema.type !== "object" || !schema.properties) return "{}";
+  if (schema?.type !== "object" || !schema.properties) return "{}";
   const keys = Object.keys(schema.properties);
   if (keys.length === 0) return "{}";
   return `{ ${keys.map((k) => `${k}: ...`).join(", ")} }`;
@@ -1151,6 +1151,192 @@ export const armParamOnlyOnePassSuite: BenchmarkSuite = {
   runItem: runArmFOnePass,
 };
 
+// ── Arm (g) batch-grammar — single LLM call emits the FULL plan ──────────────
+//
+// Origin: 2026-06-17 ablation showed v7f arm-f 41.1% vs bare 12.2%, but
+// `bare-wins=3` revealed that bare's rare wins came from a behavior arm-f
+// can't replicate: emitting *multiple tool_calls in one turn* (cart-3step-
+// add-remove `add×2 → add×1 → remove → checkout`). Pick/Provide loops
+// dispose of that global plan because each step only sees a single tool
+// decision. ToolCallingAgent (used by bare) supports multi-call emission
+// natively via the OpenAI tools[] interface, but the 1.7B model elects
+// not to use it 65/90 cells. We need a third path: grammar-strict
+// *multi-call* output in ONE turn, no final_answer escape hatch.
+//
+// Hypothesis: if we let the model write the full plan upfront and pin it
+// to a strict schema (oneOf branches × N items), v7f's accuracy on cart-
+// with-undo / mixed-N-step / cal-4step recovers the gap that Pick/Provide
+// gives up. The schema is `{plan: [<tool_use branch>, ...]}` with
+// minItems=1 and maxItems=8 (>= 2× longest 4-step task).
+//
+// Why this isn't already arm-f-1pass: arm-f-1pass emits ONE tool_use per
+// model call and loops; this emits the WHOLE plan in ONE call and does
+// not loop. The model commits the entire trajectory before any tool runs.
+// That's strictly weaker on tasks needing observe-then-decide (no feedback
+// from intermediate tool results), but for tasks that ARE one-shot plans
+// (most cart, cal-batch, file-rename) it removes the in-loop forgetting.
+//
+// Risk: 1.7B might emit a syntactically valid but semantically wrong plan
+// (e.g. forgets the remove step too). If arm-batch ≤ arm-f, we've shown
+// failure isn't "Pick/Provide losing global view" but "1.7B can't plan
+// even when given the chance". That's an equally valuable null result.
+
+const ARM_BATCH_MAX_PLAN = 8; // >= 2× longest 4-step task
+
+function buildBatchPlanSchema(
+  tools: ToolDefinition[],
+  argsSchema: (t: ToolDefinition) => object
+): object {
+  const toolBranches = tools.map((t) => ({
+    type: "object",
+    additionalProperties: false,
+    required: ["name", "input"],
+    properties: {
+      name: { type: "string", const: t.name },
+      input: argsSchema(t),
+    },
+  }));
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["plan"],
+    properties: {
+      plan: {
+        type: "array",
+        minItems: 1,
+        maxItems: ARM_BATCH_MAX_PLAN,
+        items: { oneOf: toolBranches },
+      },
+    },
+  };
+}
+
+const ARM_BATCH_SYSTEM_PROMPT =
+  "You operate a sandboxed workspace by calling tools. " +
+  "You will receive ONE task and must respond with the COMPLETE PLAN of " +
+  "tool calls needed to accomplish it, as a single JSON object: " +
+  '{"plan": [{"name": "<tool>", "input": {...}}, ...]}. ' +
+  "List every tool call you intend to make, in order. The runtime executes " +
+  "them sequentially; you will NOT see intermediate results. Plan accordingly: " +
+  "if the task requires inspecting state before acting, include both the " +
+  "inspection call and the action calls in your plan up front.\n\n" +
+  "Path conventions: file paths in this workspace do NOT use a leading slash. " +
+  "Day strings use ISO format (YYYY-MM-DD). " +
+  "Calendar event times are minutes-from-midnight integers (e.g. 9:00 = 540).";
+
+async function runArmBatchGrammar(args: {
+  item: (typeof ITEMS)[number];
+  model: ModelSpec;
+}): Promise<RunItemResult> {
+  const cell = prepareCell(args.item.id);
+  const m = buildModel(args.model);
+  const startMs = Date.now();
+
+  const registry = new ToolRegistry();
+  for (const t of cell.tools) registry.register(t);
+  const toolByName = new Map<string, ToolDefinition>(cell.tools.map((t) => [t.name, t]));
+  const argsSchema = makeArgsSchemaCache();
+  const planSchema = buildBatchPlanSchema(cell.tools, argsSchema);
+
+  const messages: ModelMessage[] = [
+    { role: "system", content: ARM_BATCH_SYSTEM_PROMPT },
+    { role: "user", content: args.item.task },
+  ];
+
+  let totalIn = 0;
+  let totalOut = 0;
+  let lastError: string | null = null;
+  let finalAnswer: string | null = null;
+
+  const result = await runOneStructuredCall(m, messages, {
+    type: "json_schema",
+    schema: planSchema,
+    name: "tool_plan",
+    strict: true,
+  });
+  totalIn += result.inputTokens;
+  totalOut += result.outputTokens;
+
+  if (result.error) {
+    lastError = `plan: ${result.error}`;
+  } else {
+    let plan: Array<{ name: string; input: Record<string, unknown> }>;
+    try {
+      const parsed = JSON.parse(result.text) as { plan?: unknown };
+      if (!Array.isArray(parsed.plan))
+        throw new Error(`plan field is not an array: ${result.text.slice(0, 200)}`);
+      plan = parsed.plan as Array<{ name: string; input: Record<string, unknown> }>;
+    } catch (e) {
+      lastError = `plan parse: ${e instanceof Error ? e.message : String(e)}`;
+      plan = [];
+    }
+
+    for (let i = 0; i < plan.length; i++) {
+      const step = plan[i];
+      if (!step || typeof step.name !== "string") {
+        lastError = `plan step ${i}: missing name`;
+        break;
+      }
+      const tool = toolByName.get(step.name);
+      if (!tool) {
+        lastError = `plan step ${i}: unknown tool ${step.name}`;
+        break;
+      }
+      const stepArgs =
+        typeof step.input === "object" && step.input !== null
+          ? (step.input as Record<string, unknown>)
+          : {};
+      const callId = `g-${i}-${step.name}`;
+      try {
+        await registry.call({ toolName: step.name, args: stepArgs, callId });
+      } catch (e) {
+        // Tool execution failures (e.g. file-not-found) are recoverable —
+        // record but continue executing the rest of the plan; the judge
+        // still runs against the terminal state. This mirrors how arm-f
+        // handles per-step tool errors (treats them as in-loop content).
+        lastError = `plan step ${i} exec: ${e instanceof Error ? e.message : String(e)}`;
+      }
+    }
+    finalAnswer = "DONE";
+  }
+
+  let passed = false;
+  try {
+    passed = cell.judge();
+  } catch {
+    passed = false;
+  }
+  // Plan-level structural errors (parse / unknown tool / missing name)
+  // void the run; per-step exec errors do NOT (judge is the truth).
+  if (lastError && !lastError.startsWith("plan step ") /* exec */) {
+    if (
+      !lastError.startsWith("plan step ") ||
+      lastError.includes("missing name") ||
+      lastError.includes("unknown tool")
+    ) {
+      passed = false;
+    }
+  }
+
+  return {
+    answer: finalAnswer,
+    passed,
+    wallMs: Date.now() - startMs,
+    tokens: { input: totalIn, output: totalOut },
+    error: lastError,
+  };
+}
+
+export const armBatchGrammarSuite: BenchmarkSuite = {
+  name: "mt-tool-exec.arm-g-batch-grammar",
+  title: "Arm (g) batch-grammar (single-call full plan)",
+  description:
+    "Single LLM call emits the COMPLETE plan as {plan: [{name, input}, ...]} under a strict json_schema (oneOf per tool, minItems=1, maxItems=8). Tools run sequentially after the call returns; model sees no intermediate results. Tests whether 1.7B's bare-wins behavior (multi-call in one turn) survives when grammar pins schema legality without sacrificing global plan view.",
+  items: ITEMS,
+  scorers: [],
+  runItem: runArmBatchGrammar,
+};
+
 // ── Suite registry for the ablation script ──────────────────────────────────
 export const ABLATION_ARMS: Record<string, BenchmarkSuite> = {
   bare: armBareSuite,
@@ -1160,4 +1346,5 @@ export const ABLATION_ARMS: Record<string, BenchmarkSuite> = {
   full: armFullSuite,
   "param-only": armParamOnlySuite,
   "param-only-1pass": armParamOnlyOnePassSuite,
+  "batch-grammar": armBatchGrammarSuite,
 };
