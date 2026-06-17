@@ -25,6 +25,17 @@ bun run bench -- ptc    # one specific suite
 | **`ParallelForkJoinRunner`** (8 branches, cap=4) | ~**3.8×** wall-clock vs equivalent serial work; tokens scale linearly | ≥2.5× speedup, 4–12× tokens | [`parallel-agents.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/parallel-agents.mjs) |
 | **Cross-model cost comparison** (same task, 11 models) | DeepSeek V4 cheapest at **~$0.003** ; Claude Opus most expensive at **~$0.15** (≈56× ratio) | cheapest <$0.05, most-expensive <$5, ratio in 5×–200× range | [`cost-comparison.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/cost-comparison.mjs) → [report](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/report-cost-comparison.md) |
 
+> **2026-06-17 note on the code-mode row.** The 13.6%-of-baseline number
+> is still verifiable, but code-mode token savings are no longer a
+> differentiator — Cloudflare ships code-mode portal-default
+> (2026-03-26), OpenAI Agents SDK has a native sandbox (2026-04),
+> Anthropic standardised the pattern. Treat this row as **mechanism
+> verification**, not as competitive claim. The differentiator is the
+> *neutral, multi-language, multi-isolation-tier kernel matrix* that
+> can be dropped into any of those framework executor sockets — see
+> [`docs/kernels/comparison.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/kernels/comparison.md)
+> and the S1 / S1' axes in [`ROADMAP.md`](https://github.com/telleroutlook/agentkit-js/blob/main/ROADMAP.md).
+
 ## LongMemEval-style end-to-end across 5 local models (2026-06-12)
 
 The accounting benchmarks above demonstrate **mechanism**. This section

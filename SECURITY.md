@@ -156,3 +156,33 @@ best-effort — track on the issue.
 See [`ROADMAP.md`](./ROADMAP.md) for what we are building and why.
 Significant new sandbox features land via RFC PRs against
 `docs/rfcs/`; the discussion is the audit trail.
+
+## OWASP Agentic Top 10 + regulatory mapping
+
+For procurement teams asking "which OWASP Agentic Applications Top 10
+risks does `CapabilityManifest` cover, and where does it stop?", see
+[`docs/security/capability-manifest-owasp.md`](./docs/security/capability-manifest-owasp.md).
+
+That document maps each of the 10 risk categories (goal hijacking,
+tool misuse, identity abuse, memory poisoning, cascading failures,
+rogue agents, excessive agency, data exfiltration, insecure tool
+chains, cascading misconfigurations) to the specific
+`CapabilityManifest` field or kernel mechanism that enforces it,
+**including what we explicitly do not cover** (5 boundaries
+acknowledged in §5 of that document).
+
+It also includes:
+
+- A side-by-side comparison with Microsoft Agent Governance Toolkit
+  (2026-04, MIT) — agentkit is the **enforcement + isolation**
+  layer, the toolkit is the **policy decision** layer; they
+  compose, neither replaces the other.
+- Mapping to EU AI Act Articles 14 / 15 / Annex IV, Colorado AI
+  Act (executable 2026-06), ISO/IEC 42001.
+- The protocol-layer authorization gap that `CapabilityManifest`
+  fills (MCP 2026-06 and A2A both delegate authorization to
+  implementations).
+
+This is not a compliance attestation; it is documentation of the
+primitives we ship. Auditors and risk officers welcome — see
+"Reporting a vulnerability" above for the disclosure channel.

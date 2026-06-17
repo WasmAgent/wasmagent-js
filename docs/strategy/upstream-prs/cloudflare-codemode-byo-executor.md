@@ -5,12 +5,12 @@
 codemode docs live at submission time — the developer docs at
 [developers.cloudflare.com/agents/api-reference/codemode](https://developers.cloudflare.com/agents/api-reference/codemode)
 mirror the package's source-of-truth doc).
-**Status:** DRAFT — not submitted. Direction 1 of the 2026-06-12
+**Status:** **FILED 2026-06-17** — issue [cloudflare/agents#1771](https://github.com/cloudflare/agents/issues/1771) opened (PR creation is gated to collaborators on `cloudflare/agents`; per the fallback in §Pre-submission to-do, opened as `community-recipe` issue with the patch ready to cherry-pick from [telleroutlook/agents@community-recipe-agentkit-byo-executor](https://github.com/telleroutlook/agents/tree/community-recipe-agentkit-byo-executor)). Direction 1 of the 2026-06-12
 optimization brief explicitly calls this out as the highest-leverage
 upstream entry: the Cloudflare codemode docs already say the
 `DynamicWorkerExecutor` is "just one implementation" and that users
 "can build their own executor for Node VM, QuickJS, containers, or
-any other sandbox." `@agentkit-js/kernel-quickjs` is the missing
+any other sandbox." `@agentkit-js/kernel-quickjs` + `@agentkit-js/aisdk` is the missing
 link for non-Cloudflare environments and Python execution.
 
 ## Why this is the priority entry
@@ -127,19 +127,28 @@ PR against `cloudflare/agents`. The PR body should:
 
 ## Pre-submission to-do
 
-1. Land the `agentkitCodemodeExecutor` adapter in
-   `@agentkit-js/aisdk` first. The recipe references a shim that
-   has to exist; submitting before the shim is published would
-   waste the maintainer's time.
-2. Verify the `CodeExecutor` interface name matches the current
-   Cloudflare codemode SDK (it has churned during the GA
-   stabilization; check the SDK source on submission day).
-3. If the maintainer says "we don't take third-party recipes
-   inline," fall back to opening an issue tagged
-   `community-recipe` with the same content as the body of this
-   draft. That is also a win — the issue itself becomes a
-   discoverable artifact that codemode users searching for
-   "non-Workers executor" or "Python executor" can find.
+1. ✅ **Done (2026-06-17)** — `agentkitCodemodeExecutor` shim shipped in `@agentkit-js/aisdk@0.1.0`. 412-line implementation with a marker-rerun execution loop honouring CF's `Executor` contract verbatim. 10 tests cover flat-Record + namespaced provider surfaces, positional vs object args, console.log capture, tool-throw surfacing, unknown-tool fail-fast, and `maxIterations` runaway bound. Source: [`packages/aisdk/src/codemodeExecutor.ts`](../../../packages/aisdk/src/codemodeExecutor.ts).
+2. **Verify on submission day** — the `CodeExecutor` interface name churned during CF codemode's GA stabilization. Re-check the SDK source the day this PR is filed; if the `Executor` shape moved, bump the structural copy in `codemodeExecutor.ts` and ship a patch release.
+3. **Fallback path** — if the maintainer says "we don't take third-party recipes inline," open an issue tagged `community-recipe` with the same content as §"PR body" below. The discoverable artifact wins regardless of inclusion form.
+
+## PR body (ready to paste into cloudflare/agents)
+
+> **Title:** `docs: bring-your-own executor recipe — agentkit-js kernels for cross-platform / Python / approval-gated codemode`
+>
+> **Body:**
+>
+> The codemode docs already note that `DynamicWorkerExecutor` is one implementation and that users can supply their own. This PR adds a one-page recipe pointing at `@agentkit-js/aisdk`'s `agentkitCodemodeExecutor`, which closes three explicit gaps the default leaves:
+>
+> 1. **Platform binding.** `DynamicWorkerExecutor` requires a Cloudflare Workers runtime; the agentkit shim runs on Node, Bun, Vercel, and Lambda (it also runs on CF Workers — same code path).
+> 2. **Language scope.** JS-only today; swap `QuickJSKernel` for `PyodideKernel` to add CPython-in-WASM at the edge.
+> 3. **Approval semantics.** Tools marked `needsApproval: true` are stripped today rather than pause-and-wait. agentkit's tool registry surfaces a first-class `await_human_input` step.
+>
+> The shim is Apache-2.0, structurally typed against the `Executor` contract (no hard dep on `@cloudflare/codemode`), and shipped in [`@agentkit-js/aisdk@0.1.0`](https://www.npmjs.com/package/@agentkit-js/aisdk). 10 tests green. Source: <https://github.com/telleroutlook/agentkit-js/blob/main/packages/aisdk/src/codemodeExecutor.ts>.
+>
+> Whichever shape the recipe lands in is the win:
+> - **Stretch:** new page under codemode docs with the table + example below.
+> - **Acceptable:** single sentence + outbound link in the existing executor docs.
+> - **Fallback:** an issue tagged `community-recipe` so users searching for "non-Workers executor" or "Python codemode" can find it.
 
 ## Why-not (devil's advocate)
 

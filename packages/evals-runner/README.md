@@ -172,3 +172,43 @@ All primitives have parity tests against scipy reference values
   — full guide with Ollama / OpenRouter / Gateway recipes.
 - [`docs/guides/openai-compat-recipes.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/openai-compat-recipes.md)
   — same model-spec format used by the rest of agentkit.
+
+## Worked example: 2026-06-17 — the referee in action
+
+A real engagement showed up the value of paired statistics. evomerge
+(an agentkit-js consumer training a 1.7B Qwen3 LoRA for multi-turn
+tool execution) had a chain of results that *each looked stable* but
+combined into a misleading picture. Three rounds of `evals-runner`
+ablation under `examples/benchmarks/multi-turn-scaffold-ablation.mjs`
+unwound it:
+
+| Round | Finding | What changed |
+|------|---------|--------------|
+| 1 — `arm-f` vs `bare` | arm-f 41.1% [31.5, 51.4] vs bare 12.2% [7.0, 20.6], McNemar p = 2.6 × 10⁻⁶ | Confirmed grammar-pinned tool calling is a +28.9pp lift on this model class. |
+| 2 — `arm-batch-grammar` (new) vs both | batch-grammar 14.4% [8.6, 23.2] << arm-f 38.9% | **Falsified** the assumption that "give the model the full plan in one call" would help. The Pick/Provide split in arm-f turns out to be an *asset*, not a cost. |
+| 3 — Sanity recheck | Round-2 bare regressed to 6.7%; the bare-wins=3 from round 1 didn't reproduce. | The 3 cells we'd built a hypothesis on were sampling noise, not a stable failure mode of arm-f. |
+
+**Without paired McNemar** the round-1 → round-2 reversal could have
+been read as *progress* (training data strategy looks promising). With
+paired McNemar against the same item set, the noise floor is visible:
+[`docs/reports/arm-f-vs-bare-2026-06-17/`](https://github.com/telleroutlook/agentkit-js/tree/main/docs/reports/arm-f-vs-bare-2026-06-17)
+and [`docs/reports/arm-batch-grammar-2026-06-17/`](https://github.com/telleroutlook/agentkit-js/tree/main/docs/reports/arm-batch-grammar-2026-06-17).
+
+Reproduce on your own machine (Ollama + any small model, no cloud
+budget):
+
+```sh
+node examples/benchmarks/multi-turn-scaffold-ablation.mjs \
+  --base-url http://localhost:11434/v1 \
+  --models <your-model-tag> \
+  --arms bare,param-only,batch-grammar \
+  --seeds 0,1,2 \
+  --concurrency 1 --no-warmup \
+  --out docs/reports/your-run
+```
+
+This is the harness positioning: not "we have the highest LongMemEval
+number," but "we are the harness anyone can re-run on any pair of
+agents under paired statistics." The 2026-06-17 chain above is the
+worked example — the falsification of round 2 is **what we want
+people to be able to do with their own models, fast**.

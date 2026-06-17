@@ -1,6 +1,6 @@
 # agentkit-js — Roadmap
 
-> Last refreshed: 2026-06-12. Refresh quarterly; keep stamped with the
+> Last refreshed: 2026-06-17. Refresh quarterly; keep stamped with the
 > last review date so consumers can spot rot.
 
 This roadmap is the public version of the strategic plan that drives the
@@ -11,31 +11,74 @@ the same A6 commit; see also the embedded "Why" lines below).
 
 ## Strategic axes (4 lines we steer by)
 
+> **2026-06-17 update.** Five industry shifts since 06-12 (Cloudflare
+> portal-default code-mode, OpenAI Agents SDK 2026-04 native sandbox,
+> Vercel AI SDK 6 `DurableAgent`, MS Agent Governance Toolkit, OWASP
+> Agentic Top 10) tightened the differentiation surface. The axes
+> below have been refined; the change log is in
+> [`docs/strategy/2026-06-17-update.md`](docs/strategy/2026-06-17-update.md).
+
 - **S1 — Stop competing as a framework. Get embedded as a runtime.**
   The TS-agent-framework race has a winner with 4 orders of magnitude
-  more distribution; chasing it is a losing play. Code-mode (Cloudflare
-  Code Mode MCP, Red Hat codemode-lite, Anthropic's "code execution with
-  MCP") is converging on "tools-as-code" — and there is no neutral,
-  multi-language, multi-isolation-tier code-mode runtime on the market.
-  agentkit's three-tier kernel matrix (in-process / WASM / remote)
-  already exists. We sell it as a component to the framework leaders.
+  more distribution; chasing it is a losing play. **Code-mode is now
+  table stakes** (Cloudflare ships it portal-default 2026-03; OpenAI
+  Agents SDK has a native sandbox 2026-04; Anthropic standardised the
+  pattern). The remaining moat is **portable × multi-language × multi-
+  isolation-tier × policy-uniform** — none of the single-vendor sandboxes
+  cross all four. agentkit's three-tier kernel matrix (in-process /
+  WASM / remote) plus real Pyodide already exists. We ship it as a
+  *neutral executor that drops into the framework leaders' existing
+  sandbox / executor sockets* (Cloudflare codemode `DynamicWorkerExecutor`,
+  OpenAI Agents SDK sandbox provider, Mastra sandbox provider). The
+  pitch is "swap the executor, keep your framework."
 
-- **S2 — Replace self-built numbers with public-leaderboard numbers.**
-  Mastra's "94.87% on LongMemEval" is the kind of citation we cannot
-  match with a 50-turn synthetic trace. We publish on public benchmarks
-  (LongMemEval first; SWE-bench-lite-class second) and report cost-axis
-  data the competitors don't.
+- **S1' — Be the runtime governance + isolation layer (★ new line).**
+  OWASP Agentic Top 10 (2025-12), Colorado AI Act (executable 2026-06),
+  EU AI Act high-risk obligations (2026-08), and 75% of enterprises
+  putting compliance ahead of capability ([KPMG 2026]) all point at
+  the same gap: protocol layers (MCP / A2A) authenticate but
+  *delegate authorization to the implementation*. `CapabilityManifest`
+  ([`packages/core/src/executor/types.ts`](packages/core/src/executor/types.ts))
+  is exactly that primitive — deterministic, framework-neutral,
+  runtime-enforced allow-list with real WASM isolation. Coverage map
+  in [`docs/security/capability-manifest-owasp.md`](docs/security/capability-manifest-owasp.md).
+  Posture: complementary to MS Agent Governance Toolkit (they decide
+  *should*, we enforce *can* and isolate the blast radius), not
+  competing with it.
+
+- **S2 — Replace self-built numbers with paired-statistical reporting,
+  not a single leaderboard headline.** Industry consensus (2026-Q1/Q2):
+  agent benchmarks are far less stable than LLM benchmarks — environment
+  drift, frozen environments, "self-reported, never independently
+  reproduced" headlines, vendors claiming #1 on different datasets.
+  Chasing a single LongMemEval number walks into that trust crisis.
+  Our angle is *the referee, not the contestant*: `evals-runner`
+  (paired McNemar exact / Wilson CI / paired bootstrap, aligned to
+  scipy 1e-7; synthetic fixtures with no train/test contamination;
+  CI-gated reproducibility; multi-axis Pareto). Target benchmarks:
+  **BEAM (ICLR 2026, 1M–10M token, 2,000 questions)** as the new
+  frontier in addition to LongMemEval-500. Showcase: the three-round
+  arm-f vs bare vs batch-grammar ablation in
+  [`docs/reports/arm-f-vs-bare-2026-06-17/`](docs/reports/arm-f-vs-bare-2026-06-17/)
+  and [`docs/reports/arm-batch-grammar-2026-06-17/`](docs/reports/arm-batch-grammar-2026-06-17/)
+  — the same harness anyone can re-run.
 
 - **S3 — DevX: a zero-deploy local Studio, not a SaaS.**
   Mastra Studio's metrics tab (cost / token / latency / errors) earns
-  its rep. agentkit already emits all the data; we add the aggregator
-  + a vanilla HTML page served by `agentkit devtools` (A4 — shipped).
-  No hosting, no account, no telemetry phone-home.
+  its rep. Vercel AI SDK 6 (2026-Q1) added their own DevTools panel
+  with 20M+ monthly downloads of distribution behind it. agentkit
+  already emits all the data; we add the aggregator + a vanilla HTML
+  page served by `agentkit devtools` (A4 — shipped). The differentiator
+  collapsed to "no hosting, no account, no telemetry phone-home"
+  — narrower but still real.
 
 - **S4 — bscode is a funnel, not a product.**
   bscode (the CF Workers + Next.js demo) drives traffic to
   `npm add @agentkit-js/core`. It only demos already-published
   framework APIs; new generic logic lands in agentkit-js first.
+  *Updated demo content (2026-06-17):* the headline scene is now a
+  `CapabilityManifest`-blocks-an-OWASP-attack live demo, not "another
+  coding agent" — see S1' above.
 
 ## Shipped (2026-06)
 
@@ -45,6 +88,14 @@ the same A6 commit; see also the embedded "Why" lines below).
   agentkit kernel for unified security policy. Token-savings benchmark
   in CI: code-mode is ≤14% of direct-MCP at N=30 tools, monotonic in N.
   Doc: [`docs/guides/code-mode.md`](docs/guides/code-mode.md).
+  *2026-06-17 note:* code-mode itself is now table stakes (Cloudflare
+  ships it portal-default; OpenAI Agents SDK has native sandbox;
+  Anthropic standardised the pattern). The sustained differentiator
+  is **portable-across-runtimes + multi-language + multi-isolation-tier
+  + uniform `CapabilityManifest`**, not the token-savings number per
+  se. We ship `@agentkit-js/mcp-server` to be *the executor that
+  drops into any framework's existing sandbox socket*, not as a
+  standalone code-mode product.
 
 - **A1.1 — Unified security policy face.** `CapabilityManifest` now
   carries `env / cpuMs / memoryLimitBytes` alongside the existing
@@ -56,6 +107,15 @@ the same A6 commit; see also the embedded "Why" lines below).
   - [`@agentkit-js/aisdk`](packages/aisdk) — `sandboxedJsTool()` and
     `codeModeTool()` factories. AI SDK majors 4–6 supported via
     structural typing.
+    - **`agentkitCodemodeExecutor` (shipped 2026-06-17)** — Cloudflare
+      codemode `Executor` adapter. Drop any agentkit kernel
+      (`QuickJSKernel` / `PyodideKernel` / `RemoteSandboxKernel`) into
+      CF codemode's BYO-executor socket; closes the three gaps in CF's
+      default `DynamicWorkerExecutor` (platform-binding, JS-only,
+      stripped-approval). 10 tests green. Source:
+      [`packages/aisdk/src/codemodeExecutor.ts`](packages/aisdk/src/codemodeExecutor.ts).
+      Upstream-PR draft (ready to file):
+      [`docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md`](docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md).
   - [`@agentkit-js/mastra-sandbox`](packages/mastra-sandbox) —
     Mastra sandbox provider contract. Drop-in alternative to Blaxel
     / E2B providers.
