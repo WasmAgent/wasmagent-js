@@ -33,15 +33,11 @@
  * https://github.com/cloudflare/agents/blob/main/docs/codemode.md
  * (verified 2026-06-12 via context7 docs query).
  *
- * Implementation lands in three increments:
- *   1. types + main function signature (this file, current state)
- *   2. script wrapper that bridges LLM-emitted `await tools.fn(args)` to
- *      agentkit kernel callbacks
- *   3. tests
- *
- * Parts 2 and 3 are TODO. Part 1 ships the public surface so downstream
- * (the Cloudflare codemode upstream-PR draft) can reference the import
- * path before the implementation lands.
+ * Implementation status (2026-06-17): all three parts shipped — types,
+ * marker-rerun execute() loop, and 10-test suite (`codemodeExecutor.test.ts`).
+ * The upstream Cloudflare codemode PR draft at
+ * `docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md` references
+ * this import path; the shim is now ready for that PR to land.
  */
 
 import type { CapabilityManifest, WasmKernel } from "@agentkit-js/core";

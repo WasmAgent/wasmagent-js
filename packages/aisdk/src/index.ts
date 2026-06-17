@@ -149,10 +149,14 @@ export function codeModeTool(
   };
 }
 
-// ── Cloudflare codemode adapter (Direction 1) ───────────────────────────────
+// ── Cloudflare codemode adapter (Direction 1, ROADMAP S1) ──────────────────
 // Re-exported so consumers can import the public surface from the package
-// root. The implementation lives in `./codemodeExecutor` and is currently
-// at part-1-of-3 (types + signature only — see that file's docblock).
+// root. The implementation lives in `./codemodeExecutor` — fully shipped
+// (factory + execute() marker-rerun loop + 10 tests, 2026-06-17). Closes
+// the three explicit gaps in CF's default `DynamicWorkerExecutor`:
+// cross-platform JS, optional Python via PyodideKernel, and pause-on-
+// approval lifecycle through agentkit's tool registry. Upstream PR draft
+// at `docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md`.
 export {
   type AgentkitCodemodeExecutorOptions,
   agentkitCodemodeExecutor,
