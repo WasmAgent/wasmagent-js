@@ -587,6 +587,13 @@ export const ModelRegistry: Record<string, ModelMeta> = {
     supportsVerbosity: false,
     defaultEffort: "medium",
   },
+  "doubao-seed-2-0-lite-260215": {
+    contextWindow: 256_000,
+    isReasoning: true,
+    supportsReasoningEffort: true,
+    supportsVerbosity: false,
+    defaultEffort: "low",
+  },
   "doubao-1-5-pro-32k": {
     contextWindow: 32_000,
     isReasoning: false,

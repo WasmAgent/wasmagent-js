@@ -9,8 +9,10 @@ export const DoubaoModels = {
   SEED_1_6_THINKING: "doubao-seed-1-6-thinking",
   THINKING_PRO_1_5: "doubao-1-5-thinking-pro",
   SEED_2_0_PRO: "doubao-seed-2-0-pro",
-  /** Always points to the latest recommended model. */
-  LATEST: "doubao-seed-1-6-251015",
+  /** Doubao Seed 2.0 economy tier (released 2026-02-15). */
+  SEED_2_0_LITE: "doubao-seed-2-0-lite-260215",
+  /** Always points to the latest recommended model (Seed 2.0 Pro as of 2026-06). */
+  LATEST: "doubao-seed-2-0-pro",
 } as const;
 
 export type DoubaoModelId = (typeof DoubaoModels)[keyof typeof DoubaoModels] | (string & {});
@@ -28,7 +30,10 @@ const EFFORT_TO_THINKING_LEVEL: Record<string, string> = {
 };
 
 /** Model IDs that support adaptive ("auto") thinking type. */
-const AUTO_CAPABLE_MODELS = new Set<string>(["doubao-seed-2-0-pro"]);
+const AUTO_CAPABLE_MODELS = new Set<string>([
+  "doubao-seed-2-0-pro",
+  "doubao-seed-2-0-lite-260215",
+]);
 
 /** Model IDs that support thinking/reasoning. */
 const REASONING_MODELS = new Set<string>([
@@ -36,6 +41,7 @@ const REASONING_MODELS = new Set<string>([
   "doubao-seed-1-6-thinking",
   "doubao-1-5-thinking-pro",
   "doubao-seed-2-0-pro",
+  "doubao-seed-2-0-lite-260215",
 ]);
 
 export interface DoubaoModelOptions extends OpenAICompatModelOptions {
