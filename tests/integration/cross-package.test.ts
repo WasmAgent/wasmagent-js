@@ -14,7 +14,7 @@
  * tested separately in @wasmagent/ui-cards-react smoke tests.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import {
   CODE_QUALITY_GENERIC,
   composePrompt,

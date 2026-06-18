@@ -8,8 +8,9 @@
   },
   "dependencies": {
     "@wasmagent/agent-prompts": "workspace:*",
-    "@wasmagent/ui-cards": "workspace:*"
+    "@wasmagent/core": "workspace:*",
+    "@wasmagent/ui-cards": "workspace:*",
+    "zod": "^3.0.0"
   },
-  "devDependencies": {
-  }
+  "devDependencies": {}
 }
