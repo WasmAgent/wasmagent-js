@@ -160,6 +160,7 @@ if (isMain) {
     case "run":
       await runCommand(rest.join(" "), values);
       break;
+    // biome-ignore lint/suspicious/noFallthroughSwitchClause: intentional fallthrough to init-tool for backwards compat
     case "init":
       // `init <project-name>` → scaffold a new agent project directory.
       // `init` with no positional falls through to init-tool for backwards compat.
@@ -167,7 +168,7 @@ if (isMain) {
         await initProjectCommand(rest[0] as string, values);
         break;
       }
-      // falls through
+    // falls through
     case "init-tool":
       await initToolCommand(values);
       break;
@@ -333,11 +334,7 @@ console.log(result.finalAnswer);
     "utf8"
   );
 
-  await writeFile(
-    join(dir, ".env.example"),
-    "ANTHROPIC_API_KEY=your-key-here\n",
-    "utf8"
-  );
+  await writeFile(join(dir, ".env.example"), "ANTHROPIC_API_KEY=your-key-here\n", "utf8");
 
   console.log(`✓ Created ${kebab}/`);
   console.log(`\nNext steps:`);

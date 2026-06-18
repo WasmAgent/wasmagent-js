@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { HybridRetriever, hybridRetriever } from "./HybridRetriever.js";
 import type { Retriever, SearchResult } from "./Retriever.js";
 

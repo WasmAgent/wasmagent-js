@@ -4,7 +4,6 @@
  * configured.
  */
 
-import { describe, expect, it } from "vitest";
 import { InMemoryResourcePool } from "./ResourcePool.js";
 
 describe("InMemoryResourcePool", () => {

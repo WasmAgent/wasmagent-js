@@ -14,7 +14,7 @@
  *     mutated unless the caller opts in with { immutable: false }.
  */
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, mock } from "bun:test";
 import type { ToolGuardrail } from "../guardrails/index.js";
 import {
   applyStateDelta,
@@ -27,7 +27,7 @@ import {
 
 describe("buildFrontendTools", () => {
   function makeDispatcher(stub?: FrontendToolDispatcher["call"]): FrontendToolDispatcher {
-    return { call: stub ?? vi.fn().mockResolvedValue({ output: "ok" }) };
+    return { call: stub ?? mock().mockResolvedValue({ output: "ok" }) };
   }
 
   it("turns each AG-UI tool def into a core ToolDefinition with attribution appended", () => {
@@ -47,7 +47,7 @@ describe("buildFrontendTools", () => {
   });
 
   it("forwards the model's args through the dispatcher and returns its output", async () => {
-    const dispatch = vi.fn().mockResolvedValue({ output: { picked: "/Users/me/notes.md" } });
+    const dispatch = mock().mockResolvedValue({ output: { picked: "/Users/me/notes.md" } });
     const tools = buildFrontendTools([{ name: "pick_file", description: "" }], {
       dispatcher: { call: dispatch },
     });
@@ -64,9 +64,10 @@ describe("buildFrontendTools", () => {
   });
 
   it("dispatcher errors surface as tool errors with the structured code/message", async () => {
-    const dispatch = vi
-      .fn()
-      .mockResolvedValue({ output: null, error: { code: "user_denied", message: "user said no" } });
+    const dispatch = mock().mockResolvedValue({
+      output: null,
+      error: { code: "user_denied", message: "user said no" },
+    });
     const tools = buildFrontendTools([{ name: "navigate", description: "" }], {
       dispatcher: { call: dispatch },
     });
@@ -76,7 +77,7 @@ describe("buildFrontendTools", () => {
   });
 
   it("guardrail trip blocks the call before dispatching", async () => {
-    const dispatch = vi.fn();
+    const dispatch = mock();
     const blockNavigate: ToolGuardrail = {
       name: "no-nav",
       check(toolName) {
@@ -105,14 +106,14 @@ describe("buildFrontendTools", () => {
         { name: "a", description: "" },
         { name: "b", description: "" },
       ],
-      { dispatcher: { call: vi.fn() }, requireApproval: true }
+      { dispatcher: { call: mock() }, requireApproval: true }
     );
     expect(tools.every((t) => t.needsApproval === true)).toBe(true);
   });
 
   it("custom attribution string replaces the default", () => {
     const tools = buildFrontendTools([{ name: "x", description: "do something" }], {
-      dispatcher: { call: vi.fn() },
+      dispatcher: { call: mock() },
       attribution: "[CLIENT-SIDE]",
     });
     expect(tools[0]?.description).toBe("do something [CLIENT-SIDE]");
@@ -125,7 +126,7 @@ describe("buildFrontendTools", () => {
       required: ["url"],
     };
     const tools = buildFrontendTools([{ name: "open_url", description: "", parameters: params }], {
-      dispatcher: { call: vi.fn() },
+      dispatcher: { call: mock() },
     });
     expect(tools[0]?.rawInputJsonSchema).toBe(params);
   });

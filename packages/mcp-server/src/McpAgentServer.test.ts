@@ -23,7 +23,6 @@
  */
 
 import type { AgentEvent, SubagentRunnable } from "@wasmagent/core";
-import { describe, expect, it } from "vitest";
 import { createFetchHandler } from "./fetchHandler.js";
 import { McpAgentServer } from "./McpAgentServer.js";
 import { InMemoryTaskStore } from "./taskStore.js";

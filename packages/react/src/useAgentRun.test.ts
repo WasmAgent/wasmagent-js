@@ -6,8 +6,6 @@
  * jsdom / @testing-library).
  */
 
-import { describe, expect, it } from "vitest";
-
 // Test the SSE line-parsing and event-extraction logic independently.
 
 function parseSSELine(line: string): unknown | null {

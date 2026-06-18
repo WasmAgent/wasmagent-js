@@ -9,7 +9,6 @@
  *   - built-in trajectoryQualityJudge / answerCompletenessJudge wire up
  */
 
-import { describe, expect, it } from "vitest";
 import type { Model, ModelMessage, StreamEvent } from "../models/types.js";
 import type { AgentTrace } from "./index.js";
 import {

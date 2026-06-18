@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { Bm25Indexer, tokenize as bm25Tokenize } from "./Bm25Indexer.js";
 
 describe("bm25Tokenize", () => {

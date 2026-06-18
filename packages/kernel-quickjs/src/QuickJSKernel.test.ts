@@ -1,4 +1,3 @@
-import { afterAll, describe, expect, it } from "vitest";
 import { QuickJSKernel } from "./QuickJSKernel.js";
 
 // One shared kernel for the file — avoids multiple QuickJS runtime init/dispose

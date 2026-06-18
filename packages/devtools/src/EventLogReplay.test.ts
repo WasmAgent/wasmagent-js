@@ -10,7 +10,6 @@
  */
 
 import type { AgentEvent } from "@wasmagent/core";
-import { describe, expect, it } from "vitest";
 import { EventLogReplay, type LoggedEvent } from "./EventLogReplay.js";
 
 let seq = 0;

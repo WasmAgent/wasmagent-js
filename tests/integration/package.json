@@ -4,13 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "vitest run"
+    "test": "bun test"
   },
   "dependencies": {
     "@wasmagent/agent-prompts": "workspace:*",
     "@wasmagent/ui-cards": "workspace:*"
   },
   "devDependencies": {
-    "vitest": "^2.1.0"
   }
 }

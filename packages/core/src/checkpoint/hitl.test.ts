@@ -10,7 +10,6 @@
  *      brand-new agent loop sees the response in its history.
  */
 
-import { describe, expect, it } from "vitest";
 import {
   applyHumanResponse,
   CheckpointableRun,

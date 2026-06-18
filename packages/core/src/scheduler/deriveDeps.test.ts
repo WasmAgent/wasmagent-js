@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { deriveDependencies } from "./deriveDeps.js";
 
 describe("deriveDependencies", () => {

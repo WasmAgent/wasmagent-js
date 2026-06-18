@@ -5,7 +5,6 @@
  * invalidating the system prefix cache).
  */
 
-import { describe, expect, it } from "vitest";
 import { coreMemoryTools, MemoryBlockSet } from "./MemoryBlocks.js";
 import { MessageAssembler } from "./MessageAssembler.js";
 

@@ -6,7 +6,7 @@
  *    snapshot survives a process boundary, not just an object reference).
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import {
   type AgentEvent,
   type AgentSnapshot,
@@ -116,12 +116,12 @@ describe("RedisRestKvBackend", () => {
 
 describe("RedisKvBackend (client transport)", () => {
   let store: Map<string, string>;
-  let setSpy: ReturnType<typeof vi.fn>;
+  let setSpy: ReturnType<typeof mock>;
   let client: RedisClientLike;
 
   beforeEach(() => {
     store = new Map();
-    setSpy = vi.fn(async (k: string, v: string, ..._rest: unknown[]) => {
+    setSpy = mock(async (k: string, v: string, ..._rest: unknown[]) => {
       store.set(k, v);
       return "OK";
     });

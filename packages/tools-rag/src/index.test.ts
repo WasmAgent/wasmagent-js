@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import type { Embedder, Retriever, SearchResult } from "@wasmagent/core";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   HttpEmbedder,
   PineconeStore,
@@ -12,14 +12,14 @@ import {
 const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
-  globalThis.fetch = vi.fn() as unknown as typeof fetch;
+  globalThis.fetch = mock() as unknown as typeof fetch;
 });
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-const mockFetch = () => globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+const mockFetch = () => globalThis.fetch as unknown as ReturnType<typeof mock>;
 
 // ── HttpEmbedder ──────────────────────────────────────────────────────────────
 

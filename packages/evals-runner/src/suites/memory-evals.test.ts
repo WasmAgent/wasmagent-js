@@ -7,7 +7,6 @@
  * mis-score real model output.
  */
 
-import { describe, expect, it } from "vitest";
 import { locomoRefinedSuite } from "./locomo-refined.js";
 import { memoryAgentBenchSuite } from "./memory-agent-bench.js";
 

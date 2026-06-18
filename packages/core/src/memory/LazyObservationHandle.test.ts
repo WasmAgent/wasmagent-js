@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { LazyObservationHandle } from "../memory/LazyObservationHandle.js";
 
 describe("LazyObservationHandle (B3)", () => {

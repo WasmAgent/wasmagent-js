@@ -9,7 +9,6 @@
  */
 
 import { MapKvBackend } from "@wasmagent/core";
-import { describe, expect, it } from "vitest";
 import { memoryTool } from "./memory.js";
 
 describe("memoryTool (D3 — AI SDK shape)", () => {

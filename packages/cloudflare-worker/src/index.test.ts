@@ -6,8 +6,8 @@
  * handler directly with synthetic Request / Env / ExecutionContext values.
  */
 
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { AgentEvent } from "@wasmagent/core";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
@@ -23,7 +23,7 @@ const mockFinalAnswerEvent: AgentEvent = {
 
 let mockAgentEvents: AgentEvent[] = [mockFinalAnswerEvent];
 
-vi.mock("@wasmagent/core", () => {
+mock.module("@wasmagent/core", () => {
   return {
     CodeAgent: class {
       run(_task: string) {
@@ -104,18 +104,26 @@ vi.mock("@wasmagent/core", () => {
         return source;
       }
     },
+    KvWorkflowStateStore: class {},
+    GoalDirectedAgent: class {
+      run(_task: string) {
+        return (async function* () {
+          for (const e of mockAgentEvents) yield e;
+        })();
+      }
+    },
   };
 });
 
-vi.mock("@wasmagent/kernel-quickjs", () => ({
+mock.module("@wasmagent/kernel-quickjs", () => ({
   QuickJSKernel: class {},
 }));
 
-vi.mock("quickjs-emscripten-core", () => ({
-  newQuickJSWASMModuleFromVariant: vi.fn(),
+mock.module("quickjs-emscripten-core", () => ({
+  newQuickJSWASMModuleFromVariant: mock(),
 }));
 
-vi.mock("@jitl/quickjs-wasmfile-release-sync", () => ({
+mock.module("@jitl/quickjs-wasmfile-release-sync", () => ({
   default: {},
 }));
 
@@ -367,8 +375,8 @@ describe("POST /run — KV session caching", () => {
   it("KV cache HIT → replays cached events with X-Agentkit-Cache: HIT", async () => {
     const cachedEvents: AgentEvent[] = [mockFinalAnswerEvent];
     const mockKV = {
-      get: vi.fn().mockResolvedValue(JSON.stringify(cachedEvents)),
-      put: vi.fn().mockResolvedValue(undefined),
+      get: mock().mockResolvedValue(JSON.stringify(cachedEvents)),
+      put: mock().mockResolvedValue(undefined),
     };
     const res = await runPost({ task: "cached task" }, makeEnv({ AGENTKIT_SESSIONS: mockKV }));
     expect(res.status).toBe(200);
@@ -378,9 +386,9 @@ describe("POST /run — KV session caching", () => {
   });
 
   it("KV cache MISS → runs agent and writes to KV on success", async () => {
-    const putMock = vi.fn().mockResolvedValue(undefined);
+    const putMock = mock().mockResolvedValue(undefined);
     const mockKV = {
-      get: vi.fn().mockResolvedValue(null),
+      get: mock().mockResolvedValue(null),
       put: putMock,
     };
     const res = await runPost({ task: "new task" }, makeEnv({ AGENTKIT_SESSIONS: mockKV }));
@@ -394,8 +402,8 @@ describe("POST /run — KV session caching", () => {
 
   it("corrupted KV cache → 500 error", async () => {
     const mockKV = {
-      get: vi.fn().mockResolvedValue("not valid json {{{"),
-      put: vi.fn(),
+      get: mock().mockResolvedValue("not valid json {{{"),
+      put: mock(),
     };
     const res = await runPost({ task: "cached" }, makeEnv({ AGENTKIT_SESSIONS: mockKV }));
     expect(res.status).toBe(500);
@@ -412,14 +420,14 @@ describe("POST /resume — HITL persisted resume (A3)", () => {
     const map = new Map<string, string>();
     return {
       map,
-      get: vi.fn(async (k: string) => map.get(k) ?? null),
-      put: vi.fn(async (k: string, v: string) => {
+      get: mock(async (k: string) => map.get(k) ?? null),
+      put: mock(async (k: string, v: string) => {
         map.set(k, v);
       }),
-      delete: vi.fn(async (k: string) => {
+      delete: mock(async (k: string) => {
         map.delete(k);
       }),
-      list: vi.fn(async (opts: { prefix?: string }) => ({
+      list: mock(async (opts: { prefix?: string }) => ({
         keys: [...map.keys()]
           .filter((k) => k.startsWith(opts?.prefix ?? ""))
           .map((name) => ({ name })),

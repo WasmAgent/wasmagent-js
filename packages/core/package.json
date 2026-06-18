@@ -26,7 +26,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
+    "test": "bun test",
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
@@ -45,8 +45,7 @@
     "@anthropic-ai/sdk": "^0.55.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "openai": "^4.90.0",
-    "typescript": "^5.7.0",
-    "vitest": "^2.1.0"
+    "typescript": "^5.7.0"
   },
   "license": "Apache-2.0",
   "repository": {

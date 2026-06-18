@@ -6,24 +6,39 @@
  * the agent and kernel because we don't want to call out to a real model.
  */
 
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { AgentEvent } from "@wasmagent/core";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { KvCheckpointer, resumeFromHuman } from "../../core/src/checkpoint/index.js";
+import { EventLog, formatSseFrame } from "../../core/src/streaming/EventLog.js";
 import { type CloudflareKVNamespace, CloudflareKvBackend } from "./kvAdapters.js";
 
 // ── Agent + kernel mocks (model-free) ─────────────────────────────────────────
 let mockAgentEvents: AgentEvent[] = [];
 
-vi.mock("@wasmagent/kernel-quickjs", () => ({ QuickJSKernel: class {} }));
-vi.mock("quickjs-emscripten-core", () => ({ newQuickJSWASMModuleFromVariant: vi.fn() }));
-vi.mock("@jitl/quickjs-wasmfile-release-sync", () => ({ default: {} }));
+mock.module("@wasmagent/kernel-quickjs", () => ({ QuickJSKernel: class {} }));
+mock.module("quickjs-emscripten-core", () => ({ newQuickJSWASMModuleFromVariant: mock() }));
+mock.module("@jitl/quickjs-wasmfile-release-sync", () => ({ default: {} }));
 
-// We cannot import @wasmagent/core's CodeAgent/AnthropicModel without bundling
-// a model adapter, so we do partial-mock just those exports while letting
-// EventLog / formatSseFrame come through real.
-vi.mock("@wasmagent/core", async (importOriginal) => {
-  const real = await importOriginal<typeof import("@wasmagent/core")>();
+// Partial mock: override only agent/model classes, pass real EventLog/formatSseFrame through.
+mock.module("@wasmagent/core", () => {
   return {
-    ...real,
+    EventLog,
+    formatSseFrame,
+    KvCheckpointer,
+    resumeFromHuman,
+    CheckpointableRun: class {
+      run<T>(source: AsyncGenerator<T>) {
+        return source;
+      }
+    },
+    KvWorkflowStateStore: class {},
+    GoalDirectedAgent: class {
+      run() {
+        return (async function* () {
+          for (const e of mockAgentEvents) yield e;
+        })();
+      }
+    },
     CodeAgent: class {
       run() {
         return (async function* () {
@@ -179,7 +194,6 @@ describe("POST /run — Last-Event-ID SSE resume (A2)", () => {
     // hook, so we exercise resume through the EventLog primitive directly:
     // server-side handler logic uses replay() then nextSeq(); we assert the
     // semantics here in lieu of a full HTTP round-trip.
-    const { EventLog } = await import("@wasmagent/core");
     const log = new EventLog(backend);
 
     const replayed = [];

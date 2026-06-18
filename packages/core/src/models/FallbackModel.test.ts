@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { FallbackModel } from "./FallbackModel.js";
 import type { Model, StreamEvent } from "./types.js";
 
@@ -108,11 +107,13 @@ describe("FallbackModel (C3)", () => {
     const m2 = mockModel([{ error: serverError(503) }]);
     const fallback = new FallbackModel([m1, m2]);
 
-    await expect(async () => {
-      for await (const _ of fallback.generate([{ role: "user", content: "q" }])) {
-        /* consume */
-      }
-    }).rejects.toThrow();
+    await expect(
+      (async () => {
+        for await (const _ of fallback.generate([{ role: "user", content: "q" }])) {
+          /* consume */
+        }
+      })()
+    ).rejects.toThrow();
   });
 
   it("single model — behaves like a direct Model passthrough", async () => {

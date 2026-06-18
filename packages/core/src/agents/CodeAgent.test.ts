@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { CodeAgent } from "../agents/CodeAgent.js";
 import type { Model, ModelMessage, StreamEvent } from "../models/types.js";

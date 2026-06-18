@@ -13,7 +13,6 @@
  *   8. Cancellation propagates to in-flight tools.
  */
 
-import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { ToolRegistry } from "../tools/ToolRegistry.js";
 import type { ToolDefinition } from "../tools/types.js";

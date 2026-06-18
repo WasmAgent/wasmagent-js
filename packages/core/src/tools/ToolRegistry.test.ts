@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { ToolRegistry, zodToJsonSchema } from "../tools/ToolRegistry.js";
 import type { AgentPrincipal, ToolDefinition } from "../tools/types.js";

@@ -10,7 +10,6 @@
  * Plus error-path tests (empty cohort, empty perturbations).
  */
 
-import { describe, expect, it } from "vitest";
 import { type IptCohort, iptClassify, iptShortcutRate } from "./ipt.js";
 
 describe("iptShortcutRate — clean cohort (model invariant)", () => {

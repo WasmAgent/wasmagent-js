@@ -9,9 +9,9 @@
  * write-spy for stdout. The framing rules are what matter.
  */
 
+import { describe, expect, it, spyOn } from "bun:test";
 import { Readable } from "node:stream";
 import { ToolRegistry, VmKernel } from "@wasmagent/core";
-import { describe, expect, it, vi } from "vitest";
 import { createCodeModeServer } from "./codeMode.js";
 import { runStdio } from "./stdio.js";
 
@@ -35,10 +35,9 @@ async function driveStdio(lines: string[]): Promise<Record<string, unknown>[]> {
   const out: Record<string, unknown>[] = [];
 
   const stdinSrc = Readable.from(lines.map((l) => `${l}\n`));
-  const stdinSpy = vi.spyOn(process, "stdin", "get").mockReturnValue(stdinSrc as never);
-  const writeSpy = vi
-    .spyOn(process.stdout, "write")
-    .mockImplementation((chunk: string | Uint8Array) => {
+  const stdinSpy = spyOn(process, "stdin", "get").mockReturnValue(stdinSrc as never);
+  const writeSpy = spyOn(process.stdout, "write").mockImplementation(
+    (chunk: string | Uint8Array) => {
       const s = typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8");
       // The contract: one JSON object per write, terminated by exactly one \n.
       // If a future change ever splits an object across writes we want the
@@ -49,7 +48,8 @@ async function driveStdio(lines: string[]): Promise<Record<string, unknown>[]> {
       expect(trimmed.includes("\n")).toBe(false);
       out.push(JSON.parse(trimmed) as Record<string, unknown>);
       return true;
-    });
+    }
+  );
 
   try {
     await runStdio(server);

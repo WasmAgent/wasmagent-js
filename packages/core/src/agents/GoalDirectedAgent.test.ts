@@ -21,7 +21,6 @@
  *   6. extra verifiers register and dispatch alongside built-ins
  */
 
-import { describe, expect, it } from "vitest";
 import type { Model, ModelMessage, StreamEvent } from "../models/types.js";
 import type { ToolDefinition } from "../tools/types.js";
 import {

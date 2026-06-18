@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { StreamEvent } from "@wasmagent/core/models";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type OAIChunk = {
   choices: Array<{
@@ -8,6 +8,23 @@ type OAIChunk = {
   }>;
   usage?: { prompt_tokens: number; completion_tokens: number } | null;
 };
+
+// Shared mutable mock state — mutated per-test before calling generate()
+let mockCreateImpl: ((params: Record<string, unknown>) => Promise<AsyncIterable<OAIChunk>>) | null =
+  null;
+
+mock.module("openai", () => ({
+  default: class MockOpenAI {
+    chat = {
+      completions: {
+        create: mock((params: Record<string, unknown>) => mockCreateImpl?.(params)),
+      },
+    };
+  },
+}));
+
+// Import after mock.module so the mock is in place
+import { GLMModels, ZhipuModel } from "./index.js";
 
 function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
   return {
@@ -26,27 +43,22 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
 async function collectEvents(
   chunks: OAIChunk[],
   modelId = "glm-5",
-  opts: Parameters<import("./index.js").ZhipuModel["generate"]>[1] = {},
+  opts: Parameters<ZhipuModel["generate"]>[1] = {},
   captureParams?: { ref: Record<string, unknown> | null }
 ): Promise<StreamEvent[]> {
-  const mockCreate = vi.fn().mockImplementation((params: Record<string, unknown>) => {
+  mockCreateImpl = (params: Record<string, unknown>) => {
     if (captureParams) captureParams.ref = params;
     return Promise.resolve(makeChunkStream(chunks));
-  });
-  vi.doMock("openai", () => ({
-    default: vi.fn().mockImplementation(() => ({ chat: { completions: { create: mockCreate } } })),
-  }));
-  const { ZhipuModel } = await import("./index.js?t=" + Date.now() + "");
+  };
   const model = new ZhipuModel(modelId, "key");
   const events: StreamEvent[] = [];
   for await (const e of model.generate([{ role: "user", content: "x" }], opts)) events.push(e);
-  vi.doUnmock("openai");
   return events;
 }
 
 describe("ZhipuModel", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockCreateImpl = null;
   });
 
   it("emits text_delta for content", async () => {
@@ -130,11 +142,8 @@ describe("ZhipuModel", () => {
 
   // ── L10-2: Model constants ───────────────────────────────────────────────
 
-  it("GLMModels.LATEST is defined and points to glm-5", async () => {
-    vi.doMock("openai", () => ({ default: vi.fn() }));
-    const { GLMModels } = await import("./index.js?t=" + Date.now() + "e");
+  it("GLMModels.LATEST is defined and points to glm-5", () => {
     expect(typeof GLMModels.LATEST).toBe("string");
     expect(GLMModels.LATEST).toBe("glm-5");
-    vi.doUnmock("openai");
   });
 });

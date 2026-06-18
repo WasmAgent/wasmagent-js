@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { braveSearchTool, LruCache, perplexityAskTool, tavilySearchTool } from "./index.js";
 
 const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
-  globalThis.fetch = vi.fn() as unknown as typeof fetch;
+  globalThis.fetch = mock() as unknown as typeof fetch;
 });
 
 afterEach(() => {
@@ -44,7 +44,7 @@ describe("LruCache", () => {
 
 describe("tavilySearchTool", () => {
   it("calls Tavily endpoint with the query and api key", async () => {
-    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+    (globalThis.fetch as unknown as ReturnType<typeof mock>).mockResolvedValueOnce(
       new Response(
         JSON.stringify({
           results: [
@@ -66,7 +66,7 @@ describe("tavilySearchTool", () => {
 
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     const [url, init] =
-      (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0] ?? [];
+      (globalThis.fetch as unknown as ReturnType<typeof mock>).mock.calls[0] ?? [];
     expect(url).toBe("https://api.tavily.com/search");
     const body = JSON.parse((init as RequestInit).body as string);
     expect(body.api_key).toBe("tvly-test");
@@ -78,7 +78,7 @@ describe("tavilySearchTool", () => {
   });
 
   it("caches identical queries within TTL", async () => {
-    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+    (globalThis.fetch as unknown as ReturnType<typeof mock>).mockResolvedValueOnce(
       new Response(JSON.stringify({ results: [{ title: "A", url: "u", content: "c" }] }), {
         status: 200,
       })
@@ -90,7 +90,7 @@ describe("tavilySearchTool", () => {
   });
 
   it("throws on non-2xx", async () => {
-    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+    (globalThis.fetch as unknown as ReturnType<typeof mock>).mockResolvedValueOnce(
       new Response("rate limited", { status: 429 })
     );
     const tool = tavilySearchTool({ apiKey: "k" });
@@ -106,7 +106,7 @@ describe("tavilySearchTool", () => {
 
 describe("braveSearchTool", () => {
   it("uses X-Subscription-Token header and limits count", async () => {
-    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+    (globalThis.fetch as unknown as ReturnType<typeof mock>).mockResolvedValueOnce(
       new Response(
         JSON.stringify({
           web: {
@@ -124,7 +124,7 @@ describe("braveSearchTool", () => {
     const out = await tool.forward({ query: "deno" }, {} as never);
 
     const [url, init] =
-      (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0] ?? [];
+      (globalThis.fetch as unknown as ReturnType<typeof mock>).mock.calls[0] ?? [];
     expect(String(url)).toContain("api.search.brave.com");
     expect(String(url)).toContain("q=deno");
     expect((init as RequestInit).headers).toMatchObject({ "X-Subscription-Token": "brv-key" });
@@ -138,7 +138,7 @@ describe("braveSearchTool", () => {
   });
 
   it("respects maxResults truncation", async () => {
-    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+    (globalThis.fetch as unknown as ReturnType<typeof mock>).mockResolvedValueOnce(
       new Response(
         JSON.stringify({
           web: {
@@ -160,7 +160,7 @@ describe("braveSearchTool", () => {
 
 describe("perplexityAskTool", () => {
   it("calls Perplexity chat completions and returns answer + citations", async () => {
-    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+    (globalThis.fetch as unknown as ReturnType<typeof mock>).mockResolvedValueOnce(
       new Response(
         JSON.stringify({
           choices: [{ message: { content: "Answer with [1] cite." } }],
@@ -174,7 +174,7 @@ describe("perplexityAskTool", () => {
     const out = await tool.forward({ query: "Why is the sky blue?" }, {} as never);
 
     const [url, init] =
-      (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0] ?? [];
+      (globalThis.fetch as unknown as ReturnType<typeof mock>).mock.calls[0] ?? [];
     expect(url).toBe("https://api.perplexity.ai/chat/completions");
     expect((init as RequestInit).headers).toMatchObject({ Authorization: "Bearer pplx-key" });
     expect(out.answer).toContain("[1]");
@@ -182,7 +182,7 @@ describe("perplexityAskTool", () => {
   });
 
   it("returns empty answer when API gives no choices", async () => {
-    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+    (globalThis.fetch as unknown as ReturnType<typeof mock>).mockResolvedValueOnce(
       new Response(JSON.stringify({}), { status: 200 })
     );
     const tool = perplexityAskTool({ apiKey: "k" });
@@ -194,7 +194,7 @@ describe("perplexityAskTool", () => {
 
 describe("provider tools share common SearchResult shape", () => {
   it("tavily and brave outputs are structurally compatible", async () => {
-    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof mock>;
 
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ results: [{ title: "T", url: "u", content: "c" }] }), {

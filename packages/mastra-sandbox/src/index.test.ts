@@ -9,7 +9,6 @@
  */
 
 import { JsKernel } from "@wasmagent/core";
-import { describe, expect, it } from "vitest";
 import { agentkitMastraSandbox } from "./index.js";
 
 describe("agentkitMastraSandbox", () => {

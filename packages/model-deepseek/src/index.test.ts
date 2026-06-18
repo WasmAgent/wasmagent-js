@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { StreamEvent } from "@wasmagent/core/models";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type OAIChunk = {
   choices: Array<{
@@ -16,6 +16,27 @@ type OAIChunk = {
   }>;
   usage?: { prompt_tokens: number; completion_tokens: number } | null;
 };
+
+// Shared mutable mock state — set before each test invocation
+let mockCreateImpl: ((params: Record<string, unknown>) => unknown) | null = null;
+let capturedConstructorOpts: Record<string, unknown> | null = null;
+
+mock.module("openai", () => {
+  return {
+    default: class MockOpenAI {
+      constructor(opts: Record<string, unknown>) {
+        capturedConstructorOpts = opts;
+      }
+      chat = {
+        completions: {
+          create: mock((params: Record<string, unknown>) => mockCreateImpl?.(params)),
+        },
+      };
+    },
+  };
+});
+
+import { DEEPSEEK_BASE_URL, DeepSeekModel, DeepSeekModels } from "./index.js";
 
 function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
   return {
@@ -34,32 +55,25 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
 async function collectEvents(
   chunks: OAIChunk[],
   modelId = "deepseek-v4-pro",
-  opts: Parameters<import("./index.js").DeepSeekModel["generate"]>[1] = {},
+  opts: Parameters<DeepSeekModel["generate"]>[1] = {},
   captureParams?: { ref: Record<string, unknown> | null }
 ): Promise<StreamEvent[]> {
-  const mockCreate = vi.fn().mockImplementation((params: Record<string, unknown>) => {
+  mockCreateImpl = (params: Record<string, unknown>) => {
     if (captureParams) captureParams.ref = params;
     return Promise.resolve(makeChunkStream(chunks));
-  });
-  const MockOpenAI = vi.fn().mockImplementation(() => ({
-    chat: { completions: { create: mockCreate } },
-  }));
-  vi.doMock("openai", () => ({ default: MockOpenAI }));
-
-  const { DeepSeekModel } = await import("./index.js?t=" + Date.now() + "");
+  };
   const model = new DeepSeekModel(modelId, "test-key");
-
   const events: StreamEvent[] = [];
   for await (const e of model.generate([{ role: "user", content: "test" }], opts)) {
     events.push(e);
   }
-  vi.doUnmock("openai");
   return events;
 }
 
 describe("DeepSeekModel", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockCreateImpl = null;
+    capturedConstructorOpts = null;
   });
 
   it("emits text_delta for normal content", async () => {
@@ -96,38 +110,22 @@ describe("DeepSeekModel", () => {
   });
 
   it("uses DEEPSEEK_BASE_URL as base URL", async () => {
-    let capturedBaseURL: string | undefined;
-    const MockOpenAI = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
-      capturedBaseURL = opts.baseURL as string;
-      return {
-        chat: {
-          completions: {
-            create: vi
-              .fn()
-              .mockResolvedValue(
-                makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])
-              ),
-          },
-        },
-      };
-    });
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { DeepSeekModel, DEEPSEEK_BASE_URL } = await import("./index.js?t=" + Date.now() + "u");
+    capturedConstructorOpts = null;
+    mockCreateImpl = () =>
+      Promise.resolve(makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }]));
     const model = new DeepSeekModel("deepseek-chat", "key");
     for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
       /* consume */
     }
-    expect(capturedBaseURL).toBe(DEEPSEEK_BASE_URL);
-    vi.doUnmock("openai");
+    expect((capturedConstructorOpts as Record<string, unknown> | null)?.baseURL).toBe(
+      DEEPSEEK_BASE_URL
+    );
   });
 
-  it("DeepSeekModels.LATEST is defined and V4_FLASH is a string", async () => {
-    vi.doMock("openai", () => ({ default: vi.fn() }));
-    const { DeepSeekModels } = await import("./index.js?t=" + Date.now() + "e");
+  it("DeepSeekModels.LATEST is defined and V4_FLASH is a string", () => {
     expect(typeof DeepSeekModels.LATEST).toBe("string");
     expect(typeof DeepSeekModels.V4_FLASH).toBe("string");
     expect(DeepSeekModels.V4_FLASH).toBe("deepseek-v4-flash");
-    vi.doUnmock("openai");
   });
 
   // ── Thinking mode params ────────────────────────────────────────────────

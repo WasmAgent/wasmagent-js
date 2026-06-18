@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { PyodideKernel } from "./PyodideKernel.js";
 
 describe("PyodideKernel (A4)", () => {

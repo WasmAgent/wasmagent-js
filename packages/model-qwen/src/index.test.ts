@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { StreamEvent } from "@wasmagent/core/models";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type OAIChunk = {
   choices: Array<{
@@ -23,30 +23,55 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
   };
 }
 
+// Shared mutable mock state
+let mockCreateImpl: ((params: Record<string, unknown>) => unknown) | null = null;
+let mockConstructorImpl: ((opts: Record<string, unknown>) => unknown) | null = null;
+
+mock.module("openai", () => {
+  return {
+    default: class MockOpenAI {
+      constructor(opts: Record<string, unknown>) {
+        if (mockConstructorImpl) {
+          const result = mockConstructorImpl(opts);
+          Object.assign(this as Record<string, unknown>, result as Record<string, unknown>);
+          return;
+        }
+        (this as Record<string, unknown>).chat = {
+          completions: {
+            create: mock((params: Record<string, unknown>) => {
+              if (mockCreateImpl) return mockCreateImpl(params);
+              return Promise.resolve(makeChunkStream([]));
+            }),
+          },
+        };
+      }
+    },
+  };
+});
+
+import { QWEN_BASE_URL, QWEN_INTL_BASE_URL, QwenModel, QwenModels } from "./index.js";
+
 async function collectEvents(
   chunks: OAIChunk[],
   modelId = "qwen3-max",
-  opts: Parameters<import("./index.js").QwenModel["generate"]>[1] = {},
+  opts: Parameters<QwenModel["generate"]>[1] = {},
   captureParams?: { ref: Record<string, unknown> | null }
 ): Promise<StreamEvent[]> {
-  const mockCreate = vi.fn().mockImplementation((params: Record<string, unknown>) => {
+  mockCreateImpl = (params: Record<string, unknown>) => {
     if (captureParams) captureParams.ref = params;
     return Promise.resolve(makeChunkStream(chunks));
-  });
-  vi.doMock("openai", () => ({
-    default: vi.fn().mockImplementation(() => ({ chat: { completions: { create: mockCreate } } })),
-  }));
-  const { QwenModel } = await import("./index.js?t=" + Date.now() + "");
+  };
+  mockConstructorImpl = null;
   const model = new QwenModel(modelId, "key");
   const events: StreamEvent[] = [];
   for await (const e of model.generate([{ role: "user", content: "x" }], opts)) events.push(e);
-  vi.doUnmock("openai");
   return events;
 }
 
 describe("QwenModel", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockCreateImpl = null;
+    mockConstructorImpl = null;
   });
 
   it("emits text_delta for content", async () => {
@@ -138,60 +163,47 @@ describe("QwenModel", () => {
 
   it("region:intl uses intl base URL", async () => {
     let capturedBase: string | undefined;
-    const MockOpenAI = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
+    mockConstructorImpl = (opts: Record<string, unknown>) => {
       capturedBase = opts.baseURL as string;
       return {
         chat: {
           completions: {
-            create: vi
-              .fn()
-              .mockResolvedValue(
-                makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])
-              ),
+            create: mock().mockResolvedValue(
+              makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])
+            ),
           },
         },
       };
-    });
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { QwenModel, QWEN_INTL_BASE_URL } = await import("./index.js?t=" + Date.now() + "r");
+    };
     const model = new QwenModel("qwen3-max", { region: "intl" });
     for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
       /* consume */
     }
     expect(capturedBase).toBe(QWEN_INTL_BASE_URL);
-    vi.doUnmock("openai");
   });
 
   it("default region uses CN base URL", async () => {
     let capturedBase: string | undefined;
-    const MockOpenAI = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
+    mockConstructorImpl = (opts: Record<string, unknown>) => {
       capturedBase = opts.baseURL as string;
       return {
         chat: {
           completions: {
-            create: vi
-              .fn()
-              .mockResolvedValue(
-                makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])
-              ),
+            create: mock().mockResolvedValue(
+              makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])
+            ),
           },
         },
       };
-    });
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { QwenModel, QWEN_BASE_URL } = await import("./index.js?t=" + Date.now() + "s");
+    };
     const model = new QwenModel("qwen3-max", "key");
     for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
       /* consume */
     }
     expect(capturedBase).toBe(QWEN_BASE_URL);
-    vi.doUnmock("openai");
   });
 
   it("QwenModels.LATEST is defined", async () => {
-    vi.doMock("openai", () => ({ default: vi.fn() }));
-    const { QwenModels } = await import("./index.js?t=" + Date.now() + "e");
     expect(typeof QwenModels.LATEST).toBe("string");
-    vi.doUnmock("openai");
   });
 });

@@ -8,7 +8,6 @@
  *  - SSE frame formatting includes the id: line
  */
 
-import { describe, expect, it } from "vitest";
 import { MapKvBackend } from "../memory/MemoryTool.js";
 import type { AgentEvent } from "../types/events.js";
 import { EventLog, formatSseFrame } from "./EventLog.js";

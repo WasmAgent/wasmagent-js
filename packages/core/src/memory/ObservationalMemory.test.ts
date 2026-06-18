@@ -11,7 +11,6 @@
  *   - list() merges KV-backed reads with the in-memory cache
  */
 
-import { afterEach, describe, expect, it } from "vitest";
 import type { Model, ModelMessage, StreamEvent } from "../models/types.js";
 import { MapKvBackend } from "./MemoryTool.js";
 import { MessageAssembler } from "./MessageAssembler.js";

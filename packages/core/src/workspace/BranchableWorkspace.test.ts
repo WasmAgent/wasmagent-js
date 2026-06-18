@@ -12,7 +12,6 @@
  *   - branch isolation: writes never leak across siblings.
  */
 
-import { describe, expect, it } from "vitest";
 import { MapKvBackend } from "../memory/MemoryTool.js";
 import {
   BranchableWorkspace,

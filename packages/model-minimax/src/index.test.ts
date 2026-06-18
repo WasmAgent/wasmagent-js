@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { StreamEvent } from "@wasmagent/core/models";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type OAIChunk = {
   choices: Array<{
@@ -26,30 +26,56 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
   };
 }
 
+// ── Shared mutable mock state ────────────────────────────────────────────────
+
+/** Controls what chat.completions.create returns for the current test. */
+let mockCreateImpl: ((params: Record<string, unknown>) => unknown) | null = null;
+/** Captures the baseURL passed to the OpenAI constructor in the current test. */
+let capturedBaseURL: string | undefined;
+
+mock.module("openai", () => {
+  return {
+    default: class MockOpenAI {
+      constructor(opts?: Record<string, unknown>) {
+        capturedBaseURL = opts?.baseURL as string | undefined;
+      }
+      chat = {
+        completions: {
+          create: mock((params: Record<string, unknown>) =>
+            mockCreateImpl ? mockCreateImpl(params) : Promise.resolve(makeChunkStream([]))
+          ),
+        },
+      };
+    },
+  };
+});
+
+import { getModelMeta } from "@wasmagent/core/models";
+// Import the module AFTER mock.module() so the mock is in effect.
+import { MINIMAX_BASE_URL, MINIMAX_CN_BASE_URL, MiniMaxModel, MiniMaxModels } from "./index.js";
+
+// ── Helper ───────────────────────────────────────────────────────────────────
+
 async function collectEvents(
   chunks: OAIChunk[],
   modelId = "MiniMax-M3",
-  opts: Parameters<import("./index.js").MiniMaxModel["generate"]>[1] = {},
+  opts: Parameters<MiniMaxModel["generate"]>[1] = {},
   captureParams?: { ref: Record<string, unknown> | null }
 ): Promise<StreamEvent[]> {
-  const mockCreate = vi.fn().mockImplementation((params: Record<string, unknown>) => {
+  mockCreateImpl = (params: Record<string, unknown>) => {
     if (captureParams) captureParams.ref = params;
     return Promise.resolve(makeChunkStream(chunks));
-  });
-  vi.doMock("openai", () => ({
-    default: vi.fn().mockImplementation(() => ({ chat: { completions: { create: mockCreate } } })),
-  }));
-  const { MiniMaxModel } = await import("./index.js?t=" + Date.now() + "");
+  };
   const model = new MiniMaxModel(modelId, "key");
   const events: StreamEvent[] = [];
   for await (const e of model.generate([{ role: "user", content: "hi" }], opts)) events.push(e);
-  vi.doUnmock("openai");
   return events;
 }
 
 describe("MiniMaxModel", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockCreateImpl = null;
+    capturedBaseURL = undefined;
   });
 
   // ── Basic events ────────────────────────────────────────────────────────
@@ -73,56 +99,24 @@ describe("MiniMaxModel", () => {
   // ── L11-1: Base URL ──────────────────────────────────────────────────────
 
   it("default uses MINIMAX_BASE_URL (api.minimax.io)", async () => {
-    let capturedBase: string | undefined;
-    const MockOpenAI = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
-      capturedBase = opts.baseURL as string;
-      return {
-        chat: {
-          completions: {
-            create: vi
-              .fn()
-              .mockResolvedValue(
-                makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])
-              ),
-          },
-        },
-      };
-    });
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { MiniMaxModel, MINIMAX_BASE_URL } = await import("./index.js?t=" + Date.now() + "b");
+    mockCreateImpl = () =>
+      Promise.resolve(makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }]));
     const model = new MiniMaxModel("MiniMax-M3", "key");
     for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
       /* consume */
     }
-    expect(capturedBase).toBe(MINIMAX_BASE_URL);
+    expect(capturedBaseURL).toBe(MINIMAX_BASE_URL);
     expect(MINIMAX_BASE_URL).toBe("https://api.minimax.io/v1");
-    vi.doUnmock("openai");
   });
 
   it("region:cn uses MINIMAX_CN_BASE_URL (api.minimaxi.com)", async () => {
-    let capturedBase: string | undefined;
-    const MockOpenAI = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
-      capturedBase = opts.baseURL as string;
-      return {
-        chat: {
-          completions: {
-            create: vi
-              .fn()
-              .mockResolvedValue(
-                makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])
-              ),
-          },
-        },
-      };
-    });
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { MiniMaxModel, MINIMAX_CN_BASE_URL } = await import("./index.js?t=" + Date.now() + "c");
+    mockCreateImpl = () =>
+      Promise.resolve(makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }]));
     const model = new MiniMaxModel("MiniMax-M3", { region: "cn" });
     for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
       /* consume */
     }
-    expect(capturedBase).toBe(MINIMAX_CN_BASE_URL);
-    vi.doUnmock("openai");
+    expect(capturedBaseURL).toBe(MINIMAX_CN_BASE_URL);
   });
 
   // ── L11-2: M2+ reasoning — reasoning_split=true (default) ───────────────
@@ -187,7 +181,7 @@ describe("MiniMaxModel", () => {
   // ── L11-2: M2+ reasoning — reasoning_split=false (<think> parsing) ──────
 
   it("reasoning_split=false: <think>...</think> in content → thinking_delta", async () => {
-    const mockCreate = vi.fn().mockImplementation(() =>
+    mockCreateImpl = () =>
       Promise.resolve(
         makeChunkStream([
           {
@@ -199,18 +193,10 @@ describe("MiniMaxModel", () => {
             ],
           },
         ])
-      )
-    );
-    vi.doMock("openai", () => ({
-      default: vi
-        .fn()
-        .mockImplementation(() => ({ chat: { completions: { create: mockCreate } } })),
-    }));
-    const { MiniMaxModel } = await import("./index.js?t=" + Date.now() + "t");
+      );
     const model = new MiniMaxModel("MiniMax-M3", { reasoningSplit: false });
     const events: StreamEvent[] = [];
     for await (const e of model.generate([{ role: "user", content: "hi" }])) events.push(e);
-    vi.doUnmock("openai");
     const thinking = events.filter((e) => e.type === "thinking_delta");
     expect(thinking[0]?.delta).toBe("inner reasoning");
     const text = events.filter((e) => e.type === "text_delta");
@@ -221,7 +207,7 @@ describe("MiniMaxModel", () => {
   });
 
   it("reasoning_split=false: <think> split across chunks handled correctly", async () => {
-    const mockCreate = vi.fn().mockImplementation(() =>
+    mockCreateImpl = () =>
       Promise.resolve(
         makeChunkStream([
           { choices: [{ delta: { content: "<thi" }, finish_reason: null }] },
@@ -231,18 +217,10 @@ describe("MiniMaxModel", () => {
             ],
           },
         ])
-      )
-    );
-    vi.doMock("openai", () => ({
-      default: vi
-        .fn()
-        .mockImplementation(() => ({ chat: { completions: { create: mockCreate } } })),
-    }));
-    const { MiniMaxModel } = await import("./index.js?t=" + Date.now() + "x");
+      );
     const model = new MiniMaxModel("MiniMax-M3", { reasoningSplit: false });
     const events: StreamEvent[] = [];
     for await (const e of model.generate([{ role: "user", content: "hi" }])) events.push(e);
-    vi.doUnmock("openai");
     const thinking = events.filter((e) => e.type === "thinking_delta");
     expect(thinking.map((e) => e.delta).join("")).toBe("thinking text");
     const text = events
@@ -253,19 +231,13 @@ describe("MiniMaxModel", () => {
   });
 
   it("getModelMeta for MiniMax-M2.7 shows isReasoning:true", async () => {
-    vi.doMock("openai", () => ({ default: vi.fn() }));
-    const { getModelMeta } = await import("@wasmagent/core/models");
     expect(getModelMeta("MiniMax-M2.7").isReasoning).toBe(true);
-    vi.doUnmock("openai");
   });
 
   // ── Model constants ──────────────────────────────────────────────────────
 
   it("MiniMaxModels.LATEST is defined as MiniMax-M3", async () => {
-    vi.doMock("openai", () => ({ default: vi.fn() }));
-    const { MiniMaxModels } = await import("./index.js?t=" + Date.now() + "e");
     expect(typeof MiniMaxModels.LATEST).toBe("string");
     expect(MiniMaxModels.LATEST).toBe("MiniMax-M3");
-    vi.doUnmock("openai");
   });
 });

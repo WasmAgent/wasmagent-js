@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { createMemoryTool, MapKvBackend } from "../memory/MemoryTool.js";
 
 describe("MemoryTool (L2-2)", () => {

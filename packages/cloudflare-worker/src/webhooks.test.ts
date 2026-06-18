@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, mock } from "bun:test";
 import { configFromEnv, sendWebhook, type WebhookPayload } from "./webhooks.js";
 
 const samplePayload: WebhookPayload = {
@@ -12,7 +12,7 @@ const samplePayload: WebhookPayload = {
 
 describe("sendWebhook", () => {
   it("sends to all configured URLs", async () => {
-    const fetcher = vi.fn(async () => new Response("ok", { status: 200 }));
+    const fetcher = mock(async () => new Response("ok", { status: 200 }));
     const results = await sendWebhook(samplePayload, {
       config: { urls: ["https://a", "https://b"] },
       fetcher: fetcher as typeof fetch,
@@ -23,7 +23,7 @@ describe("sendWebhook", () => {
 
   it("retries on failure and reports final attempts", async () => {
     let calls = 0;
-    const fetcher = vi.fn(async () => {
+    const fetcher = mock(async () => {
       calls++;
       return new Response("nope", { status: 500 });
     });
@@ -38,7 +38,7 @@ describe("sendWebhook", () => {
 
   it("signs the payload with HMAC when secret is configured", async () => {
     const calls: { url: string; signature: string | null; body: string }[] = [];
-    const fetcher = vi.fn(async (url: string | Request, init?: RequestInit) => {
+    const fetcher = mock(async (url: string | Request, init?: RequestInit) => {
       const headers = init?.headers as Record<string, string>;
       const signature = headers?.["X-Agentkit-Signature"] ?? null;
       calls.push({ url: String(url), signature, body: init?.body as string });
@@ -54,7 +54,7 @@ describe("sendWebhook", () => {
   it("writes failed deliveries to DLQ backend", async () => {
     const dlqStore = new Map<string, string>();
     const dlqBackend = { put: async (k: string, v: string) => void dlqStore.set(k, v) };
-    const fetcher = vi.fn(async () => new Response("nope", { status: 500 }));
+    const fetcher = mock(async () => new Response("nope", { status: 500 }));
     await sendWebhook(samplePayload, {
       config: { urls: ["https://x"], maxRetries: 2 },
       fetcher: fetcher as typeof fetch,

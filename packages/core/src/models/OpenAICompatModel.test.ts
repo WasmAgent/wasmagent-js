@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { convertCompatMessages } from "./OpenAICompatModel.js";
 import type { ModelMessage } from "./types.js";
 

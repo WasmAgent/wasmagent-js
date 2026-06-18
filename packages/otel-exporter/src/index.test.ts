@@ -1,5 +1,5 @@
+import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 import type { ReadableSpan } from "@wasmagent/core";
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { OtlpHttpExporter } from "./index.js";
 
 function makeSpan(overrides: Partial<ReadableSpan> = {}): ReadableSpan {
@@ -19,12 +19,12 @@ function makeSpan(overrides: Partial<ReadableSpan> = {}): ReadableSpan {
 
 describe("OtlpHttpExporter", () => {
   afterEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
   });
 
   it("fires POST to /v1/traces with correct content-type", async () => {
-    const fetchSpy = vi.fn().mockResolvedValue({ ok: true, text: async () => "" } as Response);
-    vi.stubGlobal("fetch", fetchSpy);
+    const fetchSpy = mock().mockResolvedValue({ ok: true, text: async () => "" } as Response);
+    globalThis.fetch = fetchSpy;
 
     const exporter = new OtlpHttpExporter({ endpoint: "http://collector:4318" });
     await exporter.exportAsync([makeSpan()]);
@@ -37,11 +37,11 @@ describe("OtlpHttpExporter", () => {
 
   it("includes resourceSpans with service.name in payload", async () => {
     let capturedBody = "";
-    const fetchSpy = vi.fn().mockImplementation(async (_url: string, init: RequestInit) => {
+    const fetchSpy = mock().mockImplementation(async (_url: string, init: RequestInit) => {
       capturedBody = init.body as string;
       return { ok: true, text: async () => "" } as Response;
     });
-    vi.stubGlobal("fetch", fetchSpy);
+    globalThis.fetch = fetchSpy;
 
     const exporter = new OtlpHttpExporter({
       endpoint: "http://localhost:4318",
@@ -64,11 +64,11 @@ describe("OtlpHttpExporter", () => {
 
   it("encodes span traceId and spanId as padded hex", async () => {
     let capturedBody = "";
-    const fetchSpy = vi.fn().mockImplementation(async (_url: string, init: RequestInit) => {
+    const fetchSpy = mock().mockImplementation(async (_url: string, init: RequestInit) => {
       capturedBody = init.body as string;
       return { ok: true, text: async () => "" } as Response;
     });
-    vi.stubGlobal("fetch", fetchSpy);
+    globalThis.fetch = fetchSpy;
 
     const exporter = new OtlpHttpExporter();
     await exporter.exportAsync([makeSpan()]);
@@ -82,11 +82,11 @@ describe("OtlpHttpExporter", () => {
 
   it("maps span status ok → code 1, error → code 2", async () => {
     let capturedBody = "";
-    const fetchSpy = vi.fn().mockImplementation(async (_url: string, init: RequestInit) => {
+    const fetchSpy = mock().mockImplementation(async (_url: string, init: RequestInit) => {
       capturedBody = init.body as string;
       return { ok: true } as Response;
     });
-    vi.stubGlobal("fetch", fetchSpy);
+    globalThis.fetch = fetchSpy;
 
     const exporter = new OtlpHttpExporter();
     await exporter.exportAsync([makeSpan({ status: "error" })]);
@@ -97,11 +97,11 @@ describe("OtlpHttpExporter", () => {
 
   it("encodes attributes correctly (string/number/bool)", async () => {
     let capturedBody = "";
-    const fetchSpy = vi.fn().mockImplementation(async (_url: string, init: RequestInit) => {
+    const fetchSpy = mock().mockImplementation(async (_url: string, init: RequestInit) => {
       capturedBody = init.body as string;
       return { ok: true } as Response;
     });
-    vi.stubGlobal("fetch", fetchSpy);
+    globalThis.fetch = fetchSpy;
 
     const exporter = new OtlpHttpExporter();
     await exporter.exportAsync([
@@ -132,11 +132,11 @@ describe("OtlpHttpExporter", () => {
 
   it("handles parent span ID correctly", async () => {
     let capturedBody = "";
-    const fetchSpy = vi.fn().mockImplementation(async (_url: string, init: RequestInit) => {
+    const fetchSpy = mock().mockImplementation(async (_url: string, init: RequestInit) => {
       capturedBody = init.body as string;
       return { ok: true } as Response;
     });
-    vi.stubGlobal("fetch", fetchSpy);
+    globalThis.fetch = fetchSpy;
 
     const exporter = new OtlpHttpExporter();
     await exporter.exportAsync([makeSpan({ parentSpanId: "span-00000002" })]);
@@ -148,9 +148,9 @@ describe("OtlpHttpExporter", () => {
   });
 
   it("fire-and-forget export() does not throw on fetch error and logs after retries", async () => {
-    const fetchSpy = vi.fn().mockRejectedValue(new Error("network error"));
-    vi.stubGlobal("fetch", fetchSpy);
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const fetchSpy = mock().mockRejectedValue(new Error("network error"));
+    globalThis.fetch = fetchSpy;
+    const consoleSpy = spyOn(console, "error").mockImplementation(() => {});
 
     // Use maxRetries:0 to skip retries and get immediate error logging
     const exporter = new OtlpHttpExporter({ maxRetries: 0 });
@@ -161,8 +161,8 @@ describe("OtlpHttpExporter", () => {
   });
 
   it("export() is no-op for empty spans", () => {
-    const fetchSpy = vi.fn();
-    vi.stubGlobal("fetch", fetchSpy);
+    const fetchSpy = mock();
+    globalThis.fetch = fetchSpy;
     const exporter = new OtlpHttpExporter();
     exporter.export([]);
     expect(fetchSpy).not.toHaveBeenCalled();

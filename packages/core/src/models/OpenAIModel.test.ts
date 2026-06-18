@@ -1,12 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { ModelMessage, StreamEvent } from "../models/types.js";
 
 /**
  * OpenAIModel tests — mock the `openai` dynamic import so no network calls.
  *
  * The model lazily imports `openai` inside generate(), so we intercept via
- * vi.mock at the module level and replace the OpenAI constructor with a stub
- * that yields controlled chunks.
+ * mock.module() at the module level and replace the OpenAI constructor with a
+ * stub that yields controlled chunks.
  */
 
 type OAIChunk = {
@@ -24,6 +24,27 @@ type OAIChunk = {
   usage?: { prompt_tokens: number; completion_tokens: number } | null;
 };
 
+// ── Shared mutable mock state ─────────────────────────────────────────────────
+// Each test sets mockCreateImpl before calling the model.
+let mockCreateImpl: ((...args: unknown[]) => unknown) | null = null;
+
+mock.module("openai", () => {
+  return {
+    default: class MockOpenAI {
+      chat = {
+        completions: {
+          create: mock((...args: unknown[]) => mockCreateImpl?.(...args)),
+        },
+      };
+      // No `responses` property — forces fallback in the Responses API path tests.
+    },
+  };
+});
+
+import { OpenAIModel } from "../models/OpenAIModel.js";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
   return {
     [Symbol.asyncIterator]() {
@@ -40,37 +61,65 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
   };
 }
 
-function makeOpenAIMock(chunks: OAIChunk[]) {
-  const mockCreate = vi.fn().mockResolvedValue(makeChunkStream(chunks));
-  const MockOpenAI = vi.fn().mockImplementation(() => ({
-    chat: { completions: { create: mockCreate } },
-  }));
-  return { MockOpenAI, mockCreate };
-}
-
+/**
+ * Capture all StreamEvents emitted by a fresh OpenAIModel for the given chunks.
+ * Sets mockCreateImpl before each invocation so the mock returns the right data.
+ */
 async function collectEvents(
   chunks: OAIChunk[],
   opts: { tools?: object[] } = {}
 ): Promise<StreamEvent[]> {
-  const { MockOpenAI } = makeOpenAIMock(chunks);
+  mockCreateImpl = () => Promise.resolve(makeChunkStream(chunks));
 
-  vi.doMock("openai", () => ({ default: MockOpenAI }));
-
-  // Re-import after mocking to get a fresh module.
-  const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "");
   const model = new OpenAIModel("gpt-4o", "test-key");
-
   const events: StreamEvent[] = [];
   for await (const e of model.generate([{ role: "user", content: "test" }], opts)) {
     events.push(e);
   }
-  vi.doUnmock("openai");
   return events;
 }
 
+/**
+ * Call generate() with the given messages and return the raw params object
+ * that was passed to chat.completions.create().
+ */
+async function generateWithMessages(messages: ModelMessage[]): Promise<Record<string, unknown>> {
+  let capturedArgs: unknown;
+  mockCreateImpl = (...args: unknown[]) => {
+    capturedArgs = args[0];
+    return Promise.resolve(makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }]));
+  };
+
+  const model = new OpenAIModel("gpt-4o", "key");
+  for await (const _ of model.generate(messages)) {
+    /* consume */
+  }
+  return capturedArgs as Record<string, unknown>;
+}
+
+/**
+ * Instantiate a model with the given modelId, run generate(), and return the
+ * params passed to chat.completions.create().
+ */
+async function getParams(modelId: string): Promise<Record<string, unknown>> {
+  let capturedArgs: unknown;
+  mockCreateImpl = (...args: unknown[]) => {
+    capturedArgs = args[0];
+    return Promise.resolve(makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }]));
+  };
+
+  const model = new OpenAIModel(modelId, "key");
+  for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
+    /* consume */
+  }
+  return capturedArgs as Record<string, unknown>;
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
 describe("OpenAIModel streaming", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockCreateImpl = null;
   });
 
   it("emits text_delta events for content chunks", async () => {
@@ -260,22 +309,8 @@ describe("OpenAIModel convertMessages (via MessageAssembler)", () => {
  */
 describe("OpenAIModel generate() with structured content messages", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockCreateImpl = null;
   });
-
-  async function generateWithMessages(messages: ModelMessage[]): Promise<Record<string, unknown>> {
-    const { MockOpenAI, mockCreate } = makeOpenAIMock([
-      { choices: [{ delta: {}, finish_reason: "stop" }] },
-    ]);
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "s");
-    const model = new OpenAIModel("gpt-4o", "key");
-    for await (const _ of model.generate(messages)) {
-      /* consume */
-    }
-    vi.doUnmock("openai");
-    return mockCreate.mock.calls[0]?.[0] as Record<string, unknown>;
-  }
 
   it("system message is converted to role:system with string content", async () => {
     const params = await generateWithMessages([
@@ -336,20 +371,9 @@ describe("OpenAIModel generate() with structured content messages", () => {
 
 // D1: reasoning model detection tests
 describe("OpenAIModel D1 reasoning-model params", () => {
-  async function getParams(modelId: string): Promise<Record<string, unknown>> {
-    vi.resetModules();
-    const { MockOpenAI, mockCreate } = makeOpenAIMock([
-      { choices: [{ delta: {}, finish_reason: "stop" }] },
-    ]);
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "r");
-    const model = new OpenAIModel(modelId, "key");
-    for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
-      /* consume */
-    }
-    vi.doUnmock("openai");
-    return mockCreate.mock.calls[0]?.[0] as Record<string, unknown>;
-  }
+  beforeEach(() => {
+    mockCreateImpl = null;
+  });
 
   it("D1: standard model uses max_tokens and no max_completion_tokens", async () => {
     const params = await getParams("gpt-4o");
@@ -370,18 +394,19 @@ describe("OpenAIModel D1 reasoning-model params", () => {
   });
 
   it("D1: temperature is not set for o-series models", async () => {
-    vi.resetModules();
-    const { MockOpenAI, mockCreate } = makeOpenAIMock([
-      { choices: [{ delta: {}, finish_reason: "stop" }] },
-    ]);
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "r2");
+    let capturedArgs: unknown;
+    mockCreateImpl = (...args: unknown[]) => {
+      capturedArgs = args[0];
+      return Promise.resolve(
+        makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])
+      );
+    };
+
     const model = new OpenAIModel("o3", { apiKey: "key", samplingParams: { temperature: 0.7 } });
     for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
       /* consume */
     }
-    vi.doUnmock("openai");
-    const params = mockCreate.mock.calls[0]?.[0] as Record<string, unknown>;
+    const params = capturedArgs as Record<string, unknown>;
     expect(params.temperature).toBeUndefined();
   });
 });
@@ -390,7 +415,7 @@ describe("OpenAIModel D1 reasoning-model params", () => {
 
 describe("OpenAIModel D2 — prompt_tokens_details.cached_tokens", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockCreateImpl = null;
   });
 
   it("reads cached_tokens from prompt_tokens_details and maps to cacheReadTokens", async () => {
@@ -403,15 +428,13 @@ describe("OpenAIModel D2 — prompt_tokens_details.cached_tokens", () => {
         prompt_tokens_details: { cached_tokens: 150 },
       },
     };
-    const { MockOpenAI } = makeOpenAIMock([chunk]);
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "d2a");
+    mockCreateImpl = () => Promise.resolve(makeChunkStream([chunk]));
+
     const model = new OpenAIModel("gpt-4o", "key");
     const events: StreamEvent[] = [];
     for await (const ev of model.generate([{ role: "user", content: "hi" }])) {
       events.push(ev);
     }
-    vi.doUnmock("openai");
     const usageEv = events.find((e) => e.type === "usage");
     expect(usageEv?.usage?.cacheReadTokens).toBe(150);
   });
@@ -426,15 +449,13 @@ describe("OpenAIModel D2 — prompt_tokens_details.cached_tokens", () => {
         prompt_tokens_details: { cached_tokens: 0 },
       },
     };
-    const { MockOpenAI } = makeOpenAIMock([chunk]);
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "d2b");
+    mockCreateImpl = () => Promise.resolve(makeChunkStream([chunk]));
+
     const model = new OpenAIModel("gpt-4o", "key");
     const events: StreamEvent[] = [];
     for await (const ev of model.generate([{ role: "user", content: "hi" }])) {
       events.push(ev);
     }
-    vi.doUnmock("openai");
     const usageEv = events.find((e) => e.type === "usage");
     expect(usageEv?.usage?.cacheReadTokens).toBeUndefined();
   });
@@ -444,45 +465,35 @@ describe("OpenAIModel D2 — prompt_tokens_details.cached_tokens", () => {
       choices: [{ delta: {}, finish_reason: "stop" }],
       usage: { prompt_tokens: 100, completion_tokens: 30 },
     };
-    const { MockOpenAI } = makeOpenAIMock([chunk]);
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "d2c");
+    mockCreateImpl = () => Promise.resolve(makeChunkStream([chunk]));
+
     const model = new OpenAIModel("gpt-4o", "key");
     const events: StreamEvent[] = [];
     for await (const ev of model.generate([{ role: "user", content: "hi" }])) {
       events.push(ev);
     }
-    vi.doUnmock("openai");
     const usageEv = events.find((e) => e.type === "usage");
     expect(usageEv?.usage?.cacheReadTokens).toBeUndefined();
   });
 });
 
 describe("OpenAIModel apiMode", () => {
-  it("defaults to 'responses' when no baseURL", async () => {
-    vi.resetModules();
-    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "am1");
+  it("defaults to 'responses' when no baseURL", () => {
     const model = new OpenAIModel("gpt-4o", "key");
     expect(model.apiMode).toBe("responses");
   });
 
-  it("defaults to 'chat' when baseURL is set", async () => {
-    vi.resetModules();
-    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "am2");
+  it("defaults to 'chat' when baseURL is set", () => {
     const model = new OpenAIModel("gpt-4o", { baseURL: "http://localhost:11434/v1" });
     expect(model.apiMode).toBe("chat");
   });
 
-  it("explicit apiMode='chat' overrides auto-detection", async () => {
-    vi.resetModules();
-    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "am3");
+  it("explicit apiMode='chat' overrides auto-detection", () => {
     const model = new OpenAIModel("gpt-4o", { apiMode: "chat" });
     expect(model.apiMode).toBe("chat");
   });
 
-  it("explicit apiMode='responses' works with baseURL", async () => {
-    vi.resetModules();
-    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "am4");
+  it("explicit apiMode='responses' works with baseURL", () => {
     const model = new OpenAIModel("gpt-4o", {
       baseURL: "https://oai-proxy.example.com",
       apiMode: "responses",
@@ -491,37 +502,18 @@ describe("OpenAIModel apiMode", () => {
   });
 
   it("Responses API path falls back to chat when responses.create absent", async () => {
-    vi.resetModules();
-    // Mock only has chat.completions.create, no responses.
-    const mockCreate = vi.fn().mockResolvedValue({
-      [Symbol.asyncIterator]() {
-        let done = false;
-        return {
-          async next() {
-            if (!done) {
-              done = true;
-              return {
-                value: { choices: [{ delta: { content: "hi" }, finish_reason: "stop" }] },
-                done: false,
-              };
-            }
-            return { value: undefined, done: true };
-          },
-        };
-      },
-    });
-    const MockOpenAI = vi.fn().mockImplementation(() => ({
-      chat: { completions: { create: mockCreate } },
-      // No responses property — forces fallback.
-    }));
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { OpenAIModel } = await import("../models/OpenAIModel.js?t=" + Date.now() + "am5");
+    // The module-level mock has no `responses` property, so the model
+    // will fall back to chat.completions.create automatically.
+    mockCreateImpl = () =>
+      Promise.resolve(
+        makeChunkStream([{ choices: [{ delta: { content: "hi" }, finish_reason: "stop" }] }])
+      );
+
     const model = new OpenAIModel("gpt-4o", "key"); // apiMode="responses" by default
     const events: StreamEvent[] = [];
     for await (const ev of model.generate([{ role: "user", content: "hello" }])) {
       events.push(ev);
     }
-    vi.doUnmock("openai");
     // Falls back to chat completions — should produce text_delta.
     expect(events.some((e) => e.type === "text_delta")).toBe(true);
   });

@@ -16,7 +16,6 @@
  *      (prompt-cache stability requirement).
  */
 
-import { describe, expect, it } from "vitest";
 import type { KvBackend } from "../checkpoint/index.js";
 import { MapKvBackend } from "../memory/MemoryTool.js";
 import { AGENTS_MD_FILENAME, makeKvAgentsMdLoader, ProjectInstructions } from "./agentsMd.js";

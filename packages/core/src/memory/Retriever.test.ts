@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import type { Embedder } from "./Retriever.js";
 import { InMemoryVectorStore, KvBackendVectorStore, makeRetrievalTool } from "./Retriever.js";
 

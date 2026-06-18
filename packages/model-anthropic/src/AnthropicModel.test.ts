@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 /**
  * Smoke tests for the @wasmagent/model-anthropic re-export package.
  *

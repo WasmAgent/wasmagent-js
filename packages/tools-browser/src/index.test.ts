@@ -1,21 +1,21 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, mock } from "bun:test";
 import { type BrowserSession, buildBrowserTools } from "./index.js";
 
 function fakeSession(overrides: Partial<BrowserSession> = {}): BrowserSession {
   return {
-    navigate: vi.fn(async (url: string) => ({
+    navigate: mock(async (url: string) => ({
       title: `Title for ${url}`,
       dom: `<html><body>${url}</body></html>`,
     })),
-    click: vi.fn(async () => {}),
-    fill: vi.fn(async () => {}),
-    screenshot: vi.fn(async () => "data:image/png;base64,FAKE"),
-    extract: vi.fn(async (sels: Record<string, string>) => {
+    click: mock(async () => {}),
+    fill: mock(async () => {}),
+    screenshot: mock(async () => "data:image/png;base64,FAKE"),
+    extract: mock(async (sels: Record<string, string>) => {
       const out: Record<string, string> = {};
       for (const k of Object.keys(sels)) out[k] = `text-of-${k}`;
       return out;
     }),
-    close: vi.fn(async () => {}),
+    close: mock(async () => {}),
     ...overrides,
   };
 }

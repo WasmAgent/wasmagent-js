@@ -1,5 +1,26 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { ModelMessage, StreamEvent } from "../models/types.js";
+
+// ── Shared mutable mock state ─────────────────────────────────────────────────
+
+// These are set by each test (or collectEvents) before calling the model.
+let mockStreamImpl: ((...args: unknown[]) => unknown) | null = null;
+
+// The persistent mock function whose .mock.calls we inspect per test.
+const mockStreamFn = mock((...args: unknown[]) => mockStreamImpl?.(...args));
+
+mock.module("@anthropic-ai/sdk", () => {
+  return {
+    default: class MockAnthropic {
+      messages = {
+        stream: mockStreamFn,
+      };
+    },
+  };
+});
+
+// Import AFTER mock.module() so Bun intercepts the require.
+import { ANTHROPIC_BETAS, AnthropicModel } from "../models/AnthropicModel.js";
 
 // ── Mock helpers ──────────────────────────────────────────────────────────────
 
@@ -45,32 +66,20 @@ function makeStream(events: AnthropicEvent[], finalMsg: FinalMessage) {
   };
 }
 
-function makeAnthropicMock(events: AnthropicEvent[], finalMsg: FinalMessage) {
-  const mockStream = vi.fn().mockReturnValue(makeStream(events, finalMsg));
-  const MockAnthropic = vi.fn().mockImplementation(() => ({
-    messages: { stream: mockStream },
-  }));
-  return { MockAnthropic, mockStream };
-}
-
 async function collectEvents(
   events: AnthropicEvent[],
   finalMsg: FinalMessage,
   messages: ModelMessage[] = [{ role: "user", content: "test" }],
   modelId = "claude-sonnet-4-6"
-): Promise<{ streamEvents: StreamEvent[]; mockStream: ReturnType<typeof vi.fn> }> {
-  const { MockAnthropic, mockStream } = makeAnthropicMock(events, finalMsg);
-  vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
-
-  const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "");
+): Promise<{ streamEvents: StreamEvent[]; mockStream: typeof mockStreamFn }> {
+  mockStreamImpl = () => makeStream(events, finalMsg);
   const model = new AnthropicModel(modelId, "test-key");
 
   const streamEvents: StreamEvent[] = [];
   for await (const e of model.generate(messages)) {
     streamEvents.push(e);
   }
-  vi.doUnmock("@anthropic-ai/sdk");
-  return { streamEvents, mockStream };
+  return { streamEvents, mockStream: mockStreamFn };
 }
 
 const EMPTY_FINAL: FinalMessage = {
@@ -82,7 +91,8 @@ const EMPTY_FINAL: FinalMessage = {
 
 describe("AnthropicModel generate()", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockStreamImpl = null;
+    mockStreamFn.mockClear();
   });
 
   it("emits text_delta events from content_block_delta", async () => {
@@ -161,20 +171,9 @@ describe("AnthropicModel generate()", () => {
     // claude-haiku-3 threshold is 2048 tokens ≈ 8192 chars
     // Use a model with low threshold (1024) and a long system prompt
     const longPrompt = "x".repeat(5000); // ~1250 tokens, >= 1024 threshold
-    const { mockStream } = await collectEvents(
-      [],
-      EMPTY_FINAL,
-      [
-        { role: "system", content: longPrompt },
-        { role: "user", content: "hi" },
-      ],
-      "claude-sonnet-4-6" // threshold 4096 tokens → 16384 chars; won't cache a 5000-char prompt
-    );
+
     // Use a model with a lower threshold to trigger caching
-    vi.resetModules();
-    const { MockAnthropic, mockStream: mockStream2 } = makeAnthropicMock([], EMPTY_FINAL);
-    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
-    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "2");
+    mockStreamImpl = () => makeStream([], EMPTY_FINAL);
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
     for await (const _ of model.generate([
       { role: "system", content: longPrompt },
@@ -182,20 +181,16 @@ describe("AnthropicModel generate()", () => {
     ])) {
       /* consume */
     }
-    const call = mockStream2.mock.calls[0]?.[0] as Record<string, unknown>;
+    const call = mockStreamFn.mock.calls[0]?.[0] as Record<string, unknown>;
     const systemParam = call?.system as Array<Record<string, unknown>>;
     // Whether cache_control is injected depends on threshold; just verify system was passed.
     expect(Array.isArray(systemParam)).toBe(true);
     expect(systemParam[0]?.text).toBe(longPrompt);
-    vi.doUnmock("@anthropic-ai/sdk");
-    void mockStream; // suppress unused warning
   });
 
   it("does NOT inject cache_control when system message is below token threshold", async () => {
     const shortPrompt = "Be helpful."; // ~3 tokens, far below any threshold
-    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
-    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
-    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "3");
+    mockStreamImpl = () => makeStream([], EMPTY_FINAL);
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
     for await (const _ of model.generate([
       { role: "system", content: shortPrompt },
@@ -203,10 +198,9 @@ describe("AnthropicModel generate()", () => {
     ])) {
       /* consume */
     }
-    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    const call = mockStreamFn.mock.calls[0]?.[0] as Record<string, unknown>;
     const systemParam = call?.system as Array<Record<string, unknown>>;
     expect(systemParam[0]?.cache_control).toBeUndefined();
-    vi.doUnmock("@anthropic-ai/sdk");
   });
 });
 
@@ -214,7 +208,8 @@ describe("AnthropicModel generate()", () => {
 
 describe("AnthropicModel — A2 cache breakpoint trimming", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockStreamImpl = null;
+    mockStreamFn.mockClear();
   });
 
   // Helper: build messages with N history cacheBreakpoints (each with large-enough text).
@@ -251,30 +246,25 @@ describe("AnthropicModel — A2 cache breakpoint trimming", () => {
   it("trims history breakpoints so total cache_control ≤ 2 in messages (A2)", async () => {
     // 6 history breakpoints → after trim only 2 remain (newest 2)
     const messages = makeHistoryMessages(6);
-    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
-    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
-    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "a2a");
+    mockStreamImpl = () => makeStream([], EMPTY_FINAL);
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
     for await (const _ of model.generate(messages)) {
       /* consume */
     }
-    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    const call = mockStreamFn.mock.calls[0]?.[0] as Record<string, unknown>;
     const count = countCacheControlInMessages(call);
     // 2 slots for history (system + tools = 2 external slots not in messages array)
     expect(count).toBeLessThanOrEqual(2);
-    vi.doUnmock("@anthropic-ai/sdk");
   });
 
   it("keeps newest breakpoints when trimming (A2)", async () => {
     const messages = makeHistoryMessages(4); // 4 breakpoints > 2 budget
-    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
-    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
-    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "a2b");
+    mockStreamImpl = () => makeStream([], EMPTY_FINAL);
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
     for await (const _ of model.generate(messages)) {
       /* consume */
     }
-    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    const call = mockStreamFn.mock.calls[0]?.[0] as Record<string, unknown>;
     const params = call as { messages: Array<{ content: unknown }> };
     // The last assistant message with a breakpoint should still have cache_control.
     const assistantMsgs = (params.messages ?? []).filter(
@@ -286,7 +276,6 @@ describe("AnthropicModel — A2 cache breakpoint trimming", () => {
     const lastBlock = lastAssistant?.content.find((b) => b.type === "text");
     // The newest chunk should have its breakpoint preserved.
     expect(lastBlock?.cache_control).toBeDefined();
-    vi.doUnmock("@anthropic-ai/sdk");
   });
 
   it("does not inject breakpoint on history chunk below token threshold (A2)", async () => {
@@ -296,18 +285,15 @@ describe("AnthropicModel — A2 cache breakpoint trimming", () => {
       { role: "assistant", content: "short", cacheBreakpoint: { type: "ephemeral" } },
       { role: "user", content: "ok" },
     ];
-    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
-    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
-    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "a2c");
+    mockStreamImpl = () => makeStream([], EMPTY_FINAL);
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
     for await (const _ of model.generate(messages)) {
       /* consume */
     }
-    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    const call = mockStreamFn.mock.calls[0]?.[0] as Record<string, unknown>;
     const count = countCacheControlInMessages(call);
     // "short" is below 1024 token threshold → no breakpoint injected
     expect(count).toBe(0);
-    vi.doUnmock("@anthropic-ai/sdk");
   });
 });
 
@@ -315,7 +301,8 @@ describe("AnthropicModel — A2 cache breakpoint trimming", () => {
 
 describe("AnthropicModel D1 — 1h extended TTL cache", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockStreamImpl = null;
+    mockStreamFn.mockClear();
   });
 
   it("sends ttl:1h in cache_control when breakpoint has ttl='1h'", async () => {
@@ -329,20 +316,17 @@ describe("AnthropicModel D1 — 1h extended TTL cache", () => {
         cacheBreakpoint: { type: "ephemeral", ttl: "1h" },
       },
     ];
-    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
-    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
-    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "d1a");
+    mockStreamImpl = () => makeStream([], EMPTY_FINAL);
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
     for await (const _ of model.generate(messages)) {
       /* consume */
     }
-    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    const call = mockStreamFn.mock.calls[0]?.[0] as Record<string, unknown>;
     const msgs = call.messages as Array<Record<string, unknown>>;
     const userMsg = msgs.find((m) => m.role === "user");
     const content = userMsg?.content as Array<Record<string, unknown>> | undefined;
     const cc = content?.[0]?.cache_control as Record<string, unknown> | undefined;
     expect(cc?.ttl).toBe("1h");
-    vi.doUnmock("@anthropic-ai/sdk");
   });
 
   it("injects extended-cache-ttl-2025-04-11 beta header when ttl='1h'", async () => {
@@ -350,17 +334,14 @@ describe("AnthropicModel D1 — 1h extended TTL cache", () => {
       { role: "system", content: "x".repeat(5000) },
       { role: "user", content: "hi", cacheBreakpoint: { type: "ephemeral", ttl: "1h" } },
     ];
-    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
-    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
-    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "d1b");
+    mockStreamImpl = () => makeStream([], EMPTY_FINAL);
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
     for await (const _ of model.generate(messages)) {
       /* consume */
     }
-    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    const call = mockStreamFn.mock.calls[0]?.[0] as Record<string, unknown>;
     const betas = call.betas as string[] | undefined;
     expect(betas).toContain("extended-cache-ttl-2025-04-11");
-    vi.doUnmock("@anthropic-ai/sdk");
   });
 
   it("does NOT send betas header when no ttl='1h' breakpoint", async () => {
@@ -368,16 +349,13 @@ describe("AnthropicModel D1 — 1h extended TTL cache", () => {
       { role: "system", content: "x".repeat(5000) },
       { role: "user", content: "hi", cacheBreakpoint: { type: "ephemeral" } },
     ];
-    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
-    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
-    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "d1c");
+    mockStreamImpl = () => makeStream([], EMPTY_FINAL);
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
     for await (const _ of model.generate(messages)) {
       /* consume */
     }
-    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    const call = mockStreamFn.mock.calls[0]?.[0] as Record<string, unknown>;
     expect(call.betas).toBeUndefined();
-    vi.doUnmock("@anthropic-ai/sdk");
   });
 
   it("parses ephemeral_5m_input_tokens into cacheReadTokens", async () => {
@@ -419,24 +397,22 @@ describe("AnthropicModel D1 — 1h extended TTL cache", () => {
 
 describe("AnthropicModel A1 — Tool Search injection for deferred tools", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockStreamImpl = null;
+    mockStreamFn.mockClear();
   });
 
   async function captureStreamParams(
     tools: Array<Record<string, unknown>>,
     modelId = "claude-sonnet-4-6"
   ): Promise<Record<string, unknown>> {
-    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
-    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
-    const { AnthropicModel } = await import("../models/AnthropicModel.js?t=" + Date.now() + "a1");
+    mockStreamImpl = () => makeStream([], EMPTY_FINAL);
     const model = new AnthropicModel(modelId, "key");
     for await (const _ of model.generate([{ role: "user", content: "hi" }], {
       tools: tools as never,
     })) {
       /* consume */
     }
-    vi.doUnmock("@anthropic-ai/sdk");
-    return mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    return mockStreamFn.mock.calls[0]?.[0] as Record<string, unknown>;
   }
 
   it("injects tool_search_tool_regex when deferred tools present", async () => {
@@ -493,19 +469,18 @@ describe("AnthropicModel A1 — Tool Search injection for deferred tools", () =>
 
 describe("AnthropicModel B1 — ANTHROPIC_BETAS constants", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockStreamImpl = null;
+    mockStreamFn.mockClear();
   });
 
-  it("code_execution beta does not contain a future year (≥2026)", async () => {
-    const { ANTHROPIC_BETAS } = await import("../models/AnthropicModel.js?t=" + Date.now() + "b1a");
+  it("code_execution beta does not contain a future year (≥2026)", () => {
     const val = ANTHROPIC_BETAS.CODE_EXECUTION;
     // The old fabricated value was "code_execution_20260120" — must not match
     expect(val).not.toMatch(/2026/);
     expect(val).toMatch(/^code_execution_\d{8}$/);
   });
 
-  it("context-management beta does not use the wrong short form", async () => {
-    const { ANTHROPIC_BETAS } = await import("../models/AnthropicModel.js?t=" + Date.now() + "b1b");
+  it("context-management beta does not use the wrong short form", () => {
     const val = ANTHROPIC_BETAS.CONTEXT_MANAGEMENT;
     // Old wrong value was "context-management-2025-11"
     expect(val).not.toBe("context-management-2025-11");
@@ -513,12 +488,8 @@ describe("AnthropicModel B1 — ANTHROPIC_BETAS constants", () => {
   });
 
   it("all betas are assembled from ANTHROPIC_BETAS (no inline literals with dates)", async () => {
-    const { AnthropicModel, ANTHROPIC_BETAS } = await import(
-      "../models/AnthropicModel.js?t=" + Date.now() + "b1c"
-    );
     const knownValues = new Set(Object.values(ANTHROPIC_BETAS));
-    const { MockAnthropic, mockStream } = makeAnthropicMock([], EMPTY_FINAL);
-    vi.doMock("@anthropic-ai/sdk", () => ({ default: MockAnthropic }));
+    mockStreamImpl = () => makeStream([], EMPTY_FINAL);
     const model = new AnthropicModel("claude-sonnet-4-6", "key");
     for await (const _ of model.generate([
       {
@@ -529,11 +500,10 @@ describe("AnthropicModel B1 — ANTHROPIC_BETAS constants", () => {
     ])) {
       /* consume */
     }
-    const call = mockStream.mock.calls[0]?.[0] as Record<string, unknown>;
+    const call = mockStreamFn.mock.calls[0]?.[0] as Record<string, unknown>;
     const betas = (call.betas ?? []) as string[];
     for (const b of betas) {
       expect(knownValues.has(b)).toBe(true);
     }
-    vi.doUnmock("@anthropic-ai/sdk");
   });
 });

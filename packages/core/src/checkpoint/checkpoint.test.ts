@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { CheckpointableRun, InMemoryCheckpointer, KvCheckpointer } from "../checkpoint/index.js";
 import { MessageAssembler } from "../memory/MessageAssembler.js";
 import type { AgentEvent } from "../types/events.js";

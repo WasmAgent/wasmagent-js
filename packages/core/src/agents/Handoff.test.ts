@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import type { AgentEvent } from "../types/events.js";
 import type { HandoffAgent } from "./Handoff.js";
 import { handoff, handoffGenerator } from "./Handoff.js";

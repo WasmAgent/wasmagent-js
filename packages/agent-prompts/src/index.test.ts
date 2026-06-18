@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   CODE_QUALITY_GENERIC,
   CODE_QUALITY_TYPESCRIPT,

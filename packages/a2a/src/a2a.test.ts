@@ -1,5 +1,5 @@
+import { afterEach, describe, expect, it, mock } from "bun:test";
 import type { AgentEvent, SubagentRunnable } from "@wasmagent/core";
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { A2ARemoteAgent } from "./A2ARemoteAgent.js";
 import { createA2AServer } from "./A2AServer.js";
 
@@ -130,7 +130,7 @@ describe("A2ARemoteAgent.asTool", () => {
   });
 
   it("forward() calls the remote endpoint and returns result", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
+    const fetchMock = mock().mockResolvedValue({
       ok: true,
       json: async () => ({ taskId: "t1", status: "completed", result: "remote answer" }),
       text: async () => "",
@@ -159,7 +159,7 @@ describe("A2ARemoteAgent.asTool", () => {
   });
 
   it("forward() throws on remote agent failure", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
+    const fetchMock = mock().mockResolvedValue({
       ok: true,
       json: async () => ({ taskId: "t2", status: "failed", error: "boom" }),
       text: async () => "",

@@ -6,7 +6,6 @@
  * scripted `Model` mocks. No real LLM calls.
  */
 
-import { describe, expect, it } from "vitest";
 import type { Model, StreamEvent } from "../../models/types.js";
 import {
   type Criterion,

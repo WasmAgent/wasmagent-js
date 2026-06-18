@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { StreamEvent } from "@wasmagent/core/models";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type OAIChunk = {
   choices: Array<{
@@ -13,6 +13,23 @@ type OAIChunk = {
   }>;
   usage?: { prompt_tokens: number; completion_tokens: number } | null;
 };
+
+// Shared mutable mock state — mutated per-test before calling generate()
+let mockCreateImpl: ((params: Record<string, unknown>) => Promise<AsyncIterable<OAIChunk>>) | null =
+  null;
+
+mock.module("openai", () => ({
+  default: class MockOpenAI {
+    chat = {
+      completions: {
+        create: mock((params: Record<string, unknown>) => mockCreateImpl?.(params)),
+      },
+    };
+  },
+}));
+
+// Import after mock.module so the mock is in place
+import { KimiModels, MoonshotModel } from "./index.js";
 
 function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
   return {
@@ -31,32 +48,24 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
 async function collectEvents(
   chunks: OAIChunk[],
   modelId = "kimi-k2.6",
-  opts: Parameters<import("./index.js").MoonshotModel["generate"]>[1] = {},
+  opts: Parameters<MoonshotModel["generate"]>[1] = {},
   captureParams?: { ref: Record<string, unknown> | null }
 ): Promise<StreamEvent[]> {
-  const mockCreate = vi.fn().mockImplementation((params: Record<string, unknown>) => {
+  mockCreateImpl = (params: Record<string, unknown>) => {
     if (captureParams) captureParams.ref = params;
     return Promise.resolve(makeChunkStream(chunks));
-  });
-  const MockOpenAI = vi.fn().mockImplementation(() => ({
-    chat: { completions: { create: mockCreate } },
-  }));
-  vi.doMock("openai", () => ({ default: MockOpenAI }));
-
-  const { MoonshotModel } = await import("./index.js?t=" + Date.now() + "");
+  };
   const model = new MoonshotModel(modelId, "test-key");
-
   const events: StreamEvent[] = [];
   for await (const e of model.generate([{ role: "user", content: "test" }], opts)) {
     events.push(e);
   }
-  vi.doUnmock("openai");
   return events;
 }
 
 describe("MoonshotModel", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockCreateImpl = null;
   });
 
   it("emits text_delta for content", async () => {
@@ -165,11 +174,8 @@ describe("MoonshotModel", () => {
 
   // ── L8-3: Model constants ────────────────────────────────────────────────
 
-  it("KimiModels.LATEST is a string pointing to k2.6", async () => {
-    vi.doMock("openai", () => ({ default: vi.fn() }));
-    const { KimiModels } = await import("./index.js?t=" + Date.now() + "e");
+  it("KimiModels.LATEST is a string pointing to k2.6", () => {
     expect(typeof KimiModels.LATEST).toBe("string");
     expect(KimiModels.LATEST).toBe("kimi-k2.6");
-    vi.doUnmock("openai");
   });
 });

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, spyOn } from "bun:test";
 import { createKernel } from "../executor/factory.js";
 import { JsKernel } from "../executor/JsKernel.js";
 import { VmKernel } from "../executor/VmKernel.js";
@@ -47,7 +47,7 @@ describe("createKernel factory", () => {
   });
 
   it("does NOT warn for actionLanguage='js'", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warn = spyOn(console, "warn").mockImplementation(() => {});
     await createKernel({ engine: "js", actionLanguage: "js" });
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();

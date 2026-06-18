@@ -4,7 +4,6 @@
  */
 
 import { FallbackModel, type Model } from "@wasmagent/core/models";
-import { afterEach, describe, expect, it } from "vitest";
 import { devLocalOr, localFirst, offlineOnly } from "./presets.js";
 
 const okModel = (id: string, output: string): Model => ({

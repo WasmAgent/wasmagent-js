@@ -6,7 +6,6 @@
  * within numerical tolerance — these are the gate that decides whether
  * the port is correct, so we keep references traceable.
  */
-import { describe, expect, it } from "vitest";
 import {
   binomialCDF,
   buildG1Report,

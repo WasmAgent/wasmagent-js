@@ -5,7 +5,6 @@
  * and friends); we don't double-cover it here.
  */
 
-import { describe, expect, it } from "vitest";
 import { HELP, parseModelSpec, VERSION } from "./cli.js";
 
 describe("agentkit-evals CLI", () => {

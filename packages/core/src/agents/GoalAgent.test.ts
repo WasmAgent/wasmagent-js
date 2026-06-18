@@ -17,7 +17,6 @@
  *     underlying ToolCallingAgent events
  */
 
-import { describe, expect, it } from "vitest";
 import type { Model, StreamEvent } from "../models/types.js";
 import { GoalAgent } from "./GoalAgent.js";
 

@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { CardRenderer, ChatMessage, type ChatMessageInput, D2Card, MarkdownCard } from "./index.js";
 
 describe("@wasmagent/ui-cards-react exports", () => {

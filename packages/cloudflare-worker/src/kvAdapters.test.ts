@@ -6,7 +6,6 @@
  */
 
 import { type AgentSnapshot, KvCheckpointer } from "@wasmagent/core";
-import { describe, expect, it } from "vitest";
 import {
   type CloudflareKVNamespace,
   CloudflareKvBackend,

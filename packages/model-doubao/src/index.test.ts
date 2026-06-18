@@ -1,5 +1,35 @@
+import { describe, expect, it, mock } from "bun:test";
 import type { StreamEvent } from "@wasmagent/core/models";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// ── Shared mutable mock state ────────────────────────────────────────────────
+// mock.module() is hoisted and must be declared before the module-under-test
+// is imported. Each test sets mockCreateImpl to control what the mock returns.
+
+let mockCreateImpl: ((params: Record<string, unknown>) => unknown) | null = null;
+let capturedBaseURL: string | undefined;
+
+mock.module("openai", () => {
+  return {
+    default: class MockOpenAI {
+      constructor(opts: Record<string, unknown>) {
+        capturedBaseURL = opts?.baseURL as string | undefined;
+      }
+      chat = {
+        completions: {
+          create: mock((params: Record<string, unknown>) => {
+            if (mockCreateImpl) return Promise.resolve(mockCreateImpl(params));
+            return Promise.resolve(makeChunkStream([]));
+          }),
+        },
+      };
+    },
+  };
+});
+
+// Import the module-under-test AFTER mock.module() so the mock applies.
+import { DOUBAO_BASE_URL, DoubaoModel, DoubaoModels } from "./index.js";
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 type OAIChunk = {
   choices: Array<{
@@ -38,34 +68,26 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
 async function collectEvents(
   chunks: OAIChunk[],
   modelId = "doubao-seed-1-6-251015",
-  opts: Parameters<import("./index.js").DoubaoModel["generate"]>[1] = {},
+  opts: Parameters<DoubaoModel["generate"]>[1] = {},
   captureParams?: { ref: Record<string, unknown> | null }
 ): Promise<StreamEvent[]> {
-  const mockCreate = vi.fn().mockImplementation((params: Record<string, unknown>) => {
+  mockCreateImpl = (params: Record<string, unknown>) => {
     if (captureParams) captureParams.ref = params;
-    return Promise.resolve(makeChunkStream(chunks));
-  });
-  const MockOpenAI = vi.fn().mockImplementation(() => ({
-    chat: { completions: { create: mockCreate } },
-  }));
-  vi.doMock("openai", () => ({ default: MockOpenAI }));
+    return makeChunkStream(chunks);
+  };
 
-  const { DoubaoModel } = await import("./index.js?t=" + Date.now() + "");
   const model = new DoubaoModel(modelId, "test-key");
-
   const events: StreamEvent[] = [];
   for await (const e of model.generate([{ role: "user", content: "test" }], opts)) {
     events.push(e);
   }
-  vi.doUnmock("openai");
+  mockCreateImpl = null;
   return events;
 }
 
-describe("DoubaoModel", () => {
-  beforeEach(() => {
-    vi.resetModules();
-  });
+// ── Tests ─────────────────────────────────────────────────────────────────────
 
+describe("DoubaoModel", () => {
   // ── Basic stream events ─────────────────────────────────────────────────
 
   it("emits text_delta for normal content", async () => {
@@ -251,52 +273,28 @@ describe("DoubaoModel", () => {
   // ── Capabilities & constants ────────────────────────────────────────────
 
   it("uses DOUBAO_BASE_URL as base URL", async () => {
-    let capturedBaseURL: string | undefined;
-    const MockOpenAI = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
-      capturedBaseURL = opts.baseURL as string;
-      return {
-        chat: {
-          completions: {
-            create: vi
-              .fn()
-              .mockResolvedValue(
-                makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }])
-              ),
-          },
-        },
-      };
-    });
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { DoubaoModel, DOUBAO_BASE_URL } = await import("./index.js?t=" + Date.now() + "u");
+    capturedBaseURL = undefined;
+    mockCreateImpl = () => makeChunkStream([{ choices: [{ delta: {}, finish_reason: "stop" }] }]);
     const model = new DoubaoModel("doubao-seed-1-6-251015", "key");
     for await (const _ of model.generate([{ role: "user", content: "hi" }])) {
       /* consume */
     }
     expect(capturedBaseURL).toBe(DOUBAO_BASE_URL);
-    vi.doUnmock("openai");
+    mockCreateImpl = null;
   });
 
-  it("DoubaoModels.LATEST is a string", async () => {
-    vi.doMock("openai", () => ({ default: vi.fn() }));
-    const { DoubaoModels } = await import("./index.js?t=" + Date.now() + "e");
+  it("DoubaoModels.LATEST is a string", () => {
     expect(typeof DoubaoModels.LATEST).toBe("string");
-    vi.doUnmock("openai");
   });
 
-  it("default cacheStrategy is auto-prefix", async () => {
-    vi.doMock("openai", () => ({ default: vi.fn() }));
-    const { DoubaoModel } = await import("./index.js?t=" + Date.now() + "c1");
+  it("default cacheStrategy is auto-prefix", () => {
     const model = new DoubaoModel("doubao-seed-1-6-251015", "key");
     expect(model.capabilities.cacheStrategy).toBe("auto-prefix");
-    vi.doUnmock("openai");
   });
 
-  it("useContextApi:true sets cacheStrategy to ark-context", async () => {
-    vi.doMock("openai", () => ({ default: vi.fn() }));
-    const { DoubaoModel } = await import("./index.js?t=" + Date.now() + "c2");
+  it("useContextApi:true sets cacheStrategy to ark-context", () => {
     const model = new DoubaoModel("doubao-seed-1-6-251015", { useContextApi: true });
     expect(model.capabilities.cacheStrategy).toBe("ark-context");
-    vi.doUnmock("openai");
   });
 
   // ── Tool call accumulation ──────────────────────────────────────────────

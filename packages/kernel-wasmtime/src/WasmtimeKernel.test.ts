@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { buildJavySource, WasmtimeKernel } from "./WasmtimeKernel.js";
 
 // ---------------------------------------------------------------------------

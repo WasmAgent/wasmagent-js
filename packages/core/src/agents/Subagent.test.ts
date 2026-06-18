@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, mock } from "bun:test";
 import type { AgentEvent } from "../types/events.js";
 import { asTool } from "./Subagent.js";
 
@@ -78,7 +78,7 @@ describe("asTool", () => {
       },
     ];
     const agent = makeMockAgent(events);
-    const onEvent = vi.fn();
+    const onEvent = mock();
     const tool = asTool(agent, { name: "obs", description: "observing", onEvent });
     await tool.forward({ task: "x" });
     expect(onEvent).toHaveBeenCalledTimes(events.length);

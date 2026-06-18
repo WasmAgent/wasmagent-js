@@ -21,7 +21,6 @@
  */
 
 import { JsKernel, ToolRegistry } from "@wasmagent/core";
-import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createPortalServer } from "./portal.js";
 import { InMemoryTaskStore } from "./taskStore.js";

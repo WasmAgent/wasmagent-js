@@ -10,7 +10,6 @@
  *   - flaky triggers don't crash the run; they're treated as no-match
  */
 
-import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { ToolDefinition } from "../tools/types.js";
 import { SkillRegistry } from "./Skill.js";

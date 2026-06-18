@@ -11,7 +11,6 @@
  * provides.
  */
 
-import { describe, expect, it } from "vitest";
 import {
   getRegisteredModel,
   listRegisteredModels,

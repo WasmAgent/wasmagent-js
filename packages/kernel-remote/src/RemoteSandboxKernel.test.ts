@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, mock } from "bun:test";
 import { _buildHarnessForTest, RemoteSandboxKernel } from "./RemoteSandboxKernel.js";
 
 describe("RemoteSandboxKernel", () => {
@@ -11,7 +11,7 @@ describe("RemoteSandboxKernel", () => {
     const kernel = new RemoteSandboxKernel({ apiKey: "invalid-api-key-for-test" });
     // Either e2b is not installed (KERNEL_NOT_INSTALLED) or auth fails — either way, run() throws.
     await expect(kernel.run("1 + 1")).rejects.toThrow();
-  });
+  }, 15000);
 
   it("implements WasmKernel interface (structural check)", () => {
     const kernel = new RemoteSandboxKernel();
@@ -27,35 +27,29 @@ describe("RemoteSandboxKernel", () => {
   });
 
   it("run() with mocked E2B sandbox succeeds", async () => {
-    // Inject a fake e2b module via dynamic import mock.
+    // Inject a fake e2b module via mock.module.
     const fakeSandbox = {
-      runCode: vi.fn().mockResolvedValue({
+      runCode: mock().mockResolvedValue({
         logs: {
           stdout: ['{"__output":42,"__isFinalAnswer":false}'],
           stderr: [],
         },
       }),
-      kill: vi.fn().mockResolvedValue(undefined),
+      kill: mock().mockResolvedValue(undefined),
     };
 
-    const fakeE2B = {
+    mock.module("e2b", () => ({
       Sandbox: {
-        create: vi.fn().mockResolvedValue(fakeSandbox),
+        create: mock().mockResolvedValue(fakeSandbox),
       },
-    };
-
-    // Patch the dynamic import inside RemoteSandboxKernel.
-    vi.doMock("e2b", () => fakeE2B);
+    }));
 
     // We can't easily test the full integration without e2b installed,
     // but we verify the harness builder produces valid JS.
     const _code = "1 + 1";
-    // Harness wraps the code in an async IIFE and serializes output.
     // Just verify the kernel is constructible and disposable.
     const kernel = new RemoteSandboxKernel({ apiKey: "test" });
     await expect(kernel[Symbol.asyncDispose]()).resolves.toBeUndefined();
-
-    vi.doUnmock("e2b");
   });
 
   it("reset() kills active sandbox", async () => {

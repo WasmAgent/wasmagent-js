@@ -2,7 +2,6 @@
  * Grammar / tool-extraction unit tests — pure logic, no native binding.
  */
 
-import { describe, expect, it } from "vitest";
 import {
   buildResponseFormatSchema,
   buildToolCallSchema,

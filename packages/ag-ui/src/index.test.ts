@@ -1,5 +1,4 @@
 import type { AgentEvent } from "@wasmagent/core";
-import { describe, expect, it } from "vitest";
 import { toAgUiEvents, toSseString } from "./index.js";
 
 function makeEvent<T extends Partial<AgentEvent>>(overrides: T): AgentEvent {

@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { checkRateLimit, type RateLimitBackend, rateLimitedResponse } from "./rateLimit.js";
 
 class MemBackend implements RateLimitBackend {

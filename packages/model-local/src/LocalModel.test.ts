@@ -4,7 +4,6 @@
  * native binding is needed.
  */
 
-import { describe, expect, it } from "vitest";
 import { __setLlamaModuleForTests, LocalModel, renderMessagesAsPrompt } from "./LocalModel.js";
 import { LocalModelDependencyError } from "./types.js";
 

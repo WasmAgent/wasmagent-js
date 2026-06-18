@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { Scheduler, SimpleIR } from "../scheduler/index.js";
 import { ToolRegistry } from "../tools/ToolRegistry.js";
@@ -166,11 +165,13 @@ describe("Scheduler", () => {
     ]);
 
     const gen = scheduler.execute(ir);
-    await expect(async () => {
-      for await (const _ of gen) {
-        /* consume */
-      }
-    }).rejects.toThrow("deadlock");
+    await expect(
+      (async () => {
+        for await (const _ of gen) {
+          /* consume */
+        }
+      })()
+    ).rejects.toThrow("deadlock");
   });
 
   it("SimpleIR.toJSON / fromJSON round-trip", () => {
@@ -456,11 +457,14 @@ describe("Scheduler — C1 $ref value substitution", () => {
         idempotent: true,
       },
     ]);
-    await expect(async () => {
-      for await (const _ of scheduler.execute(ir)) {
-        /* consume */
-      }
-    }).rejects.toThrow("deadlock");
+    const gen = scheduler.execute(ir);
+    await expect(
+      (async () => {
+        for await (const _ of gen) {
+          /* consume */
+        }
+      })()
+    ).rejects.toThrow("deadlock");
   });
 });
 

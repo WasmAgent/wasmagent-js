@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, mock } from "bun:test";
 import type { Model, ModelMessage, StreamEvent } from "../models/types.js";
 import { ParallelForkJoinRunner } from "./ParallelForkJoinRunner.js";
 
@@ -37,7 +37,7 @@ describe("ParallelForkJoinRunner", () => {
 
   it("aggregation=fn: uses custom aggregator over all branches", async () => {
     const model = mockModel(["X", "Y", "Z"]);
-    const aggregation = vi.fn((results: string[]) => results.join("+"));
+    const aggregation = mock((results: string[]) => results.join("+"));
     const runner = new ParallelForkJoinRunner({ branches: 3, aggregation });
     const result = await runner.run(model, Q);
     expect(aggregation).toHaveBeenCalledWith(["X", "Y", "Z"]);

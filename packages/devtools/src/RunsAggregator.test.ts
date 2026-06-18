@@ -5,7 +5,6 @@
  * latency, error rate, eval scores. Each test builds a synthetic event
  * stream that exercises one branch of the aggregator.
  */
-import { describe, expect, it } from "vitest";
 import type { LoggedEvent } from "./EventLogReplay.js";
 import { groupByTraceId, type RunSummary, rollupRuns, summariseRun } from "./RunsAggregator.js";
 

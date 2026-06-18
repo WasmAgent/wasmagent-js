@@ -10,9 +10,9 @@
  *   - empty / zero-step traces render without throwing
  */
 
+import { describe, expect, it, mock } from "bun:test";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { AgentEvent } from "@wasmagent/core";
-import { describe, expect, it, vi } from "vitest";
 import type { Fork, LoggedEvent } from "../EventLogReplay.js";
 import { DevTools } from "./DevTools.js";
 
@@ -95,7 +95,7 @@ describe("<DevTools /> render", () => {
   });
 
   it("Fork panel collects task/model overrides and fires onFork with the right prefix", () => {
-    const onFork = vi.fn<(fork: Fork) => void>();
+    const onFork = mock<(fork: Fork) => void>();
     render(<DevTools events={makeTrace()} traceId="abc" onFork={onFork} />);
 
     // Move cursor to step 2 first so the fork prefix is non-trivial.
@@ -131,7 +131,7 @@ describe("<DevTools /> render", () => {
   });
 
   it("Fork panel passes through empty overrides as omitted fields", () => {
-    const onFork = vi.fn<(fork: Fork) => void>();
+    const onFork = mock<(fork: Fork) => void>();
     render(<DevTools events={makeTrace()} traceId="abc" onFork={onFork} />);
 
     const summary = screen.getByText(/Fork from step/);

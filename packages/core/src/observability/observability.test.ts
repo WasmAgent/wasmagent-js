@@ -1,4 +1,3 @@
-import { beforeEach, describe, expect, it } from "vitest";
 import type { ReadableSpan } from "../observability/index.js";
 import { InMemorySpanExporter, OtelBridge, withOtel } from "../observability/index.js";
 import type { AgentEvent } from "../types/events.js";

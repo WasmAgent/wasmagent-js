@@ -1,13 +1,35 @@
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { ModelMessage, StreamEvent } from "@wasmagent/core/models";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * OpenAIModel tests — mock the `openai` dynamic import so no network calls.
  *
  * The model lazily imports `openai` inside generate(), so we intercept via
- * vi.mock at the module level and replace the OpenAI constructor with a stub
- * that yields controlled chunks.
+ * mock.module() at the module level and replace the OpenAI constructor with a
+ * stub that yields controlled chunks.
  */
+
+// ── Shared mutable mock state ─────────────────────────────────────────────────
+// Each test sets mockCreateImpl before calling the model.
+let mockCreateImpl: ((...args: unknown[]) => unknown) | null = null;
+
+// The mock function instance — captured when mock.module() runs.
+// We expose it as a module-level variable so tests can inspect .mock.calls.
+const mockCreate = mock((...args: unknown[]) => mockCreateImpl?.(...args));
+
+// mock.module() is hoisted by Bun — it applies to all imports below.
+mock.module("openai", () => {
+  class MockOpenAI {
+    chat = { completions: { create: mockCreate } };
+  }
+  return { default: MockOpenAI };
+});
+
+import { MessageAssembler } from "@wasmagent/core";
+// Import the real modules — Bun resolves from source after mock.module() is applied.
+import { OpenAIModel, OpenAIModels } from "./index.js";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type OAIChunk = {
   choices: Array<{
@@ -23,6 +45,8 @@ type OAIChunk = {
   }>;
   usage?: { prompt_tokens: number; completion_tokens: number } | null;
 };
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
   return {
@@ -40,37 +64,66 @@ function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
   };
 }
 
-function makeOpenAIMock(chunks: OAIChunk[]) {
-  const mockCreate = vi.fn().mockResolvedValue(makeChunkStream(chunks));
-  const MockOpenAI = vi.fn().mockImplementation(() => ({
-    chat: { completions: { create: mockCreate } },
-  }));
-  return { MockOpenAI, mockCreate };
+/** Set mockCreateImpl so the next generate() call returns the given chunks. */
+function setupMockCreate(chunks: OAIChunk[]): void {
+  mockCreateImpl = () => Promise.resolve(makeChunkStream(chunks));
 }
 
 async function collectEvents(
   chunks: OAIChunk[],
   opts: { tools?: object[] } = {}
 ): Promise<StreamEvent[]> {
-  const { MockOpenAI } = makeOpenAIMock(chunks);
-
-  vi.doMock("openai", () => ({ default: MockOpenAI }));
-
-  // Re-import after mocking to get a fresh module.
-  const { OpenAIModel } = await import("./index.js?t=" + Date.now() + "");
+  setupMockCreate(chunks);
   const model = new OpenAIModel("gpt-4o", "test-key");
-
   const events: StreamEvent[] = [];
   for await (const e of model.generate([{ role: "user", content: "test" }], opts)) {
     events.push(e);
   }
-  vi.doUnmock("openai");
   return events;
 }
 
+async function generateWithMessages(messages: ModelMessage[]): Promise<Record<string, unknown>> {
+  setupMockCreate([{ choices: [{ delta: {}, finish_reason: "stop" }] }]);
+  const model = new OpenAIModel("gpt-4o", "key");
+  for await (const _ of model.generate(messages)) {
+    /* consume */
+  }
+  return mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0] as Record<string, unknown>;
+}
+
+async function generateWithOpts(opts: object): Promise<Record<string, unknown>> {
+  setupMockCreate([{ choices: [{ delta: {}, finish_reason: "stop" }] }]);
+  const model = new OpenAIModel("gpt-4o", "key");
+  for await (const _ of model.generate([{ role: "user", content: "q" }], opts)) {
+    /* consume */
+  }
+  return mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0] as Record<string, unknown>;
+}
+
+async function generateAndCapture(
+  modelId: string,
+  opts: object,
+  samplingParams?: object
+): Promise<Record<string, unknown>> {
+  setupMockCreate([{ choices: [{ delta: {}, finish_reason: "stop" }] }]);
+  const model = new OpenAIModel(
+    modelId,
+    samplingParams
+      ? { apiKey: "key", samplingParams: samplingParams as Record<string, unknown> }
+      : "key"
+  );
+  for await (const _ of model.generate([{ role: "user", content: "hi" }], opts)) {
+    /* consume */
+  }
+  return mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0] as Record<string, unknown>;
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
 describe("OpenAIModel streaming", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockCreateImpl = null;
+    mockCreate.mockClear();
   });
 
   it("emits text_delta events for content chunks", async () => {
@@ -186,8 +239,6 @@ describe("OpenAIModel streaming", () => {
  * OpenAIModel message conversion tests — test convertMessages indirectly
  * through MessageAssembler producing ModelMessage[] with structured blocks.
  */
-import { MessageAssembler } from "@wasmagent/core";
-
 describe("OpenAIModel convertMessages (via MessageAssembler)", () => {
   it("system message content is passed as string", () => {
     const assembler = new MessageAssembler({ systemPrompt: "You are helpful.", toolsSchema: [] });
@@ -260,22 +311,9 @@ describe("OpenAIModel convertMessages (via MessageAssembler)", () => {
  */
 describe("OpenAIModel generate() with structured content messages", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockCreateImpl = null;
+    mockCreate.mockClear();
   });
-
-  async function generateWithMessages(messages: ModelMessage[]): Promise<Record<string, unknown>> {
-    const { MockOpenAI, mockCreate } = makeOpenAIMock([
-      { choices: [{ delta: {}, finish_reason: "stop" }] },
-    ]);
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { OpenAIModel } = await import("./index.js?t=" + Date.now() + "s");
-    const model = new OpenAIModel("gpt-4o", "key");
-    for await (const _ of model.generate(messages)) {
-      /* consume */
-    }
-    vi.doUnmock("openai");
-    return mockCreate.mock.calls[0]?.[0] as Record<string, unknown>;
-  }
 
   it("system message is converted to role:system with string content", async () => {
     const params = await generateWithMessages([
@@ -339,22 +377,9 @@ describe("OpenAIModel generate() with structured content messages", () => {
  */
 describe("OpenAIModel generate() responseFormat (S1)", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockCreateImpl = null;
+    mockCreate.mockClear();
   });
-
-  async function generateWithOpts(opts: object): Promise<Record<string, unknown>> {
-    const { MockOpenAI, mockCreate } = makeOpenAIMock([
-      { choices: [{ delta: {}, finish_reason: "stop" }] },
-    ]);
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { OpenAIModel } = await import("./index.js?t=" + Date.now() + "rf");
-    const model = new OpenAIModel("gpt-4o", "key"); // supportsGrammar=true
-    for await (const _ of model.generate([{ role: "user", content: "q" }], opts)) {
-      /* consume */
-    }
-    vi.doUnmock("openai");
-    return mockCreate.mock.calls[0]?.[0] as Record<string, unknown>;
-  }
 
   it("sends response_format json_object when responseFormat.type is json_object", async () => {
     const params = await generateWithOpts({ responseFormat: { type: "json_object" } });
@@ -399,31 +424,9 @@ describe("OpenAIModel generate() responseFormat (S1)", () => {
 
 describe("OpenAIModel — reasoning effort (A2)", () => {
   beforeEach(() => {
-    vi.resetModules();
+    mockCreateImpl = null;
+    mockCreate.mockClear();
   });
-
-  async function generateAndCapture(
-    modelId: string,
-    opts: object,
-    samplingParams?: object
-  ): Promise<Record<string, unknown>> {
-    const { MockOpenAI, mockCreate } = makeOpenAIMock([
-      { choices: [{ delta: {}, finish_reason: "stop" }] },
-    ]);
-    vi.doMock("openai", () => ({ default: MockOpenAI }));
-    const { OpenAIModel } = await import("./index.js?t=" + Date.now() + "eff");
-    const model = new OpenAIModel(
-      modelId,
-      samplingParams
-        ? { apiKey: "key", samplingParams: samplingParams as Record<string, unknown> }
-        : "key"
-    );
-    for await (const _ of model.generate([{ role: "user", content: "hi" }], opts)) {
-      /* consume */
-    }
-    vi.doUnmock("openai");
-    return mockCreate.mock.calls[0]?.[0] as Record<string, unknown>;
-  }
 
   it("sends reasoning_effort=medium for effort:'standard' (o3)", async () => {
     const params = await generateAndCapture("o3", {
@@ -464,38 +467,22 @@ describe("OpenAIModel — reasoning effort (A2)", () => {
 // ── A4: Model enums and capabilities ─────────────────────────────────────────
 
 describe("OpenAIModel — model registry + capabilities (A4)", () => {
-  beforeEach(() => {
-    vi.resetModules();
-  });
-
-  it("OpenAIModels.LATEST points to gpt-5.5", async () => {
-    vi.doMock("openai", () => ({ default: vi.fn() }));
-    const { OpenAIModels } = await import("./index.js?t=" + Date.now() + "en1");
+  it("OpenAIModels.LATEST points to gpt-5.5", () => {
     expect(OpenAIModels.LATEST).toBe("gpt-5.5");
-    vi.doUnmock("openai");
   });
 
-  it("gpt-5 model has supportsVerbosity=true", async () => {
-    vi.doMock("openai", () => ({ default: vi.fn() }));
-    const { OpenAIModel } = await import("./index.js?t=" + Date.now() + "en2");
+  it("gpt-5 model has supportsVerbosity=true", () => {
     const model = new OpenAIModel("gpt-5", "key");
     expect(model.capabilities.supportsVerbosity).toBe(true);
-    vi.doUnmock("openai");
   });
 
-  it("o3 model has supportsReasoningEffort=true", async () => {
-    vi.doMock("openai", () => ({ default: vi.fn() }));
-    const { OpenAIModel } = await import("./index.js?t=" + Date.now() + "en3");
+  it("o3 model has supportsReasoningEffort=true", () => {
     const model = new OpenAIModel("o3", "key");
     expect(model.capabilities.supportsReasoningEffort).toBe(true);
-    vi.doUnmock("openai");
   });
 
-  it("gpt-4o model has supportsVerbosity=false (legacy)", async () => {
-    vi.doMock("openai", () => ({ default: vi.fn() }));
-    const { OpenAIModel } = await import("./index.js?t=" + Date.now() + "en4");
+  it("gpt-4o model has supportsVerbosity=false (legacy)", () => {
     const model = new OpenAIModel("gpt-4o", "key");
     expect(model.capabilities.supportsVerbosity).toBe(false);
-    vi.doUnmock("openai");
   });
 });

@@ -9,7 +9,7 @@
     "build": "wrangler deploy --dry-run --outdir=dist",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "vitest run",
+    "test": "bun test --isolate",
     "typecheck": "tsc --noEmit",
     "size": "size-limit",
     "clean": "rm -rf dist .wrangler .turbo"

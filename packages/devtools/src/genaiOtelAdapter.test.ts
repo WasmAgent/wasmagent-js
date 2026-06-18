@@ -2,7 +2,6 @@
  * Tests for the GenAI OTel → agentkit LoggedEvent adapter (D5).
  */
 
-import { describe, expect, it } from "vitest";
 import { convertGenAiSpansToEvents, type GenAiSpan, parseGenAiInput } from "./genaiOtelAdapter.js";
 import { groupByTraceId, summariseRun } from "./RunsAggregator.js";
 

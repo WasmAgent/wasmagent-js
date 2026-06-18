@@ -16,7 +16,6 @@
  *      member (not silently swapped out).
  */
 
-import { describe, expect, it } from "vitest";
 import { MapKvBackend } from "../memory/MemoryTool.js";
 import type { AgentEvent } from "../types/events.js";
 import { openOrCreateRoot } from "../workspace/BranchableWorkspace.js";
