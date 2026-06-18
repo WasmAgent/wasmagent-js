@@ -13,6 +13,40 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 > for which exports are covered by SemVer guarantees. Anything marked
 > `@experimental` may change in a minor release.
 
+## [0.3.0] — 2026-06-18
+
+Major feature release. Closes the two highest-priority differentiation axes
+and completes the go-to-market hardening pass.
+
+### Added
+- **Axis 8 — `GoalDirectedAgent`** (`@wasmagent/core`). Agent synthesises its
+  own success criteria (scout → criteria → execute → verify → done), verifies
+  deterministically or via adversarial-defaulted `LLMJudge`, retries with
+  hints. End-to-end baseline run: 10.6 KB OAuth doc, 7 self-synthesised
+  criteria, iter 1 verified. CLI: `wasmagent goal "<task>"`.
+- **Axis 9 — Adaptive execution** (`@wasmagent/core`). Three recovery layers:
+  L1 `Tool.alternatives` + `tool_fallback_offered` event; L2 `enableToolSynthesis`
+  + `tool_synthesised` event; L3 `allowNegotiate` + `onAdaptationProposed`.
+  All three layers wire through `ToolCallingAgent`, `CodeAgent`, `GoalDirectedAgent`
+  automatically. Paired-stat verified: McNemar p=1.86e-9 (n=30, b=30, c=0).
+  CLI: `wasmagent goal --allow-negotiate`.
+- **`npx @wasmagent/cli init <name>`** — scaffolds a new agent project directory
+  (package.json + agent.mjs + .env.example) without a prior install step.
+- **`examples/cf-production/index.mjs`** — single-file Cloudflare Worker with
+  JWT auth, KV rate limiting, and SSE streaming; ready for `wrangler deploy`.
+- **`examples/owasp-demo/owasp-demo.mjs`** — standalone OWASP Agentic Top 10
+  interception demo (4 scenarios, no LLM/API key required, exit 0/1 CI-friendly).
+- **`docs/reports/TEMPLATE.md`** — universal paired-statistics report template.
+- **`wasmagent-cli` bin alias** in `@wasmagent/cli` for `npx @wasmagent/cli`.
+- Root `package.json` keywords for npm discoverability (`portable-executor`,
+  `agent-sandbox`, `code-mode`, `wasm-kernel`, etc.).
+
+### Changed
+- README first screen: replaced bloated strategy-memo callout block with a
+  15-line copy-paste ready TypeScript snippet and clean doc links.
+- bscode README: removed all internal axis codes (B1–C4, S1', G1, B-D2) from
+  the visible body; docs table and feature table now use plain English labels.
+
 ## [Unreleased]
 
 ### Added
@@ -338,5 +372,6 @@ version per-package via changesets.
   with McNemar exact, Wilson CI, paired bootstrap, six reference
   benchmark suites, and Pareto-front rendering.
 
-[Unreleased]: https://github.com/WasmAgent/wasmagent-js/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/WasmAgent/wasmagent-js/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/WasmAgent/wasmagent-js/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/WasmAgent/wasmagent-js/releases/tag/v0.2.0

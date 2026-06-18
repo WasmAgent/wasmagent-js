@@ -1,8 +1,8 @@
-# 2026-06-18 adaptive-execution — the ninth axis (planned)
+# 2026-06-18 adaptive-execution — the ninth axis (fully shipped)
 
 > **Audience:** anyone who read the [06-18 goal-directed update](2026-06-18-goal-directed-shipped.md) and asked "what's the next axis after this?"
 >
-> **TL;DR.** A user manual-test on 2026-06-18 surfaced the gap. The eighth axis (goal-directed) closed the *did-it-deliver?* loop. The ninth axis closes the *can-it-recover?* loop: when a tool fails, the framework helps the agent find an alternative; when no alternative exists, the framework helps it **synthesise** one; when the goal itself turns out unreachable, the framework helps it **negotiate** an adapted goal with the caller. Inspired by Claude Code's observed behaviour. Not yet implemented — this doc anchors the design and ships ahead of code per [CONTRIBUTING.md S5](../../CONTRIBUTING.md#differentiation-gets-documented-in-the-same-pr-s5).
+> **TL;DR.** A user manual-test on 2026-06-18 surfaced the gap. The eighth axis (goal-directed) closed the *did-it-deliver?* loop. The ninth axis closes the *can-it-recover?* loop: when a tool fails, the framework helps the agent find an alternative; when no alternative exists, the framework helps it **synthesise** one; when the goal itself turns out unreachable, the framework helps it **negotiate** an adapted goal with the caller. Inspired by Claude Code's observed behaviour. **Fully shipped 2026-06-18** (L1 + L2 + L3, all 4 phases, McNemar p=1.86e-9). This doc captures the original design rationale; implementation details are in [`docs/rfcs/adaptive-execution.md`](../../docs/rfcs/adaptive-execution.md).
 
 ---
 
@@ -113,7 +113,7 @@ That's the user-visible difference in one trace. Compare to today's `failed (exh
 | MS Agent Framework | policy-only | ✗ | ✗ |
 | Claude Code (Anthropic CLI) | yes (proprietary) | yes (CLI exec) | yes (asks user mid-task) | 
 | smolagents-js | ✗ | partial (CodeAct) | ✗ |
-| **agentkit-js (planned)** | **annotation-driven** | **kernel-substrate** | **opt-in negotiation event** |
+| **agentkit-js (shipped)** | **annotation-driven** | **kernel-substrate** | **opt-in negotiation event** |
 
 The *partial* entries are honest: OpenAI Agents SDK ships SandboxAgent (so synthesis-via-sandbox is possible if the user wires it; it's not a first-class concept). Mastra ships Workspace providers (same shape).
 

@@ -1,6 +1,6 @@
 # wasmagent — Roadmap
 
-> Last refreshed: 2026-06-17. Refresh quarterly; keep stamped with the
+> Last refreshed: 2026-06-18. Refresh quarterly; keep stamped with the
 > last review date so consumers can spot rot.
 
 This roadmap is the public version of the strategic plan that drives the
@@ -81,6 +81,21 @@ the same A6 commit; see also the embedded "Why" lines below).
   coding agent" — see S1' above.
 
 ## Shipped (2026-06)
+
+- **Axis 8 — Goal-directed loop** (`GoalDirectedAgent`, shipped 2026-06-18).
+  Agent synthesises its own success criteria, executes, verifies (deterministic +
+  adversarial-defaulted LLM judge), retries with hints. Paired-stat baseline run
+  verified end-to-end (10.6 KB OAuth doc, 7 self-synthesised criteria, iter 1 pass).
+  Doc: [`docs/guides/goal-directed.md`](docs/guides/goal-directed.md).
+
+- **Axis 9 — Adaptive execution** (fully shipped + paired-stat verified 2026-06-18).
+  Three recovery layers: L1 tool fallback (registered alternatives injected on failure),
+  L2 tool synthesis (agent writes a one-off via `execute_code` when no alternative exists),
+  L3 goal negotiation (agent proposes a relaxed criteria set the caller can accept/reject).
+  All three layers ship in `@wasmagent/core`; `GoalDirectedAgent` and `CodeAgent` wire
+  through automatically. McNemar p=1.86e-9 (n=30, b=30, c=0).
+  Doc: [`docs/strategy/2026-06-18-adaptive-execution.md`](docs/strategy/2026-06-18-adaptive-execution.md) ·
+  RFC: [`docs/rfcs/adaptive-execution.md`](docs/rfcs/adaptive-execution.md).
 
 - **A1 — Code-mode MCP server** (`@wasmagent/mcp-server` ≥ 0.3).
   Two-tool MCP surface (`docs_search` + `execute_code`) collapses N

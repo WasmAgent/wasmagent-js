@@ -25,7 +25,7 @@ needs:
 - **Cost per correct answer** — the only axis that decides deployment.
 
 Six reference suites cover those gaps. Plus the statistical primitives
-that turn a 6-item run into a defensible claim:
+that turn even a small run into a defensible claim:
 
 - `mcnemarExact(b, c)` — exact paired test
 - `wilsonCI(s, n)` — proportion CI
@@ -94,7 +94,7 @@ console.log(renderReportMarkdown(report));
 
 | Suite                    | What it measures                                                       |
 | ------------------------ | ---------------------------------------------------------------------- |
-| `multi-turn-memory`      | LongMemEval-style 6-item conversation-history recall, 5 categories     |
+| `multi-turn-memory`      | LongMemEval-style conversation-history recall — 60 items across 6 categories (single-session, multi-session, knowledge-update, and variants) |
 | `long-context-recall`    | Needle-in-haystack at 10% / 50% / 90% depth in a ~16K-token document   |
 | `cost-per-correct`       | Same items as multi-turn-memory; reports USD per passing answer        |
 | `tool-sequence`          | 3-step JSON-encoded tool-call plans matched against an expected order  |

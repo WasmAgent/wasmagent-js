@@ -60,11 +60,7 @@ cd my-agent && npm install && npm start
 > into the specific cells where competitors do or don't ship the same
 > capability. [Last verified 2026-06-18.]
 >
-> **🆕 A ninth axis is in flight.** "Adaptive execution" — tool fallback
-> when a tool fails, tool synthesis when none fits, goal adaptation
-> when the goal turns out unreachable. RFC drafted 2026-06-18, phased
-> implementation. See [`docs/strategy/2026-06-18-adaptive-execution.md`](./docs/strategy/2026-06-18-adaptive-execution.md)
-> and [`docs/rfcs/adaptive-execution.md`](./docs/rfcs/adaptive-execution.md).
+> **Axis 9 — Adaptive execution — fully shipped 2026-06-18.** When a tool fails, the framework offers registered alternatives (L1); when none fits, the agent synthesises a one-off tool via `execute_code` (L2); when the goal turns out unreachable, the agent proposes a relaxed criteria set the caller can accept/reject (L3). All three layers paired-stat verified (McNemar p=1.86e-9, n=30). See [`docs/strategy/2026-06-18-adaptive-execution.md`](./docs/strategy/2026-06-18-adaptive-execution.md) and [`docs/rfcs/adaptive-execution.md`](./docs/rfcs/adaptive-execution.md).
 
 | # | Axis | One-line value | Status | Doc |
 |---|------|----------------|--------|-----|
@@ -78,12 +74,12 @@ cd my-agent && npm install && npm start
 | 8 | **Goal-directed loop** | Agent synthesises its own success criteria, executes, verifies (deterministic + adversarial-defaulted LLM judge), retries with hints. The user states a goal; the framework supplies the loop. | **shipped 2026-06-18** | [goal-directed](./docs/guides/goal-directed.md) · [baseline](./docs/eval-reports/goal-directed-2026-06-18-baseline.md) · [strategy](./docs/strategy/2026-06-18-goal-directed-shipped.md) |
 | 9 | **Adaptive execution** | When a tool fails, framework offers registered alternatives (L1). When none fits, agent synthesises a one-off via `execute_code` (L2). When the goal itself looks unreachable, agent proposes a relaxed criteria set the caller can accept/reject (L3). Repeat-hint stop-loss bounds blast radius. | **fully shipped + paired-stat verified 2026-06-18** | [strategy](./docs/strategy/2026-06-18-adaptive-execution.md) · [RFC](./docs/rfcs/adaptive-execution.md) · [ablation](./docs/eval-reports/adaptive-execution-2026-06-18-baseline.md) |
 
-The eight (soon nine) axes compose. A goal-directed run can use a
+All nine axes compose. A goal-directed run can use a
 local model (axis 1+3) running in a WASM kernel (axis 2), with a
 verifier that checks workspace state via the workflow engine (axis 5),
 traced through OTel (axis 7), and persisted to memory (axis 4). The
 eighth axis raises the ceiling on what the first seven can deliver.
-The ninth, when it lands, will let that ceiling survive a tool failing
+The ninth lets that ceiling survive a tool failing
 or a goal turning out infeasible.
 
 ---
@@ -152,7 +148,7 @@ wasmagent is early-stage. The differentiating features (code execution kernels, 
 
 | | Number | Verified by |
 |---|---|---|
-| Tests passing (all packages) | **1341** | `bun run test` (CI matrix on every push) — `@wasmagent/core` 716 · `@wasmagent/mcp-server` 47 (D1: +11 portal) · `@wasmagent/devtools` 34 · `@wasmagent/evals-runner` 31 · `@wasmagent/aisdk` 17 (D3: +3 memory) · `@wasmagent/claude-agent-sdk` 7 · `@wasmagent/openai-agents` 6 · others 483 |
+| Tests passing (all packages) | **1569** | `bun run test` (CI matrix on every push) — `@wasmagent/core` 853 · `@wasmagent/mcp-server` 47 · `@wasmagent/devtools` 34 · `@wasmagent/evals-runner` 92 · `@wasmagent/aisdk` 17 · `@wasmagent/cli` 49 · `@wasmagent/cloudflare-worker` 73 · `@wasmagent/openai-agents` 6 · `@wasmagent/mastra-sandbox` 4 · others 394 |
 | README percentages reproducible | **8 / 8** | `bun run bench` — runs in CI; non-zero exit blocks the PR (incl. A1 ≤25% target + S1/A1 code-mode ≤50% target + D1 Portal ≤10% / ≤66.7%) |
 | Cross-process kill-and-resume (A1 DoD ①) | ✓ Redis + ✓ Cloudflare KV + ✓ Durable Object | `redis.test.ts` + `kvAdapters.test.ts` |
 | SSE Last-Event-ID gap-free replay (A2 DoD ①) | ✓ | `EventLog.test.ts` round-trip test |
