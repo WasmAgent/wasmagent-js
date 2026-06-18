@@ -1,4 +1,4 @@
-import { parseCardBlocks } from "@agentkit-js/ui-cards";
+import { parseCardBlocks } from "@wasmagent/ui-cards";
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
 import { CardRenderer } from "./CardRenderer.js";
@@ -7,9 +7,9 @@ import { CardRenderer } from "./CardRenderer.js";
  * Minimal message shape consumed by {@link ChatMessage}.
  *
  * Defined locally so this package has no runtime dependency on
- * `@agentkit-js/react` (avoids a circular dependency: react → ui-cards-react).
+ * `@wasmagent/react` (avoids a circular dependency: react → ui-cards-react).
  * The shape is structurally compatible with `AgentMessage` from
- * `@agentkit-js/react`, so consumers can pass either directly.
+ * `@wasmagent/react`, so consumers can pass either directly.
  */
 export interface ChatMessageInput {
   id: string;
