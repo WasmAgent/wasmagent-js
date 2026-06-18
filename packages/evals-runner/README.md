@@ -1,14 +1,17 @@
 # /evals-runner
 
-> Multi-model multi-axis evaluation harness for any OpenAI-compatible
-> endpoint. Built on the wasmagent scorer + EventLog + RunsAggregator
-> primitives, plus a TypeScript port of the canonical paired-statistics
-> machinery (McNemar exact / Wilson CI / paired bootstrap / G1 gate).
+> Multi-model multi-axis evaluation harness for **any** agent runtime.
+> Framework-neutral: the public interface (`BenchmarkSuite`, `Scorer`,
+> `ModelProvider`) has zero runtime dependency on `@wasmagent/core`.
+> Use it to benchmark Vercel AI SDK agents, Mastra agents, OpenAI Agents JS,
+> or plain `/chat/completions` endpoints — no agentkit runtime required.
+> Built-in reference suites that run agentkit agents are available but
+> optional.
 
-wasmagent stays **independent**: this package adds an evaluation layer
-on top of the runtime's primitives, but agentkit's runtime keeps no
-knowledge of any specific model author or research line. Use it the same
-way you'd use `lm-evaluation-harness` — just point at a base URL.
+wasmagent stays **independent**: this package is the *referee*, not the
+*contestant*. It runs the same paired-statistics machinery
+(McNemar exact / Wilson CI / paired bootstrap / G1 gate) regardless of
+which framework produced the traces.
 
 ## Why this exists
 
@@ -36,7 +39,55 @@ that turn even a small run into a defensible claim:
 ## Install
 
 ```bash
-npm install /evals-runner /core
+# With agentkit (for the built-in reference suites):
+npm install @wasmagent/evals-runner @wasmagent/core
+
+# Framework-neutral (public interface only — no agentkit runtime):
+npm install @wasmagent/evals-runner
+```
+
+## Framework-neutral usage
+
+`@wasmagent/evals-runner`'s public interface (`BenchmarkSuite`, `Scorer`,
+`ModelProvider`, `AgentTrace`, `EvalSample`) is defined entirely in
+`types.ts` with zero imports from `@wasmagent/core`. Any framework can
+supply its own scorers and suites:
+
+```ts
+import { runEvaluation, renderReportMarkdown } from "@wasmagent/evals-runner";
+import type { BenchmarkSuite, Scorer } from "@wasmagent/evals-runner";
+
+// A scorer that checks the answer contains a keyword — no agentkit needed.
+const keywordScorer: Scorer = {
+  name: "keyword",
+  score(trace, sample) {
+    const answer = trace.finalAnswer ?? "";
+    const hit = sample.expectedAnswer
+      ? answer.toLowerCase().includes(sample.expectedAnswer.toLowerCase())
+      : true;
+    return { scorer: "keyword", score: hit ? 1 : 0 };
+  },
+};
+
+// A suite built from your own framework's outputs.
+const mySuite: BenchmarkSuite = {
+  name: "my-suite",
+  title: "My custom suite",
+  description: "Tests my agent on 3 items.",
+  scorers: [keywordScorer],
+  items: [
+    { id: "q1", task: "What is 2+2?", expectedAnswer: "4" },
+    { id: "q2", task: "Capital of France?", expectedAnswer: "paris" },
+    { id: "q3", task: "Boiling point of water in °C?", expectedAnswer: "100" },
+  ],
+};
+
+const report = await runEvaluation({
+  models: [{ id: "my-model", baseUrl: "http://localhost:11434/v1" }],
+  suites: [mySuite],
+  seeds: [0, 1, 2],
+});
+console.log(renderReportMarkdown(report));
 ```
 
 ## Quick start (CLI)

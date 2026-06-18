@@ -20,16 +20,17 @@
  *     separately as `warmupMs` in the aggregate.
  */
 
-import type { AgentEvent, EvalSample, Scorer } from "@wasmagent/core";
 import { wilsonCI } from "./stats/wilson.js";
 import type {
   BenchmarkItem,
   BenchmarkSuite,
+  EvalSample,
   EvaluationReport,
   ModelProvider,
   ModelSpec,
   RunEvaluationOptions,
   RunResult,
+  Scorer,
   SuiteAggregate,
 } from "./types.js";
 
@@ -254,7 +255,7 @@ async function runCell(args: {
 
   // Synthesise a trace.
   const traceId = `${model.id}::${suite.name}::${seed}::${item.id}`;
-  const events: AgentEvent[] = [
+  const events: unknown[] = [
     {
       traceId,
       parentTraceId: null,
@@ -356,7 +357,7 @@ async function runCellViaSuite(args: {
 
   // Synthesise (or pass through) a trace.
   const traceId = `${model.id}::${suite.name}::${seed}::${item.id}`;
-  const events: AgentEvent[] = (res.events as AgentEvent[] | undefined) ?? [
+  const events: unknown[] = (res.events as unknown[] | undefined) ?? [
     {
       traceId,
       parentTraceId: null,

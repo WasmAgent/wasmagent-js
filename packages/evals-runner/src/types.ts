@@ -5,17 +5,60 @@
  *
  *     models  ×  seeds  ×  items  →  per-cell `RunResult`
  *
- * Each cell produces an `AgentTrace` (from agentkit-core) plus the result
- * of every scorer in the suite. We aggregate per-(model,suite) into
- * `SuiteAggregate`, then build a `Pareto` over (acc, costUsd, p95WallMs).
+ * Each cell produces an `AgentTrace` plus the result of every scorer in
+ * the suite. We aggregate per-(model,suite) into `SuiteAggregate`, then
+ * build a `Pareto` over (acc, costUsd, p95WallMs).
  *
- * This file does NOT depend on any specific provider — `ModelSpec` carries
- * an OpenAI-compatible base URL + model id, the same shape
- * `GenericOpenAICompatModel` consumes. Any vendor that speaks
- * `/chat/completions` works.
+ * This file has **zero runtime dependencies** — it imports nothing from
+ * `@wasmagent/core` or any other package. The three shared interfaces
+ * (`AgentTrace`, `EvalSample`, `Scorer`) are inlined here using the same
+ * field shapes as core; TypeScript structural typing ensures existing core
+ * scorers remain assignable to `Scorer` without any cast.
+ *
+ * This makes `@wasmagent/evals-runner` usable as a framework-neutral
+ * referee: callers from Vercel AI SDK, Mastra, OpenAI Agents JS, or any
+ * other framework can implement `ModelProvider` and supply `BenchmarkSuite`
+ * without depending on `@wasmagent/core`.
  */
 
-import type { AgentTrace, EvalSample, Scorer } from "@wasmagent/core";
+// ── Inlined shared interfaces (structurally identical to @wasmagent/core) ────
+//
+// Why inline rather than import? evals-runner is the "referee" package —
+// it should be adoptable by teams that do NOT use agentkit agents at all.
+// A hard import of @wasmagent/core would force that dependency on every
+// framework-neutral adopter. Because TypeScript uses structural typing,
+// a `Scorer` written against core's definition is assignable here with no
+// cast needed.
+
+/**
+ * A recorded agent run. Framework-agnostic: populate from whatever event
+ * log your agent runtime produces. `events` is typed as `unknown[]` so
+ * non-agentkit runtimes don't need to map to agentkit event shapes.
+ */
+export interface AgentTrace {
+  traceId: string;
+  task: string;
+  events: unknown[];
+  finalAnswer: string | null;
+  toolCalls: Array<{ toolName: string; args: Record<string, unknown>; callId: string }>;
+  toolResults: Array<{ toolName: string; output: unknown; callId: string; isError: boolean }>;
+}
+
+/** One benchmark item — the minimum the runner needs to drive a cell. */
+export interface EvalSample {
+  id: string;
+  task: string;
+  /** Expected final answer (for exactMatch scorer). */
+  expectedAnswer?: string;
+  /** Expected ordered sequence of tool names (for toolCallAccuracy scorer). */
+  expectedTools?: string[];
+}
+
+/** A scorer that maps a trace + sample to a [0,1] score. */
+export interface Scorer {
+  readonly name: string;
+  score(trace: AgentTrace, sample: EvalSample): { scorer: string; score: number; detail?: string };
+}
 
 // ── Model + suite shapes ─────────────────────────────────────────────────────
 
