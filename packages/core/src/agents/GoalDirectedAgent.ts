@@ -169,6 +169,11 @@ export interface GoalDirectedAgentOptions {
    */
   enableToolSynthesis?: boolean | { codeToolName: string };
   /**
+   * 2026-06-18 (axis 9, stop-loss). Forwarded to the inner `GoalAgent`.
+   * See `GoalAgentOptions.maxNoProgressIterations`. Default 2.
+   */
+  maxNoProgressIterations?: number;
+  /**
    * 2026-06-18 (axis 9, L3 — adaptive execution). Default false.
    *
    * When true, the loop hitting `exhausted` instead asks the synth
@@ -334,6 +339,7 @@ export class GoalDirectedAgent {
   readonly #synthSystemPrompt: string;
   readonly #presetCriteria: Criterion[] | undefined;
   readonly #enableToolSynthesis: boolean | { codeToolName: string } | undefined;
+  readonly #maxNoProgressIterations: number;
   readonly #allowNegotiate: boolean;
   readonly #onAdaptationProposed:
     | ((proposal: AdaptationProposal) => Promise<AdaptationDecision>)
@@ -356,6 +362,10 @@ export class GoalDirectedAgent {
     this.#synthSystemPrompt = opts.synthSystemPrompt ?? DEFAULT_CRITERIA_SYNTH_SYSTEM_PROMPT;
     this.#presetCriteria = opts.criteria;
     this.#enableToolSynthesis = opts.enableToolSynthesis;
+    // 2026-06-18 (axis 9, stop-loss): GoalDirectedAgent defaults to 2.
+    // GoalAgent itself defaults to Infinity (preserves old behaviour);
+    // the safety lift is opt-in at the lower layer, opt-out here.
+    this.#maxNoProgressIterations = opts.maxNoProgressIterations ?? 2;
     this.#allowNegotiate = opts.allowNegotiate ?? false;
     this.#onAdaptationProposed = opts.onAdaptationProposed;
     this.#maxNegotiationRounds = opts.maxNegotiationRounds ?? 1;
@@ -472,6 +482,7 @@ export class GoalDirectedAgent {
         ...(this.#enableToolSynthesis !== undefined
           ? { enableToolSynthesis: this.#enableToolSynthesis }
           : {}),
+        maxNoProgressIterations: this.#maxNoProgressIterations,
       });
 
       let goalDoneCaptured: { data: unknown; iter: number } | null = null;

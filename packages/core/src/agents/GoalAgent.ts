@@ -119,6 +119,19 @@ export interface GoalAgentOptions {
    * `ToolCallingAgent` — see its `enableToolSynthesis` doc.
    */
   enableToolSynthesis?: boolean | { codeToolName: string };
+  /**
+   * 2026-06-18 (axis 9, stop-loss). Maximum consecutive iterations
+   * with byte-identical verifier hints before the loop bails out
+   * with `outcome: "exhausted"`. Default 2 — tight enough that a
+   * truly stuck agent doesn't burn more than ~2× the tokens of a
+   * single failed iteration.
+   *
+   * Set higher when verifier hints are noisy and identical-by-chance
+   * is plausible; set to a very high number to disable. The default
+   * preserves existing semantics for tasks that DO progress (a hint
+   * change resets the streak), so this is a stop-loss not a gate.
+   */
+  maxNoProgressIterations?: number;
 }
 
 /**
@@ -169,6 +182,7 @@ export class GoalAgent {
   readonly #tokenBudget: number | undefined;
   readonly #systemPromptAddendum: string | undefined;
   readonly #enableToolSynthesis: boolean | { codeToolName: string } | undefined;
+  readonly #maxNoProgressIterations: number;
 
   constructor(opts: GoalAgentOptions) {
     this.#model = opts.model;
@@ -178,6 +192,10 @@ export class GoalAgent {
     this.#tokenBudget = opts.tokenBudget;
     this.#systemPromptAddendum = opts.systemPromptAddendum;
     this.#enableToolSynthesis = opts.enableToolSynthesis;
+    // Default disabled at this layer (preserves pre-2026-06-18 behaviour
+    // for callers that drive GoalAgent directly). The high-level
+    // GoalDirectedAgent overrides this default to 2 — see its constructor.
+    this.#maxNoProgressIterations = opts.maxNoProgressIterations ?? Number.POSITIVE_INFINITY;
   }
 
   async *run(goal: Goal, parentTraceId: string | null = null): AsyncGenerator<AgentEvent> {
@@ -187,6 +205,10 @@ export class GoalAgent {
     let lastHint: string | undefined;
     let lastError: string | undefined;
     let outcome: GoalOutcome = "exhausted";
+    // 2026-06-18 (axis 9, stop-loss): count consecutive iterations
+    // where the verifier returned the byte-identical hint as last time.
+    // When this hits #maxNoProgressIterations the loop bails early.
+    let noProgressStreak = 0;
 
     // Pre-loop check: sometimes the goal is already satisfied (e.g.
     // tests already pass). Don't burn a model call to find that out.
@@ -282,6 +304,26 @@ export class GoalAgent {
         outcome = "verified";
         lastHint = undefined;
         break;
+      }
+      // 2026-06-18 (axis 9, stop-loss): if the verifier returns the
+      // SAME hint as the previous iteration, the agent is not making
+      // progress — it's burning tokens reproducing the same output.
+      // Common cause: the criterion is structurally unattainable
+      // (asks for impossible quantity / forbidden artefact). Bail out
+      // early instead of wasting maxIterations × tokens. The user-
+      // reported case was a 50000-word floor that pinned Sonnet into
+      // 369k output tokens on a single iteration before exhausting.
+      // GoalDirectedAgent's L3 negotiation path picks this up via
+      // lastHint and proposes a relaxation.
+      if (verifyResult.hint && verifyResult.hint === lastHint) {
+        noProgressStreak++;
+        if (noProgressStreak >= this.#maxNoProgressIterations) {
+          outcome = "exhausted";
+          lastHint = verifyResult.hint;
+          break;
+        }
+      } else {
+        noProgressStreak = 0;
       }
       lastHint = verifyResult.hint;
     }

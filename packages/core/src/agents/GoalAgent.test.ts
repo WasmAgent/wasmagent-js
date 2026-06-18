@@ -348,3 +348,80 @@ describe("GoalAgent — error handling", () => {
     expect(done.data.lastError).toContain("verifier crashed");
   });
 });
+
+// ── 2026-06-18 (axis 9, stop-loss) ─────────────────────────────────────────
+describe("GoalAgent — repeat-hint early stop", () => {
+  it("bails after maxNoProgressIterations consecutive byte-identical hints", async () => {
+    // Verifier always returns the same hint string. With
+    // maxNoProgressIterations: 2, the loop should hit iter 1 (set
+    // baseline hint), iter 2 (streak=1, still under cap), iter 3
+    // (streak=2 → bail). Total iterations = 3, not maxIterations.
+    let calls = 0;
+    const stuckVerify = async () => {
+      calls++;
+      return { ok: false, hint: "STUCK_HINT" };
+    };
+    const agent = new GoalAgent({
+      model: textAnswerModel("retry"),
+      tools: [],
+      maxIterations: 10,
+      maxNoProgressIterations: 2,
+    });
+    const events: unknown[] = [];
+    for await (const ev of agent.run({ describe: "stub", verify: stuckVerify })) {
+      events.push(ev);
+    }
+    expect(calls).toBe(3); // pre-loop (1) + iter1 (2) + iter2 (3) before bail
+    const done = events.find((e) => (e as { event?: string }).event === "goal_done") as {
+      data: { outcome: string; iterationCount: number; lastHint?: string };
+    };
+    expect(done.data.outcome).toBe("exhausted");
+    expect(done.data.iterationCount).toBe(2); // bailed during iter 2's verify check
+    expect(done.data.lastHint).toBe("STUCK_HINT");
+  });
+
+  it("hint change resets the streak so productive iterations are not penalised", async () => {
+    // Verifier returns a different hint each iteration → streak never
+    // builds → loop runs to maxIterations naturally.
+    let calls = 0;
+    const movingVerify = async () => {
+      calls++;
+      return { ok: false, hint: `iter-${calls}-different-hint` };
+    };
+    const agent = new GoalAgent({
+      model: textAnswerModel("retry"),
+      tools: [],
+      maxIterations: 5,
+      maxNoProgressIterations: 2,
+    });
+    const events: unknown[] = [];
+    for await (const ev of agent.run({ describe: "stub", verify: movingVerify })) {
+      events.push(ev);
+    }
+    expect(calls).toBe(6); // pre-loop (1) + 5 iter verifies = 6
+    const done = events.find((e) => (e as { event?: string }).event === "goal_done") as {
+      data: { outcome: string; iterationCount: number };
+    };
+    expect(done.data.outcome).toBe("exhausted");
+    expect(done.data.iterationCount).toBe(5);
+  });
+
+  it("default (no option set) preserves pre-2026-06-18 behaviour: no early stop", async () => {
+    // Backwards-compat guard: GoalAgent direct callers must not see new
+    // behaviour without opting in. The high-level GoalDirectedAgent
+    // overrides the default; this test pins the LOWER layer to legacy.
+    let calls = 0;
+    const stuckVerify = async () => {
+      calls++;
+      return { ok: false, hint: "STUCK_HINT" };
+    };
+    const agent = new GoalAgent({
+      model: textAnswerModel("retry"),
+      tools: [],
+      maxIterations: 3,
+      // maxNoProgressIterations intentionally unset
+    });
+    for await (const _ of agent.run({ describe: "stub", verify: stuckVerify })) void _;
+    expect(calls).toBe(4); // pre-loop (1) + 3 iter verifies = 4, no early stop
+  });
+});
