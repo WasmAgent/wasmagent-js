@@ -64,6 +64,22 @@ export type AgentEvent =
       };
     })
   | (AgentEventBase & {
+      channel: "tool";
+      event: "tool_synthesised";
+      // 2026-06-18 (axis 9, L2) — emitted when the agent calls the
+      // tool nominated as synthesis substrate (default "execute_code")
+      // AND enableToolSynthesis is on. Discriminates "synthesis on
+      // failure" from a routine code-mode call. The framework does
+      // not classify intent — that's left to observers reading the
+      // call args. `codeToolName` echoes which tool was treated as
+      // substrate so multi-tool environments can disambiguate.
+      data: {
+        codeToolName: string;
+        callId: string;
+        stepIndex: number;
+      };
+    })
+  | (AgentEventBase & {
       channel: "thinking";
       event: "planning";
       data: { step: number; plan: string; facts: string };

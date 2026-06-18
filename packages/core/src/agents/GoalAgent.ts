@@ -114,6 +114,11 @@ export interface GoalAgentOptions {
    * differentiation when this GoalAgent is part of a tiered stack.
    */
   systemPromptAddendum?: string;
+  /**
+   * 2026-06-18 (axis 9, L2). Forwarded verbatim to the inner
+   * `ToolCallingAgent` — see its `enableToolSynthesis` doc.
+   */
+  enableToolSynthesis?: boolean | { codeToolName: string };
 }
 
 /**
@@ -163,6 +168,7 @@ export class GoalAgent {
   readonly #maxStepsPerIteration: number;
   readonly #tokenBudget: number | undefined;
   readonly #systemPromptAddendum: string | undefined;
+  readonly #enableToolSynthesis: boolean | { codeToolName: string } | undefined;
 
   constructor(opts: GoalAgentOptions) {
     this.#model = opts.model;
@@ -171,6 +177,7 @@ export class GoalAgent {
     this.#maxStepsPerIteration = opts.maxStepsPerIteration ?? 15;
     this.#tokenBudget = opts.tokenBudget;
     this.#systemPromptAddendum = opts.systemPromptAddendum;
+    this.#enableToolSynthesis = opts.enableToolSynthesis;
   }
 
   async *run(goal: Goal, parentTraceId: string | null = null): AsyncGenerator<AgentEvent> {
@@ -230,6 +237,9 @@ export class GoalAgent {
         tools: this.#tools,
         maxSteps: this.#maxStepsPerIteration,
         systemPrompt: sysPrompt,
+        ...(this.#enableToolSynthesis !== undefined
+          ? { enableToolSynthesis: this.#enableToolSynthesis }
+          : {}),
       });
 
       try {

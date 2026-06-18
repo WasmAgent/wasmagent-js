@@ -33,6 +33,34 @@ const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant. Use the provided too
 When you have a final answer, respond with plain text (no tool call).
 ${TOOL_DEP_INSTRUCTIONS}`;
 
+// 2026-06-18 (axis 9, L2) ── synthesis preamble + helpers ───────────────────
+// When the user opts into tool synthesis, the system prompt gets a paragraph
+// reframing the named code-execution tool as the *synthesis substrate*: the
+// fallback the model can reach for when the registry has nothing that fits.
+// Default off — the new content only appears when the user explicitly opts in.
+
+/** Resolve `enableToolSynthesis` to a concrete code-tool name, or null when off. */
+function resolveSynthesisCodeTool(
+  opt: boolean | { codeToolName: string } | undefined
+): string | null {
+  if (opt === true) return "execute_code";
+  if (opt && typeof opt === "object") return opt.codeToolName;
+  return null;
+}
+
+/** Wrap the user's system prompt with a synthesis-substrate paragraph when enabled. */
+function withSynthesisPreamble(systemPrompt: string, codeToolName: string | null): string {
+  if (!codeToolName) return systemPrompt;
+  const synthesis =
+    `\n\n# Tool synthesis (when no registered tool fits)\n` +
+    `If a task needs an operation no registered tool offers, you may use \`${codeToolName}\` ` +
+    `to *synthesise* a one-off tool inline. Treat \`${codeToolName}\` as the substrate for ` +
+    `building what you need, not just for running pre-known scripts. Prefer this over giving up ` +
+    `or repeatedly retrying a registered tool that doesn't apply. The synthesised code runs ` +
+    `under the same capability manifest as the rest of the run.`;
+  return systemPrompt + synthesis;
+}
+
 export interface ToolCallingAgentOptions {
   tools: ToolDefinition[];
   model: Model;
@@ -96,6 +124,33 @@ export interface ToolCallingAgentOptions {
    * Increase for framework/file-generation tasks where tool call JSON can be large.
    */
   maxTokensPerStep?: number;
+  /**
+   * 2026-06-18 (axis 9, L2 — adaptive execution).
+   *
+   * When true (or an object), the agent reframes a registered code-
+   * execution tool as the **synthesis substrate** when no other tool
+   * fits. Three things happen:
+   *
+   * 1. The system prompt gets a paragraph telling the model it may
+   *    use the code tool to *synthesise* a one-off when the registry
+   *    has nothing suitable.
+   * 2. The L1 framework-hint on tool failure mentions the code tool
+   *    by name (instead of the generic "execute_code" placeholder).
+   * 3. Calls to the code tool emit a `tool_synthesised` event so
+   *    observers can discriminate "synthesis on failure" from a
+   *    routine code-mode call.
+   *
+   * Defaults to false (off). Pass `true` to use the conventional
+   * `"execute_code"` tool name, or an object to override:
+   *
+   *   enableToolSynthesis: { codeToolName: "run_code" }
+   *
+   * The tool itself must already be registered in `tools` — this
+   * option does not auto-register a kernel. See
+   * `docs/strategy/2026-06-18-adaptive-execution.md` and
+   * `docs/rfcs/adaptive-execution.md`.
+   */
+  enableToolSynthesis?: boolean | { codeToolName: string };
 }
 
 /**
@@ -127,6 +182,8 @@ export class ToolCallingAgent {
   readonly #outputSchema: ZodSchema<any> | undefined;
   readonly #outputSchemaRetries: number;
   readonly #maxTokensPerStep: number;
+  /** 2026-06-18 (axis 9, L2) — name of the code tool to frame as synthesis substrate, or null when disabled. */
+  readonly #synthesisCodeTool: string | null;
 
   constructor(opts: ToolCallingAgentOptions) {
     this.#tools = new ToolRegistry();
@@ -148,10 +205,19 @@ export class ToolCallingAgent {
     this.#outputSchemaRetries = opts.outputSchemaRetries ?? 2;
     this.#maxTokensPerStep = opts.maxTokensPerStep ?? 8192;
     this.#toolsSchema = this.#tools.toJsonSchema();
+    // 2026-06-18 (axis 9, L2) — opt-in synthesis substrate. Resolves
+    // the user's enableToolSynthesis to a concrete code-tool name (or
+    // null when off). Only the name matters at this point — the
+    // actual tool registration is the user's responsibility.
+    this.#synthesisCodeTool = resolveSynthesisCodeTool(opts.enableToolSynthesis);
+    const systemPrompt = withSynthesisPreamble(
+      opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
+      this.#synthesisCodeTool
+    );
     this.#assembler =
       opts.assembler ??
       new MessageAssembler({
-        systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
+        systemPrompt,
         toolsSchema: this.#toolsSchema,
       });
   }
@@ -612,6 +678,25 @@ export class ToolCallingAgent {
           },
           timestampMs: Date.now(),
         };
+        // 2026-06-18 (axis 9, L2) — discriminate synthesis from routine
+        // code-mode. Only emit when synthesis is enabled AND the call
+        // hits the nominated code tool. Lets observers (devtools, OTel
+        // exporter, eval grader) tell "agent reached for synthesis"
+        // apart from "agent ran a known code-mode tool".
+        if (this.#synthesisCodeTool && call.name === this.#synthesisCodeTool) {
+          yield {
+            traceId,
+            parentTraceId,
+            channel: "tool",
+            event: "tool_synthesised",
+            data: {
+              codeToolName: this.#synthesisCodeTool,
+              callId: call.id,
+              stepIndex: step,
+            },
+            timestampMs: Date.now(),
+          };
+        }
       }
 
       // U1: emit status events before dispatching tool calls.
@@ -1062,8 +1147,18 @@ export class ToolCallingAgent {
    */
   #augmentErrorWithFallbacks(failedTool: string, errorOutput: string): string {
     const candidates = this.#tools.fallbacksFor(failedTool).slice(0, this.#FALLBACK_CAP);
-    if (candidates.length === 0) return errorOutput;
+    // 2026-06-18 (axis 9, L2) — when synthesis is enabled, even a failing
+    // tool with NO registered alternatives gets a hint pointing at the
+    // synthesis substrate. Without this, L1+L2 don't compose: a tool
+    // with empty `alternatives` would silently bypass the synthesis path.
+    if (candidates.length === 0) {
+      if (!this.#synthesisCodeTool) return errorOutput;
+      return `${errorOutput}\n\n[framework hint] No registered alternatives to ${failedTool}. You may use \`${this.#synthesisCodeTool}\` to synthesise a one-off, or retry ${failedTool} with different args.`;
+    }
     const lines = candidates.map((c) => `- ${c.name}: ${c.description}`).join("\n");
-    return `${errorOutput}\n\n[framework hint] The registry lists these alternatives to ${failedTool} — you may try one, retry ${failedTool} with different args, or use execute_code to synthesise a one-off:\n${lines}`;
+    const synthesisOption = this.#synthesisCodeTool
+      ? `, or use \`${this.#synthesisCodeTool}\` to synthesise a one-off`
+      : "";
+    return `${errorOutput}\n\n[framework hint] The registry lists these alternatives to ${failedTool} — you may try one, retry ${failedTool} with different args${synthesisOption}:\n${lines}`;
   }
 }

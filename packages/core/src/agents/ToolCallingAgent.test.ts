@@ -789,3 +789,221 @@ describe("ToolCallingAgent — L1 tool fallback offering", () => {
     expect(data.candidates.map((c) => c.name)).toEqual(["alt_1", "alt_2", "alt_3"]);
   });
 });
+
+// ── 2026-06-18 (axis 9, L2 — adaptive execution) ───────────────────────────
+describe("ToolCallingAgent — L2 tool synthesis", () => {
+  /** Capture the system prompt the model sees on its first turn. */
+  function captureSystemPromptModel(): { model: Model; seenSystem: string[] } {
+    const seenSystem: string[] = [];
+    const model: Model = {
+      providerId: "mock/sysprompt",
+      async *generate(messages): AsyncGenerator<StreamEvent> {
+        // The system prompt is a system-role message at the head; capture it.
+        for (const m of messages) {
+          if (m.role === "system") {
+            const c = m.content;
+            const text =
+              typeof c === "string"
+                ? c
+                : Array.isArray(c)
+                  ? c
+                      .map((b) =>
+                        typeof b === "string" ? b : ((b as { text?: string }).text ?? "")
+                      )
+                      .join("")
+                  : "";
+            if (text) seenSystem.push(text);
+          }
+        }
+        yield { type: "text_delta", delta: "ok" };
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    };
+    return { model, seenSystem };
+  }
+
+  /** Code-execution tool stub (synthesis substrate). */
+  const executeCodeTool: ToolDefinition<{ code: string }, string> = {
+    name: "execute_code",
+    description: "Run arbitrary code in a sandbox",
+    inputSchema: z.object({ code: z.string() }),
+    outputSchema: z.string(),
+    readOnly: false,
+    idempotent: false,
+    forward: async () => "ok",
+  };
+
+  it("does NOT inject synthesis preamble or emit tool_synthesised when option is off", async () => {
+    const { model, seenSystem } = captureSystemPromptModel();
+    const agent = new ToolCallingAgent({
+      tools: [executeCodeTool],
+      model,
+      maxSteps: 1,
+      // enableToolSynthesis intentionally unset
+    });
+    const events = [];
+    for await (const e of agent.run("hi")) events.push(e);
+    expect(seenSystem.join("\n")).not.toMatch(/Tool synthesis/i);
+    expect(events.find((e) => e.event === "tool_synthesised")).toBeUndefined();
+  });
+
+  it("injects synthesis preamble naming execute_code when enableToolSynthesis: true", async () => {
+    const { model, seenSystem } = captureSystemPromptModel();
+    const agent = new ToolCallingAgent({
+      tools: [executeCodeTool],
+      model,
+      maxSteps: 1,
+      enableToolSynthesis: true,
+    });
+    for await (const _ of agent.run("hi")) void _;
+    expect(seenSystem[0]).toMatch(/Tool synthesis/);
+    expect(seenSystem[0]).toContain("execute_code");
+  });
+
+  it("honours custom codeToolName override", async () => {
+    const runCodeTool: ToolDefinition<{ code: string }, string> = {
+      ...executeCodeTool,
+      name: "run_code",
+    };
+    const { model, seenSystem } = captureSystemPromptModel();
+    const agent = new ToolCallingAgent({
+      tools: [runCodeTool],
+      model,
+      maxSteps: 1,
+      enableToolSynthesis: { codeToolName: "run_code" },
+    });
+    for await (const _ of agent.run("hi")) void _;
+    expect(seenSystem[0]).toContain("run_code");
+    expect(seenSystem[0]).not.toMatch(/`execute_code`/);
+  });
+
+  it("emits tool_synthesised when the agent calls the synthesis tool", async () => {
+    let callCount = 0;
+    const model: Model = {
+      providerId: "mock/calls-code",
+      async *generate(): AsyncGenerator<StreamEvent> {
+        callCount++;
+        if (callCount === 1) {
+          yield {
+            type: "tool_call",
+            toolCall: { type: "tool_use", id: "c1", name: "execute_code", input: { code: "1+1" } },
+          };
+        } else {
+          yield { type: "text_delta", delta: "done" };
+        }
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    };
+    const agent = new ToolCallingAgent({
+      tools: [executeCodeTool],
+      model,
+      maxSteps: 3,
+      enableToolSynthesis: true,
+    });
+    const events = [];
+    for await (const e of agent.run("compute")) events.push(e);
+    const synth = events.find((e) => e.event === "tool_synthesised");
+    expect(synth).toBeDefined();
+    const data = synth?.data as { codeToolName: string; callId: string };
+    expect(data.codeToolName).toBe("execute_code");
+    expect(data.callId).toBe("c1");
+  });
+
+  it("does NOT emit tool_synthesised for tool calls that aren't the synthesis tool", async () => {
+    // Even with synthesis enabled, calling some other tool must not emit
+    // tool_synthesised — the event MUST discriminate, not double-up
+    // on every tool call.
+    const otherTool: ToolDefinition<{ x: number }, number> = {
+      name: "other",
+      description: "does other things",
+      inputSchema: z.object({ x: z.number() }),
+      outputSchema: z.number(),
+      readOnly: true,
+      idempotent: true,
+      forward: async ({ x }) => x + 1,
+    };
+    let callCount = 0;
+    const model: Model = {
+      providerId: "mock/other",
+      async *generate(): AsyncGenerator<StreamEvent> {
+        callCount++;
+        if (callCount === 1) {
+          yield {
+            type: "tool_call",
+            toolCall: { type: "tool_use", id: "c1", name: "other", input: { x: 1 } },
+          };
+        } else {
+          yield { type: "text_delta", delta: "done" };
+        }
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    };
+    const agent = new ToolCallingAgent({
+      tools: [otherTool, executeCodeTool],
+      model,
+      maxSteps: 3,
+      enableToolSynthesis: true,
+    });
+    const events = [];
+    for await (const e of agent.run("x")) events.push(e);
+    expect(events.find((e) => e.event === "tool_synthesised")).toBeUndefined();
+  });
+
+  it("L1+L2 compose: failing tool with NO alternatives but synthesis on → hint mentions code tool", async () => {
+    const failingTool: ToolDefinition<{ p: string }, string> = {
+      name: "broken",
+      description: "always fails",
+      inputSchema: z.object({ p: z.string() }),
+      outputSchema: z.string(),
+      readOnly: false,
+      idempotent: false,
+      // no `alternatives` field
+      forward: async () => {
+        throw new Error("EBROKEN");
+      },
+    };
+    const seenToolResults: string[] = [];
+    let callCount = 0;
+    const model: Model = {
+      providerId: "mock/compose",
+      async *generate(messages): AsyncGenerator<StreamEvent> {
+        callCount++;
+        if (callCount > 1) {
+          const last = messages.at(-1);
+          if (last && Array.isArray(last.content)) {
+            for (const block of last.content) {
+              const b = block as { type?: string; content?: unknown };
+              if (b.type === "tool_result") {
+                const c = Array.isArray(b.content) ? b.content : [b.content];
+                for (const inner of c) {
+                  const i = inner as { text?: string } | string;
+                  const text = typeof i === "string" ? i : (i?.text ?? "");
+                  if (text) seenToolResults.push(text);
+                }
+              }
+            }
+          }
+        }
+        if (callCount === 1) {
+          yield {
+            type: "tool_call",
+            toolCall: { type: "tool_use", id: "c1", name: "broken", input: { p: "x" } },
+          };
+        } else {
+          yield { type: "text_delta", delta: "done" };
+        }
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    };
+    const agent = new ToolCallingAgent({
+      tools: [failingTool, executeCodeTool],
+      model,
+      maxSteps: 3,
+      enableToolSynthesis: true,
+    });
+    for await (const _ of agent.run("x")) void _;
+    expect(seenToolResults[0]).toMatch(/\[framework hint\]/);
+    expect(seenToolResults[0]).toContain("execute_code");
+    expect(seenToolResults[0]).toMatch(/synthesise/i);
+  });
+});

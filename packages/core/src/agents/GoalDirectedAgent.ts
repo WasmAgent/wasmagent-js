@@ -162,6 +162,12 @@ export interface GoalDirectedAgentOptions {
    * single-shot fallback path.
    */
   criteria?: Criterion[];
+  /**
+   * 2026-06-18 (axis 9, L2). Forwarded verbatim to both the
+   * single-shot fallback `ToolCallingAgent` and the inner `GoalAgent`.
+   * See `ToolCallingAgentOptions.enableToolSynthesis`.
+   */
+  enableToolSynthesis?: boolean | { codeToolName: string };
 }
 
 /** Default criteria-synthesis system prompt — frozen here so tests can lock its wording. */
@@ -258,6 +264,7 @@ export class GoalDirectedAgent {
   readonly #judgeRequireMajority: boolean;
   readonly #synthSystemPrompt: string;
   readonly #presetCriteria: Criterion[] | undefined;
+  readonly #enableToolSynthesis: boolean | { codeToolName: string } | undefined;
 
   constructor(opts: GoalDirectedAgentOptions) {
     this.#model = opts.model;
@@ -274,6 +281,7 @@ export class GoalDirectedAgent {
     this.#judgeRequireMajority = opts.judgeRequireMajority ?? false;
     this.#synthSystemPrompt = opts.synthSystemPrompt ?? DEFAULT_CRITERIA_SYNTH_SYSTEM_PROMPT;
     this.#presetCriteria = opts.criteria;
+    this.#enableToolSynthesis = opts.enableToolSynthesis;
   }
 
   async *run(task: string, parentTraceId: string | null = null): AsyncGenerator<AgentEvent> {
@@ -308,6 +316,9 @@ export class GoalDirectedAgent {
         model: this.#model,
         tools: this.#tools,
         maxSteps: this.#maxStepsPerIteration,
+        ...(this.#enableToolSynthesis !== undefined
+          ? { enableToolSynthesis: this.#enableToolSynthesis }
+          : {}),
       });
       try {
         for await (const ev of agent.run(task, parentTraceId)) {
@@ -362,6 +373,9 @@ export class GoalDirectedAgent {
       maxStepsPerIteration: this.#maxStepsPerIteration,
       ...(this.#tokenBudget !== undefined ? { tokenBudget: this.#tokenBudget } : {}),
       systemPromptAddendum: `Success criteria you must satisfy (a verifier will check):\n${JSON.stringify(criteria, null, 2)}`,
+      ...(this.#enableToolSynthesis !== undefined
+        ? { enableToolSynthesis: this.#enableToolSynthesis }
+        : {}),
     });
 
     let goalDoneCaptured: { data: unknown; iter: number } | null = null;
