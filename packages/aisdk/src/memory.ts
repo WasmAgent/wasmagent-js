@@ -42,10 +42,7 @@
  * tracked under D3 phase 2 — see ROADMAP for the message-list shim plan.
  */
 
-import {
-  createMemoryTool as createMemoryToolCore,
-  type MemoryToolOptions,
-} from "@wasmagent/core";
+import { createMemoryTool as createMemoryToolCore, type MemoryToolOptions } from "@wasmagent/core";
 import type { ZodType } from "zod";
 
 import type { AiSdkToolDefinition } from "./index.js";

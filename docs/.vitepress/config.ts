@@ -202,5 +202,10 @@ export default defineConfig({
     /^\.\/memory$/,
     /^\.\/reward-hacking$/,
     /\/reports\/index$/,
+    /\/reports\/arm-f-vs-bare-2026-06-17\/index$/,
+    /\/reports\/arm-batch-grammar-2026-06-17\/index$/,
+    /loop-engineering$/,
+    /^\.\/\.$/,
+    /README$/,
   ],
 });

@@ -35,12 +35,7 @@
  * without changes here.
  */
 
-import type {
-  CapabilityManifest,
-  ToolDefinition,
-  ToolRegistry,
-  WasmKernel,
-} from "@wasmagent/core";
+import type { CapabilityManifest, ToolDefinition, ToolRegistry, WasmKernel } from "@wasmagent/core";
 import { ToolRegistry as ToolRegistryCtor } from "@wasmagent/core";
 import { type CodeModeServerOptions, createCodeModeServer } from "./codeMode.js";
 import type { McpAgentServer } from "./McpAgentServer.js";

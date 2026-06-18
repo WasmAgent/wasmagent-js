@@ -7,10 +7,7 @@
  * See `@wasmagent/aisdk/memory` for the rationale (D3 cross-framework
  * memory product surface).
  */
-import {
-  createMemoryTool as createMemoryToolCore,
-  type MemoryToolOptions,
-} from "@wasmagent/core";
+import { createMemoryTool as createMemoryToolCore, type MemoryToolOptions } from "@wasmagent/core";
 import type { z } from "zod";
 
 import type { OpenAiAgentTool } from "./index.js";

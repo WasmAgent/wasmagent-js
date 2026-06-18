@@ -30,6 +30,7 @@
  * variant/variantLoader options. No runtime WASM compilation is needed.
  */
 
+import cfVariant from "@jitl/quickjs-wasmfile-release-sync";
 import type { RunAgentInput } from "@wasmagent/ag-ui";
 import { fromRunAgentInput, toAgUiSseStream, wantsAgUiSse } from "@wasmagent/ag-ui";
 import type { AgentEvent } from "@wasmagent/core";
@@ -46,7 +47,6 @@ import {
 } from "@wasmagent/core";
 import type { QuickJSKernelOptions } from "@wasmagent/kernel-quickjs";
 import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
-import cfVariant from "@jitl/quickjs-wasmfile-release-sync";
 import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
 
 // Cloudflare Workflows engine — same WorkflowDefinition/WorkflowRunHandle

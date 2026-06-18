@@ -42,7 +42,7 @@ So: ninth axis. Three layers, one strategic frame.
 
 **Today.** Code-mode (`execute_code` compressing N MCP tools into one) exists but the agent has no first-class reason to reach for it on a tool-shape mismatch. It's framed as a token-saving optimisation, not as a synthesis primitive.
 
-**Proposed.** Reframe `execute_code` (and the kernel matrix beneath it — VmKernel / WASM / RemoteSandbox) as the **fallback substrate when tool synthesis is needed**. The synthesis prompt: "the registry doesn't have a tool that does <X>; you can use `execute_code` with the kernel's stdlib to write one inline." The agent gets to *make* a tool, run it once, and discard it.
+**Proposed.** Reframe `execute_code` (and the kernel matrix beneath it — VmKernel / WASM / RemoteSandbox) as the **fallback substrate when tool synthesis is needed**. The synthesis prompt: "the registry doesn't have a tool that does `<X>`; you can use `execute_code` with the kernel's stdlib to write one inline." The agent gets to *make* a tool, run it once, and discard it.
 
 **Why this is meaningful.** Three competitor frameworks ship code-mode (Cloudflare, OpenAI Agents SDK, Mastra — see the [06-17 update](2026-06-17-update.md#1-the-5-industry-shifts-06-12--06-17)). None of them frame it as the synthesis substrate when registered tools fail. They frame it as a token-cost optimisation. We can pitch this as **the second meaning** of code-mode, fitting our existing kernel matrix without new packages.
 
@@ -54,7 +54,7 @@ So: ninth axis. Three layers, one strategic frame.
 
 **Today.** The `goal_directed_done` event has three outcomes: `verified` / `single-shot` / `failed (budget|exhausted)`. There's no fourth outcome representing "I think we should change what we're trying to do." If the run hits exhausted, the user sees only "couldn't deliver" with the last-iteration verdicts.
 
-**Proposed.** A new outcome `negotiation_proposed` and a new event `goal_adaptation_proposed`. The agent (via the synth model, the same one that wrote the original criteria) proposes a *modified criteria set* with reasoning: "criterion X looks unattainable because <evidence from the verifier hints>; here's a relaxed variant that I believe is reachable, plus the original kept under `dropped: [...]` for the caller's audit." The caller — be it the CLI user, a CI script, or a UI — accepts/rejects/edits, and the loop resumes with the new criteria set (or hard-fails if the caller declines).
+**Proposed.** A new outcome `negotiation_proposed` and a new event `goal_adaptation_proposed`. The agent (via the synth model, the same one that wrote the original criteria) proposes a *modified criteria set* with reasoning: "criterion X looks unattainable because `<evidence from the verifier hints>`; here's a relaxed variant that I believe is reachable, plus the original kept under `dropped: [...]` for the caller's audit." The caller — be it the CLI user, a CI script, or a UI — accepts/rejects/edits, and the loop resumes with the new criteria set (or hard-fails if the caller declines).
 
 **Why this is structurally different from L1+L2.** L1 and L2 keep the goal fixed and adapt the *means*. L3 acknowledges the goal itself was wrong. That's a fundamentally different value claim:
 
@@ -63,7 +63,7 @@ So: ninth axis. Three layers, one strategic frame.
 
 These compose: a run can do L1 fallbacks throughout its iterations, hit a dead end, *then* propose L3 negotiation. The frame they share: the framework helps the agent stay productive on the user's actual problem instead of grinding on the model's first interpretation of it.
 
-**Boundary.** L3 is opt-in. The default `agentkit goal "<task>"` run still hard-fails on exhausted iteration cap — this preserves CI determinism. `agentkit goal --allow-negotiate` (or its programmatic equivalent in `GoalDirectedAgentOptions`) flips the bit. This matters for [06-17 referee positioning](2026-06-17-update.md#2-the-internal-experimental-campaign-06-17-same-day): a referee that lets the contestant change the rules mid-match is no longer a referee.
+**Boundary.** L3 is opt-in. The default `` `agentkit goal "<task>"` `` run still hard-fails on exhausted iteration cap — this preserves CI determinism. `agentkit goal --allow-negotiate` (or its programmatic equivalent in `GoalDirectedAgentOptions`) flips the bit. This matters for [06-17 referee positioning](2026-06-17-update.md#2-the-internal-experimental-campaign-06-17-same-day): a referee that lets the contestant change the rules mid-match is no longer a referee.
 
 ---
 
@@ -74,7 +74,7 @@ The 8th axis is about **transparency of the loop**. The `criteria_proposed` even
 | New event | Layer | What observers see |
 |---|---|---|
 | `tool_fallback_offered` | L1 | "tool A failed, registry offers B, C — model picked B" |
-| `tool_synthesised` | L2 | "no registered tool for `<intent>`; `execute_code` synthesised an inline one and called it" |
+| `tool_synthesised` | L2 | "no registered tool for `\<intent\>`; `execute_code` synthesised an inline one and called it" |
 | `goal_adaptation_proposed` | L3 | "after N iterations criterion X looks unattainable; proposed relaxed variant `Y`. Awaiting caller decision." |
 
 A goalDirected run on a task that hit recovery looks like:

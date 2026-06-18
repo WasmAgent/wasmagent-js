@@ -457,7 +457,6 @@ export class GoalDirectedAgent {
     let negotiationRound = 0;
     let terminalOutcome: GoalDirectedOutcome | null = null;
 
-    // biome-ignore lint/correctness/noConstantCondition: bounded by break statements + maxNegotiationRounds.
     while (true) {
       const pipeline = new VerificationPipeline({
         ws: this.#ws,
