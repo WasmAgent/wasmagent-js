@@ -21,7 +21,7 @@
 //
 // Run: node examples/a2a-interop/index.mjs
 
-import { A2ARemoteAgent, createA2AServer } from "@agentkit-js/a2a";
+import { A2ARemoteAgent, createA2AServer } from "@wasmagent/a2a";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 0. A trivial agent we want to expose over A2A.

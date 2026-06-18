@@ -1,6 +1,6 @@
 # browser-screenshot — Browser automation demo
 
-End-to-end example: AI agent uses Playwright via `@agentkit-js/tools-browser`
+End-to-end example: AI agent uses Playwright via `@wasmagent/tools-browser`
 to navigate, extract content, and take a screenshot.
 
 ## Setup
@@ -27,7 +27,7 @@ remote Chromium via the DevTools Protocol over WebSocket. No
 Playwright dependency.
 
 ```ts
-import { openCdpSession, buildBrowserTools } from "@agentkit-js/tools-browser";
+import { openCdpSession, buildBrowserTools } from "@wasmagent/tools-browser";
 
 const session = await openCdpSession({
   wsEndpoint: "wss://your-chromium.example.com/devtools/browser",

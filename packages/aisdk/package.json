@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/aisdk",
+  "name": "@wasmagent/aisdk",
   "version": "0.1.0",
-  "description": "Drop agentkit-js sandbox kernels into the Vercel AI SDK as a `tool()` — edge-safe code execution with one capability manifest, no E2B / OS sandbox needed",
+  "description": "Drop wasmagent sandbox kernels into the Vercel AI SDK as a `tool()` — edge-safe code execution with one capability manifest, no E2B / OS sandbox needed",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*"
+    "@wasmagent/core": "workspace:*"
   },
   "peerDependencies": {
     "ai": "^4.0.0 || ^5.0.0 || ^6.0.0",
@@ -43,23 +43,25 @@
     "node": ">=20.0.0"
   },
   "keywords": [
-    "ai-sdk",
-    "vercel",
+    "wasmagent",
+    "wasm",
     "agent",
+    "portable",
     "sandbox",
-    "code-execution",
-    "tool",
-    "agentkit"
+    "executor",
+    "ai",
+    "llm",
+    "typescript"
   ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/aisdk"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/aisdk#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/aisdk#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
     "access": "public",

@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/agent-prompts",
+  "name": "@wasmagent/agent-prompts",
   "version": "0.2.0",
-  "description": "Reusable system prompt templates for agentkit-js — code/tool/framework prompts with D2 + Markdown card conventions",
+  "description": "Reusable system prompt templates for wasmagent — code/tool/framework prompts with D2 + Markdown card conventions",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -26,21 +26,25 @@
     "node": ">=20.0.0"
   },
   "keywords": [
-    "agentkit",
-    "prompts",
-    "system-prompt",
-    "code-agent",
-    "framework"
+    "wasmagent",
+    "wasm",
+    "agent",
+    "portable",
+    "sandbox",
+    "executor",
+    "ai",
+    "llm",
+    "typescript"
   ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/agent-prompts"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/agent-prompts#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/agent-prompts#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
     "access": "public",

@@ -1,8 +1,8 @@
-# chat-cards — `@agentkit-js/ui-cards-react` browser demo
+# chat-cards — `@wasmagent/ui-cards-react` browser demo
 
 A small Vite + React app that renders the agent's `card:*` output blocks
 (Markdown, D2 diagrams, code blocks, JSON tables) using the
-`@agentkit-js/ui-cards-react` component library.
+`@wasmagent/ui-cards-react` component library.
 
 ## Run
 

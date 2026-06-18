@@ -1,13 +1,13 @@
-# @agentkit-js/agent-prompts
+# /agent-prompts
 
-Reusable system prompt fragments + `composePrompt()` for agentkit-js — code/tool/sandbox/output-contract conventions exported as named string constants you compose into your own system prompt.
+Reusable system prompt fragments + `composePrompt()` for wasmagent — code/tool/sandbox/output-contract conventions exported as named string constants you compose into your own system prompt.
 
-> Part of [agentkit-js](https://github.com/telleroutlook/agentkit-js) — a TypeScript + WASM agent runtime.
+> Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.
 
 ## Install
 
 ```bash
-npm install @agentkit-js/agent-prompts
+npm install /agent-prompts
 ```
 
 ## Usage
@@ -21,7 +21,7 @@ import {
   CODE_QUALITY_TYPESCRIPT,
   SANDBOX_QUICKJS,
   OUTPUT_CONTRACT_FINAL_ANSWER,
-} from "@agentkit-js/agent-prompts";
+} from "/agent-prompts";
 
 const system = composePrompt([
   REASONING_FIRST,             // "## Approach (Reasoning-First)" block
@@ -35,7 +35,7 @@ const system = composePrompt([
 
 ## Where it's used in this repo
 
-- **bscode worker** ([`apps/worker/src/agents/prompts.ts`](https://github.com/WasmAgent/bscode/blob/main/apps/worker/src/agents/prompts.ts)) — composes 13 fragments (`CODE_QUALITY_TYPESCRIPT`, `SANDBOX_QUICKJS`, `DIAGRAMS_CODE_JS`, `FILE_OPS_ATOMIC`, …) into the production system prompt for bscode's CodeAgent. Each fragment is a generic agentkit-js building block; product-specific instructions (persona, `<boltThinking>` tag, WebContainers conventions) sit alongside.
+- **bscode worker** ([`apps/worker/src/agents/prompts.ts`](https://github.com/WasmAgent/bscode/blob/main/apps/worker/src/agents/prompts.ts)) — composes 13 fragments (`CODE_QUALITY_TYPESCRIPT`, `SANDBOX_QUICKJS`, `DIAGRAMS_CODE_JS`, `FILE_OPS_ATOMIC`, …) into the production system prompt for bscode's CodeAgent. Each fragment is a generic wasmagent building block; product-specific instructions (persona, `<boltThinking>` tag, WebContainers conventions) sit alongside.
 - **`tests/integration/cross-package.test.ts`** — pins the contract that fragments compose without conflict and that `composePrompt()` is byte-stable across re-orderings.
 
 ## Fragment catalogue
@@ -56,5 +56,5 @@ The fragments were extracted from production system prompts that survived contac
 
 ## License
 
-[Apache-2.0](./LICENSE) — © agentkit-js contributors
+[Apache-2.0](./LICENSE) — © wasmagent contributors
 

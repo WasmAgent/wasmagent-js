@@ -39,7 +39,7 @@ What do you need to retain?
 │  ├─ One corpus, ephemeral
 │  │  → InMemoryVectorStore + HybridRetriever
 │  └─ Persistent index, scaled
-│     → KvBackendVectorStore  /  Pinecone  /  Qdrant  (via @agentkit-js/tools-rag)
+│     → KvBackendVectorStore  /  Pinecone  /  Qdrant  (via @wasmagent/tools-rag)
 │
 └─ Pause/resume an in-flight run across process restarts
    → Checkpointer               (KvCheckpointer for prod)
@@ -60,7 +60,7 @@ naming differs.
 | Long-term namespaced KV (LangGraph `BaseStore`) | `StructuredMemory` (3 namespaces, TTL, decay) | [memory-patterns.md](./memory-patterns.md) |
 | Model-callable memory tool (Anthropic `memory_20250818`) | `createMemoryTool()` (4-op CRUD) | [memory-patterns.md](./memory-patterns.md) |
 | Hybrid retrieval (dense + sparse) | `HybridRetriever` (BM25 + dense + RRF) | [memory-patterns.md](./memory-patterns.md) |
-| RAG over a corpus | `InMemoryVectorStore` / `KvBackendVectorStore` / `@agentkit-js/tools-rag` | [memory-patterns.md](./memory-patterns.md) |
+| RAG over a corpus | `InMemoryVectorStore` / `KvBackendVectorStore` / `@wasmagent/tools-rag` | [memory-patterns.md](./memory-patterns.md) |
 | Bi-temporal knowledge graph (Zep / Graphiti) | **Not implemented** — bring your own graph store; we mark `valid_at` in `StructuredMemory` metadata if you need it | — |
 
 The intentional gap: **bi-temporal entity graphs are Zep's product**.
@@ -100,7 +100,7 @@ import {
   coreMemoryTools,
   ToolCallingAgent,
   MessageAssembler,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 
 const blocks = new MemoryBlockSet([
   { label: "persona", value: "I am a coding assistant." },
@@ -250,7 +250,7 @@ facts, agentkit owns the agent loop).
 ## Evaluating memory
 
 agentkit-js ships two memory-related eval suites in
-[`@agentkit-js/evals-runner`](../../packages/evals-runner/):
+[`@wasmagent/evals-runner`](../../packages/evals-runner/):
 
 - **`multi-turn-memory`** (54 items, 6 categories) — tests recall
   across noise turns; matches LongMemEval's category structure

@@ -45,8 +45,8 @@ These are exactly the failure modes the cert harness's `pickedTool` vs `semantic
 ### Pattern A — `localFirst` for cost control
 
 ```ts
-import { LocalModel, localFirst } from "@agentkit-js/model-local";
-import { AnthropicModel } from "@agentkit-js/model-anthropic";
+import { LocalModel, localFirst } from "@wasmagent/model-local";
+import { AnthropicModel } from "@wasmagent/model-anthropic";
 
 const model = localFirst(
   new LocalModel({ source: { model: "qwen3-0.6b" } }),

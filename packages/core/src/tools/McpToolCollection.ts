@@ -156,7 +156,7 @@ export class McpToolCollection {
     if (env) transportOpts.env = env;
     const transport = new StdioClientTransport(transportOpts);
     const client = new Client(
-      { name: "agentkit-js", version: "0.1.0" },
+      { name: "wasmagent", version: "0.1.0" },
       Object.keys(clientCaps).length > 0 ? { capabilities: clientCaps } : undefined
     );
     await client.connect(transport);
@@ -173,7 +173,7 @@ export class McpToolCollection {
     const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
     const { SSEClientTransport } = await import("@modelcontextprotocol/sdk/client/sse.js");
     const transport = new SSEClientTransport(new URL(url));
-    const client = new Client({ name: "agentkit-js", version: "0.1.0" });
+    const client = new Client({ name: "wasmagent", version: "0.1.0" });
     await client.connect(transport);
     assertMcpClient(client);
     return McpToolCollection.#fromClient(client as McpClientInterface, integrity);
@@ -204,7 +204,7 @@ export class McpToolCollection {
     if (sampling) clientCaps.sampling = {};
 
     const client = new Client(
-      { name: "agentkit-js", version: "0.1.0" },
+      { name: "wasmagent", version: "0.1.0" },
       Object.keys(clientCaps).length > 0 ? { capabilities: clientCaps } : undefined
     );
 
@@ -238,7 +238,7 @@ export class McpToolCollection {
       const connMsg = err instanceof Error ? err.message : String(err);
       console.warn(`[mcp] Streamable HTTP failed (${connMsg}), falling back to SSE`);
       const { SSEClientTransport } = await import("@modelcontextprotocol/sdk/client/sse.js");
-      const fallbackClient = new Client({ name: "agentkit-js", version: "0.1.0" });
+      const fallbackClient = new Client({ name: "wasmagent", version: "0.1.0" });
       await fallbackClient.connect(new SSEClientTransport(baseUrl));
       assertMcpClient(fallbackClient);
       return McpToolCollection.#fromClient(fallbackClient as McpClientInterface, integrity);
@@ -438,7 +438,7 @@ function buildOAuthProvider(
     },
     get clientMetadata() {
       return {
-        client_name: "agentkit-js MCP client",
+        client_name: "wasmagent MCP client",
         redirect_uris: [],
         grant_types: ["client_credentials"],
       };
@@ -564,7 +564,7 @@ function registerSampling(client: McpClientInterface, callback: SamplingCallback
       return {
         role: "assistant",
         content: { type: "text", text: responseText },
-        model: "agentkit-js",
+        model: "wasmagent",
         stopReason: "endTurn",
       };
     });

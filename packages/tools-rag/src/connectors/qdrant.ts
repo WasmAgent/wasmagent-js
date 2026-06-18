@@ -1,4 +1,4 @@
-import type { Embedder, Retriever, SearchResult } from "@agentkit-js/core";
+import type { Embedder, Retriever, SearchResult } from "@wasmagent/core";
 
 export interface QdrantStoreOpts {
   /** Qdrant base URL, e.g. "http://localhost:6333" or a cloud URL. */

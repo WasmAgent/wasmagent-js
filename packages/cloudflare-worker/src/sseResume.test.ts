@@ -1,27 +1,27 @@
 /**
  * A2 — End-to-end Last-Event-ID SSE resume through the worker handler.
  *
- * This file does NOT mock @agentkit-js/core (unlike index.test.ts) — it uses
+ * This file does NOT mock @wasmagent/core (unlike index.test.ts) — it uses
  * the real EventLog so we can verify the full resume contract. We still mock
  * the agent and kernel because we don't want to call out to a real model.
  */
 
-import type { AgentEvent } from "@agentkit-js/core";
+import type { AgentEvent } from "@wasmagent/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type CloudflareKVNamespace, CloudflareKvBackend } from "./kvAdapters.js";
 
 // ── Agent + kernel mocks (model-free) ─────────────────────────────────────────
 let mockAgentEvents: AgentEvent[] = [];
 
-vi.mock("@agentkit-js/kernel-quickjs", () => ({ QuickJSKernel: class {} }));
+vi.mock("@wasmagent/kernel-quickjs", () => ({ QuickJSKernel: class {} }));
 vi.mock("quickjs-emscripten-core", () => ({ newQuickJSWASMModuleFromVariant: vi.fn() }));
 vi.mock("@jitl/quickjs-wasmfile-release-sync", () => ({ default: {} }));
 
-// We cannot import @agentkit-js/core's CodeAgent/AnthropicModel without bundling
+// We cannot import @wasmagent/core's CodeAgent/AnthropicModel without bundling
 // a model adapter, so we do partial-mock just those exports while letting
 // EventLog / formatSseFrame come through real.
-vi.mock("@agentkit-js/core", async (importOriginal) => {
-  const real = await importOriginal<typeof import("@agentkit-js/core")>();
+vi.mock("@wasmagent/core", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@wasmagent/core")>();
   return {
     ...real,
     CodeAgent: class {
@@ -179,7 +179,7 @@ describe("POST /run — Last-Event-ID SSE resume (A2)", () => {
     // hook, so we exercise resume through the EventLog primitive directly:
     // server-side handler logic uses replay() then nextSeq(); we assert the
     // semantics here in lieu of a full HTTP round-trip.
-    const { EventLog } = await import("@agentkit-js/core");
+    const { EventLog } = await import("@wasmagent/core");
     const log = new EventLog(backend);
 
     const replayed = [];

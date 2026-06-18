@@ -22,7 +22,7 @@ text, never bloats the prompt.
 ### Quick start
 
 ```ts
-import { SkillRegistry } from "@agentkit-js/core";
+import { SkillRegistry } from "@wasmagent/core";
 
 const registry = new SkillRegistry();
 
@@ -119,7 +119,7 @@ interface ToolPostHook {
 ### Built-in hooks
 
 ```ts
-import { redactPostHook, truncatePostHook } from "@agentkit-js/core";
+import { redactPostHook, truncatePostHook } from "@wasmagent/core";
 
 // Replace API keys with [REDACTED]
 const redact = redactPostHook({ pattern: /sk-[a-z0-9]{6,}/gi });
@@ -128,7 +128,7 @@ const redact = redactPostHook({ pattern: /sk-[a-z0-9]{6,}/gi });
 const truncate = truncatePostHook({ maxChars: 4_000 });
 
 // Use in a runner:
-import { runToolPostHooks } from "@agentkit-js/core";
+import { runToolPostHooks } from "@wasmagent/core";
 const safe = await runToolPostHooks([redact, truncate], toolName, rawOut, {
   input,
   durationMs,

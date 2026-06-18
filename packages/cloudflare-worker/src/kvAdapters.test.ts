@@ -5,7 +5,7 @@
  * instances using the same underlying namespace/storage.
  */
 
-import { type AgentSnapshot, KvCheckpointer } from "@agentkit-js/core";
+import { type AgentSnapshot, KvCheckpointer } from "@wasmagent/core";
 import { describe, expect, it } from "vitest";
 import {
   type CloudflareKVNamespace,

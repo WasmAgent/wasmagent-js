@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/tools-browser",
+  "name": "@wasmagent/tools-browser",
   "version": "0.2.0",
-  "description": "Browser automation tools for agentkit-js — Playwright + CDP-bridge for navigate/click/fill/screenshot/extract",
+  "description": "Browser automation tools for wasmagent — Playwright + CDP-bridge for navigate/click/fill/screenshot/extract",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -26,7 +26,7 @@
     }
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*",
+    "@wasmagent/core": "workspace:*",
     "zod": "^3.23.0"
   },
   "devDependencies": {
@@ -39,21 +39,25 @@
     "node": ">=20.0.0"
   },
   "keywords": [
-    "agentkit",
-    "tools",
-    "browser",
-    "playwright",
-    "automation"
+    "wasmagent",
+    "wasm",
+    "agent",
+    "portable",
+    "sandbox",
+    "executor",
+    "ai",
+    "llm",
+    "typescript"
   ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/tools-browser"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/tools-browser#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/tools-browser#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
     "access": "public",

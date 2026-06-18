@@ -1,8 +1,8 @@
-# 评测 runner — 把 agentkit-js 当成模型评测器用
+# 评测 runner — 把 wasmagent 当成模型评测器用
 
-> **状态**:`@agentkit-js/evals-runner@0.1.0` 已发布(2026-06-12)。
+> **状态**:`@wasmagent/evals-runner@0.1.0` 已发布(2026-06-12)。
 > 厂商无关 OpenAI 兼容:Ollama / OpenRouter / AI Gateway / OpenAI / vLLM
-> 都行。模型规格格式跟 agentkit-js 其他地方一样
+> 都行。模型规格格式跟 wasmagent 其他地方一样
 > ([`docs/zh/guides/openai-compat-recipes`](./openai-compat-recipes.md))。
 
 ## 它做什么
@@ -56,12 +56,12 @@ Summary 表把每个 (model, suite) 单元格标记 Pareto 前沿:当**没有别
 - 跨 seed 标准差 σ(σ 高 = 结果噪声大,声明不可靠)
 - 跟 baseline 比的池化配对 McNemar p 值
 
-`buildG1Report` API(也从 `@agentkit-js/evals-runner` 导出)对齐严肃模型评测领域的 ≥3-seed 纪律:**单 seed greedy 点估计不构成证据**。
+`buildG1Report` API(也从 `@wasmagent/evals-runner` 导出)对齐严肃模型评测领域的 ≥3-seed 纪律:**单 seed greedy 点估计不构成证据**。
 
 ## 编程式 API
 
 ```ts
-import { runEvaluation, multiTurnMemorySuite, renderReportMarkdown } from "@agentkit-js/evals-runner";
+import { runEvaluation, multiTurnMemorySuite, renderReportMarkdown } from "@wasmagent/evals-runner";
 
 const report = await runEvaluation({
   models: [
@@ -81,8 +81,8 @@ await fs.writeFile("eval.md", renderReportMarkdown(report));
 ## 自定义评测套件
 
 ```ts
-import type { BenchmarkSuite } from "@agentkit-js/evals-runner";
-import { exactMatch } from "@agentkit-js/core";
+import type { BenchmarkSuite } from "@wasmagent/evals-runner";
+import { exactMatch } from "@wasmagent/core";
 
 const myBenchmark: BenchmarkSuite = {
   name: "my-domain-suite",
@@ -98,10 +98,10 @@ const myBenchmark: BenchmarkSuite = {
 await runEvaluation({ models, suites: [myBenchmark] });
 ```
 
-`@agentkit-js/core/evals` 里的 10 个 scorer (`exactMatch`、`toolCallAccuracy`、`trajectoryValidity`、`efficiencyScorer`、`constraintScorer`、`recoveryScorer`、`faithfulnessScorerAsync`、`relevanceScorerAsync`、`compositeScorer`,加 `JudgeScorer`)开箱即用。
+`@wasmagent/core/evals` 里的 10 个 scorer (`exactMatch`、`toolCallAccuracy`、`trajectoryValidity`、`efficiencyScorer`、`constraintScorer`、`recoveryScorer`、`faithfulnessScorerAsync`、`relevanceScorerAsync`、`compositeScorer`,加 `JudgeScorer`)开箱即用。
 
 ## 见
 
-- [`packages/evals-runner/README.md`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/evals-runner#readme) — 包级别细节、安装、完整 API。
+- [`packages/evals-runner/README.md`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/evals-runner#readme) — 包级别细节、安装、完整 API。
 - [`docs/zh/guides/openai-compat-recipes`](./openai-compat-recipes.md) — Ollama / OpenRouter / AI Gateway / DeepSeek / Groq 配方。
 - [`docs/zh/benchmarks`](../benchmarks.md) — 主基准比例表,本 runner 是它的扩展。

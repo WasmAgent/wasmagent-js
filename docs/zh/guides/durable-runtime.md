@@ -12,8 +12,8 @@ import {
   resumeFromHuman,
   applyHumanResponse,
   restoreFromSnapshot,
-} from "@agentkit-js/core";
-import { CloudflareKvBackend } from "@agentkit-js/cloudflare-worker";
+} from "@wasmagent/core";
+import { CloudflareKvBackend } from "@wasmagent/cloudflare-worker";
 
 // 一个 adapter，三处复用。
 const kv = new CloudflareKvBackend(env.MY_KV);
@@ -77,7 +77,7 @@ id = "..."
 
 每条响应带 `X-Agentkit-Trace-Id` header。客户端记下它和最大 `id:` 行号即可。
 
-### 客户端（`@agentkit-js/react`）
+### 客户端（`@wasmagent/react`）
 
 ```tsx
 const { messages, run } = useAgentRun("/run", {

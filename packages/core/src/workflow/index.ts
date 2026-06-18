@@ -8,7 +8,7 @@
  *   - KvWorkflowStateStore + MemoryKvBackend — built-in persistence options.
  *
  * The Cloudflare adapter (CloudflareWorkflowEngine) lives in
- * @agentkit-js/cloudflare-worker and implements the same WorkflowEngine
+ * @wasmagent/cloudflare-worker and implements the same WorkflowEngine
  * surface against Cloudflare's WorkflowEntrypoint primitives.
  */
 

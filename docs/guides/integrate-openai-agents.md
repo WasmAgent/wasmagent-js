@@ -10,7 +10,7 @@ execution path runs your `execute()` function directly. When the LLM
 is generating the code that runs, that's not isolation — it is the
 opposite of isolation.
 
-`@agentkit-js/openai-agents` produces tools whose `execute` is an
+`@wasmagent/openai-agents` produces tools whose `execute` is an
 agentkit kernel run:
 
 - **`sandboxedJsAgentTool`** — one-shot JS evaluator.
@@ -24,7 +24,7 @@ see [`docs/strategy/security-face.md`](../strategy/security-face.md).
 ## Install
 
 ```bash
-npm add @agentkit-js/openai-agents @agentkit-js/core @agentkit-js/kernel-quickjs @openai/agents
+npm add @wasmagent/openai-agents @wasmagent/core @wasmagent/kernel-quickjs @openai/agents
 ```
 
 The `@openai/agents` peer dep is declared *optional* so unit tests
@@ -35,8 +35,8 @@ an `Agent`.
 
 ```ts
 import { Agent } from "@openai/agents";
-import { sandboxedJsAgentTool } from "@agentkit-js/openai-agents";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { sandboxedJsAgentTool } from "@wasmagent/openai-agents";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
 const sandboxed = sandboxedJsAgentTool({
   kernel: new QuickJSKernel(),
@@ -65,9 +65,9 @@ sees on the next turn.
 
 ```ts
 import { Agent } from "@openai/agents";
-import { codeModeAgentTool } from "@agentkit-js/openai-agents";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
-import { ToolRegistry } from "@agentkit-js/core";
+import { codeModeAgentTool } from "@wasmagent/openai-agents";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+import { ToolRegistry } from "@wasmagent/core";
 
 const reg = new ToolRegistry();
 reg.register({ /* tool defs — see ToolRegistry docs */ });

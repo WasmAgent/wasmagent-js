@@ -5,13 +5,13 @@ This walks you from zero to your first running agent. Pick the model adapter tha
 ## 1. Install
 
 ```bash
-npm install @agentkit-js/core @anthropic-ai/sdk
+npm install @wasmagent/core @anthropic-ai/sdk
 # or with Bun / pnpm
-bun add @agentkit-js/core @anthropic-ai/sdk
+bun add @wasmagent/core @anthropic-ai/sdk
 ```
 
 > Using a Chinese model? Swap the install for one of the dedicated adapters:
-> `@agentkit-js/model-doubao`, `@agentkit-js/model-deepseek`, `@agentkit-js/model-moonshot`, `@agentkit-js/model-qwen`, `@agentkit-js/model-zhipu`, `@agentkit-js/model-minimax`.
+> `@wasmagent/model-doubao`, `@wasmagent/model-deepseek`, `@wasmagent/model-moonshot`, `@wasmagent/model-qwen`, `@wasmagent/model-zhipu`, `@wasmagent/model-minimax`.
 
 ## 2. Set your key
 
@@ -23,7 +23,7 @@ export ANTHROPIC_API_KEY=sk-ant-...   # or DOUBAO_API_KEY, DEEPSEEK_API_KEY, etc
 
 ```ts
 // hello-agent.ts
-import { CodeAgent, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+import { CodeAgent, AnthropicModel, AnthropicModels } from "@wasmagent/core";
 
 const agent = new CodeAgent({
   model: new AnthropicModel(AnthropicModels.SONNET_4_6, {
@@ -50,14 +50,14 @@ The default `VmKernel` uses `node:vm` and is fine for trusted local code. For ev
 
 | Where you're running | Use |
 |---|---|
-| Cloudflare Workers / Vercel Edge / Deno Deploy | [`@agentkit-js/kernel-quickjs`](/kernels/comparison) |
-| Need real Python | [`@agentkit-js/kernel-pyodide`](/kernels/comparison) |
-| Strongest sandboxing without a microVM | [`@agentkit-js/kernel-wasmtime`](/kernels/comparison) |
-| Real shell / npm install / compilation | [`@agentkit-js/kernel-remote`](/kernels/comparison) (E2B / CF Sandbox) |
+| Cloudflare Workers / Vercel Edge / Deno Deploy | [`@wasmagent/kernel-quickjs`](/kernels/comparison) |
+| Need real Python | [`@wasmagent/kernel-pyodide`](/kernels/comparison) |
+| Strongest sandboxing without a microVM | [`@wasmagent/kernel-wasmtime`](/kernels/comparison) |
+| Real shell / npm install / compilation | [`@wasmagent/kernel-remote`](/kernels/comparison) (E2B / CF Sandbox) |
 
 ```ts
-import { CodeAgent } from "@agentkit-js/core";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { CodeAgent } from "@wasmagent/core";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
 const agent = new CodeAgent({
   model: /* … */,
@@ -73,4 +73,4 @@ const agent = new CodeAgent({
 - [Evals cookbook](./evals-cookbook) — 16 built-in scorers, multi-criterion judges
 - [Use kernels with Vercel AI SDK](./integrate-vercel-ai-sdk) / [with Mastra](./integrate-mastra)
 
-If anything blocks you, [open an issue](https://github.com/telleroutlook/agentkit-js/issues) — friction in this guide is the bug we want to hear about.
+If anything blocks you, [open an issue](https://github.com/WasmAgent/wasmagent-js/issues) — friction in this guide is the bug we want to hear about.

@@ -23,7 +23,7 @@ differentiators:
 
 This page is the code-mode entry. The first-mover hook is direct:
 **Cloudflare Code Mode MCP** (the closest competitor to
-`@agentkit-js/mcp-server`'s `createCodeModeServer()`) has published a
+`@wasmagent/mcp-server`'s `createCodeModeServer()`) has published a
 *token-savings* story but no *task-completion* number on a real
 coding benchmark. Whoever publishes the first credible
 SWE-bench-lite number on the code-mode dispatch shape owns the

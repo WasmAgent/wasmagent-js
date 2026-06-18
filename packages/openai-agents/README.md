@@ -1,10 +1,10 @@
-# @agentkit-js/openai-agents
+# /openai-agents
 
-> Drop agentkit-js sandbox kernels into the **OpenAI Agents JS SDK** as a
+> Drop wasmagent sandbox kernels into the **OpenAI Agents JS SDK** as a
 > native `tool`. Edge-safe code execution, one capability manifest, runs on
 > Cloudflare Workers / Vercel Edge / Node — no E2B sandbox required.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/telleroutlook/agentkit-js/tree/main/examples/openai-agents-quickjs?file=index.mjs)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/WasmAgent/wasmagent-js/tree/main/examples/openai-agents-quickjs?file=index.mjs)
 
 ## Why this exists
 
@@ -28,7 +28,7 @@ Agents JS `Tool` shape.
 ## Install
 
 ```bash
-npm install @openai/agents @agentkit-js/openai-agents @agentkit-js/kernel-quickjs \
+npm install @openai/agents /openai-agents /kernel-quickjs \
   quickjs-emscripten @jitl/quickjs-wasmfile-release-sync zod
 ```
 
@@ -36,8 +36,8 @@ npm install @openai/agents @agentkit-js/openai-agents @agentkit-js/kernel-quickj
 
 ```ts
 import { Agent } from "@openai/agents";
-import { sandboxedJsAgentTool } from "@agentkit-js/openai-agents";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { sandboxedJsAgentTool } from "/openai-agents";
+import { QuickJSKernel } from "/kernel-quickjs";
 
 const agent = new Agent({
   name: "math-helper",
@@ -53,8 +53,8 @@ const agent = new Agent({
 ## Code-mode: collapse N tools
 
 ```ts
-import { codeModeAgentTool } from "@agentkit-js/openai-agents";
-import { ToolRegistry } from "@agentkit-js/core";
+import { codeModeAgentTool } from "/openai-agents";
+import { ToolRegistry } from "/core";
 
 const tools = new ToolRegistry();
 // …register downstream tools…
@@ -77,21 +77,21 @@ one line, the rest of your code is unchanged:
 
 | Kernel | When to pick it | Edge-safe |
 | ------ | --------------- | --------- |
-| `QuickJSKernel` (`@agentkit-js/kernel-quickjs`) | Default. JS/TS workloads. ~2 MB cold start. | ✅ |
-| `PyodideKernel` (`@agentkit-js/kernel-pyodide`) | Model emits Python (numpy, pandas, regex-heavy). | ✅ (heavy) |
-| `WasmtimeKernel` (`@agentkit-js/kernel-wasmtime`) | Multi-language WASM modules / Javy-compiled JS for max isolation. | ✅ |
-| `RemoteSandboxKernel` (`@agentkit-js/kernel-remote`) | Need full POSIX, native binaries, multi-tenant trust. Backed by E2B / Cloudflare Sandbox. | n/a |
+| `QuickJSKernel` (`/kernel-quickjs`) | Default. JS/TS workloads. ~2 MB cold start. | ✅ |
+| `PyodideKernel` (`/kernel-pyodide`) | Model emits Python (numpy, pandas, regex-heavy). | ✅ (heavy) |
+| `WasmtimeKernel` (`/kernel-wasmtime`) | Multi-language WASM modules / Javy-compiled JS for max isolation. | ✅ |
+| `RemoteSandboxKernel` (`/kernel-remote`) | Need full POSIX, native binaries, multi-tenant trust. Backed by E2B / Cloudflare Sandbox. | n/a |
 
 Swap is a one-liner — `kernel: new QuickJSKernel()` becomes `kernel: new PyodideKernel()`. Same `CapabilityManifest`, same OpenAI Agents JS `Tool<T>` shape.
 
 ## Capability manifest
 
 Same `CapabilityManifest` as the other adapters — see
-[`docs/guides/code-mode.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/code-mode.md#security-policy-face).
+[`docs/guides/code-mode.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/code-mode.md#security-policy-face).
 
 ## When to pick this over `SandboxAgent`
 
-| Need | OpenAI `SandboxAgent` | `@agentkit-js/openai-agents` |
+| Need | OpenAI `SandboxAgent` | `/openai-agents` |
 |---|---|---|
 | Cloudflare Workers / Vercel Edge | ❌ requires host process | ✅ WASM kernel runs in-isolate |
 | Native binaries / full POSIX | ✅ Docker / hosted | ❌ language-level only |
@@ -104,6 +104,6 @@ Use both: `SandboxAgent` for "I need bash + git", `codeModeAgentTool` for
 
 ## See also
 
-- [`@agentkit-js/aisdk`](https://www.npmjs.com/package/@agentkit-js/aisdk) — same kernels for Vercel AI SDK
-- [`@agentkit-js/claude-agent-sdk`](https://www.npmjs.com/package/@agentkit-js/claude-agent-sdk) — same kernels for Anthropic Claude Agent SDK
-- [`@agentkit-js/mastra-sandbox`](https://www.npmjs.com/package/@agentkit-js/mastra-sandbox) — same kernels as a Mastra sandbox provider
+- [`/aisdk`](https://www.npmjs.com/package//aisdk) — same kernels for Vercel AI SDK
+- [`/claude-agent-sdk`](https://www.npmjs.com/package//claude-agent-sdk) — same kernels for Anthropic Claude Agent SDK
+- [`/mastra-sandbox`](https://www.npmjs.com/package//mastra-sandbox) — same kernels as a Mastra sandbox provider

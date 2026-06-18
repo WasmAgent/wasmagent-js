@@ -17,7 +17,7 @@ import {
   MessageAssembler,
   ObservationalMemory,
   MapKvBackend,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 
 const assembler = new MessageAssembler({
   systemPrompt,

@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/evals-runner",
+  "name": "@wasmagent/evals-runner",
   "version": "0.1.0",
-  "description": "Evaluation runner for agentkit-js — multi-model multi-axis benchmark harness with paired statistics + Pareto report. Targets the gaps in evomerge-style single-axis evaluation: long-context recall, multi-turn memory, agent trajectory, latency, cost.",
+  "description": "Evaluation runner for wasmagent — multi-model multi-axis benchmark harness with paired statistics + Pareto report. Targets the gaps in evomerge-style single-axis evaluation: long-context recall, multi-turn memory, agent trajectory, latency, cost.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -29,12 +29,12 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*",
-    "@agentkit-js/devtools": "workspace:*",
+    "@wasmagent/core": "workspace:*",
+    "@wasmagent/devtools": "workspace:*",
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@agentkit-js/kernel-quickjs": "workspace:*",
+    "@wasmagent/kernel-quickjs": "workspace:*",
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0",
     "vitest": "^2.1.0"
@@ -43,23 +43,25 @@
     "node": ">=20.0.0"
   },
   "keywords": [
-    "agentkit",
-    "evaluation",
-    "benchmark",
-    "model-evaluation",
-    "pareto",
-    "longmemeval",
-    "paired-statistics"
+    "wasmagent",
+    "wasm",
+    "agent",
+    "portable",
+    "sandbox",
+    "executor",
+    "ai",
+    "llm",
+    "typescript"
   ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/evals-runner"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/evals-runner#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/evals-runner#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
     "access": "public",

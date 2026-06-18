@@ -1,11 +1,11 @@
-# Contributing to agentkit-js
+# Contributing to wasmagent
 
 > First-time contributors are welcome. The project is small enough that
 > one well-scoped PR can move the needle.
 
 ## Looking for a co-maintainer
 
-agentkit-js currently has a single primary maintainer. The single
+wasmagent currently has a single primary maintainer. The single
 fastest way to materially help the project is to volunteer for
 **npm-publish + merge rights**. We are explicitly looking for
 contributors embedded in one of: Vercel AI SDK, Mastra, Claude
@@ -24,8 +24,8 @@ landed in the upstream you're embedded in if you have one.
 ## Quick start
 
 ```bash
-git clone https://github.com/telleroutlook/agentkit-js
-cd agentkit-js
+git clone https://github.com/WasmAgent/wasmagent-js
+cd wasmagent
 bun install      # turbo + workspaces; pnpm/npm also work
 bun run build    # tsc across all packages
 bun run test     # vitest across all packages
@@ -37,9 +37,9 @@ bun run lint     # biome
 Plugin packages are the easiest entry — they are small, opinion-free
 adapters with clear public contracts:
 
-- **`@agentkit-js/aisdk`** — write a recipe + test for an AI SDK tool
+- **`@wasmagent/aisdk`** — write a recipe + test for an AI SDK tool
   pattern your app uses.
-- **`@agentkit-js/mastra-sandbox`** — wire a different `Kernel`
+- **`@wasmagent/mastra-sandbox`** — wire a different `Kernel`
   (Pyodide, Wasmtime) into the example test.
 - **OpenAI-compat recipes** — add a working snippet to
   [`docs/guides/openai-compat-recipes.md`](docs/guides/openai-compat-recipes.md)
@@ -106,7 +106,7 @@ align bumps via changesets when bumping more than one package.
 
 ## Generic-first discipline (S4)
 
-Anything that is not strictly product-specific lands in `agentkit-js`
+Anything that is not strictly product-specific lands in `wasmagent`
 *first* and is consumed by `bscode` or any other downstream as a
 public API. This is not a stylistic preference — it is the rule that
 keeps `bscode` a funnel rather than a competing product (see
@@ -117,11 +117,11 @@ tool, scorer, judge, runner, or workspace abstraction, ask:
 
 1. **Is the logic specific to this product, or would another agent
    project want it?** If the second answer is yes, the PR belongs in
-   `agentkit-js`, with `bscode` consuming the published package.
-2. **Does it depend only on already-published `@agentkit-js/*` APIs?**
+   `wasmagent`, with `bscode` consuming the published package.
+2. **Does it depend only on already-published `@wasmagent/*` APIs?**
    If it would force an internal-only import, the missing public API
    is the actual blocker — land that first.
-3. **Is there a comparable feature already in `agentkit-js` you
+3. **Is there a comparable feature already in `wasmagent` you
    would otherwise duplicate?** If yes, extend the framework instead.
 
 PRs in `bscode` that fail this test will be redirected to land the
@@ -132,7 +132,7 @@ the redirect, so the rule is visible to future contributors.
 
 When a PR adds, sharpens, or removes a **differentiation axis** —
 something a reader of `README.md` or `docs/compare.md` would scan to
-decide whether agentkit-js is worth picking — the *narrative for that
+decide whether wasmagent is worth picking — the *narrative for that
 axis lands in the same PR as the code*. Code without a narrative is
 silent: `git log` cannot reconstruct why a class was added, and the
 next reader (human or LLM) has to infer it from filenames.

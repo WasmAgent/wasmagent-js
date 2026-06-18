@@ -20,7 +20,7 @@
  * registry, nothing more.
  */
 
-import { JsKernel, ToolRegistry } from "@agentkit-js/core";
+import { JsKernel, ToolRegistry } from "@wasmagent/core";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createPortalServer } from "./portal.js";

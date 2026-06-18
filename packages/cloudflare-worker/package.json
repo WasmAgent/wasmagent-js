@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/cloudflare-worker",
+  "name": "@wasmagent/cloudflare-worker",
   "version": "0.1.0",
-  "description": "Cloudflare Workers entry point for agentkit-js",
+  "description": "Cloudflare Workers entry point for wasmagent",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
@@ -15,9 +15,9 @@
     "clean": "rm -rf dist .wrangler .turbo"
   },
   "dependencies": {
-    "@agentkit-js/ag-ui": "workspace:*",
-    "@agentkit-js/core": "workspace:*",
-    "@agentkit-js/kernel-quickjs": "workspace:*",
+    "@wasmagent/ag-ui": "workspace:*",
+    "@wasmagent/core": "workspace:*",
+    "@wasmagent/kernel-quickjs": "workspace:*",
     "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
     "quickjs-emscripten-core": "0.32.0"
   },
@@ -32,21 +32,26 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/cloudflare-worker"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/cloudflare-worker#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/cloudflare-worker#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "engines": {
     "node": ">=20.0.0"
   },
   "keywords": [
-    "agentkit",
+    "wasmagent",
+    "wasm",
     "agent",
+    "portable",
+    "sandbox",
+    "executor",
     "ai",
-    "llm"
+    "llm",
+    "typescript"
   ],
   "author": "agentkit-js contributors"
 }

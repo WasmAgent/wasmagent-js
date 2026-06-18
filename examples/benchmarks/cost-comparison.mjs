@@ -46,7 +46,7 @@ const finalAnswerTokens = tokensOf(FINAL_ANSWER_CHARS);
 
 // On a 5-step agent run (1 plan + 4 tool calls + 1 wrap-up), each step
 // re-sends the system prompt + accumulated history. Without prompt cache,
-// total input billed grows quadratic-ish; with cache (the @agentkit-js
+// total input billed grows quadratic-ish; with cache (the @wasmagent
 // default for Anthropic/Doubao/Kimi/Qwen) the system prefix is a cache
 // HIT after step 1 — billed at the cheaper "cached" rate.
 

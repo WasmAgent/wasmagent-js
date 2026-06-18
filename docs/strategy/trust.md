@@ -19,8 +19,8 @@
 |---|---|---|---|---|
 | **License** | Apache-2.0 core + **Enterprise (commercial)** modules | Apache-2.0 | MIT | **Apache-2.0 — every package, no double-license** ([LICENSE](../../LICENSE)) |
 | **SOC 2 / SOC 3** | ❌ public statement: "no SOC 2 yet" (2026-04 third-party assessments) | n/a (SDK, not a service) | n/a (SDK) | n/a — **no SaaS to certify** (we ship code, not a hosted control plane); see [Section 6](#6-no-saas-no-data-collection) for what that means for your data |
-| **Time-travel debugger** | ❌ (Studio shows traces, not "fork from step") | ⚠️ DevTools, no fork | ❌ | ✅ [`@agentkit-js/devtools`](../../packages/devtools/) — `EventLogReplay` + step-fork UI |
-| **Air-gapped / offline closure** | ❌ providers are SaaS | ❌ provider HTTP | ❌ | ✅ `@agentkit-js/model-local` + WASM kernel = full agent loop, zero outbound traffic |
+| **Time-travel debugger** | ❌ (Studio shows traces, not "fork from step") | ⚠️ DevTools, no fork | ❌ | ✅ [`@wasmagent/devtools`](../../packages/devtools/) — `EventLogReplay` + step-fork UI |
+| **Air-gapped / offline closure** | ❌ providers are SaaS | ❌ provider HTTP | ❌ | ✅ `@wasmagent/model-local` + WASM kernel = full agent loop, zero outbound traffic |
 | **Sandbox-escape SLA — public drill record** | ❌ | n/a | n/a | ✅ [`docs/strategy/security-drill-log.md`](security-drill-log.md) |
 | **Release cadence — public ledger** | ⚠️ release notes only | ✅ | ✅ | ✅ [`docs/strategy/release-cadence-log.md`](release-cadence-log.md) |
 | **npm provenance on every package** | ⚠️ partial | ✅ | ✅ | ✅ [`scripts/add-publish-provenance.mjs`](../../scripts/add-publish-provenance.mjs) — 32 packages opt in by default; CI verifies via `bun run publish:check` |
@@ -35,11 +35,11 @@ non-SaaS project can credibly *prove*.**
 
 | Commitment | How it's enforced | Verify |
 |---|---|---|
-| Every published package on npm carries provenance metadata (`--provenance`) | `publishConfig.provenance: true` in every public package; release workflow has `id-token: write`. | `npm view @agentkit-js/core --json | jq .dist` shows attestation; or click the green "Provenance" badge on [npmjs.com/package/@agentkit-js/core](https://www.npmjs.com/package/@agentkit-js/core). |
+| Every published package on npm carries provenance metadata (`--provenance`) | `publishConfig.provenance: true` in every public package; release workflow has `id-token: write`. | `npm view @wasmagent/core --json | jq .dist` shows attestation; or click the green "Provenance" badge on [npmjs.com/package/@wasmagent/core](https://www.npmjs.com/package/@wasmagent/core). |
 | No package publishes from a developer laptop | All releases run via `release.yml` in GitHub Actions; the `id-token` claim ties the artefact to a Sigstore-verifiable signer | [`.github/workflows/release.yml`](../../.github/workflows/release.yml) |
 | Lockfile is committed and CI-frozen | `bun install --frozen-lockfile` in every CI job; renovate-style updates land via PR with full test run | [`bun.lock`](../../bun.lock) is in the repo root |
 | No transient `postinstall` execution from dependencies | `bun.lock` records hashes; `package.json` files contain no postinstall hooks; `scripts/publish-check.mjs` blocks publish if a new postinstall is detected | [`scripts/publish-check.mjs`](../../scripts/publish-check.mjs) |
-| SBOM available on demand | Each release tag publishes the workspace's resolved dependency tree as a build artefact (CycloneDX-compatible JSON via `bun pm ls --json`) | run `bun pm ls --json` locally; or fetch the `sbom-*.json` asset from any [release](https://github.com/telleroutlook/agentkit-js/releases) |
+| SBOM available on demand | Each release tag publishes the workspace's resolved dependency tree as a build artefact (CycloneDX-compatible JSON via `bun pm ls --json`) | run `bun pm ls --json` locally; or fetch the `sbom-*.json` asset from any [release](https://github.com/WasmAgent/wasmagent-js/releases) |
 
 ---
 
@@ -116,7 +116,7 @@ agentkit-js is a library, not a hosted service. We do not run a
 control plane, a metrics endpoint, or any default outbound network
 traffic. Concretely:
 
-- **No telemetry by default.** `@agentkit-js/otel-exporter` exists
+- **No telemetry by default.** `@wasmagent/otel-exporter` exists
   but you must wire it to your own collector. There is no "phone
   home" path on `npm install` or at runtime.
 - **No managed studio.** Our DevTools are a local `agentkit
@@ -127,8 +127,8 @@ traffic. Concretely:
   DeepSeek / Kimi / Qwen / GLM / MiniMax / + local llama.cpp).
   The thing you're locked into is *the API*, and that API is
   versioned by [`api-stability.md`](api-stability.md).
-- **Air-gapped supported.** `@agentkit-js/model-local` +
-  `@agentkit-js/kernel-quickjs` runs an entire agent loop with no
+- **Air-gapped supported.** `@wasmagent/model-local` +
+  `@wasmagent/kernel-quickjs` runs an entire agent loop with no
   outbound traffic. See [`examples/local-offline/`](../../examples/local-offline/).
 
 ---
@@ -140,7 +140,7 @@ Copy this into your security review:
 | | Status | Evidence |
 |---|---|---|
 | License | Apache-2.0, every package, no double-license | [`LICENSE`](../../LICENSE) |
-| Open source | ✅ | [github.com/telleroutlook/agentkit-js](https://github.com/telleroutlook/agentkit-js) |
+| Open source | ✅ | [github.com/WasmAgent/wasmagent-js](https://github.com/WasmAgent/wasmagent-js) |
 | Vulnerability disclosure | ✅ private channel + 48h P0 SLA | [`SECURITY.md`](../../SECURITY.md) |
 | Public sandbox-escape drill record | ✅ | [`security-drill-log.md`](security-drill-log.md) |
 | Release cadence ledger | ✅ bi-weekly with stall accounting | [`release-cadence-log.md`](release-cadence-log.md) |
@@ -149,7 +149,7 @@ Copy this into your security review:
 | Air-gapped / offline | ✅ | [`examples/local-offline/`](../../examples/local-offline/) |
 | API stability commitment | ✅ frozen 2026-12-15 (1.0) | [`api-stability.md`](api-stability.md) |
 | Bus factor | 1 maintainer + active co-maintainer search | [`CONTRIBUTING.md#looking-for-a-co-maintainer`](../../CONTRIBUTING.md#looking-for-a-co-maintainer) |
-| Telemetry on by default | ❌ (opt-in via `@agentkit-js/otel-exporter`) | this page §6 |
+| Telemetry on by default | ❌ (opt-in via `@wasmagent/otel-exporter`) | this page §6 |
 | Vendor SaaS dependency | ❌ | this page §6 |
 
 ---

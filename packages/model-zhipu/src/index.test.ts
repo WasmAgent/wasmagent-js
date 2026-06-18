@@ -1,4 +1,4 @@
-import type { StreamEvent } from "@agentkit-js/core/models";
+import type { StreamEvent } from "@wasmagent/core/models";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type OAIChunk = {

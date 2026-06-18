@@ -9,7 +9,7 @@ import type {
   KernelOptions,
   KernelResult,
   WasmKernel,
-} from "@agentkit-js/core/executor";
+} from "@wasmagent/core/executor";
 
 const execFileAsync = promisify(execFile);
 
@@ -56,7 +56,7 @@ export interface WasmtimeKernelOptions extends KernelOptions {
  *
  * @example
  * ```ts
- * import { WasmtimeKernel } from "@agentkit-js/kernel-wasmtime";
+ * import { WasmtimeKernel } from "@wasmagent/kernel-wasmtime";
  * await using kernel = new WasmtimeKernel();
  * const result = await kernel.run("1 + 2");
  * console.log(result.output); // 3
@@ -79,7 +79,7 @@ export class WasmtimeKernel implements WasmKernel {
     const env = capabilities?.env ?? {};
     // Per-call cpuMs (capability) takes precedence over the constructor
     // default (opts.timeoutMs). This matches the "capability honouring
-    // matrix" in @agentkit-js/core/executor/types: cpuMs is per-call.
+    // matrix" in @wasmagent/core/executor/types: cpuMs is per-call.
     const effectiveTimeoutMs = capabilities?.cpuMs ?? this.#timeoutMs;
     const src = buildJavySource(code, allowedHosts, this.#stateJson, env);
 

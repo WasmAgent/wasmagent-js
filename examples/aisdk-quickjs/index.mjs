@@ -9,8 +9,8 @@
  */
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { sandboxedJsTool } from "@agentkit-js/aisdk";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { sandboxedJsTool } from "@wasmagent/aisdk";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
 const kernel = new QuickJSKernel();
 

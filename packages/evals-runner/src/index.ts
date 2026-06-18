@@ -1,5 +1,5 @@
 /**
- * @agentkit-js/evals-runner — multi-model multi-axis evaluation harness.
+ * @wasmagent/evals-runner — multi-model multi-axis evaluation harness.
  *
  * Composes agentkit's existing scorers, EventLog, and statistical
  * primitives into a complete pipeline: dataset in, Pareto report out.
@@ -15,7 +15,7 @@
  *   - REFERENCE_SUITES   — six pre-built suites.
  *   - renderReportMarkdown — markdown renderer for the report.
  *   - { mcnemarExact, wilsonCI, pairedBootstrap, buildG1Report } —
- *     stats primitives, also reachable via "@agentkit-js/evals-runner/stats".
+ *     stats primitives, also reachable via "@wasmagent/evals-runner/stats".
  *   - { estimateJoulesPerCorrect, renderEnergyTable } — P16-8 ④ energy axis.
  */
 
@@ -39,7 +39,7 @@ export type {
   IptVerdict,
   SeedResult,
 } from "./stats/index.js";
-// Stats primitives — also under "@agentkit-js/evals-runner/stats".
+// Stats primitives — also under "@wasmagent/evals-runner/stats".
 export {
   binomialCDF,
   buildG1Report,

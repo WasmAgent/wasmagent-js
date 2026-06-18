@@ -10,8 +10,8 @@
  *
  * Run: `bun edge-sandbox-escape.mjs` from this directory.
  */
-import { JsKernel } from "@agentkit-js/core";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { JsKernel } from "@wasmagent/core";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
 let failed = 0;
 function assert(label, cond, detail) {

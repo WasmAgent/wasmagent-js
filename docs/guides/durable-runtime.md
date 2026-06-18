@@ -16,8 +16,8 @@ import {
   resumeFromHuman,
   applyHumanResponse,
   restoreFromSnapshot,
-} from "@agentkit-js/core";
-import { CloudflareKvBackend } from "@agentkit-js/cloudflare-worker";
+} from "@wasmagent/core";
+import { CloudflareKvBackend } from "@wasmagent/cloudflare-worker";
 
 // One adapter, three uses.
 const kv = new CloudflareKvBackend(env.MY_KV);
@@ -87,7 +87,7 @@ id = "..."
 Each response includes an `X-Agentkit-Trace-Id` header. The client should
 keep it and the highest seen `id:` line.
 
-### Client (`@agentkit-js/react`)
+### Client (`@wasmagent/react`)
 
 ```tsx
 const { messages, run } = useAgentRun("/run", {

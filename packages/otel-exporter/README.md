@@ -1,13 +1,13 @@
-# @agentkit-js/otel-exporter
+# /otel-exporter
 
-OpenTelemetry exporter — wire agentkit-js `EventLog` into Jaeger / Tempo / any OTLP collector.
+OpenTelemetry exporter — wire wasmagent `EventLog` into Jaeger / Tempo / any OTLP collector.
 
-> Part of [agentkit-js](https://github.com/telleroutlook/agentkit-js) — a TypeScript + WASM agent runtime.
+> Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.
 
 ## Install
 
 ```bash
-npm install @agentkit-js/otel-exporter @agentkit-js/core
+npm install /otel-exporter /core
 ```
 
 ## Usage
@@ -17,4 +17,4 @@ correct parent/child span relationships. See `examples/otel-jaeger`.
 
 ## License
 
-[Apache-2.0](./LICENSE) — © agentkit-js contributors
+[Apache-2.0](./LICENSE) — © wasmagent contributors

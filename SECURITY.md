@@ -1,4 +1,4 @@
-# Security policy — agentkit-js
+# Security policy — wasmagent
 
 ## Reporting a vulnerability
 
@@ -7,7 +7,7 @@ not file a public issue for an exploitable vulnerability.
 
 ## Threat model
 
-agentkit-js is a **library** — a runtime + tools + components used
+wasmagent is a **library** — a runtime + tools + components used
 by downstream applications (bscode, other consumer agents). The
 library is not deployed; it ships into someone else's app.
 
@@ -25,7 +25,7 @@ trust). Our responsibility is to give them safe primitives.
 
 ## Sandbox decisions in shipped components
 
-### `@agentkit-js/ui-cards-react/src/D2Card.tsx` — iframe sandbox
+### `@wasmagent/ui-cards-react/src/D2Card.tsx` — iframe sandbox
 
 The D2 card renders compiled D2 SVG inside an iframe with:
 
@@ -54,21 +54,21 @@ take them.
 
 ### Kernels
 
-- `@agentkit-js/kernel-quickjs` — pure JS in WASM. No DOM, no
+- `@wasmagent/kernel-quickjs` — pure JS in WASM. No DOM, no
   filesystem, no network. Sandbox is the WebAssembly boundary.
-- `@agentkit-js/kernel-pyodide` — CPython in WASM. No network, no
+- `@wasmagent/kernel-pyodide` — CPython in WASM. No network, no
   filesystem outside Pyodide's in-memory FS. Imports limited to what
   pyodide.loadPackage allows.
-- `@agentkit-js/kernel-wasmtime` — Wasmtime sandbox; consumer must
+- `@wasmagent/kernel-wasmtime` — Wasmtime sandbox; consumer must
   configure WASI capabilities explicitly. The default exposes no
   filesystem, no network, no env vars.
-- `@agentkit-js/kernel-remote` — runs against a user-supplied HTTP
+- `@wasmagent/kernel-remote` — runs against a user-supplied HTTP
   endpoint; sandbox is whatever that endpoint enforces. **Consumers
   must trust their remote.**
 
 ### Browser tools
 
-`@agentkit-js/tools-browser` (CDP + Playwright) executes arbitrary
+`@wasmagent/tools-browser` (CDP + Playwright) executes arbitrary
 JS in a browser the agent controls. **Never point these at a
 browser session that has the user's logins** — the agent can
 exfiltrate cookies. They're meant for fresh, isolated browser
@@ -83,7 +83,7 @@ silently look like an empty success.
 
 ### Cloudflare Worker integration
 
-`@agentkit-js/cloudflare-worker` ships:
+`@wasmagent/cloudflare-worker` ships:
 
 - HMAC-SHA-256 webhook signing — recipients should verify the
   signature.
@@ -96,7 +96,7 @@ silently look like an empty success.
 
 ## Defense in depth
 
-For consumer apps using agentkit-js:
+For consumer apps using wasmagent:
 
 - Run JWT verification *before* model invocation, not after.
 - Enforce `Origin` / CORS allow-list at the edge, not in worker

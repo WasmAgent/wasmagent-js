@@ -21,7 +21,7 @@ import {
   MessageAssembler,
   resumeFromHuman,
   restoreFromSnapshot,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 
 // ── Shared KV across the whole demo ──────────────────────────────────────────
 // Same backend powers checkpoints AND the SSE event log — that's the A4 gate

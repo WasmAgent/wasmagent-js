@@ -34,14 +34,14 @@
  * as a JSON schema on the chat-completions request body.
  */
 
-import type { AgentEvent, Model, ModelMessage, ToolDefinition } from "@agentkit-js/core";
+import type { AgentEvent, Model, ModelMessage, ToolDefinition } from "@wasmagent/core";
 import {
   GenericOpenAICompatModel,
   ProgrammaticOrchestrator,
   ToolCallingAgent,
   ToolRegistry,
   toStrictJsonSchema,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 import type { BenchmarkSuite, ModelSpec, RunItemResult } from "../types.js";
 import { __test__, multiTurnToolExecSuite } from "./multi-turn-tool-exec.js";
 
@@ -279,7 +279,7 @@ async function runArmC(args: {
   // Lazy-load QuickJSKernel — it's a heavy peer dep, only mount when arm (c) runs.
   let kernelMod: { QuickJSKernel: new () => unknown };
   try {
-    kernelMod = (await import("@agentkit-js/kernel-quickjs")) as unknown as {
+    kernelMod = (await import("@wasmagent/kernel-quickjs")) as unknown as {
       QuickJSKernel: new () => unknown;
     };
   } catch (e) {
@@ -287,7 +287,7 @@ async function runArmC(args: {
       answer: null,
       passed: false,
       wallMs: Date.now() - startMs,
-      error: `arm (c) requires @agentkit-js/kernel-quickjs: ${e instanceof Error ? e.message : String(e)}`,
+      error: `arm (c) requires @wasmagent/kernel-quickjs: ${e instanceof Error ? e.message : String(e)}`,
     };
   }
 
@@ -636,7 +636,7 @@ async function runArmE(args: {
   const startMs = Date.now();
   let kernelMod: { QuickJSKernel: new () => unknown };
   try {
-    kernelMod = (await import("@agentkit-js/kernel-quickjs")) as unknown as {
+    kernelMod = (await import("@wasmagent/kernel-quickjs")) as unknown as {
       QuickJSKernel: new () => unknown;
     };
   } catch (e) {
@@ -644,7 +644,7 @@ async function runArmE(args: {
       answer: null,
       passed: false,
       wallMs: Date.now() - startMs,
-      error: `arm (e) requires @agentkit-js/kernel-quickjs: ${e instanceof Error ? e.message : String(e)}`,
+      error: `arm (e) requires @wasmagent/kernel-quickjs: ${e instanceof Error ? e.message : String(e)}`,
     };
   }
   let totalIn = 0;

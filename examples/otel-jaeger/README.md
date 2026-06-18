@@ -50,7 +50,7 @@ import {
   ProbabilisticSampler,
   TraceRedactor,
   extractBaggage,
-} from "@agentkit-js/otel-exporter";
+} from "@wasmagent/otel-exporter";
 
 const sampler = new ProbabilisticSampler(0.1);     // 10% of traces
 const redactor = new TraceRedactor();              // PII out
@@ -61,7 +61,7 @@ const exporter = new OtlpHttpExporter({
 });
 ```
 
-See the [`@agentkit-js/otel-exporter` README](../../packages/otel-exporter/)
+See the [`@wasmagent/otel-exporter` README](../../packages/otel-exporter/)
 for full API.
 
 ## Cleanup

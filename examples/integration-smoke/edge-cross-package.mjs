@@ -8,14 +8,14 @@
  *   - McpAgentServer with a real KvCheckpointer-backed task store
  *     (round-trip task state across two server instances).
  */
-import { JsKernel, ToolRegistry, MapKvBackend } from "@agentkit-js/core";
-import { codeModeTool, sandboxedJsTool } from "@agentkit-js/aisdk";
-import { agentkitMastraSandbox } from "@agentkit-js/mastra-sandbox";
+import { JsKernel, ToolRegistry, MapKvBackend } from "@wasmagent/core";
+import { codeModeTool, sandboxedJsTool } from "@wasmagent/aisdk";
+import { agentkitMastraSandbox } from "@wasmagent/mastra-sandbox";
 import {
   createCodeModeServer,
   createFetchHandler,
   InMemoryTaskStore,
-} from "@agentkit-js/mcp-server";
+} from "@wasmagent/mcp-server";
 import { z } from "zod";
 
 let failed = 0;
@@ -217,7 +217,7 @@ function fail(label, detail) {
   }
 }
 
-// MapKvBackend export sanity — bscode imports this from @agentkit-js/core
+// MapKvBackend export sanity — bscode imports this from @wasmagent/core
 // (per its docs/cf-2026-primitives.md example). If the export drifts, the
 // docs lie and bscode breaks.
 {

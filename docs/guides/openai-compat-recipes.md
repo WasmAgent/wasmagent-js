@@ -12,13 +12,13 @@ Moonshot, Zhipu, MiniMax, Together, Fireworks, Groq, Anyscale, Ollama,
 LM Studio, vLLM, llama-server — speaks an OpenAI-compatible
 `/chat/completions`.
 
-agentkit's answer: **`GenericOpenAICompatModel`** in `@agentkit-js/core`.
+agentkit's answer: **`GenericOpenAICompatModel`** in `@wasmagent/core`.
 One concrete class, three constructor args, every provider's quirks
 expressed as runtime config. New providers become README recipes (this
 file), not new packages.
 
 ```ts
-import { GenericOpenAICompatModel } from "@agentkit-js/core";
+import { GenericOpenAICompatModel } from "@wasmagent/core";
 ```
 
 ## Recipe — Ollama / LM Studio (local, no API key)
@@ -83,7 +83,7 @@ const model = new GenericOpenAICompatModel("deepseek-r1", "https://api.deepseek.
 });
 ```
 
-This is exactly what `@agentkit-js/model-deepseek` does internally — it's
+This is exactly what `@wasmagent/model-deepseek` does internally — it's
 preserved as a named preset, but the recipe above gets you 100% of the
 behaviour without an extra `npm install`.
 

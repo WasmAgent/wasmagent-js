@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 /**
- * P16-8 ⑤: P16-1 clean MMLU 结果与 agentkit 体验轴对比脚本。
+ * P16-8 ⑤: P16-1 clean MMLU 结果与 wasmagent 体验轴对比脚本。
  *
- * 将 evomerge 内部 MMLU 评测结果（去污染后）与 agentkit multi-turn-memory
+ * 将 evomerge 内部 MMLU 评测结果（去污染后）与 wasmagent multi-turn-memory
  * 中立考场结果合并，输出三轴对比报告：
  *
  *   - 能力轴（MMLU，internal protocol，clean split）
- *   - 体验轴（agentkit multi-turn-memory，中立考场）
+ *   - 体验轴（wasmagent multi-turn-memory，中立考场）
  *   - 统计轴（McNemar + Wilson CI）
  *
  * 用法：node scripts/p16_experience_axis_compare.mjs
  *
  * 前提：
  *   - phase16_clean_eval/ 有 lora_prime_mmlu.json + baseline_mmlu.json
- *   - docs/reports/ 有 agentkit 体验轴结果
+ *   - docs/reports/ 有 wasmagent 体验轴结果
  */
 
 import { readFileSync, writeFileSync, existsSync } from "fs";
@@ -21,7 +21,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const EVOMERGE_ROOT = join(__dirname, "..");  // agentkit-js root
+const EVOMERGE_ROOT = join(__dirname, "..");  // wasmagent root
 const EVOMERGE_PROJ = join(__dirname, "..", "..", "evomerge");  // evomerge project root
 
 // ── Load evomerge clean eval results ─────────────────────────────────────────
@@ -46,12 +46,12 @@ function loadCleanEval() {
   return { loraAcc, baseAcc, n: lora.length, comp };
 }
 
-// ── Load agentkit experience axis results ─────────────────────────────────────
+// ── Load wasmagent experience axis results ─────────────────────────────────────
 
 function loadExperienceAxis() {
   const reportFile = join(EVOMERGE_ROOT, "docs", "reports", "longmemeval-5model-2026-06-12.md");
   if (!existsSync(reportFile)) {
-    console.warn("[p16-⑤] agentkit experience axis report not found.");
+    console.warn("[p16-⑤] wasmagent experience axis report not found.");
     return null;
   }
   const md = readFileSync(reportFile, "utf8");
@@ -107,8 +107,8 @@ function renderThreeAxisReport(cleanEval, experienceRows) {
   }
   lines.push("");
 
-  // Experience axis (agentkit)
-  lines.push("## 体验轴（agentkit multi-turn-memory，中立考场）");
+  // Experience axis (wasmagent)
+  lines.push("## 体验轴（wasmagent multi-turn-memory，中立考场）");
   lines.push("");
   lines.push("> ⚠️ n=6 × 1 seed（2026-06-12 报告）；全部 CI 大幅重叠。无统计意义——仅方向参考。");
   lines.push("> 见 P16-8 ② DoD: 需 ≥50 题 × ≥3 seeds 才可 claims。");

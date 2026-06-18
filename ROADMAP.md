@@ -1,4 +1,4 @@
-# agentkit-js — Roadmap
+# wasmagent — Roadmap
 
 > Last refreshed: 2026-06-17. Refresh quarterly; keep stamped with the
 > last review date so consumers can spot rot.
@@ -74,15 +74,15 @@ the same A6 commit; see also the embedded "Why" lines below).
 
 - **S4 — bscode is a funnel, not a product.**
   bscode (the CF Workers + Next.js demo) drives traffic to
-  `npm add @agentkit-js/core`. It only demos already-published
-  framework APIs; new generic logic lands in agentkit-js first.
+  `npm add @wasmagent/core`. It only demos already-published
+  framework APIs; new generic logic lands in wasmagent first.
   *Updated demo content (2026-06-17):* the headline scene is now a
   `CapabilityManifest`-blocks-an-OWASP-attack live demo, not "another
   coding agent" — see S1' above.
 
 ## Shipped (2026-06)
 
-- **A1 — Code-mode MCP server** (`@agentkit-js/mcp-server` ≥ 0.3).
+- **A1 — Code-mode MCP server** (`@wasmagent/mcp-server` ≥ 0.3).
   Two-tool MCP surface (`docs_search` + `execute_code`) collapses N
   downstream tools behind one in-sandbox dispatch. Pairs with any
   agentkit kernel for unified security policy. Token-savings benchmark
@@ -93,7 +93,7 @@ the same A6 commit; see also the embedded "Why" lines below).
   Anthropic standardised the pattern). The sustained differentiator
   is **portable-across-runtimes + multi-language + multi-isolation-tier
   + uniform `CapabilityManifest`**, not the token-savings number per
-  se. We ship `@agentkit-js/mcp-server` to be *the executor that
+  se. We ship `@wasmagent/mcp-server` to be *the executor that
   drops into any framework's existing sandbox socket*, not as a
   standalone code-mode product.
 
@@ -104,7 +104,7 @@ the same A6 commit; see also the embedded "Why" lines below).
   [`packages/core/src/executor/types.ts`](packages/core/src/executor/types.ts).
 
 - **A2 — Vercel AI SDK + Mastra plugin packages.**
-  - [`@agentkit-js/aisdk`](packages/aisdk) — `sandboxedJsTool()` and
+  - [`@wasmagent/aisdk`](packages/aisdk) — `sandboxedJsTool()` and
     `codeModeTool()` factories. AI SDK majors 4–6 supported via
     structural typing.
     - **`agentkitCodemodeExecutor` (shipped 2026-06-17)** — Cloudflare
@@ -116,7 +116,7 @@ the same A6 commit; see also the embedded "Why" lines below).
       [`packages/aisdk/src/codemodeExecutor.ts`](packages/aisdk/src/codemodeExecutor.ts).
       Upstream-PR draft (ready to file):
       [`docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md`](docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md).
-  - [`@agentkit-js/mastra-sandbox`](packages/mastra-sandbox) —
+  - [`@wasmagent/mastra-sandbox`](packages/mastra-sandbox) —
     Mastra sandbox provider contract. Drop-in alternative to Blaxel
     / E2B providers.
 
@@ -135,7 +135,7 @@ the same A6 commit; see also the embedded "Why" lines below).
 - **A6 — Maintainership signals.** ROADMAP (this file), CONTRIBUTING
   (added 2026-06-12), kernel sandbox-escape SLA in SECURITY.md.
 
-- **Evaluation harness** (`@agentkit-js/evals-runner`, 2026-06-12).
+- **Evaluation harness** (`@wasmagent/evals-runner`, 2026-06-12).
   Multi-model × multi-suite × multi-seed Pareto reports over
   (accuracy, cost, p95 wall). Six reference benchmark suites
   (multi-turn-memory, long-context-recall, cost-per-correct,

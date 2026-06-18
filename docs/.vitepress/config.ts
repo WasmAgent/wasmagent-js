@@ -12,7 +12,7 @@ const enNav = [
       { text: "Why three sandbox tiers?", link: "/kernels/comparison" },
     ],
   },
-  { text: "GitHub", link: "https://github.com/telleroutlook/agentkit-js" },
+  { text: "GitHub", link: "https://github.com/WasmAgent/wasmagent-js" },
 ];
 
 const enSidebar = {
@@ -70,7 +70,7 @@ const zhNav = [
       { text: "为什么是三层沙箱?", link: "/zh/kernels-comparison" },
     ],
   },
-  { text: "GitHub", link: "https://github.com/telleroutlook/agentkit-js" },
+  { text: "GitHub", link: "https://github.com/WasmAgent/wasmagent-js" },
 ];
 
 const zhSidebar = {
@@ -115,22 +115,22 @@ const zhSidebar = {
 };
 
 export default defineConfig({
-  title: "agentkit-js",
+  title: "wasmagent",
   description:
-    "TypeScript + WASM agent runtime — three-tier sandboxed code execution, prompt-cache cost control, edge-native, first-class Chinese model support.",
+    "WASM Agent Kernel & Portable Code Executor — three-tier sandboxed execution, prompt-cache optimization, edge-native TypeScript agent runtime.",
   cleanUrls: true,
   lastUpdated: true,
 
   head: [
     ["meta", { name: "theme-color", content: "#646cff" }],
     ["meta", { property: "og:type", content: "website" }],
-    ["meta", { property: "og:title", content: "agentkit-js" }],
+    ["meta", { property: "og:title", content: "wasmagent" }],
     [
       "meta",
       {
         property: "og:description",
         content:
-          "TypeScript + WASM agent runtime — three-tier sandboxed code execution, prompt-cache cost control, edge-native.",
+          "WASM Agent Kernel & Portable Code Executor — three-tier sandboxed execution, prompt-cache optimization, edge-native TypeScript agent runtime.",
       },
     ],
   ],
@@ -159,7 +159,7 @@ export default defineConfig({
         lastUpdatedText: "最后更新",
         docFooter: { prev: "上一篇", next: "下一篇" },
         editLink: {
-          pattern: "https://github.com/telleroutlook/agentkit-js/edit/main/docs/:path",
+          pattern: "https://github.com/WasmAgent/wasmagent-js/edit/main/docs/:path",
           text: "在 GitHub 上编辑此页",
         },
       },
@@ -168,19 +168,19 @@ export default defineConfig({
 
   themeConfig: {
     socialLinks: [
-      { icon: "github", link: "https://github.com/telleroutlook/agentkit-js" },
+      { icon: "github", link: "https://github.com/WasmAgent/wasmagent-js" },
     ],
 
     footer: {
       message: "Released under the Apache-2.0 License.",
-      copyright: "© agentkit-js contributors",
+      copyright: "© wasmagent contributors",
     },
 
     search: { provider: "local" },
 
     editLink: {
       pattern:
-        "https://github.com/telleroutlook/agentkit-js/edit/main/docs/:path",
+      "https://github.com/WasmAgent/wasmagent-js/edit/main/docs/:path",
     },
   },
 

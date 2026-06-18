@@ -11,7 +11,7 @@ your handler directly — same trust boundary your service has. When
 the LLM is generating the code that runs (math, JSON wrangling, a
 multi-step workflow), that boundary is too loose.
 
-`@agentkit-js/claude-agent-sdk` gives you two factories that produce
+`@wasmagent/claude-agent-sdk` gives you two factories that produce
 Claude Agent SDK tools whose handler is a sandboxed kernel:
 
 - **`sandboxedJsClaudeTool`** — one-shot JS evaluator.
@@ -20,13 +20,13 @@ Claude Agent SDK tools whose handler is a sandboxed kernel:
   [`code-mode.md`](code-mode.md) for the bigger picture.
 
 Both honour the unified `CapabilityManifest`, so the policy you
-already wrote for `@agentkit-js/mcp-server` applies verbatim — see
+already wrote for `@wasmagent/mcp-server` applies verbatim — see
 [`docs/strategy/security-face.md`](../strategy/security-face.md).
 
 ## Install
 
 ```bash
-npm add @agentkit-js/claude-agent-sdk @agentkit-js/core @agentkit-js/kernel-quickjs @anthropic-ai/sdk
+npm add @wasmagent/claude-agent-sdk @wasmagent/core @wasmagent/kernel-quickjs @anthropic-ai/sdk
 ```
 
 The `@anthropic-ai/sdk` peer dep is declared *optional* — the
@@ -38,8 +38,8 @@ plug it into a Bedrock or Vertex transport that consumes the same
 
 ```ts
 import Anthropic from "@anthropic-ai/sdk";
-import { sandboxedJsClaudeTool } from "@agentkit-js/claude-agent-sdk";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { sandboxedJsClaudeTool } from "@wasmagent/claude-agent-sdk";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
 const tool = sandboxedJsClaudeTool({
   kernel: new QuickJSKernel(),
@@ -79,9 +79,9 @@ snippet returned, plus any `console.log` output it produced.
 ## Snippet — codeModeClaudeTool
 
 ```ts
-import { codeModeClaudeTool } from "@agentkit-js/claude-agent-sdk";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
-import { ToolRegistry } from "@agentkit-js/core";
+import { codeModeClaudeTool } from "@wasmagent/claude-agent-sdk";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+import { ToolRegistry } from "@wasmagent/core";
 
 const reg = new ToolRegistry();
 reg.register({ /* tool defs — see ToolRegistry docs */ });
@@ -135,5 +135,5 @@ Loosen one field at a time, test, then loosen the next.
 The kernel selection decision tree is in
 [`docs/kernels/comparison.md`](../kernels/comparison.md). The same
 kernel works under all three upstream adapters
-(`@agentkit-js/aisdk`, `@agentkit-js/openai-agents`,
-`@agentkit-js/claude-agent-sdk`) without re-configuration.
+(`@wasmagent/aisdk`, `@wasmagent/openai-agents`,
+`@wasmagent/claude-agent-sdk`) without re-configuration.

@@ -42,7 +42,7 @@ import {
   type WorkflowRunRecord,
   type WorkflowStateStore,
   type WorkflowStep,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 
 // `resolveRefs` isn't currently exported from core's public surface.
 // We re-implement the minimal subset we need (string `$<id>` substitution)

@@ -1,5 +1,5 @@
-import type { GenerateOptions, ModelCapabilities } from "@agentkit-js/core/models";
-import { OpenAICompatModel, type OpenAICompatModelOptions } from "@agentkit-js/core/models";
+import type { GenerateOptions, ModelCapabilities } from "@wasmagent/core/models";
+import { OpenAICompatModel, type OpenAICompatModelOptions } from "@wasmagent/core/models";
 
 export const QWEN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 export const QWEN_INTL_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";

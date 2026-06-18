@@ -1,6 +1,6 @@
 # Expose an agentkit agent as an MCP server (F1)
 
-The `@agentkit-js/mcp-server` package wraps any object that runs like an
+The `@wasmagent/mcp-server` package wraps any object that runs like an
 agent — `ToolCallingAgent`, `CodeAgent`, or any custom `SubagentRunnable` —
 in a Model Context Protocol server. Hosts that already speak MCP (Claude Code,
 Cursor 2.4+, Copilot, Gemini CLI, Bedrock AgentCore, Microsoft Agent
@@ -18,12 +18,12 @@ ships its own MCP endpoint — no extra service, no protocol drift.
 ## Quick start
 
 ```ts
-import { ToolCallingAgent } from "@agentkit-js/core";
+import { ToolCallingAgent } from "@wasmagent/core";
 import {
   McpAgentServer,
   createFetchHandler,
   InMemoryTaskStore,
-} from "@agentkit-js/mcp-server";
+} from "@wasmagent/mcp-server";
 
 const agent = new ToolCallingAgent({ /* your agent */ });
 

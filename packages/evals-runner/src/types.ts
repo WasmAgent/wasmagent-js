@@ -1,5 +1,5 @@
 /**
- * Public types for `@agentkit-js/evals-runner`.
+ * Public types for `@wasmagent/evals-runner`.
  *
  * The runner composes an evaluation as a 3-D matrix:
  *
@@ -15,7 +15,7 @@
  * `/chat/completions` works.
  */
 
-import type { AgentTrace, EvalSample, Scorer } from "@agentkit-js/core";
+import type { AgentTrace, EvalSample, Scorer } from "@wasmagent/core";
 
 // ── Model + suite shapes ─────────────────────────────────────────────────────
 

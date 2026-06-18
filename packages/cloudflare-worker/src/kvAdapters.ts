@@ -3,7 +3,7 @@
  *
  * Bridges Cloudflare Workers KV (`KVNamespace`) and Durable Object storage
  * (`DurableObjectStorage`) to the canonical `KvBackend` contract from
- * `@agentkit-js/core`. Use these adapters to back `KvCheckpointer`,
+ * `@wasmagent/core`. Use these adapters to back `KvCheckpointer`,
  * `StructuredMemory`, `MemoryTool`, or `KvBackendVectorStore` so the same
  * infrastructure persists checkpoints, memory, and vector indexes.
  *
@@ -21,7 +21,7 @@
  * — no parallel infrastructure (cf. A4 cross-cutting gate).
  */
 
-import type { KvBackend } from "@agentkit-js/core";
+import type { KvBackend } from "@wasmagent/core";
 
 // ── Cloudflare Workers KV ─────────────────────────────────────────────────────
 

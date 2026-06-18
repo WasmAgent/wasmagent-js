@@ -30,7 +30,7 @@ import type {
   ModelCapabilities,
   ModelMessage,
   StreamEvent,
-} from "@agentkit-js/core/models";
+} from "@wasmagent/core/models";
 import { downloadGGUF, downloadUrl } from "./downloader.js";
 import {
   buildResponseFormatSchema,
@@ -114,7 +114,7 @@ async function loadLlamaModule(): Promise<LlamaModuleLike> {
       "node-llama-cpp is not installed.\n" +
         "  Install it with:  npm install node-llama-cpp\n" +
         "  (or: bun add node-llama-cpp / pnpm add node-llama-cpp)\n" +
-        "  Then retry — @agentkit-js/model-local will pick it up automatically.",
+        "  Then retry — @wasmagent/model-local will pick it up automatically.",
       err
     );
   }
@@ -152,7 +152,7 @@ export class LocalModel implements Model {
   constructor(opts: LocalModelOptions) {
     if (!opts.source) {
       throw new LocalModelError(
-        "LocalModel requires `source: { path | model | url }` — see @agentkit-js/model-local README"
+        "LocalModel requires `source: { path | model | url }` — see @wasmagent/model-local README"
       );
     }
     this.#opts = opts;
@@ -497,7 +497,7 @@ function renderContent(content: ModelMessage["content"]): string {
   return parts.join("\n");
 }
 
-function approxBlockChars(b: import("@agentkit-js/core/models").ContentBlock): number {
+function approxBlockChars(b: import("@wasmagent/core/models").ContentBlock): number {
   if (b.type === "text") return b.text.length;
   if (b.type === "tool_result") return b.content.length;
   if (b.type === "tool_use") return JSON.stringify(b.input).length;

@@ -1,5 +1,5 @@
 /**
- * @agentkit-js/mastra-sandbox — Mastra sandbox provider backed by agentkit kernels.
+ * @wasmagent/mastra-sandbox — Mastra sandbox provider backed by agentkit kernels.
  *
  * Mastra (mastra.ai) opened its sandbox provider contract in 2026-02 to let
  * users plug in a custom code-execution backend instead of the default
@@ -30,7 +30,7 @@
  * fields are ignored by the contract.
  */
 
-import type { CapabilityManifest, WasmKernel } from "@agentkit-js/core";
+import type { CapabilityManifest, WasmKernel } from "@wasmagent/core";
 
 /**
  * Mastra sandbox-provider contract (structural).
@@ -76,8 +76,8 @@ export interface MastraSandboxOptions {
  * Example:
  *
  *   import { Agent } from "@mastra/core";
- *   import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
- *   import { agentkitMastraSandbox } from "@agentkit-js/mastra-sandbox";
+ *   import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+ *   import { agentkitMastraSandbox } from "@wasmagent/mastra-sandbox";
  *
  *   const sandbox = agentkitMastraSandbox({
  *     kernel: new QuickJSKernel({ timeoutMs: 5_000 }),

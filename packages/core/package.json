@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/core",
+  "name": "@wasmagent/core",
   "version": "0.2.0",
-  "description": "Core runtime for agentkit-js — agents, executor, memory, models, tools",
+  "description": "Core runtime for wasmagent — agents, executor, memory, models, tools",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -51,21 +51,26 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/core"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/core#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/core#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "engines": {
     "node": ">=20.0.0"
   },
   "keywords": [
-    "agentkit",
+    "wasmagent",
+    "wasm",
     "agent",
+    "portable",
+    "sandbox",
+    "executor",
     "ai",
-    "llm"
+    "llm",
+    "typescript"
   ],
   "publishConfig": {
     "access": "public",

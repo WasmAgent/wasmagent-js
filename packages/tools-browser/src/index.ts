@@ -1,5 +1,5 @@
 /**
- * @agentkit-js/tools-browser — browser-automation tools for agentkit-js.
+ * @wasmagent/tools-browser — browser-automation tools for agentkit-js.
  *
  * Two backends with the same {@link BrowserSession} interface:
  * - {@link openPlaywrightSession}: Playwright-backed (Chromium / Firefox /

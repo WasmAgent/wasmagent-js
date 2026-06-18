@@ -2,7 +2,7 @@
 
 > **A3** — 指令和工具的渐进披露（progressive disclosure）+ 后置工具 hook 链（用于审计/脱敏/规范化）。对齐 Claude Agent SDK SKILL.md / CrewAI v1.12 / Pydantic AI Capabilities — 2026 框架普遍收敛到的约定。
 
-agentkit-js 已有 `deferLoading` 处理工具 schema。A3 把这一思路扩展到**整个 skill bundle**（指令 + 工具），并新增 **post-tool hook**，与已有的 `ToolGuardrail`（pre-tool hook）配对。
+wasmagent 已有 `deferLoading` 处理工具 schema。A3 把这一思路扩展到**整个 skill bundle**（指令 + 工具），并新增 **post-tool hook**，与已有的 `ToolGuardrail`（pre-tool hook）配对。
 
 ---
 
@@ -13,7 +13,7 @@ skill 是 `(name, description, trigger, lazyBody)` —— `lazyBody` 仅在 skil
 ### 快速上手
 
 ```ts
-import { SkillRegistry } from "@agentkit-js/core";
+import { SkillRegistry } from "@wasmagent/core";
 
 const registry = new SkillRegistry();
 
@@ -95,7 +95,7 @@ interface ToolPostHook {
 ### 内置 hook
 
 ```ts
-import { redactPostHook, truncatePostHook } from "@agentkit-js/core";
+import { redactPostHook, truncatePostHook } from "@wasmagent/core";
 
 // 把 API key 替换成 [REDACTED]
 const redact = redactPostHook({ pattern: /sk-[a-z0-9]{6,}/gi });
@@ -104,7 +104,7 @@ const redact = redactPostHook({ pattern: /sk-[a-z0-9]{6,}/gi });
 const truncate = truncatePostHook({ maxChars: 4_000 });
 
 // 在 runner 里用：
-import { runToolPostHooks } from "@agentkit-js/core";
+import { runToolPostHooks } from "@wasmagent/core";
 const safe = await runToolPostHooks([redact, truncate], toolName, rawOut, {
   input,
   durationMs,

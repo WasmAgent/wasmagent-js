@@ -19,7 +19,7 @@
  * Spec citation: `modelcontextprotocol/specification`
  * `docs/specification/2025-11-25/basic/transports.mdx` § stdio.
  *
- * ## Default behaviour when run as `npx @agentkit-js/mcp-server`
+ * ## Default behaviour when run as `npx @wasmagent/mcp-server`
  *
  * Calling this binary with no `--config` argument starts a *minimal*
  * code-mode server with the in-process `VmKernel` and no downstream
@@ -31,7 +31,7 @@
  *     either (a) write a small `server.ts` that calls `runStdio()` with
  *     a real `createCodeModeServer({ kernel, tools, capabilities })`,
  *     or (b) use one of the integration packages (e.g.
- *     `@agentkit-js/aisdk`) that already wires a kernel + tool registry.
+ *     `@wasmagent/aisdk`) that already wires a kernel + tool registry.
  *
  * The `--config <path>` flag (when present) loads a config module that
  * default-exports an `McpAgentServer`. Anything else is rejected to
@@ -43,7 +43,7 @@
 import { resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { pathToFileURL } from "node:url";
-import { ToolRegistry, VmKernel } from "@agentkit-js/core";
+import { ToolRegistry, VmKernel } from "@wasmagent/core";
 import { createCodeModeServer } from "./codeMode.js";
 import type { McpAgentServer } from "./McpAgentServer.js";
 

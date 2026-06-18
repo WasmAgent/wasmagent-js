@@ -1,9 +1,9 @@
-name: Notify bscode of agentkit-js changes
+name: Notify bscode of wasmagent-js changes
 
-# When agentkit-js main branch updates, dispatch a repository_dispatch
-# event to bscode so it can run its CI against the latest agentkit-js.
+# When wasmagent-js main branch updates, dispatch a repository_dispatch
+# event to bscode so it can run its CI against the latest wasmagent-js.
 # This is a lightweight alternative to publishing to npm — bscode uses
-# workspace:* protocol pointing at sibling agentkit-js checkout, so it
+# workspace:* protocol pointing at sibling wasmagent-js checkout, so it
 # automatically picks up changes when its own CI runs.
 
 on:
@@ -36,7 +36,7 @@ jobs:
         with:
           token: ${{ secrets.BSCODE_DISPATCH_TOKEN }}
           repository: WasmAgent/bscode
-          event-type: agentkit-js-updated
+          event-type: wasmagent-js-updated
           client-payload: |
             {
               "agentkit_sha": "${{ github.sha }}",
@@ -46,7 +46,7 @@ jobs:
   bump-bscode-deps:
     name: Auto-bump bscode dependency versions (placeholder)
     runs-on: ubuntu-latest
-    # This job will activate when agentkit-js starts publishing to npm.
+    # This job will activate when wasmagent-js starts publishing to npm.
     # For now (workspace:* protocol, no published versions yet), it's a
     # no-op. When publishing begins:
     #   1. Trigger on tag push or release event
@@ -54,4 +54,4 @@ jobs:
     #   3. Checkout bscode, run bump script, open PR
     if: false
     steps:
-      - run: echo "Placeholder — activate when agentkit-js publishes to npm"
+      - run: echo "Placeholder — activate when wasmagent-js publishes to npm"

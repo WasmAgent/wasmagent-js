@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@agentkit-js/react": "workspace:*",
-    "@agentkit-js/ui-cards": "workspace:*",
+    "@wasmagent/react": "workspace:*",
+    "@wasmagent/ui-cards": "workspace:*",
     "@terrastruct/d2": "^0.1.33",
     "docx": "^9.7.1",
     "react": "^18.3.0",

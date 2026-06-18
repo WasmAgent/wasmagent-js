@@ -1,5 +1,5 @@
 /**
- * @agentkit-js/aisdk — Memory tool adapters (D3, 2026-06-13).
+ * @wasmagent/aisdk — Memory tool adapters (D3, 2026-06-13).
  *
  * Exposes agentkit's `createMemoryTool` (cross-session KV-backed memory)
  * as a Vercel AI SDK `tool()` so the same memory primitive plays nicely in
@@ -25,9 +25,9 @@
  * being framework-agnostic.
  *
  * This file makes them framework-portable: you can use the *same*
- * `createMemoryTool` shipped in `@agentkit-js/core` from a Vercel AI SDK
- * project without writing your own adapter. The `@agentkit-js/claude-agent-sdk`
- * and `@agentkit-js/openai-agents` packages ship their own thin wrappers
+ * `createMemoryTool` shipped in `@wasmagent/core` from a Vercel AI SDK
+ * project without writing your own adapter. The `@wasmagent/claude-agent-sdk`
+ * and `@wasmagent/openai-agents` packages ship their own thin wrappers
  * with the same shape; see those READMEs.
  *
  * Note on `ObservationalMemory`
@@ -45,14 +45,14 @@
 import {
   createMemoryTool as createMemoryToolCore,
   type MemoryToolOptions,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 import type { ZodType } from "zod";
 
 import type { AiSdkToolDefinition } from "./index.js";
 
 /**
  * Vercel AI SDK shape for the memory tool. Wraps `createMemoryTool` from
- * `@agentkit-js/core` so that an AI SDK agent can persist facts across
+ * `@wasmagent/core` so that an AI SDK agent can persist facts across
  * runs through the same KvBackend you already use for checkpoints.
  *
  * Returned shape is structurally compatible with the AI SDK's `tool()`
@@ -73,6 +73,6 @@ export function memoryTool(opts: MemoryToolOptions): AiSdkToolDefinition<unknown
 
 // Re-export ObservationalMemory so AI SDK consumers running an agentkit
 // MessageAssembler can wire it up without an extra import.
-export { ObservationalMemory } from "@agentkit-js/core";
+export { ObservationalMemory } from "@wasmagent/core";
 // Re-export the underlying types for callers wiring custom backends.
 export type { MemoryToolOptions };

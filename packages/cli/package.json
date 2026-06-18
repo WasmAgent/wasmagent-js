@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/cli",
+  "name": "@wasmagent/cli",
   "version": "0.2.0",
-  "description": "CLI for agentkit-js — mirrors smolagents' `smolagent` CLI (D6)",
+  "description": "CLI for wasmagent — mirrors smolagents' `smolagent` CLI (D6)",
   "type": "module",
   "bin": {
     "agentkit": "./dist/index.js"
@@ -14,33 +14,33 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*",
-    "@agentkit-js/devtools": "workspace:*",
-    "@agentkit-js/evals-runner": "workspace:*",
+    "@wasmagent/core": "workspace:*",
+    "@wasmagent/devtools": "workspace:*",
+    "@wasmagent/evals-runner": "workspace:*",
     "zod": "^3.23.0"
   },
   "peerDependencies": {
-    "@agentkit-js/model-local": "workspace:*"
+    "@wasmagent/model-local": "workspace:*"
   },
   "peerDependenciesMeta": {
-    "@agentkit-js/model-local": {
+    "@wasmagent/model-local": {
       "optional": true
     }
   },
   "devDependencies": {
-    "@agentkit-js/model-local": "workspace:*",
+    "@wasmagent/model-local": "workspace:*",
     "@anthropic-ai/sdk": "^0.37.0",
     "typescript": "^5.7.0"
   },
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/cli"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/cli#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/cli#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "engines": {
     "node": ">=20.0.0"

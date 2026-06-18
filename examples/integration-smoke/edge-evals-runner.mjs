@@ -1,5 +1,5 @@
 /**
- * Edge integration smoke: @agentkit-js/evals-runner end-to-end against
+ * Edge integration smoke: @wasmagent/evals-runner end-to-end against
  * a deterministic fake provider.
  *
  * No network, no token cost. Pins the contract:
@@ -18,7 +18,7 @@ import {
   REFERENCE_SUITES,
   renderReportMarkdown,
   runEvaluation,
-} from "@agentkit-js/evals-runner";
+} from "@wasmagent/evals-runner";
 
 let failed = 0;
 function ok(label) {

@@ -10,7 +10,7 @@ optimization brief explicitly calls this out as the highest-leverage
 upstream entry: the Cloudflare codemode docs already say the
 `DynamicWorkerExecutor` is "just one implementation" and that users
 "can build their own executor for Node VM, QuickJS, containers, or
-any other sandbox." `@agentkit-js/kernel-quickjs` + `@agentkit-js/aisdk` is the missing
+any other sandbox." `@wasmagent/kernel-quickjs` + `@wasmagent/aisdk` is the missing
 link for non-Cloudflare environments and Python execution.
 
 ## Why this is the priority entry
@@ -47,22 +47,22 @@ A new page under the codemode docs, ~50 lines:
 
 The `DynamicWorkerExecutor` is the default; codemode is designed
 for any executor that conforms to the `CodeExecutor` contract.
-The community-maintained `@agentkit-js/kernel-*` packages
+The community-maintained `@wasmagent/kernel-*` packages
 provide three executors that close gaps in the default:
 
 | Use case                           | Executor                         | Adds                                        |
 |------------------------------------|----------------------------------|---------------------------------------------|
-| Run codemode off Cloudflare        | `@agentkit-js/kernel-quickjs`    | Cross-platform JS sandbox (Node/Bun/Vercel) |
-| Python execution at the edge       | `@agentkit-js/kernel-pyodide`    | CPython-in-WASM (CFW-compatible)            |
-| Full process isolation             | `@agentkit-js/kernel-remote`     | E2B / Cloudflare Sandbox microVM tier       |
-| Pause-on-approval lifecycle        | `@agentkit-js/core`              | `needsApproval` + `await_human_input`       |
+| Run codemode off Cloudflare        | `@wasmagent/kernel-quickjs`    | Cross-platform JS sandbox (Node/Bun/Vercel) |
+| Python execution at the edge       | `@wasmagent/kernel-pyodide`    | CPython-in-WASM (CFW-compatible)            |
+| Full process isolation             | `@wasmagent/kernel-remote`     | E2B / Cloudflare Sandbox microVM tier       |
+| Pause-on-approval lifecycle        | `@wasmagent/core`              | `needsApproval` + `await_human_input`       |
 
 ## Minimal example
 
 ```ts
 import { Agent } from "@cloudflare/agents/codemode";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
-import { agentkitCodemodeExecutor } from "@agentkit-js/aisdk"; // see note
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+import { agentkitCodemodeExecutor } from "@wasmagent/aisdk"; // see note
 
 const agent = new Agent({
   // Same tools, same prompt — only the executor changes.
@@ -76,11 +76,11 @@ const agent = new Agent({
 ```
 
 > **Note:** the `agentkitCodemodeExecutor` shim is a thin adapter
-> in `@agentkit-js/aisdk` (PR pending) that wraps any agentkit
+> in `@wasmagent/aisdk` (PR pending) that wraps any agentkit
 > `Kernel` in the `CodeExecutor` contract. It honors the manifest's
 > `allowedHosts` / `cpuMs` / `memoryLimitBytes` consistently across
 > the three kernel tiers; see
-> [`docs/kernels/comparison.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/kernels/comparison.md)
+> [`docs/kernels/comparison.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/kernels/comparison.md)
 > for the matrix.
 
 ## When to keep the default executor
@@ -120,14 +120,14 @@ PR against `cloudflare/agents`. The PR body should:
 - Merged or referenced from the official docs (a single sentence
   + link is acceptable; full recipe page is the stretch goal).
 - Inbound stargazers / weekly downloads on
-  `@agentkit-js/kernel-quickjs` show a traceable shift after
+  `@wasmagent/kernel-quickjs` show a traceable shift after
   inclusion.
 - Listed in the Cloudflare codemode page as a community-maintained
   executor.
 
 ## Pre-submission to-do
 
-1. ✅ **Done (2026-06-17)** — `agentkitCodemodeExecutor` shim shipped in `@agentkit-js/aisdk@0.1.0`. 412-line implementation with a marker-rerun execution loop honouring CF's `Executor` contract verbatim. 10 tests cover flat-Record + namespaced provider surfaces, positional vs object args, console.log capture, tool-throw surfacing, unknown-tool fail-fast, and `maxIterations` runaway bound. Source: [`packages/aisdk/src/codemodeExecutor.ts`](../../../packages/aisdk/src/codemodeExecutor.ts).
+1. ✅ **Done (2026-06-17)** — `agentkitCodemodeExecutor` shim shipped in `@wasmagent/aisdk@0.1.0`. 412-line implementation with a marker-rerun execution loop honouring CF's `Executor` contract verbatim. 10 tests cover flat-Record + namespaced provider surfaces, positional vs object args, console.log capture, tool-throw surfacing, unknown-tool fail-fast, and `maxIterations` runaway bound. Source: [`packages/aisdk/src/codemodeExecutor.ts`](../../../packages/aisdk/src/codemodeExecutor.ts).
 2. **Verify on submission day** — the `CodeExecutor` interface name churned during CF codemode's GA stabilization. Re-check the SDK source the day this PR is filed; if the `Executor` shape moved, bump the structural copy in `codemodeExecutor.ts` and ship a patch release.
 3. **Fallback path** — if the maintainer says "we don't take third-party recipes inline," open an issue tagged `community-recipe` with the same content as §"PR body" below. The discoverable artifact wins regardless of inclusion form.
 
@@ -137,13 +137,13 @@ PR against `cloudflare/agents`. The PR body should:
 >
 > **Body:**
 >
-> The codemode docs already note that `DynamicWorkerExecutor` is one implementation and that users can supply their own. This PR adds a one-page recipe pointing at `@agentkit-js/aisdk`'s `agentkitCodemodeExecutor`, which closes three explicit gaps the default leaves:
+> The codemode docs already note that `DynamicWorkerExecutor` is one implementation and that users can supply their own. This PR adds a one-page recipe pointing at `@wasmagent/aisdk`'s `agentkitCodemodeExecutor`, which closes three explicit gaps the default leaves:
 >
 > 1. **Platform binding.** `DynamicWorkerExecutor` requires a Cloudflare Workers runtime; the agentkit shim runs on Node, Bun, Vercel, and Lambda (it also runs on CF Workers — same code path).
 > 2. **Language scope.** JS-only today; swap `QuickJSKernel` for `PyodideKernel` to add CPython-in-WASM at the edge.
 > 3. **Approval semantics.** Tools marked `needsApproval: true` are stripped today rather than pause-and-wait. agentkit's tool registry surfaces a first-class `await_human_input` step.
 >
-> The shim is Apache-2.0, structurally typed against the `Executor` contract (no hard dep on `@cloudflare/codemode`), and shipped in [`@agentkit-js/aisdk@0.1.0`](https://www.npmjs.com/package/@agentkit-js/aisdk). 10 tests green. Source: <https://github.com/telleroutlook/agentkit-js/blob/main/packages/aisdk/src/codemodeExecutor.ts>.
+> The shim is Apache-2.0, structurally typed against the `Executor` contract (no hard dep on `@cloudflare/codemode`), and shipped in [`@wasmagent/aisdk@0.1.0`](https://www.npmjs.com/package/@wasmagent/aisdk). 10 tests green. Source: <https://github.com/WasmAgent/wasmagent-js/blob/main/packages/aisdk/src/codemodeExecutor.ts>.
 >
 > Whichever shape the recipe lands in is the win:
 > - **Stretch:** new page under codemode docs with the table + example below.

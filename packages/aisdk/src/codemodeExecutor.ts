@@ -5,8 +5,8 @@
  * custom executor:
  *
  *     import { createCodeTool } from "@cloudflare/codemode/ai";
- *     import { agentkitCodemodeExecutor } from "@agentkit-js/aisdk";
- *     import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+ *     import { agentkitCodemodeExecutor } from "@wasmagent/aisdk";
+ *     import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
  *
  *     const codemode = createCodeTool({
  *       tools: myAiSdkTools,
@@ -27,7 +27,7 @@
  *
  * The `Executor` interface is duplicated structurally below rather than
  * imported from `@cloudflare/codemode`. Importing would force every
- * `@agentkit-js/aisdk` consumer to install codemode even when they only
+ * `@wasmagent/aisdk` consumer to install codemode even when they only
  * want the AI SDK shims (`sandboxedJsTool` / `codeModeTool`). The two
  * types match the spec quoted at
  * https://github.com/cloudflare/agents/blob/main/docs/codemode.md
@@ -40,7 +40,7 @@
  * this import path; the shim is now ready for that PR to land.
  */
 
-import type { CapabilityManifest, WasmKernel } from "@agentkit-js/core";
+import type { CapabilityManifest, WasmKernel } from "@wasmagent/core";
 
 // ── Cloudflare codemode contract (structural copy) ──────────────────────────
 

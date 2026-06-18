@@ -1,6 +1,6 @@
 # Evaluation runner — agentkit-js as a model-evaluation harness
 
-> **Status**: shipped in `@agentkit-js/evals-runner@0.1.0` (2026-06-12).
+> **Status**: shipped in `@wasmagent/evals-runner@0.1.0` (2026-06-12).
 > Provider-agnostic OpenAI-compat: point at Ollama / OpenRouter /
 > AI Gateway / OpenAI / vLLM. Same model-spec format as the rest of
 > agentkit-js (`docs/guides/openai-compat-recipes.md`).
@@ -87,14 +87,14 @@ Every report includes:
 - σ across seeds (high σ = result is noisy, claim is unreliable)
 - Pooled paired-McNemar p-value when comparing against a baseline
 
-The `buildG1Report` API (also exported from `@agentkit-js/evals-runner`)
+The `buildG1Report` API (also exported from `@wasmagent/evals-runner`)
 matches the ≥3-seed discipline used in serious model-evaluation work:
 single-seed greedy point estimates do not constitute evidence.
 
 ## Programmatic API
 
 ```ts
-import { runEvaluation, multiTurnMemorySuite, renderReportMarkdown } from "@agentkit-js/evals-runner";
+import { runEvaluation, multiTurnMemorySuite, renderReportMarkdown } from "@wasmagent/evals-runner";
 
 const report = await runEvaluation({
   models: [
@@ -117,8 +117,8 @@ own dashboards.
 ## Bring your own suite
 
 ```ts
-import type { BenchmarkSuite } from "@agentkit-js/evals-runner";
-import { exactMatch } from "@agentkit-js/core";
+import type { BenchmarkSuite } from "@wasmagent/evals-runner";
+import { exactMatch } from "@wasmagent/core";
 
 const myBenchmark: BenchmarkSuite = {
   name: "my-domain-suite",
@@ -134,7 +134,7 @@ const myBenchmark: BenchmarkSuite = {
 await runEvaluation({ models, suites: [myBenchmark] });
 ```
 
-The 10 scorers shipped in `@agentkit-js/core/evals` (`exactMatch`,
+The 10 scorers shipped in `@wasmagent/core/evals` (`exactMatch`,
 `toolCallAccuracy`, `trajectoryValidity`, `efficiencyScorer`,
 `constraintScorer`, `recoveryScorer`, `faithfulnessScorerAsync`,
 `relevanceScorerAsync`, `compositeScorer`, plus `JudgeScorer`) all work

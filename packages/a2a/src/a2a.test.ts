@@ -1,4 +1,4 @@
-import type { AgentEvent, SubagentRunnable } from "@agentkit-js/core";
+import type { AgentEvent, SubagentRunnable } from "@wasmagent/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { A2ARemoteAgent } from "./A2ARemoteAgent.js";
 import { createA2AServer } from "./A2AServer.js";

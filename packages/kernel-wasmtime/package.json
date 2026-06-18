@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/kernel-wasmtime",
+  "name": "@wasmagent/kernel-wasmtime",
   "version": "0.2.0",
-  "description": "WasmtimeKernel — true WASM sandbox for agentkit-js via Javy (QuickJS→WASM) + Node's native WebAssembly API",
+  "description": "WasmtimeKernel — true WASM sandbox for wasmagent via Javy (QuickJS→WASM) + Node's native WebAssembly API",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*"
+    "@wasmagent/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -29,22 +29,25 @@
     "node": ">=20.0.0"
   },
   "keywords": [
-    "webassembly",
+    "wasmagent",
     "wasm",
-    "wasi",
-    "javy",
+    "agent",
+    "portable",
     "sandbox",
-    "agentkit"
+    "executor",
+    "ai",
+    "llm",
+    "typescript"
   ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/kernel-wasmtime"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/kernel-wasmtime#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/kernel-wasmtime#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
     "access": "public",

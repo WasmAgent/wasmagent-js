@@ -61,7 +61,7 @@ export interface BrowserRunSessionOpts {
  *
  * ```ts
  * import puppeteer from "@cloudflare/puppeteer";
- * import { openBrowserRunSession } from "@agentkit-js/tools-browser";
+ * import { openBrowserRunSession } from "@wasmagent/tools-browser";
  *
  * export default {
  *   async fetch(req: Request, env: Env) {

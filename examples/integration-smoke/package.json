@@ -21,14 +21,14 @@
     "edge:evals": "bun edge-evals-runner.mjs"
   },
   "dependencies": {
-    "@agentkit-js/aisdk": "workspace:*",
-    "@agentkit-js/cli": "workspace:*",
-    "@agentkit-js/core": "workspace:*",
-    "@agentkit-js/devtools": "workspace:*",
-    "@agentkit-js/evals-runner": "workspace:*",
-    "@agentkit-js/kernel-quickjs": "workspace:*",
-    "@agentkit-js/mastra-sandbox": "workspace:*",
-    "@agentkit-js/mcp-server": "workspace:*",
+    "@wasmagent/aisdk": "workspace:*",
+    "@wasmagent/cli": "workspace:*",
+    "@wasmagent/core": "workspace:*",
+    "@wasmagent/devtools": "workspace:*",
+    "@wasmagent/evals-runner": "workspace:*",
+    "@wasmagent/kernel-quickjs": "workspace:*",
+    "@wasmagent/mastra-sandbox": "workspace:*",
+    "@wasmagent/mcp-server": "workspace:*",
     "zod": "^3.22.0"
   }
 }

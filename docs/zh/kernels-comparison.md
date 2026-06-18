@@ -1,6 +1,6 @@
 # Kernel 选型 — VmKernel vs QuickJSKernel vs WasmtimeKernel
 
-C2 — agentkit-js 为 `CodeAgent` 和 `ProgrammaticOrchestrator` 提供三种执行 kernel。它们在**隔离强度**、**冷启动成本**、**运行时广度**上有差异。本页是决策树 + 量化对比表。
+C2 — wasmagent 为 `CodeAgent` 和 `ProgrammaticOrchestrator` 提供三种执行 kernel。它们在**隔离强度**、**冷启动成本**、**运行时广度**上有差异。本页是决策树 + 量化对比表。
 
 ## 决策树
 

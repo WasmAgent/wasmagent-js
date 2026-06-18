@@ -1,17 +1,17 @@
 /**
- * @agentkit-js/claude-agent-sdk — Memory tool adapter (D3, 2026-06-13).
+ * @wasmagent/claude-agent-sdk — Memory tool adapter (D3, 2026-06-13).
  *
  * Exposes agentkit's `createMemoryTool` (cross-session KV-backed memory)
  * as a Claude Agent SDK tool quadruple.
  *
- * See `@agentkit-js/aisdk/memory` for the rationale (D3 cross-framework
+ * See `@wasmagent/aisdk/memory` for the rationale (D3 cross-framework
  * memory product surface).
  */
 import {
   createMemoryTool as createMemoryToolCore,
   type MemoryToolOptions,
   zodToJsonSchema,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 
 import type { ClaudeAgentTool } from "./index.js";
 
@@ -31,5 +31,5 @@ export function memoryClaudeTool(opts: MemoryToolOptions): ClaudeAgentTool {
   };
 }
 
-export { ObservationalMemory } from "@agentkit-js/core";
+export { ObservationalMemory } from "@wasmagent/core";
 export type { MemoryToolOptions };

@@ -1,6 +1,6 @@
 # Memory 模式指南
 
-agentkit-js 提供三种 memory 基本能力，互相配合很好：
+wasmagent 提供三种 memory 基本能力，互相配合很好：
 - **向量检索**（semantic + BM25 混合）：[`HybridRetriever`](../../packages/core/src/memory/HybridRetriever.ts)
 - **带 TTL & decay 的结构化键值 memory**：[`StructuredMemory`](../../packages/core/src/memory/StructuredMemory.ts)
 - **跨会话持久 memory 工具**（让 agent 自己调用）：[`createMemoryTool`](../../packages/core/src/memory/MemoryTool.ts)
@@ -22,7 +22,7 @@ agentkit-js 提供三种 memory 基本能力，互相配合很好：
 冷的 episodic 条目（accessCount=0 且 >30 天）在 `decay()` 时也会被清理，无论 TTL。
 
 ```ts
-import { StructuredMemory, InMemoryStructuredKv } from "@agentkit-js/core";
+import { StructuredMemory, InMemoryStructuredKv } from "@wasmagent/core";
 
 const mem = new StructuredMemory(new InMemoryStructuredKv());
 await mem.set("user:42", { name: "Alice" }, { namespace: "semantic" });
@@ -41,7 +41,7 @@ console.log(`清理了 ${result.purged}/${result.scanned} 条`);
 用 `createMemoryTool` 把 memory 暴露为 agent 可调用的工具。它通过任意 `KvBackend` 读写，因此后端可在内存（dev）和 Cloudflare KV（prod）之间切换。
 
 ```ts
-import { createMemoryTool, MapKvBackend } from "@agentkit-js/core";
+import { createMemoryTool, MapKvBackend } from "@wasmagent/core";
 
 const memoryTool = createMemoryTool({
   backend: new MapKvBackend(), // 或者 CF KV 的实现
@@ -60,11 +60,11 @@ agent 获得四个内置操作：`memory_set`、`memory_get`、`memory_list`、`
 
 ## RAG / 检索模式
 
-大语料库的 semantic 召回，用 `HybridRetriever` + dense embedder（`@agentkit-js/tools-rag` 的 `HttpEmbedder`）+ 任意向量库：
+大语料库的 semantic 召回，用 `HybridRetriever` + dense embedder（`@wasmagent/tools-rag` 的 `HttpEmbedder`）+ 任意向量库：
 
 ```ts
-import { HybridRetriever, InMemoryVectorStore } from "@agentkit-js/core";
-import { HttpEmbedder, ragTool } from "@agentkit-js/tools-rag";
+import { HybridRetriever, InMemoryVectorStore } from "@wasmagent/core";
+import { HttpEmbedder, ragTool } from "@wasmagent/tools-rag";
 
 const embedder = new HttpEmbedder({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -73,7 +73,7 @@ const embedder = new HttpEmbedder({
 const dense = new InMemoryVectorStore(embedder);
 const hybrid = new HybridRetriever({ dense, bm25Weight: 0.4, semanticWeight: 0.6 });
 
-await hybrid.add("doc-1", "agentkit-js 是一个 TypeScript agent 运行时");
+await hybrid.add("doc-1", "wasmagent 是一个 TypeScript agent 运行时");
 // ... 摄入更多文档 ...
 
 const tool = ragTool({ store: hybrid });

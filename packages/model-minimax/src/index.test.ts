@@ -1,4 +1,4 @@
-import type { StreamEvent } from "@agentkit-js/core/models";
+import type { StreamEvent } from "@wasmagent/core/models";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type OAIChunk = {
@@ -254,7 +254,7 @@ describe("MiniMaxModel", () => {
 
   it("getModelMeta for MiniMax-M2.7 shows isReasoning:true", async () => {
     vi.doMock("openai", () => ({ default: vi.fn() }));
-    const { getModelMeta } = await import("@agentkit-js/core/models");
+    const { getModelMeta } = await import("@wasmagent/core/models");
     expect(getModelMeta("MiniMax-M2.7").isReasoning).toBe(true);
     vi.doUnmock("openai");
   });

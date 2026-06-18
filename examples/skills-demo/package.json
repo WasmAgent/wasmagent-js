@@ -6,6 +6,6 @@
     "start": "node index.mjs"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*"
+    "@wasmagent/core": "workspace:*"
   }
 }

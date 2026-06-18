@@ -25,7 +25,7 @@ or Cloudflare Agents SDK and needs to know whether to bet on us.
 | Quality runners        | ✅ Self-consistency / Reflect-Refine / Budget-Forcing / Parallel-Fork-Join all in `core/src/enhancement/`  |
 | Statistical evals      | ✅ McNemar exact + Wilson CI + paired bootstrap in `evals-runner/src/stats` (rare in JS-land)             |
 | Zero-deploy DevTools   | ✅ `agentkit devtools` CLI + RunsAggregator + EventLogReplay (no SaaS, no account)                        |
-| **npm distribution**   | ⚠️ `@agentkit-js/core` first published 2026-06-12 — still a single version on npm                       |
+| **npm distribution**   | ⚠️ `@wasmagent/core` first published 2026-06-12 — still a single version on npm                       |
 | **Bus factor**         | ⚠️ Single maintainer; no co-publishers yet                                                              |
 | **Public benchmarks**  | ⚠️ Internal LongMemEval-style runs published; the official 500-question set has not yet been run         |
 

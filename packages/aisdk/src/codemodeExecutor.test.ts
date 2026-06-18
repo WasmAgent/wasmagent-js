@@ -15,7 +15,7 @@
  * orthogonal to these tests.
  */
 
-import { JsKernel } from "@agentkit-js/core";
+import { JsKernel } from "@wasmagent/core";
 import { describe, expect, it } from "vitest";
 import { agentkitCodemodeExecutor } from "./codemodeExecutor.js";
 

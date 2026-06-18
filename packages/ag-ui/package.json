@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/ag-ui",
+  "name": "@wasmagent/ag-ui",
   "version": "0.2.0",
-  "description": "AG-UI protocol adapter for @agentkit-js/core — maps private AgentEvent stream to AG-UI 16-class events",
+  "description": "AG-UI protocol adapter for @wasmagent/core — maps private AgentEvent stream to AG-UI 16-class events",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*"
+    "@wasmagent/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -39,12 +39,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/ag-ui"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/ag-ui#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/ag-ui#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
     "access": "public",

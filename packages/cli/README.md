@@ -1,13 +1,13 @@
-# @agentkit-js/cli
+# /cli
 
 `agentkit` command-line interface — run a single agent task from your shell.
 
-> Part of [agentkit-js](https://github.com/telleroutlook/agentkit-js) — a TypeScript + WASM agent runtime.
+> Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.
 
 ## Install
 
 ```bash
-npm install -g @agentkit-js/cli
+npm install -g /cli
 ```
 
 ## Usage
@@ -19,4 +19,4 @@ agentkit run "What is 12 * 13?"
 
 ## License
 
-[Apache-2.0](./LICENSE) — © agentkit-js contributors
+[Apache-2.0](./LICENSE) — © wasmagent contributors

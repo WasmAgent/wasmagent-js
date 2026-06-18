@@ -60,7 +60,7 @@ describe("QuickJSKernel (edge-safe, no node:vm)", () => {
   }, 5_000);
 
   it("snapshot and restore are not implemented (optional interface)", () => {
-    const k = kernel as import("@agentkit-js/core/executor").WasmKernel;
+    const k = kernel as import("@wasmagent/core/executor").WasmKernel;
     expect(k.snapshot).toBeUndefined();
     expect(k.restore).toBeUndefined();
   });

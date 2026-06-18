@@ -4,10 +4,10 @@
 
 ## 在 agentkit-js 里启用
 
-agentkit-js 不在 core 里强制 AGENTS.md 协议（保持框架的中立性 — 见 [Generic Foundation Principle](https://github.com/telleroutlook/agentkit-js#design-principles)），但提供了"加到 system prompt 前缀"的清晰套路。bscode 的实现是参考做法。
+agentkit-js 不在 core 里强制 AGENTS.md 协议（保持框架的中立性 — 见 [Generic Foundation Principle](https://github.com/WasmAgent/wasmagent-js#design-principles)），但提供了"加到 system prompt 前缀"的清晰套路。bscode 的实现是参考做法。
 
 ```ts
-import { CodeAgent } from "@agentkit-js/core";
+import { CodeAgent } from "@wasmagent/core";
 
 // 自己的辅助函数，把仓库 AGENTS.md 拼成系统提示前缀
 function loadAgentsMd(workspaceRoot: string): string {

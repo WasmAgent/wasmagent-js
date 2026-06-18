@@ -3,7 +3,7 @@ import type {
   KernelOptions,
   KernelResult,
   WasmKernel,
-} from "@agentkit-js/core/executor";
+} from "@wasmagent/core/executor";
 
 // We import Scope for RAII handle management (Q5).
 // QuickJS handle types are opaque objects — we use 'object' throughout.

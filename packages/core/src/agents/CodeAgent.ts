@@ -38,7 +38,7 @@ export interface CodeAgentOptions {
   actionLanguage?: "js";
   /**
    * Custom kernel instance. Use this to inject a PyodideKernel:
-   *   import { PyodideKernel } from "@agentkit-js/kernel-pyodide";
+   *   import { PyodideKernel } from "@wasmagent/kernel-pyodide";
    *   new CodeAgent({ kernel: new PyodideKernel(), ... })
    */
   kernel?: import("../executor/types.js").WasmKernel;

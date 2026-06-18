@@ -1,10 +1,10 @@
-# @agentkit-js/mastra-sandbox
+# /mastra-sandbox
 
-> A **Mastra** sandbox provider backed by agentkit-js kernels. WASM
+> A **Mastra** sandbox provider backed by wasmagent kernels. WASM
 > isolation with no external infrastructure — drop-in alternative to
 > Blaxel / E2B / Daytona providers.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/telleroutlook/agentkit-js/tree/main/examples/mastra-quickjs?file=index.mjs)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/WasmAgent/wasmagent-js/tree/main/examples/mastra-quickjs?file=index.mjs)
 
 ## Why this exists
 
@@ -36,7 +36,7 @@ customers.
 ## Install
 
 ```bash
-npm install @agentkit-js/mastra-sandbox @agentkit-js/kernel-quickjs \
+npm install /mastra-sandbox /kernel-quickjs \
   quickjs-emscripten @jitl/quickjs-wasmfile-release-sync
 ```
 
@@ -44,8 +44,8 @@ npm install @agentkit-js/mastra-sandbox @agentkit-js/kernel-quickjs \
 
 ```ts
 import { Agent } from "@mastra/core";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
-import { agentkitMastraSandbox } from "@agentkit-js/mastra-sandbox";
+import { QuickJSKernel } from "/kernel-quickjs";
+import { agentkitMastraSandbox } from "/mastra-sandbox";
 
 const sandbox = agentkitMastraSandbox({
   kernel: new QuickJSKernel({ timeoutMs: 5_000 }),
@@ -75,10 +75,10 @@ same `kernel:` slot and the rest of your code is unchanged:
 
 | Kernel | When to pick it | Edge-safe |
 | ------ | --------------- | --------- |
-| `QuickJSKernel` (`@agentkit-js/kernel-quickjs`) | Default. JS/TS workloads. ~2 MB cold start. | ✅ |
-| `PyodideKernel` (`@agentkit-js/kernel-pyodide`) | Model emits Python (numpy, pandas, regex-heavy). | ✅ (heavy) |
-| `WasmtimeKernel` (`@agentkit-js/kernel-wasmtime`) | Multi-language WASM modules / Javy-compiled JS for max isolation. | ✅ |
-| `RemoteSandboxKernel` (`@agentkit-js/kernel-remote`) | Need full POSIX, native binaries, multi-tenant trust. Backed by E2B / Cloudflare Sandbox. | n/a |
+| `QuickJSKernel` (`/kernel-quickjs`) | Default. JS/TS workloads. ~2 MB cold start. | ✅ |
+| `PyodideKernel` (`/kernel-pyodide`) | Model emits Python (numpy, pandas, regex-heavy). | ✅ (heavy) |
+| `WasmtimeKernel` (`/kernel-wasmtime`) | Multi-language WASM modules / Javy-compiled JS for max isolation. | ✅ |
+| `RemoteSandboxKernel` (`/kernel-remote`) | Need full POSIX, native binaries, multi-tenant trust. Backed by E2B / Cloudflare Sandbox. | n/a |
 
 Swap is a one-liner — `kernel: new QuickJSKernel()` becomes `kernel: new PyodideKernel()`. Same `CapabilityManifest`, same provider contract, same Mastra Workspace API.
 
@@ -101,7 +101,7 @@ manifest at call time.
 
 ## See also
 
-- [`docs/guides/code-mode.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/code-mode.md)
+- [`docs/guides/code-mode.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/code-mode.md)
   — the same kernels behind a standalone MCP server.
-- [`@agentkit-js/aisdk`](https://www.npmjs.com/package/@agentkit-js/aisdk)
+- [`/aisdk`](https://www.npmjs.com/package//aisdk)
   — the same kernels as Vercel AI SDK tools.

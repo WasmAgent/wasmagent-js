@@ -36,7 +36,7 @@
  *     that's reproducible without an extra model.
  */
 
-import { finalAnswerLength } from "@agentkit-js/core";
+import { finalAnswerLength } from "@wasmagent/core";
 import type { BenchmarkItem, BenchmarkSuite } from "../types.js";
 
 interface LocomoTemplate {

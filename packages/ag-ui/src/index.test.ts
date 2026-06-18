@@ -1,4 +1,4 @@
-import type { AgentEvent } from "@agentkit-js/core";
+import type { AgentEvent } from "@wasmagent/core";
 import { describe, expect, it } from "vitest";
 import { toAgUiEvents, toSseString } from "./index.js";
 

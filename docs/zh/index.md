@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: "agentkit-js"
+  name: "wasmagent"
   text: "边缘原生的 Agent 运行时"
   tagline: "三层沙箱化代码执行 · prompt-cache 成本控制 · 国产模型一等公民 · 一键部署到 Cloudflare Workers。"
   actions:
@@ -14,7 +14,7 @@ hero:
       link: /zh/kernels-comparison
     - theme: alt
       text: GitHub
-      link: https://github.com/telleroutlook/agentkit-js
+      link: https://github.com/WasmAgent/wasmagent-js
 
 features:
   - icon: 🧱
@@ -47,11 +47,11 @@ features:
     linkText: 看数字
   - icon: 📊
     title: Pareto 优先的模型评测
-    details: <code>@agentkit-js/evals-runner</code> 提供 6 个评测套件 + 配对统计学（McNemar / Wilson / bootstrap）—— 多模型对比直接给出 trade-off 前沿，而不是单一数字排名。
+    details: <code>@wasmagent/evals-runner</code> 提供 6 个评测套件 + 配对统计学（McNemar / Wilson / bootstrap）—— 多模型对比直接给出 trade-off 前沿，而不是单一数字排名。
     link: /zh/guides/evals-cookbook
     linkText: 查看指南
 ---
 
 <div style="text-align: center; margin-top: 3rem; opacity: 0.7;">
-<small>Apache-2.0 · <a href="https://github.com/telleroutlook/agentkit-js/blob/main/README.md#comparison-with-other-agent-frameworks">vs Vercel AI SDK / Mastra / LangGraph</a></small>
+<small>Apache-2.0 · <a href="https://github.com/WasmAgent/wasmagent-js/blob/main/README.md#comparison-with-other-agent-frameworks">vs Vercel AI SDK / Mastra / LangGraph</a></small>
 </div>

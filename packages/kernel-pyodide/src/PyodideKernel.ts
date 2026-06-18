@@ -1,4 +1,4 @@
-import type { CapabilityManifest, KernelResult, WasmKernel } from "@agentkit-js/core/executor";
+import type { CapabilityManifest, KernelResult, WasmKernel } from "@wasmagent/core/executor";
 
 interface PyodideInterface {
   runPython(code: string): unknown;

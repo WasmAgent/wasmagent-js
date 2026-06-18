@@ -3,7 +3,7 @@
  * and adapters can import them without pulling the implementation surface.
  */
 
-import type { AgentEvent, SubagentRunnable } from "@agentkit-js/core";
+import type { AgentEvent, SubagentRunnable } from "@wasmagent/core";
 
 // ── JSON-RPC primitives ─────────────────────────────────────────────────────
 

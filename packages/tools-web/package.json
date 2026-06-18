@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/tools-web",
+  "name": "@wasmagent/tools-web",
   "version": "0.2.0",
-  "description": "Web search tools for agentkit-js — Tavily, Brave, Perplexity adapters",
+  "description": "Web search tools for wasmagent — Tavily, Brave, Perplexity adapters",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*",
+    "@wasmagent/core": "workspace:*",
     "zod": "^3.23.0"
   },
   "devDependencies": {
@@ -40,12 +40,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/tools-web"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/tools-web#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/tools-web#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
     "access": "public",

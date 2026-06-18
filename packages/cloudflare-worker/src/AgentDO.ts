@@ -28,7 +28,7 @@
  *      POST /cancel   → cancel the run
  */
 
-import type { AgentEvent } from "@agentkit-js/core";
+import type { AgentEvent } from "@wasmagent/core";
 
 interface AgentRunRequest {
   task: string;

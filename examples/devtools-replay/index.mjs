@@ -10,8 +10,8 @@
  *   3. Inspect step boundaries and the cursor at various positions.
  *   4. Fork from step 2 with a model override; print the resulting bundle.
  */
-import { EventLog, MapKvBackend } from "@agentkit-js/core";
-import { EventLogReplay } from "@agentkit-js/devtools";
+import { EventLog, MapKvBackend } from "@wasmagent/core";
+import { EventLogReplay } from "@wasmagent/devtools";
 
 // ── 1. Pretend we just ran an agent and recorded events ─────────────────────
 

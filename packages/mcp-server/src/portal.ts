@@ -17,7 +17,7 @@
  *
  *   1. Runtime-neutral: same Portal runs on Node, any edge runtime, browser
  *      (with a WASM kernel), and a laptop with no network (with
- *      `@agentkit-js/model-local`). The kernel choice and the upstream list
+ *      `@wasmagent/model-local`). The kernel choice and the upstream list
  *      are decoupled.
  *   2. One auditable security policy: every `execute_code` invocation runs
  *      under the *same* `CapabilityManifest` regardless of which upstream the
@@ -31,7 +31,7 @@
  * `fromStdio()` for that. The Portal accepts anything that exposes a
  * `ToolRegistry`-shaped surface, so any transport agentkit can already
  * connect to (HTTP / stdio / WebSocket via the MCP SDK; in-process tool
- * registries; `@agentkit-js/aisdk` adapters; future transports) plugs in
+ * registries; `@wasmagent/aisdk` adapters; future transports) plugs in
  * without changes here.
  */
 
@@ -40,8 +40,8 @@ import type {
   ToolDefinition,
   ToolRegistry,
   WasmKernel,
-} from "@agentkit-js/core";
-import { ToolRegistry as ToolRegistryCtor } from "@agentkit-js/core";
+} from "@wasmagent/core";
+import { ToolRegistry as ToolRegistryCtor } from "@wasmagent/core";
 import { type CodeModeServerOptions, createCodeModeServer } from "./codeMode.js";
 import type { McpAgentServer } from "./McpAgentServer.js";
 import type { McpServerInfo, McpTaskStore } from "./types.js";
@@ -53,7 +53,7 @@ import type { McpServerInfo, McpTaskStore } from "./types.js";
  *
  * The `tools` field is intentionally typed as `ToolRegistry`-like, not as
  * `McpToolCollection` — the latter is a strict subclass but we want to keep
- * the seam open so a non-MCP source (e.g. `@agentkit-js/aisdk` adapter,
+ * the seam open so a non-MCP source (e.g. `@wasmagent/aisdk` adapter,
  * built-in tool sets, the Memory Tool) can be federated without first being
  * round-tripped through MCP.
  */

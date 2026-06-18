@@ -45,7 +45,7 @@ ollama pull qwen2.5:1.5b
 #   p17-c3-imat_A_gsm512:latest         (C3 imatrix winner, Q3_K_M)
 #   p17-c3-baseline_clean100:latest     (C3 baseline)
 
-bun run -F '@agentkit-js/evals-runner' build
+bun run -F '@wasmagent/evals-runner' build
 
 node examples/benchmarks/multi-turn-scaffold-ablation.mjs \
   --base-url http://localhost:11434/v1 \

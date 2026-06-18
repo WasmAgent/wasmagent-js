@@ -35,7 +35,7 @@
  *
  *   - Expose the repo-edit tool surface (read_file / write_file /
  *     run_tests / git_diff …) via the agentkit code-mode MCP server
- *     (`@agentkit-js/mcp-server`'s `createCodeModeServer()`).
+ *     (`@wasmagent/mcp-server`'s `createCodeModeServer()`).
  *   - The agent receives `docs_search` + `execute_code` and dispatches
  *     all tool calls inside a single sandboxed script per step.
  *   - Compare against two baselines:
@@ -685,7 +685,7 @@ async function runDocker(args, timeoutMs) {
 
 /**
  * Render a Pareto-shaped markdown report from a list of dispatch
- * results. Mirrors the shape of `@agentkit-js/evals-runner`'s report
+ * results. Mirrors the shape of `@wasmagent/evals-runner`'s report
  * (accuracy × USD/correct × p95 wall × tool-call count) so the
  * publication run can drop in real numbers without rewriting the
  * format. Stub-mode populates the cells where it can; the real
@@ -771,7 +771,7 @@ async function reportPareto(results, outPath) {
     "Methodology + pre-run checklist live at the top of",
     "`examples/benchmarks/swe-bench-lite.mjs`. The Pareto axes —",
     "accuracy × USD/correct × p95 wall × tool-call count — match the",
-    "`@agentkit-js/evals-runner` reports so a reader can compare cells",
+    "`@wasmagent/evals-runner` reports so a reader can compare cells",
     "across benchmarks without translating shapes."
   );
 

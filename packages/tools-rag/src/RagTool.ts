@@ -1,4 +1,4 @@
-import type { Retriever, SearchResult, ToolDefinition } from "@agentkit-js/core";
+import type { Retriever, SearchResult, ToolDefinition } from "@wasmagent/core";
 import { z } from "zod";
 
 export interface RagToolOpts {

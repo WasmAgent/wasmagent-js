@@ -10,7 +10,7 @@
  */
 
 import { Readable } from "node:stream";
-import { ToolRegistry, VmKernel } from "@agentkit-js/core";
+import { ToolRegistry, VmKernel } from "@wasmagent/core";
 import { describe, expect, it, vi } from "vitest";
 import { createCodeModeServer } from "./codeMode.js";
 import { runStdio } from "./stdio.js";

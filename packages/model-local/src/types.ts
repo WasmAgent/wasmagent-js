@@ -1,7 +1,7 @@
 /**
- * @agentkit-js/model-local — public types.
+ * @wasmagent/model-local — public types.
  *
- * The Model interface itself comes from @agentkit-js/core; this file only
+ * The Model interface itself comes from @wasmagent/core; this file only
  * declares option shapes specific to the embedded local-LLM provider.
  */
 

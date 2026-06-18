@@ -1,11 +1,11 @@
 # Benchmarks
 
-> Every number on this page is reproduced in CI on every push. Drift outside ±10 % fails the build — see [`.github/workflows/ci.yml`](https://github.com/telleroutlook/agentkit-js/blob/main/.github/workflows/ci.yml).
+> Every number on this page is reproduced in CI on every push. Drift outside ±10 % fails the build — see [`.github/workflows/ci.yml`](https://github.com/WasmAgent/wasmagent-js/blob/main/.github/workflows/ci.yml).
 
 Run them yourself:
 
 ```bash
-git clone https://github.com/telleroutlook/agentkit-js
+git clone https://github.com/WasmAgent/wasmagent-js
 cd agentkit-js
 bun install
 bun run bench           # all benchmarks
@@ -16,14 +16,14 @@ bun run bench -- ptc    # one specific suite
 
 | Capability | Measured | Target | Script |
 |---|---|---|---|
-| **Programmatic Tool Calling** vs round-trip per call | **5.1 %** of baseline tokens (–94.9 %) | ≤63 % (≥–37 %) | [`ptc-tokens.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/ptc-tokens.mjs) |
-| **Tool deferred loading** (lazy MCP discovery) | **10.0 %** of baseline tokens (–90 %) | ≤15 % (≥–85 %) | [`defer-loading.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/defer-loading.mjs) |
-| **`inputExamples` accuracy uplift** | 76 % → **92 %** | 72 → 90 | [`input-examples.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/input-examples.mjs) |
-| **Context editing** (cache-stable history compaction) | **13.8 %** of baseline tokens (–86 %) | ≤16 % (≥–84 %) | [`context-editing.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/context-editing.mjs) |
-| **Observational memory** (compressed reflection prefix) | **21.9 %** of baseline (–78 %) | ~22 % (≤25 %) | [`observational-memory.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/observational-memory.mjs) |
-| **Code-mode bootstrap** (N=30 tools, vs direct MCP) | **13.6 %** of baseline tokens (–86 %) | ≤50 % (codemode-lite reported 53 %) | [`code-mode-tokens.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/code-mode-tokens.mjs) |
-| **`ParallelForkJoinRunner`** (8 branches, cap=4) | ~**3.8×** wall-clock vs equivalent serial work; tokens scale linearly | ≥2.5× speedup, 4–12× tokens | [`parallel-agents.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/parallel-agents.mjs) |
-| **Cross-model cost comparison** (same task, 11 models) | DeepSeek V4 cheapest at **~$0.003** ; Claude Opus most expensive at **~$0.15** (≈56× ratio) | cheapest <$0.05, most-expensive <$5, ratio in 5×–200× range | [`cost-comparison.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/cost-comparison.mjs) → [report](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/report-cost-comparison.md) |
+| **Programmatic Tool Calling** vs round-trip per call | **5.1 %** of baseline tokens (–94.9 %) | ≤63 % (≥–37 %) | [`ptc-tokens.mjs`](https://github.com/WasmAgent/wasmagent-js/blob/main/examples/benchmarks/ptc-tokens.mjs) |
+| **Tool deferred loading** (lazy MCP discovery) | **10.0 %** of baseline tokens (–90 %) | ≤15 % (≥–85 %) | [`defer-loading.mjs`](https://github.com/WasmAgent/wasmagent-js/blob/main/examples/benchmarks/defer-loading.mjs) |
+| **`inputExamples` accuracy uplift** | 76 % → **92 %** | 72 → 90 | [`input-examples.mjs`](https://github.com/WasmAgent/wasmagent-js/blob/main/examples/benchmarks/input-examples.mjs) |
+| **Context editing** (cache-stable history compaction) | **13.8 %** of baseline tokens (–86 %) | ≤16 % (≥–84 %) | [`context-editing.mjs`](https://github.com/WasmAgent/wasmagent-js/blob/main/examples/benchmarks/context-editing.mjs) |
+| **Observational memory** (compressed reflection prefix) | **21.9 %** of baseline (–78 %) | ~22 % (≤25 %) | [`observational-memory.mjs`](https://github.com/WasmAgent/wasmagent-js/blob/main/examples/benchmarks/observational-memory.mjs) |
+| **Code-mode bootstrap** (N=30 tools, vs direct MCP) | **13.6 %** of baseline tokens (–86 %) | ≤50 % (codemode-lite reported 53 %) | [`code-mode-tokens.mjs`](https://github.com/WasmAgent/wasmagent-js/blob/main/examples/benchmarks/code-mode-tokens.mjs) |
+| **`ParallelForkJoinRunner`** (8 branches, cap=4) | ~**3.8×** wall-clock vs equivalent serial work; tokens scale linearly | ≥2.5× speedup, 4–12× tokens | [`parallel-agents.mjs`](https://github.com/WasmAgent/wasmagent-js/blob/main/examples/benchmarks/parallel-agents.mjs) |
+| **Cross-model cost comparison** (same task, 11 models) | DeepSeek V4 cheapest at **~$0.003** ; Claude Opus most expensive at **~$0.15** (≈56× ratio) | cheapest <$0.05, most-expensive <$5, ratio in 5×–200× range | [`cost-comparison.mjs`](https://github.com/WasmAgent/wasmagent-js/blob/main/examples/benchmarks/cost-comparison.mjs) → [report](https://github.com/WasmAgent/wasmagent-js/blob/main/examples/benchmarks/report-cost-comparison.md) |
 
 > **2026-06-17 note on the code-mode row.** The 13.6%-of-baseline number
 > is still verifiable, but code-mode token savings are no longer a
@@ -33,8 +33,8 @@ bun run bench -- ptc    # one specific suite
 > verification**, not as competitive claim. The differentiator is the
 > *neutral, multi-language, multi-isolation-tier kernel matrix* that
 > can be dropped into any of those framework executor sockets — see
-> [`docs/kernels/comparison.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/kernels/comparison.md)
-> and the S1 / S1' axes in [`ROADMAP.md`](https://github.com/telleroutlook/agentkit-js/blob/main/ROADMAP.md).
+> [`docs/kernels/comparison.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/kernels/comparison.md)
+> and the S1 / S1' axes in [`ROADMAP.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/ROADMAP.md).
 
 ## LongMemEval-style end-to-end across 5 local models (2026-06-12)
 
@@ -125,7 +125,7 @@ Two non-obvious findings the failure pattern reveals:
 
 ## Same fixture, run via `agentkit evals` (2026-06-12, prompt re-tuned)
 
-The runner shipped in `@agentkit-js/evals-runner@0.1.0` uses a more
+The runner shipped in `@wasmagent/evals-runner@0.1.0` uses a more
 prescriptive system message ("Reply with the answer ONLY — no preamble,
 no explanation. Be concise"). On the same 6-item fixture, T=0, 1 seed,
 the per-model results shifted in a way that's worth recording:
@@ -177,4 +177,4 @@ The same approach extends to upcoming numbers: parallel-runner wall-clock (Wave 
 
 ## Read the source
 
-The runner is a single file — [`examples/benchmarks/run-all.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/run-all.mjs) — that imports each suite, invokes it, and exits non-zero on tolerance breach.
+The runner is a single file — [`examples/benchmarks/run-all.mjs`](https://github.com/WasmAgent/wasmagent-js/blob/main/examples/benchmarks/run-all.mjs) — that imports each suite, invokes it, and exits non-zero on tolerance breach.

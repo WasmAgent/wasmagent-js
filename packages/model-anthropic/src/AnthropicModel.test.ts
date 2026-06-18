@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 /**
- * Smoke tests for the @agentkit-js/model-anthropic re-export package.
+ * Smoke tests for the @wasmagent/model-anthropic re-export package.
  *
  * These tests verify the re-export chain and static properties only.
- * Full behavioral tests live in @agentkit-js/core's AnthropicModel.test.ts,
+ * Full behavioral tests live in @wasmagent/core's AnthropicModel.test.ts,
  * which has direct access to the source files and proper SDK mock setup.
  */
-describe("@agentkit-js/model-anthropic re-export", () => {
+describe("@wasmagent/model-anthropic re-export", () => {
   it("exports AnthropicModel class", async () => {
     const { AnthropicModel } = await import("./index.js");
     expect(typeof AnthropicModel).toBe("function");

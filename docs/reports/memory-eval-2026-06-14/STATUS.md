@@ -21,7 +21,7 @@ The suites themselves live at:
 
 ```bash
 # Build the runner
-bun run -F '@agentkit-js/evals-runner' build
+bun run -F '@wasmagent/evals-runner' build
 
 # Run both suites against whatever models you want to compare:
 node examples/benchmarks/eval-runner.mjs \
@@ -69,6 +69,6 @@ does catch the dominant failure mode (forbidden token leaking into
 the answer alongside the right one).
 
 For the cases where this matters (publishing public numbers), wire in
-the `judgeScorer` from `@agentkit-js/core`'s evals module pointed at
+the `judgeScorer` from `@wasmagent/core`'s evals module pointed at
 a stronger judge model. The forbidden-substring check is the
 deterministic CI-friendly fallback.

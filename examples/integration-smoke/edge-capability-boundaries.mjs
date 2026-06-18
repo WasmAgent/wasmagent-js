@@ -4,7 +4,7 @@
  * Targets the seams where validation tends to skip a corner. Every check
  * here can ONLY fail if a real boundary bug exists.
  */
-import { JsKernel } from "@agentkit-js/core";
+import { JsKernel } from "@wasmagent/core";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

@@ -1,5 +1,5 @@
 /**
- * @agentkit-js/openai-agents tests.
+ * @wasmagent/openai-agents tests.
  *
  * We don't depend on `@openai/agents` runtime here — the package
  * exports a structurally-typed `OpenAiAgentTool` shape, so unit tests
@@ -8,7 +8,7 @@
  * `agent({ tools: […] })`.
  */
 
-import { JsKernel, ToolRegistry } from "@agentkit-js/core";
+import { JsKernel, ToolRegistry } from "@wasmagent/core";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { codeModeAgentTool, sandboxedJsAgentTool } from "./index.js";

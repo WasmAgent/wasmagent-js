@@ -1,5 +1,5 @@
 /**
- * @agentkit-js/mastra-sandbox tests.
+ * @wasmagent/mastra-sandbox tests.
  *
  * The provider is a thin adapter over `Kernel.run()`. We pin:
  *  1. Happy path returns `{ output, stderr, exitCode: 0 }`.
@@ -8,7 +8,7 @@
  *  4. Per-call `env` merges with provider-level env (call wins on conflict).
  */
 
-import { JsKernel } from "@agentkit-js/core";
+import { JsKernel } from "@wasmagent/core";
 import { describe, expect, it } from "vitest";
 import { agentkitMastraSandbox } from "./index.js";
 

@@ -20,7 +20,7 @@ import {
   answerCompletenessJudge,
   runJudgeScorer,
   trajectoryQualityJudge,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 
 // ── Mock judge model ─────────────────────────────────────────────────────────
 // Returns canned scores keyed by the trace task so we can demo nuance: an

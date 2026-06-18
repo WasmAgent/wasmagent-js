@@ -1,4 +1,4 @@
-import type { Embedder } from "@agentkit-js/core";
+import type { Embedder } from "@wasmagent/core";
 
 export interface HttpEmbedderOpts {
   /** Embedding endpoint URL. Default: OpenAI's. */

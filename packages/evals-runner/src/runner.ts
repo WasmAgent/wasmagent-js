@@ -20,7 +20,7 @@
  *     separately as `warmupMs` in the aggregate.
  */
 
-import type { AgentEvent, EvalSample, Scorer } from "@agentkit-js/core";
+import type { AgentEvent, EvalSample, Scorer } from "@wasmagent/core";
 import { wilsonCI } from "./stats/wilson.js";
 import type {
   BenchmarkItem,

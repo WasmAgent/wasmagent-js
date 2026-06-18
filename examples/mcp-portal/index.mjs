@@ -19,8 +19,8 @@
  * The script does NOT need network access; it drives the Portal directly via
  * its in-process JSON-RPC handler so you can inspect the responses.
  */
-import { JsKernel, ToolRegistry, MapKvBackend, createMemoryTool } from "@agentkit-js/core";
-import { createPortalServer } from "@agentkit-js/mcp-server";
+import { JsKernel, ToolRegistry, MapKvBackend, createMemoryTool } from "@wasmagent/core";
+import { createPortalServer } from "@wasmagent/mcp-server";
 import { z } from "zod";
 
 // ── 1. Upstream A: filesystem-like (in-process, easily swapped for real MCP) ─

@@ -1,5 +1,5 @@
 /**
- * @agentkit-js/claude-agent-sdk tests.
+ * @wasmagent/claude-agent-sdk tests.
  *
  * We don't depend on `@anthropic-ai/sdk` at runtime — the package
  * exports the structurally-typed `ClaudeAgentTool` quadruple, so unit
@@ -8,7 +8,7 @@
  * Anthropic SDK current and near-future agrees on; the test pins it.
  */
 
-import { JsKernel, ToolRegistry } from "@agentkit-js/core";
+import { JsKernel, ToolRegistry } from "@wasmagent/core";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { codeModeClaudeTool, sandboxedJsClaudeTool } from "./index.js";

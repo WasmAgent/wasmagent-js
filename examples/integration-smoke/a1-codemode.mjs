@@ -13,8 +13,8 @@
  *     the wire (intermediate `search_docs` output must reach the script
  *     to produce that final value, but is not visible directly).
  */
-import { JsKernel, ToolRegistry } from "@agentkit-js/core";
-import { InMemoryTaskStore, createCodeModeServer } from "@agentkit-js/mcp-server";
+import { JsKernel, ToolRegistry } from "@wasmagent/core";
+import { InMemoryTaskStore, createCodeModeServer } from "@wasmagent/mcp-server";
 import { z } from "zod";
 
 const tools = new ToolRegistry();

@@ -11,8 +11,8 @@
  * `Agent` follows the standard Mastra `workspace.sandbox` slot once you
  * have `@mastra/core` installed.
  */
-import { agentkitMastraSandbox } from "@agentkit-js/mastra-sandbox";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { agentkitMastraSandbox } from "@wasmagent/mastra-sandbox";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
 const sandbox = agentkitMastraSandbox({
   kernel: new QuickJSKernel(),

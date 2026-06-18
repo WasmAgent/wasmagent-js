@@ -10,4 +10,4 @@ OpenAI Agents JS `Agent({ tools: [...] })`. The kernel runs anywhere JS
 runs — including Cloudflare Workers and Vercel Edge, where OpenAI's own
 `SandboxAgent` (Unix-local / Docker / hosted) cannot.
 
-See [`@agentkit-js/openai-agents` README](../../packages/openai-agents/README.md).
+See [`@wasmagent/openai-agents` README](../../packages/openai-agents/README.md).

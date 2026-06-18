@@ -41,39 +41,39 @@ thesis, not by code size or test count.
 
 | Package                                  | Tier | Rationale (one line)                                                                                  |
 |------------------------------------------|------|--------------------------------------------------------------------------------------------------------|
-| `@agentkit-js/core`                      | ★    | The runtime. Every other package depends on it.                                                       |
-| `@agentkit-js/kernel-quickjs`            | ★    | Cross-platform JS WASM kernel — the entry the Cloudflare codemode "third-party executor" hook expects. |
-| `@agentkit-js/kernel-pyodide`            | ★    | Edge-safe Python; no competitor kernel ships this. Fills the "Python execution" diff vs Cloudflare.    |
-| `@agentkit-js/kernel-wasmtime`           | ★    | True WASM (Javy → QuickJS-in-WASM); paired with kernel-quickjs covers the WASM tier.                   |
-| `@agentkit-js/kernel-remote`             | ★    | Third (microVM) tier — E2B / Cloudflare Sandbox. Required to honor "three-tier" claim.                 |
-| `@agentkit-js/mcp-server`                | ★    | The two-tool code-mode MCP shape. Direct competitor to Cloudflare Code Mode MCP.                      |
-| `@agentkit-js/evals-runner`              | ★    | Public-leaderboard play (Direction 2). Statistics axis is the differentiator vs Mastra.               |
-| `@agentkit-js/cli`                       | ★    | Single binary surface for `agentkit run / devtools / evals / model`. Discovery entry for newcomers.   |
-| `@agentkit-js/aisdk`                     | ◆    | Vercel AI SDK adapter. Primary contributor pipeline; in flight upstream (issue #16063).               |
-| `@agentkit-js/mastra-sandbox`            | ◆    | Mastra sandbox provider; in flight upstream (issue #17884).                                           |
-| `@agentkit-js/claude-agent-sdk`          | ◆    | Anthropic Claude Agent SDK adapter. Tracks v0/v1 SDK type evolution.                                  |
-| `@agentkit-js/openai-agents`             | ◆    | OpenAI Agents JS adapter. Tracks `@openai/agents` `Tool<T>` shape.                                      |
-| `@agentkit-js/devtools`                  | ◆    | Cross-framework local Studio (D5 GenAI semconv ingest). Direction 5 promotes this further.            |
-| `@agentkit-js/otel-exporter`             | ◆    | OTLP/HTTP exporter. Companion to devtools' framework-agnostic story.                                  |
-| `@agentkit-js/agent-prompts`             | ◆    | Reusable system prompts. Small surface, but feeds adapter packages.                                   |
-| `@agentkit-js/react`                     | ◆    | `useAgentRun()` for Next.js. Pairs with the AI SDK adapter in chat-UI scenarios.                      |
-| `@agentkit-js/cloudflare-worker`         | ◆    | Reference Worker entry — proves edge story. Pairs with kernel-quickjs.                                |
-| `@agentkit-js/model-anthropic`           | ◆    | Anthropic adapter — needed for prompt-cache discipline (a core differentiator).                       |
-| `@agentkit-js/model-openai`              | ◆    | OpenAI adapter — also the parent class of `GenericOpenAICompatModel` recipes.                         |
-| `@agentkit-js/model-local`               | ◆    | Embedded local LLM (node-llama-cpp + grammar). Unique vs every competitor; offline-only stories.      |
-| `@agentkit-js/tools-browser`             | ◆    | Browser automation. Pairs with bscode's verifier and is a natural code-mode tool surface.             |
-| `@agentkit-js/tools-rag`                 | ◆    | Embedding + vector store tools. Common scenario; small surface.                                       |
-| `@agentkit-js/tools-web`                 | ◆    | Web search adapters (Tavily / Brave / Perplexity). Common scenario; small surface.                    |
-| `@agentkit-js/model-deepseek`            | ▽    | OpenAI-compatible endpoint — covered by `GenericOpenAICompatModel` + recipe.                          |
-| `@agentkit-js/model-doubao`              | ▽    | OpenAI-compatible endpoint — covered by `GenericOpenAICompatModel` + recipe.                          |
-| `@agentkit-js/model-minimax`             | ▽    | OpenAI-compatible endpoint — covered by `GenericOpenAICompatModel` + recipe.                          |
-| `@agentkit-js/model-moonshot`            | ▽    | OpenAI-compatible endpoint (Kimi) — covered by `GenericOpenAICompatModel` + recipe.                   |
-| `@agentkit-js/model-qwen`                | ▽    | OpenAI-compatible endpoint (DashScope) — covered by `GenericOpenAICompatModel` + recipe.              |
-| `@agentkit-js/model-zhipu`               | ▽    | OpenAI-compatible endpoint (GLM) — covered by `GenericOpenAICompatModel` + recipe.                    |
-| `@agentkit-js/a2a`                       | ▽    | A2A (Agent2Agent) adapter. Cross-framework protocol; low organic demand so far. Re-tier on signal.    |
-| `@agentkit-js/ag-ui`                     | ▽    | AG-UI protocol adapter. Same shape as a2a — re-tier when the upstream protocol stabilizes.            |
-| `@agentkit-js/ui-cards`                  | ▽    | Card-block parser. Useful, but not on the embedded-runtime path.                                      |
-| `@agentkit-js/ui-cards-react`            | ▽    | React renderer for ui-cards. Will move with `ui-cards` — re-tier if either gets external traction.    |
+| `@wasmagent/core`                      | ★    | The runtime. Every other package depends on it.                                                       |
+| `@wasmagent/kernel-quickjs`            | ★    | Cross-platform JS WASM kernel — the entry the Cloudflare codemode "third-party executor" hook expects. |
+| `@wasmagent/kernel-pyodide`            | ★    | Edge-safe Python; no competitor kernel ships this. Fills the "Python execution" diff vs Cloudflare.    |
+| `@wasmagent/kernel-wasmtime`           | ★    | True WASM (Javy → QuickJS-in-WASM); paired with kernel-quickjs covers the WASM tier.                   |
+| `@wasmagent/kernel-remote`             | ★    | Third (microVM) tier — E2B / Cloudflare Sandbox. Required to honor "three-tier" claim.                 |
+| `@wasmagent/mcp-server`                | ★    | The two-tool code-mode MCP shape. Direct competitor to Cloudflare Code Mode MCP.                      |
+| `@wasmagent/evals-runner`              | ★    | Public-leaderboard play (Direction 2). Statistics axis is the differentiator vs Mastra.               |
+| `@wasmagent/cli`                       | ★    | Single binary surface for `agentkit run / devtools / evals / model`. Discovery entry for newcomers.   |
+| `@wasmagent/aisdk`                     | ◆    | Vercel AI SDK adapter. Primary contributor pipeline; in flight upstream (issue #16063).               |
+| `@wasmagent/mastra-sandbox`            | ◆    | Mastra sandbox provider; in flight upstream (issue #17884).                                           |
+| `@wasmagent/claude-agent-sdk`          | ◆    | Anthropic Claude Agent SDK adapter. Tracks v0/v1 SDK type evolution.                                  |
+| `@wasmagent/openai-agents`             | ◆    | OpenAI Agents JS adapter. Tracks `@openai/agents` `Tool<T>` shape.                                      |
+| `@wasmagent/devtools`                  | ◆    | Cross-framework local Studio (D5 GenAI semconv ingest). Direction 5 promotes this further.            |
+| `@wasmagent/otel-exporter`             | ◆    | OTLP/HTTP exporter. Companion to devtools' framework-agnostic story.                                  |
+| `@wasmagent/agent-prompts`             | ◆    | Reusable system prompts. Small surface, but feeds adapter packages.                                   |
+| `@wasmagent/react`                     | ◆    | `useAgentRun()` for Next.js. Pairs with the AI SDK adapter in chat-UI scenarios.                      |
+| `@wasmagent/cloudflare-worker`         | ◆    | Reference Worker entry — proves edge story. Pairs with kernel-quickjs.                                |
+| `@wasmagent/model-anthropic`           | ◆    | Anthropic adapter — needed for prompt-cache discipline (a core differentiator).                       |
+| `@wasmagent/model-openai`              | ◆    | OpenAI adapter — also the parent class of `GenericOpenAICompatModel` recipes.                         |
+| `@wasmagent/model-local`               | ◆    | Embedded local LLM (node-llama-cpp + grammar). Unique vs every competitor; offline-only stories.      |
+| `@wasmagent/tools-browser`             | ◆    | Browser automation. Pairs with bscode's verifier and is a natural code-mode tool surface.             |
+| `@wasmagent/tools-rag`                 | ◆    | Embedding + vector store tools. Common scenario; small surface.                                       |
+| `@wasmagent/tools-web`                 | ◆    | Web search adapters (Tavily / Brave / Perplexity). Common scenario; small surface.                    |
+| `@wasmagent/model-deepseek`            | ▽    | OpenAI-compatible endpoint — covered by `GenericOpenAICompatModel` + recipe.                          |
+| `@wasmagent/model-doubao`              | ▽    | OpenAI-compatible endpoint — covered by `GenericOpenAICompatModel` + recipe.                          |
+| `@wasmagent/model-minimax`             | ▽    | OpenAI-compatible endpoint — covered by `GenericOpenAICompatModel` + recipe.                          |
+| `@wasmagent/model-moonshot`            | ▽    | OpenAI-compatible endpoint (Kimi) — covered by `GenericOpenAICompatModel` + recipe.                   |
+| `@wasmagent/model-qwen`                | ▽    | OpenAI-compatible endpoint (DashScope) — covered by `GenericOpenAICompatModel` + recipe.              |
+| `@wasmagent/model-zhipu`               | ▽    | OpenAI-compatible endpoint (GLM) — covered by `GenericOpenAICompatModel` + recipe.                    |
+| `@wasmagent/a2a`                       | ▽    | A2A (Agent2Agent) adapter. Cross-framework protocol; low organic demand so far. Re-tier on signal.    |
+| `@wasmagent/ag-ui`                     | ▽    | AG-UI protocol adapter. Same shape as a2a — re-tier when the upstream protocol stabilizes.            |
+| `@wasmagent/ui-cards`                  | ▽    | Card-block parser. Useful, but not on the embedded-runtime path.                                      |
+| `@wasmagent/ui-cards-react`            | ▽    | React renderer for ui-cards. Will move with `ui-cards` — re-tier if either gets external traction.    |
 
 **Tier counts (2026-06-12):** 8 ★ · 15 ◆ · 10 ▽.
 
@@ -83,7 +83,7 @@ Each ▽ package carries a top-of-`README.md` banner with this exact
 shape (added in the same PR that publishes this file):
 
 ```md
-> **Maintenance-mode** (▽). This package is functional and security-patched, but is **not** receiving proactive feature work — it is dominated by `GenericOpenAICompatModel` + a recipe in [`docs/guides/openai-compat-recipes.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/openai-compat-recipes.md). See [maintenance tiers](https://github.com/telleroutlook/agentkit-js/blob/main/docs/strategy/maintenance-tiers.md) for the rationale. If you actively use this package and want it promoted to ◆ Narrative, open an issue tagged `tier:promote-request` with your use case.
+> **Maintenance-mode** (▽). This package is functional and security-patched, but is **not** receiving proactive feature work — it is dominated by `GenericOpenAICompatModel` + a recipe in [`docs/guides/openai-compat-recipes.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/openai-compat-recipes.md). See [maintenance tiers](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/strategy/maintenance-tiers.md) for the rationale. If you actively use this package and want it promoted to ◆ Narrative, open an issue tagged `tier:promote-request` with your use case.
 ```
 
 For non-model ▽ packages (`a2a`, `ag-ui`, `ui-cards`,
@@ -115,7 +115,7 @@ maintenance posture.
 
 The 2026-12-15 1.0 freeze (per
 [`api-stability.md`](api-stability.md#10-freeze-schedule)) applies
-*only* to `@agentkit-js/core`. Every other package follows
+*only* to `@wasmagent/core`. Every other package follows
 independent SemVer. ◆ packages that track an upstream still in
 flux stay 0.x past 1.0; ▽ packages stay 0.x indefinitely until
 demand signals warrant promotion.

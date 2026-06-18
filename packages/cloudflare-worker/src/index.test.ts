@@ -1,12 +1,12 @@
 /**
  * Tests for the Cloudflare Worker HTTP handler.
  *
- * Strategy: mock @agentkit-js/core and @agentkit-js/kernel-quickjs so tests run
+ * Strategy: mock @wasmagent/core and @wasmagent/kernel-quickjs so tests run
  * in Node.js without real API calls or WASM loading. Call the exported default
  * handler directly with synthetic Request / Env / ExecutionContext values.
  */
 
-import type { AgentEvent } from "@agentkit-js/core";
+import type { AgentEvent } from "@wasmagent/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
@@ -23,7 +23,7 @@ const mockFinalAnswerEvent: AgentEvent = {
 
 let mockAgentEvents: AgentEvent[] = [mockFinalAnswerEvent];
 
-vi.mock("@agentkit-js/core", () => {
+vi.mock("@wasmagent/core", () => {
   return {
     CodeAgent: class {
       run(_task: string) {
@@ -107,7 +107,7 @@ vi.mock("@agentkit-js/core", () => {
   };
 });
 
-vi.mock("@agentkit-js/kernel-quickjs", () => ({
+vi.mock("@wasmagent/kernel-quickjs", () => ({
   QuickJSKernel: class {},
 }));
 

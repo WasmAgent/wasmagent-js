@@ -1,7 +1,7 @@
 /**
  * Routing presets for local + cloud composition (L5).
  *
- * These are thin wrappers over @agentkit-js/core's existing FallbackModel —
+ * These are thin wrappers over @wasmagent/core's existing FallbackModel —
  * we deliberately do NOT introduce a parallel routing mechanism. The presets
  * exist purely as named, documented combinations:
  *
@@ -15,7 +15,7 @@
  * has to look up the arguments; `localFirst(local, cloud)` cannot be misread.
  */
 
-import { FallbackModel, type Model } from "@agentkit-js/core/models";
+import { FallbackModel, type Model } from "@wasmagent/core/models";
 
 /**
  * Try the local model first; on any error, fall through to the cloud model.

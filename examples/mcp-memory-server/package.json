@@ -1,14 +1,14 @@
 {
-  "name": "@agentkit-js-example/mcp-memory-server",
+  "name": "@wasmagent-example/mcp-memory-server",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Minimal MCP memory server backed by @agentkit-js/core StructuredMemory. Drop into any MCP host (Claude Desktop, Cursor, Glama).",
+  "description": "Minimal MCP memory server backed by @wasmagent/core StructuredMemory. Drop into any MCP host (Claude Desktop, Cursor, Glama).",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/telleroutlook/agentkit-js#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "examples/mcp-memory-server"
   },
   "main": "./index.mjs",
@@ -16,7 +16,7 @@
     "start": "node index.mjs"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*",
-    "@agentkit-js/mcp-server": "workspace:*"
+    "@wasmagent/core": "workspace:*",
+    "@wasmagent/mcp-server": "workspace:*"
   }
 }

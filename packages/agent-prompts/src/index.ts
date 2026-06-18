@@ -1,5 +1,5 @@
 /**
- * @agentkit-js/agent-prompts — composable system-prompt fragments.
+ * @wasmagent/agent-prompts — composable system-prompt fragments.
  *
  * agentkit-js is a generic agent runtime. This package provides
  * **building blocks** for system prompts (reasoning preambles, sandbox
@@ -20,7 +20,7 @@
  *     CODE_QUALITY_GENERIC,
  *     DIAGRAMS_CODE_JS,
  *     ERROR_RECOVERY,
- *   } from "@agentkit-js/agent-prompts";
+ *   } from "@wasmagent/agent-prompts";
  *
  *   const prompt = composePrompt({
  *     persona: "You are an expert JavaScript coding assistant.",

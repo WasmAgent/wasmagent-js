@@ -1,5 +1,5 @@
-import type { GenerateOptions, ModelCapabilities, StreamEvent } from "@agentkit-js/core/models";
-import { OpenAICompatModel, type OpenAICompatModelOptions } from "@agentkit-js/core/models";
+import type { GenerateOptions, ModelCapabilities, StreamEvent } from "@wasmagent/core/models";
+import { OpenAICompatModel, type OpenAICompatModelOptions } from "@wasmagent/core/models";
 
 /** International endpoint (default). */
 export const MINIMAX_BASE_URL = "https://api.minimax.io/v1";

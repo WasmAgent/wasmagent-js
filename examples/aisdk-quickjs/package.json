@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": { "start": "node index.mjs" },
   "dependencies": {
-    "@agentkit-js/aisdk": "workspace:*",
-    "@agentkit-js/kernel-quickjs": "workspace:*",
+    "@wasmagent/aisdk": "workspace:*",
+    "@wasmagent/kernel-quickjs": "workspace:*",
     "ai": "^4.0.0",
     "@ai-sdk/openai": "^1.0.0",
     "quickjs-emscripten": "^0.31.0",

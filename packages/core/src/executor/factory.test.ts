@@ -29,21 +29,21 @@ describe("createKernel factory", () => {
     const err = await createKernel({ engine: "js", actionLanguage: "pyodide" }).catch((e) => e);
     expect(err).toBeInstanceOf(Error);
     expect((err as Error & { code: string }).code).toBe("KERNEL_NOT_INSTALLED");
-    expect((err as Error).message).toContain("@agentkit-js/kernel-pyodide");
+    expect((err as Error).message).toContain("@wasmagent/kernel-pyodide");
   });
 
   it("quickjs engine: throws KERNEL_NOT_INSTALLED when package not installed", async () => {
     const err = await createKernel({ engine: "quickjs" }).catch((e) => e);
     expect(err).toBeInstanceOf(Error);
     expect((err as Error & { code: string }).code).toBe("KERNEL_NOT_INSTALLED");
-    expect((err as Error).message).toContain("@agentkit-js/kernel-quickjs");
+    expect((err as Error).message).toContain("@wasmagent/kernel-quickjs");
   });
 
   it("remote engine: throws KERNEL_NOT_INSTALLED when package not installed", async () => {
     const err = await createKernel({ engine: "remote" }).catch((e) => e);
     expect(err).toBeInstanceOf(Error);
     expect((err as Error & { code: string }).code).toBe("KERNEL_NOT_INSTALLED");
-    expect((err as Error).message).toContain("@agentkit-js/kernel-remote");
+    expect((err as Error).message).toContain("@wasmagent/kernel-remote");
   });
 
   it("does NOT warn for actionLanguage='js'", async () => {
@@ -69,7 +69,7 @@ describe("createKernel factory", () => {
 
   // A4: wasmtime throws KERNEL_NOT_INSTALLED when package is absent.
   it("wasmtime engine: throws KERNEL_NOT_INSTALLED error when package not installed (A4)", async () => {
-    // The package @agentkit-js/kernel-wasmtime is not installed in the test environment.
+    // The package @wasmagent/kernel-wasmtime is not installed in the test environment.
     await expect(createKernel({ engine: "wasmtime" })).rejects.toMatchObject({
       code: "KERNEL_NOT_INSTALLED",
     });
@@ -78,7 +78,7 @@ describe("createKernel factory", () => {
   it("wasmtime KERNEL_NOT_INSTALLED error message contains install instructions (A4)", async () => {
     const err = await createKernel({ engine: "wasmtime" }).catch((e) => e);
     expect(err).toBeInstanceOf(Error);
-    expect((err as Error).message).toContain("pnpm add @agentkit-js/kernel-wasmtime");
+    expect((err as Error).message).toContain("pnpm add @wasmagent/kernel-wasmtime");
   });
 
   it("B1-edge: throws with quickjs guidance when worker_threads unavailable", async () => {
@@ -86,7 +86,7 @@ describe("createKernel factory", () => {
     const origRelease = process.release;
     Object.defineProperty(process, "release", { value: { name: "not-node" }, configurable: true });
     try {
-      await expect(createKernel({ engine: "js" })).rejects.toThrow(/@agentkit-js\/kernel-quickjs/);
+      await expect(createKernel({ engine: "js" })).rejects.toThrow(/@wasmagent\/kernel-quickjs/);
     } finally {
       Object.defineProperty(process, "release", { value: origRelease, configurable: true });
     }

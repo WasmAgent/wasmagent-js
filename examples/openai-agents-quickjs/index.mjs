@@ -6,8 +6,8 @@
  * Agents JS SDK uses. Exercises `.invoke()` directly so the demo runs
  * without an API key.
  */
-import { sandboxedJsAgentTool } from "@agentkit-js/openai-agents";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { sandboxedJsAgentTool } from "@wasmagent/openai-agents";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
 const tool = sandboxedJsAgentTool({
   kernel: new QuickJSKernel(),

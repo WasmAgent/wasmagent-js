@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/kernel-quickjs",
+  "name": "@wasmagent/kernel-quickjs",
   "version": "0.2.0",
-  "description": "QuickJS-in-WASM kernel for agentkit-js — safe for Cloudflare Workers and serverless environments that lack node:vm",
+  "description": "QuickJS-in-WASM kernel for wasmagent — safe for Cloudflare Workers and serverless environments that lack node:vm",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*"
+    "@wasmagent/core": "workspace:*"
   },
   "peerDependencies": {
     "quickjs-emscripten": ">=0.29.0",
@@ -43,12 +43,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/kernel-quickjs"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/kernel-quickjs#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/kernel-quickjs#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "engines": {
     "node": ">=20.0.0"

@@ -1,20 +1,20 @@
 # 把 agentkit agent 暴露为 MCP server（F1）
 
-`@agentkit-js/mcp-server` 包能把任何运行起来像 agent 的对象——`ToolCallingAgent`、`CodeAgent`、自定义 `SubagentRunnable`——包装成 Model Context Protocol server。已经讲 MCP 的宿主（Claude Code、Cursor 2.4+、Copilot、Gemini CLI、Bedrock AgentCore、Microsoft Agent Framework）就能像调用任何 MCP 工具一样调你的 agent ——列举其能力、同步调用、或发起长任务后续轮询。
+`@wasmagent/mcp-server` 包能把任何运行起来像 agent 的对象——`ToolCallingAgent`、`CodeAgent`、自定义 `SubagentRunnable`——包装成 Model Context Protocol server。已经讲 MCP 的宿主（Claude Code、Cursor 2.4+、Copilot、Gemini CLI、Bedrock AgentCore、Microsoft Agent Framework）就能像调用任何 MCP 工具一样调你的 agent ——列举其能力、同步调用、或发起长任务后续轮询。
 
 ## 为什么有它
 
-agentkit-js 此前是单向的 MCP 公民：通过 `McpToolCollection` 消费 MCP server，但没有宿主能调 agentkit agent。F1 闭环。同一个跑你 agent 的 Workers/Node 部署，现在自带 MCP 端点 —— 无需额外服务、无协议漂移。
+wasmagent 此前是单向的 MCP 公民：通过 `McpToolCollection` 消费 MCP server，但没有宿主能调 wasmagent agent。F1 闭环。同一个跑你 agent 的 Workers/Node 部署，现在自带 MCP 端点 —— 无需额外服务、无协议漂移。
 
 ## 快速上手
 
 ```ts
-import { ToolCallingAgent } from "@agentkit-js/core";
+import { ToolCallingAgent } from "@wasmagent/core";
 import {
   McpAgentServer,
   createFetchHandler,
   InMemoryTaskStore,
-} from "@agentkit-js/mcp-server";
+} from "@wasmagent/mcp-server";
 
 const agent = new ToolCallingAgent({ /* 你的 agent */ });
 

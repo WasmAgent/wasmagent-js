@@ -1,5 +1,5 @@
 /**
- * @agentkit-js/tools-rag — RAG / embedding tools for agentkit-js.
+ * @wasmagent/tools-rag — RAG / embedding tools for agentkit-js.
  *
  * Provides:
  * - {@link HttpEmbedder}: generic embedder for any OpenAI-compatible
@@ -10,13 +10,13 @@
  * - {@link ragTool}: ToolDefinition wrapper turning any Retriever into
  *   an agent-callable retrieval tool
  *
- * Re-exports from `@agentkit-js/core`:
+ * Re-exports from `@wasmagent/core`:
  * - InMemoryVectorStore (in-process)
  * - KvBackendVectorStore (Cloudflare KV / Redis-backed)
  * - TfidfEmbedder (zero-deps prototype embedder)
  *
  * @example
- *   import { HttpEmbedder, qdrantStore, ragTool } from "@agentkit-js/tools-rag";
+ *   import { HttpEmbedder, qdrantStore, ragTool } from "@wasmagent/tools-rag";
  *   const embedder = new HttpEmbedder({
  *     apiKey: process.env.OPENAI_API_KEY!,
  *     model: "text-embedding-3-small",
@@ -26,19 +26,19 @@
  *     collection: "my-docs",
  *     embedder,
  *   });
- *   await store.add("doc-1", "agentkit-js is a TypeScript agent runtime");
+ *   await store.add("doc-1", "wasmagent is a TypeScript agent runtime");
  *   const tool = ragTool({ store });
  *   // pass `tool` to ToolCallingAgent constructor
  */
 
-export type { Embedder, Retriever, SearchResult } from "@agentkit-js/core";
+export type { Embedder, Retriever, SearchResult } from "@wasmagent/core";
 // Re-exports of core's already-shipped vector primitives, for convenient
 // single-import access.
 export {
   InMemoryVectorStore,
   KvBackendVectorStore,
   TfidfEmbedder,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 export type { PineconeStoreOpts } from "./connectors/pinecone.js";
 export { PineconeStore, pineconeStore } from "./connectors/pinecone.js";
 export type { QdrantStoreOpts } from "./connectors/qdrant.js";

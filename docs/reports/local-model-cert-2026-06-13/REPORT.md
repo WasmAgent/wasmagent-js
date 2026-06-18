@@ -63,7 +63,7 @@ caught BEFORE shipping a cert badge.
 
 ```bash
 # Build the model-local package once
-bun run -F '@agentkit-js/model-local' build
+bun run -F '@wasmagent/model-local' build
 
 # Walk every alias, download via multi-mirror, pin sha256
 node examples/benchmarks/cert-all-aliases.mjs --skip-cert

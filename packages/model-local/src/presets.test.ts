@@ -3,7 +3,7 @@
  * underlying FallbackModel and don't introduce new behaviour.
  */
 
-import { FallbackModel, type Model } from "@agentkit-js/core/models";
+import { FallbackModel, type Model } from "@wasmagent/core/models";
 import { afterEach, describe, expect, it } from "vitest";
 import { devLocalOr, localFirst, offlineOnly } from "./presets.js";
 

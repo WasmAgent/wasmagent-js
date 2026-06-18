@@ -4,7 +4,7 @@
  * Groq). No network calls — we only assert that capabilities + providerId
  * + extras land where the recipe doc claims they do.
  */
-import { GenericOpenAICompatModel } from "@agentkit-js/core";
+import { GenericOpenAICompatModel } from "@wasmagent/core";
 
 function check(label, cond, detail) {
   if (!cond) {

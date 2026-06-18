@@ -1,8 +1,8 @@
 # Evals 实战手册
 
-agentkit-js 内置 15 个 scorer，覆盖正确性、忠实度、相关性、效率、约束、恢复、护栏合规以及 LLM 担任评委等场景。本指南展示如何把它们组合起来做生产级基准评测。
+wasmagent 内置 15 个 scorer，覆盖正确性、忠实度、相关性、效率、约束、恢复、护栏合规以及 LLM 担任评委等场景。本指南展示如何把它们组合起来做生产级基准评测。
 
-> **要做多模型横向对比？** 看 [`@agentkit-js/evals-runner`](./evals-runner.md) — 把这些 scorer 套进 多模型 × 多套件 × 多 seed 的 Pareto 报告里,自带配对统计。Cookbook 讲的是单 trace scorer API;runner 在它上面再封一层。
+> **要做多模型横向对比？** 看 [`@wasmagent/evals-runner`](./evals-runner.md) — 把这些 scorer 套进 多模型 × 多套件 × 多 seed 的 Pareto 报告里,自带配对统计。Cookbook 讲的是单 trace scorer API;runner 在它上面再封一层。
 
 ## 可用 scorer
 
@@ -27,7 +27,7 @@ agentkit-js 内置 15 个 scorer，覆盖正确性、忠实度、相关性、效
 ## 快速上手
 
 ```ts
-import { runEval, exactMatch, toolCallAccuracy, trajectoryValidity } from "@agentkit-js/core";
+import { runEval, exactMatch, toolCallAccuracy, trajectoryValidity } from "@wasmagent/core";
 
 const dataset = [
   { id: "1", task: "2+2 等于多少？", expectedAnswer: "4" },
@@ -46,7 +46,7 @@ const results = await runEval(dataset, (task) => agent.run(task), [
 把多个维度合成一个混合指标：
 
 ```ts
-import { compositeScorer, exactMatch, efficiencyScorer, recoveryScorer } from "@agentkit-js/core";
+import { compositeScorer, exactMatch, efficiencyScorer, recoveryScorer } from "@wasmagent/core";
 
 const overall = compositeScorer([
   { scorer: exactMatch, weight: 0.5 },
@@ -60,7 +60,7 @@ const overall = compositeScorer([
 faithfulness scorer 需要一个 LLM 评委 — 在 eval runner 里调它的 async 变种：
 
 ```ts
-import { faithfulnessScorerAsync, collectTrace } from "@agentkit-js/core";
+import { faithfulnessScorerAsync, collectTrace } from "@wasmagent/core";
 
 const events = [];
 for await (const ev of agent.run(task)) events.push(ev);
@@ -78,8 +78,8 @@ console.log(`Faithfulness: ${result.score} — ${result.detail}`);
 ## 通过 embedding 算相关性
 
 ```ts
-import { relevanceScorerAsync } from "@agentkit-js/core";
-import { HttpEmbedder } from "@agentkit-js/tools-rag";
+import { relevanceScorerAsync } from "@wasmagent/core";
+import { HttpEmbedder } from "@wasmagent/tools-rag";
 
 const embedder = new HttpEmbedder({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -93,7 +93,7 @@ const result = await relevanceScorerAsync({ embedder }, trace, sample);
 ## 约束（必须 / 不许）
 
 ```ts
-import { constraintScorer } from "@agentkit-js/core";
+import { constraintScorer } from "@wasmagent/core";
 
 const safetyCheck = constraintScorer({
   mustContain: ["disclaimer:"],
@@ -111,7 +111,7 @@ const safetyCheck = constraintScorer({
 `efficiencyScorer` 从 `model_done` 事件取 token 用量，从事件时间戳取耗时，从 `step_start` 事件取步数。
 
 ```ts
-import { efficiencyScorer } from "@agentkit-js/core";
+import { efficiencyScorer } from "@wasmagent/core";
 
 const eff = efficiencyScorer({
   maxTokens: 10_000,
@@ -128,7 +128,7 @@ const eff = efficiencyScorer({
 agent 从工具失败中恢复的能力如何？
 
 ```ts
-import { recoveryScorer } from "@agentkit-js/core";
+import { recoveryScorer } from "@wasmagent/core";
 
 // score = 恢复次数 / 总失败次数
 // 1.0 = 每次失败都恢复
@@ -165,7 +165,7 @@ import {
   answerCompletenessJudge,
   runJudgeScorer,
   trajectoryQualityJudge,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 
 // 便宜评委 — Haiku / 豆包 / DeepSeek 都行；agent 留在 Sonnet。
 const judgeModel = new HaikuModel({ apiKey: process.env.ANTHROPIC_API_KEY });

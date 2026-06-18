@@ -1,5 +1,5 @@
 /**
- * @agentkit-js/openai-agents — agentkit kernels as OpenAI Agents JS tools.
+ * @wasmagent/openai-agents — agentkit kernels as OpenAI Agents JS tools.
  *
  * The OpenAI Agents JS SDK (`@openai/agents`) accepts a `Tool`-shaped
  * definition: `{ name, description, parameters (Zod), execute(input) }`.
@@ -27,7 +27,7 @@
  * can run without it). The package only emits the tool's shape; it
  * does not import `@openai/agents` at runtime.
  *
- * Why a separate package from `@agentkit-js/aisdk`: although the AI
+ * Why a separate package from `@wasmagent/aisdk`: although the AI
  * SDK and OpenAI Agents JS shapes are nearly identical, version
  * matrices and bundle expectations differ. Keeping them apart lets
  * upstream documentation in each ecosystem link to the package that
@@ -41,7 +41,7 @@ import {
   ProgrammaticOrchestrator,
   type ToolRegistry,
   type WasmKernel,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 import { z } from "zod";
 
 /**
@@ -86,7 +86,7 @@ export interface SandboxedJsAgentToolOptions {
 
 /**
  * One-shot sandboxed JS execution as an OpenAI Agents tool.
- * Mirrors `sandboxedJsTool()` from `@agentkit-js/aisdk` field-for-field;
+ * Mirrors `sandboxedJsTool()` from `@wasmagent/aisdk` field-for-field;
  * only the surface (`OpenAiAgentTool` vs Vercel AI SDK's `tool()`)
  * differs.
  */

@@ -16,7 +16,7 @@ events printed to stdout, ending with the computed answer.
 
 ## What it shows
 
-- The minimum viable surface of `@agentkit-js/core`: import `CodeAgent` and
+- The minimum viable surface of `@wasmagent/core`: import `CodeAgent` and
   `AnthropicModel`, register a tool, iterate `agent.run(task)`.
 - Default kernel (`VmKernel` on Node, `QuickJSKernel` on edge) handles JS
   execution without any extra setup.

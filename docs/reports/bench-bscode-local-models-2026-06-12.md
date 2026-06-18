@@ -1,6 +1,6 @@
 # Local-Model Benchmark — bscode scenarios (real machine)
 
-Apple Silicon Metal · `node-llama-cpp@3.18.x` · `@agentkit-js/model-local`
+Apple Silicon Metal · `node-llama-cpp@3.18.x` · `@wasmagent/model-local`
 
 ## Summary
 

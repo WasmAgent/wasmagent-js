@@ -1,24 +1,24 @@
-# @agentkit-js/a2a
+# @wasmagent/a2a
 
 A2A (Agent2Agent) adapter — expose agents as A2A servers and call remote A2A agents.
 
-> Part of [agentkit-js](https://github.com/telleroutlook/agentkit-js) — a TypeScript + WASM agent runtime.
+> Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.
 
-> ▽ **Maintenance-mode.** This adapter is functional and security-patched, but is **not** receiving proactive feature work while the upstream A2A protocol stabilizes and demand signals (organic downloads, integration requests) come in. See [maintenance tiers](https://github.com/telleroutlook/agentkit-js/blob/main/docs/strategy/maintenance-tiers.md) for the rationale. If you actively use this package and want it promoted to ◆ Narrative, open an issue tagged `tier:promote-request` with your use case.
+> ▽ **Maintenance-mode.** This adapter is functional and security-patched, but is **not** receiving proactive feature work while the upstream A2A protocol stabilizes and demand signals (organic downloads, integration requests) come in. See [maintenance tiers](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/strategy/maintenance-tiers.md) for the rationale. If you actively use this package and want it promoted to ◆ Narrative, open an issue tagged `tier:promote-request` with your use case.
 
 ## Install
 
 ```bash
-npm install @agentkit-js/a2a @agentkit-js/core
+npm install @wasmagent/a2a @wasmagent/core
 ```
 
 ## Usage
 
-### Expose an agentkit-js agent as an A2A server
+### Expose an wasmagent agent as an A2A server
 
 ```ts
-import { createA2AServer } from "@agentkit-js/a2a";
-import { ToolCallingAgent, AnthropicModel } from "@agentkit-js/core";
+import { createA2AServer } from "@wasmagent/a2a";
+import { ToolCallingAgent, AnthropicModel } from "@wasmagent/core";
 
 const agent = new ToolCallingAgent({
   model: new AnthropicModel(/* ... */),
@@ -41,8 +41,8 @@ await server.start();
 ### Call a remote A2A agent as a tool
 
 ```ts
-import { A2ARemoteAgent } from "@agentkit-js/a2a";
-import { ToolCallingAgent } from "@agentkit-js/core";
+import { A2ARemoteAgent } from "@wasmagent/a2a";
+import { ToolCallingAgent } from "@wasmagent/core";
 
 const remoteTool = A2ARemoteAgent.asTool({
   taskEndpoint: "https://other-team.example/tasks",
@@ -56,7 +56,7 @@ const parent = new ToolCallingAgent({ model, tools: [remoteTool] });
 
 ## Interoperability — proof on the wire
 
-[`examples/a2a-interop`](https://github.com/telleroutlook/agentkit-js/tree/main/examples/a2a-interop)
+[`examples/a2a-interop`](https://github.com/WasmAgent/wasmagent-js/tree/main/examples/a2a-interop)
 runs both directions end-to-end inside one process:
 
 - **Path A** — raw HTTP client hits `createA2AServer`. This is the path Google
@@ -69,9 +69,9 @@ node examples/a2a-interop/index.mjs
 ```
 
 Aligns with the [Agent2Agent v1.0](https://github.com/google/A2A) protocol so
-agentkit-js agents interoperate with any A2A-compliant framework (Google ADK,
+wasmagent agents interoperate with any A2A-compliant framework (Google ADK,
 CrewAI 1.14+, Langroid, …) without per-framework adapters.
 
 ## License
 
-[Apache-2.0](./LICENSE) — © agentkit-js contributors
+[Apache-2.0](./LICENSE) — © wasmagent contributors

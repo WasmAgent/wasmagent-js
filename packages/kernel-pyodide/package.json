@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/kernel-pyodide",
+  "name": "@wasmagent/kernel-pyodide",
   "version": "0.2.0",
-  "description": "PyodideKernel — CPython-in-WASM kernel for agentkit-js",
+  "description": "PyodideKernel — CPython-in-WASM kernel for wasmagent",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*"
+    "@wasmagent/core": "workspace:*"
   },
   "peerDependencies": {
     "pyodide": ">=0.26.0"
@@ -31,21 +31,26 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/kernel-pyodide"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/kernel-pyodide#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/kernel-pyodide#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "engines": {
     "node": ">=20.0.0"
   },
   "keywords": [
-    "agentkit",
+    "wasmagent",
+    "wasm",
     "agent",
+    "portable",
+    "sandbox",
+    "executor",
     "ai",
-    "llm"
+    "llm",
+    "typescript"
   ],
   "publishConfig": {
     "access": "public",

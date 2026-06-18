@@ -1,13 +1,13 @@
 /**
- * OtlpHttpExporter — OTLP/HTTP (protobuf-JSON) span exporter for @agentkit-js/core.
+ * OtlpHttpExporter — OTLP/HTTP (protobuf-JSON) span exporter for @wasmagent/core.
  *
- * Implements the SpanExporter interface from @agentkit-js/core/observability and
+ * Implements the SpanExporter interface from @wasmagent/core/observability and
  * ships completed spans to any OTLP-compatible collector (Jaeger, Grafana Tempo,
  * Datadog, Elastic APM, etc.) via HTTP POST.
  *
  * Usage:
- *   import { OtlpHttpExporter } from "@agentkit-js/otel-exporter";
- *   import { OtelBridge, withOtel } from "@agentkit-js/core";
+ *   import { OtlpHttpExporter } from "@wasmagent/otel-exporter";
+ *   import { OtelBridge, withOtel } from "@wasmagent/core";
  *
  *   const exporter = new OtlpHttpExporter({ endpoint: "http://localhost:4318" });
  *   const bridge = new OtelBridge({ exporter });
@@ -30,7 +30,7 @@ import type {
   ReadableSpan,
   SpanAttributes,
   SpanExporter,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 
 export interface OtlpHttpExporterOptions {
   /**
@@ -72,7 +72,7 @@ export interface OtlpHttpExporterOptions {
 /**
  * OTLP/HTTP span + metrics exporter (JSON encoding).
  *
- * Implements SpanExporter + MetricExporter from @agentkit-js/core and posts
+ * Implements SpanExporter + MetricExporter from @wasmagent/core and posts
  * batches of completed spans/metrics to an OTLP-compatible collector.
  *
  * O4: Failed exports are retried with exponential backoff.
@@ -198,7 +198,7 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
           resource: { attributes: resourceAttrs },
           scopeSpans: [
             {
-              scope: { name: "@agentkit-js/otel-exporter", version: "0.1.0" },
+              scope: { name: "@wasmagent/otel-exporter", version: "0.1.0" },
               spans: otlpSpans,
             },
           ],
@@ -289,7 +289,7 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
           resource: { attributes: resourceAttrs },
           scopeMetrics: [
             {
-              scope: { name: "@agentkit-js/otel-exporter", version: "0.1.0" },
+              scope: { name: "@wasmagent/otel-exporter", version: "0.1.0" },
               metrics: [
                 {
                   name: "gen_ai.client.token.usage",

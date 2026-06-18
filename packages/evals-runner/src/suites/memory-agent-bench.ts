@@ -26,7 +26,7 @@
  * a memory-equipped agent before plugging in the real dataset.
  */
 
-import { finalAnswerLength } from "@agentkit-js/core";
+import { finalAnswerLength } from "@wasmagent/core";
 import type { BenchmarkItem, BenchmarkSuite } from "../types.js";
 
 interface MABTemplate {

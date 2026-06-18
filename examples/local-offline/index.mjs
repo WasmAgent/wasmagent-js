@@ -17,8 +17,8 @@
  * on the user's machine. No cloud LLM, no API key, no telemetry.
  */
 
-import { CodeAgent } from "@agentkit-js/core";
-import { LocalModel } from "@agentkit-js/model-local";
+import { CodeAgent } from "@wasmagent/core";
+import { LocalModel } from "@wasmagent/model-local";
 
 async function main() {
   const alias = process.env.LOCAL_MODEL_ALIAS ?? "qwen3.5-0.8b";
@@ -50,7 +50,7 @@ async function main() {
   console.error("\n[offline-demo] Model loaded.");
 
   // Step 2: a QuickJS code kernel — fully sandboxed, no Node.js APIs reachable.
-  const { QuickJSKernel } = await import("@agentkit-js/kernel-quickjs");
+  const { QuickJSKernel } = await import("@wasmagent/kernel-quickjs");
   const kernel = new QuickJSKernel();
 
   // Step 3: a CodeAgent that lets the model write JS and run it inside QuickJS.

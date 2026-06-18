@@ -12,7 +12,7 @@ node examples/judge-scorer-demo/index.mjs
 
 No API key needed — the demo uses a deterministic mock judge model so it
 runs offline. Real usage swaps `mockJudge(...)` for any
-`@agentkit-js/core` Model adapter (Haiku / Doubao / DeepSeek for cheap
+`@wasmagent/core` Model adapter (Haiku / Doubao / DeepSeek for cheap
 judging).
 
 ## Output

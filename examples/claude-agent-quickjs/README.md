@@ -10,4 +10,4 @@ the Claude Agent SDK expects in its `tools` array — `{ name, description,
 input_schema, run }`. The kernel can be QuickJS / Pyodide / Wasmtime / Remote;
 the tool surface is the same.
 
-See [`@agentkit-js/claude-agent-sdk` README](../../packages/claude-agent-sdk/README.md).
+See [`@wasmagent/claude-agent-sdk` README](../../packages/claude-agent-sdk/README.md).

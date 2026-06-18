@@ -4,11 +4,11 @@
  * Supported engines:
  *   "js"       — JsKernel (Node.js vm module, default)
  *   "v8-wasm"  — VmKernel (pure-JS, serverless-safe)
- *   "quickjs"  — QuickJSKernel from @agentkit-js/kernel-quickjs (edge-safe, WASM)
- *   "wasmtime" — WasmtimeKernel from @agentkit-js/kernel-wasmtime (true WASM + WASI)
- *   "remote"   — RemoteSandboxKernel from @agentkit-js/kernel-remote (microVM via E2B)
+ *   "quickjs"  — QuickJSKernel from @wasmagent/kernel-quickjs (edge-safe, WASM)
+ *   "wasmtime" — WasmtimeKernel from @wasmagent/kernel-wasmtime (true WASM + WASI)
+ *   "remote"   — RemoteSandboxKernel from @wasmagent/kernel-remote (microVM via E2B)
  *
- * actionLanguage="pyodide" routes to @agentkit-js/kernel-pyodide (Python-in-WASM).
+ * actionLanguage="pyodide" routes to @wasmagent/kernel-pyodide (Python-in-WASM).
  *
  * Edge runtime detection: if worker_threads is unavailable (Cloudflare Workers,
  * browser), "js" throws with guidance to use "quickjs".
@@ -43,7 +43,7 @@ export async function createKernel(opts: KernelOptions = {}): Promise<WasmKernel
 
   // actionLanguage="pyodide" always routes to kernel-pyodide regardless of engine.
   if (actionLanguage === "pyodide") {
-    const PYODIDE_PKG = "@agentkit-js/kernel-pyodide";
+    const PYODIDE_PKG = "@wasmagent/kernel-pyodide";
     try {
       const mod = (await import(PYODIDE_PKG)) as {
         PyodideKernel: new (opts?: KernelOptions) => WasmKernel;
@@ -65,14 +65,14 @@ export async function createKernel(opts: KernelOptions = {}): Promise<WasmKernel
           "[agentkit] Non-Node runtime detected (Cloudflare Workers / browser / Deno).\n" +
             "The default JsKernel and VmKernel both require node:vm, which is unavailable.\n" +
             "Use the edge-safe QuickJS kernel instead:\n" +
-            '  import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";\n' +
+            '  import { QuickJSKernel } from "@wasmagent/kernel-quickjs";\n' +
             "  const kernel = new QuickJSKernel();"
         );
       }
       return new JsKernel();
 
     case "quickjs": {
-      const QUICKJS_PKG = "@agentkit-js/kernel-quickjs";
+      const QUICKJS_PKG = "@wasmagent/kernel-quickjs";
       try {
         const mod = (await import(QUICKJS_PKG)) as {
           QuickJSKernel: new (opts?: KernelOptions) => WasmKernel;
@@ -86,7 +86,7 @@ export async function createKernel(opts: KernelOptions = {}): Promise<WasmKernel
     }
 
     case "wasmtime": {
-      const WASMTIME_PKG = "@agentkit-js/kernel-wasmtime";
+      const WASMTIME_PKG = "@wasmagent/kernel-wasmtime";
       try {
         const mod = (await import(WASMTIME_PKG)) as {
           WasmtimeKernel: new (opts?: KernelOptions) => WasmKernel;
@@ -108,7 +108,7 @@ export async function createKernel(opts: KernelOptions = {}): Promise<WasmKernel
     }
 
     case "remote": {
-      const REMOTE_PKG = "@agentkit-js/kernel-remote";
+      const REMOTE_PKG = "@wasmagent/kernel-remote";
       try {
         const mod = (await import(REMOTE_PKG)) as {
           RemoteSandboxKernel: new (opts?: KernelOptions) => WasmKernel;

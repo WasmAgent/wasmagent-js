@@ -6,7 +6,7 @@ gap is closed.
 ## Why this matters
 
 A CLI is not just a "way to run tests". For agentkit-js it's a **product
-surface**: anyone who writes `npx @agentkit-js/<thing> --help` lands in
+surface**: anyone who writes `npx @wasmagent/<thing> --help` lands in
 a contract that compares directly against `smolagent`, `lazygit`-style
 tools, and the reference CLIs every framework ships. Missing or
 broken CLIs leak the same signal as a broken homepage button — "is this
@@ -20,11 +20,11 @@ the implementation is).
 
 | Package                  | bin name                | Purpose                                                                 | Status |
 | ------------------------ | ----------------------- | ----------------------------------------------------------------------- | ------ |
-| `@agentkit-js/cli`       | `agentkit`              | Multi-subcommand: `run`, `init-tool`, `devtools`, `evals`, `model`      | ✅ live |
-| `@agentkit-js/mcp-server`| `agentkit-mcp-server`   | stdio JSON-RPC MCP server entry                                         | ✅ live |
-| `@agentkit-js/evals-runner`| `agentkit-evals`      | Independent evals CLI                                                   | ❌ **DEAD LINK** — `bin` declared, `dist/cli.js` does not exist |
+| `@wasmagent/cli`       | `agentkit`              | Multi-subcommand: `run`, `init-tool`, `devtools`, `evals`, `model`      | ✅ live |
+| `@wasmagent/mcp-server`| `agentkit-mcp-server`   | stdio JSON-RPC MCP server entry                                         | ✅ live |
+| `@wasmagent/evals-runner`| `agentkit-evals`      | Independent evals CLI                                                   | ❌ **DEAD LINK** — `bin` declared, `dist/cli.js` does not exist |
 
-`agentkit evals run --suite=… --models=…` works today via `@agentkit-js/cli`
+`agentkit evals run --suite=… --models=…` works today via `@wasmagent/cli`
 (`evalsCommand` at `packages/cli/src/index.ts:753`). The independent
 `agentkit-evals` binary, however, is broken: anyone who reads
 `packages/evals-runner/package.json` will see the bin and try to use
@@ -37,13 +37,13 @@ it; the install will fail at the symlink stage.
 **Symptom.** `bin: "agentkit-evals": "./dist/cli.js"` in
 `packages/evals-runner/package.json`, but `src/cli.ts` does not exist
 and the build never produces the file. `npm install -g
-@agentkit-js/evals-runner` succeeds; `agentkit-evals --help` then
+@wasmagent/evals-runner` succeeds; `agentkit-evals --help` then
 fails with `command not found` or a missing-file error depending on
 the platform.
 
 **Fix.** Implement `packages/evals-runner/src/cli.ts` as a
 self-contained binary that mirrors `agentkit evals run/list` without
-requiring `@agentkit-js/cli` to be installed. Targets users who only
+requiring `@wasmagent/cli` to be installed. Targets users who only
 want the evals runner (CI matrix runners, eval-only consumers).
 
 **Status.** Tracked; landing in this PR.

@@ -1,11 +1,11 @@
 /**
- * @agentkit-js/model-local — embedded llama.cpp adapter for agentkit-js.
+ * @wasmagent/model-local — embedded llama.cpp adapter for agentkit-js.
  *
  * Quick start:
  *
  *   ```ts
- *   import { LocalModel } from "@agentkit-js/model-local";
- *   import { CodeAgent } from "@agentkit-js/core";
+ *   import { LocalModel } from "@wasmagent/model-local";
+ *   import { CodeAgent } from "@wasmagent/core";
  *
  *   const model = new LocalModel({ source: { model: "qwen2.5-1.5b" } });
  *   const agent = new CodeAgent({ model, tools: [] });

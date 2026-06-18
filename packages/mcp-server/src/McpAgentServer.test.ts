@@ -22,7 +22,7 @@
  *  15. createFetchHandler handles batch requests
  */
 
-import type { AgentEvent, SubagentRunnable } from "@agentkit-js/core";
+import type { AgentEvent, SubagentRunnable } from "@wasmagent/core";
 import { describe, expect, it } from "vitest";
 import { createFetchHandler } from "./fetchHandler.js";
 import { McpAgentServer } from "./McpAgentServer.js";

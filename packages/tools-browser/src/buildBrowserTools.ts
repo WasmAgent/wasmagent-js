@@ -1,4 +1,4 @@
-import type { ToolDefinition } from "@agentkit-js/core";
+import type { ToolDefinition } from "@wasmagent/core";
 import { z } from "zod";
 import type { BrowserSession, NavigateResult, ScreenshotResult } from "./types.js";
 

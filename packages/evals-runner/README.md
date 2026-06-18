@@ -1,11 +1,11 @@
-# @agentkit-js/evals-runner
+# /evals-runner
 
 > Multi-model multi-axis evaluation harness for any OpenAI-compatible
-> endpoint. Built on the agentkit-js scorer + EventLog + RunsAggregator
+> endpoint. Built on the wasmagent scorer + EventLog + RunsAggregator
 > primitives, plus a TypeScript port of the canonical paired-statistics
 > machinery (McNemar exact / Wilson CI / paired bootstrap / G1 gate).
 
-agentkit-js stays **independent**: this package adds an evaluation layer
+wasmagent stays **independent**: this package adds an evaluation layer
 on top of the runtime's primitives, but agentkit's runtime keeps no
 knowledge of any specific model author or research line. Use it the same
 way you'd use `lm-evaluation-harness` — just point at a base URL.
@@ -36,7 +36,7 @@ that turn a 6-item run into a defensible claim:
 ## Install
 
 ```bash
-npm install @agentkit-js/evals-runner @agentkit-js/core
+npm install /evals-runner /core
 ```
 
 ## Quick start (CLI)
@@ -64,7 +64,7 @@ import {
   multiTurnMemorySuite,
   costPerCorrectSuite,
   renderReportMarkdown,
-} from "@agentkit-js/evals-runner";
+} from "/evals-runner";
 
 const report = await runEvaluation({
   models: [
@@ -115,7 +115,7 @@ import {
   wilsonCI,
   pairedBootstrap,
   buildG1Report,
-} from "@agentkit-js/evals-runner/stats";
+} from "/evals-runner/stats";
 
 // Exact McNemar paired test:
 const { p } = mcnemarExact(/* b */ 25, /* c */ 5);
@@ -168,15 +168,15 @@ All primitives have parity tests against scipy reference values
 
 ## See also
 
-- [`docs/guides/evals-runner.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/evals-runner.md)
+- [`docs/guides/evals-runner.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/evals-runner.md)
   — full guide with Ollama / OpenRouter / Gateway recipes.
-- [`docs/guides/openai-compat-recipes.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/openai-compat-recipes.md)
+- [`docs/guides/openai-compat-recipes.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/openai-compat-recipes.md)
   — same model-spec format used by the rest of agentkit.
 
 ## Worked example: 2026-06-17 — the referee in action
 
 A real engagement showed up the value of paired statistics. evomerge
-(an agentkit-js consumer training a 1.7B Qwen3 LoRA for multi-turn
+(an wasmagent consumer training a 1.7B Qwen3 LoRA for multi-turn
 tool execution) had a chain of results that *each looked stable* but
 combined into a misleading picture. Three rounds of `evals-runner`
 ablation under `examples/benchmarks/multi-turn-scaffold-ablation.mjs`
@@ -191,8 +191,8 @@ unwound it:
 **Without paired McNemar** the round-1 → round-2 reversal could have
 been read as *progress* (training data strategy looks promising). With
 paired McNemar against the same item set, the noise floor is visible:
-[`docs/reports/arm-f-vs-bare-2026-06-17/`](https://github.com/telleroutlook/agentkit-js/tree/main/docs/reports/arm-f-vs-bare-2026-06-17)
-and [`docs/reports/arm-batch-grammar-2026-06-17/`](https://github.com/telleroutlook/agentkit-js/tree/main/docs/reports/arm-batch-grammar-2026-06-17).
+[`docs/reports/arm-f-vs-bare-2026-06-17/`](https://github.com/WasmAgent/wasmagent-js/tree/main/docs/reports/arm-f-vs-bare-2026-06-17)
+and [`docs/reports/arm-batch-grammar-2026-06-17/`](https://github.com/WasmAgent/wasmagent-js/tree/main/docs/reports/arm-batch-grammar-2026-06-17).
 
 Reproduce on your own machine (Ollama + any small model, no cloud
 budget):

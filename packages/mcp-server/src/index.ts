@@ -1,5 +1,5 @@
 /**
- * @agentkit-js/mcp-server — F1.
+ * @wasmagent/mcp-server — F1.
  *
  * Take any object that runs like an agent (a `SubagentRunnable`) and expose
  * it as a Model Context Protocol server. The host (Claude Code, Cursor,

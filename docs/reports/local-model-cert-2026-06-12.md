@@ -1,6 +1,6 @@
 # Local-Model Cert — Real-Machine Baseline (2026-06-12)
 
-> First real-hardware run of `examples/benchmarks/local-model-cert.mjs` against the embedded local-LLM provider (`@agentkit-js/model-local`). Run on Apple Silicon (M-series) with `node-llama-cpp@3.18.1` using its Metal backend.
+> First real-hardware run of `examples/benchmarks/local-model-cert.mjs` against the embedded local-LLM provider (`@wasmagent/model-local`). Run on Apple Silicon (M-series) with `node-llama-cpp@3.18.1` using its Metal backend.
 
 ## What changed in the framework as a result
 

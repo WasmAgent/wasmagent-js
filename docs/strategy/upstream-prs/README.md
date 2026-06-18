@@ -37,14 +37,14 @@ first day; here is what each one tells us.
 The Glama bot requirement is mechanical (Glama listing + badge),
 not a maintainer rejection. Path forward:
 
-1. List `@agentkit-js/mcp-server` at `glama.ai/mcp/servers`. The
+1. List `@wasmagent/mcp-server` at `glama.ai/mcp/servers`. The
    server already starts and answers introspection (CI verifies
    it); no code change needed for the listing itself.
 2. Wait for Glama's health-check pass (typical ~24h ingestion).
 3. Amend the PR body with the Glama score badge:
 
    ```markdown
-   [![telleroutlook/agentkit-js MCP server](https://glama.ai/mcp/servers/telleroutlook/agentkit-js/badges/score.svg)](https://glama.ai/mcp/servers/telleroutlook/agentkit-js)
+   [![WasmAgent/wasmagent-js MCP server](https://glama.ai/mcp/servers/WasmAgent/wasmagent-js/badges/score.svg)](https://glama.ai/mcp/servers/WasmAgent/wasmagent-js)
    ```
 
 This is the unambiguous follow-up: do the mechanical work, the
@@ -63,7 +63,7 @@ What this means:
 - **Strategic data point, not a defeat.** Mastra is a clear case
   of "no upstream slot via official docs *right now*." The L1
   thesis ("be embedded by leaders") still holds via the **other**
-  surfaces: `@agentkit-js/mastra-sandbox` is already a working
+  surfaces: `@wasmagent/mastra-sandbox` is already a working
   sandbox-provider package; whether or not the Mastra docs link
   to it, Mastra users can opt in directly.
 - **Falsifiability tally.** One blanket decline counts as one
@@ -127,13 +127,13 @@ out.
 The Cloudflare codemode docs already say
 `DynamicWorkerExecutor` is "just one implementation" and that users
 can build their own for "Node VM, QuickJS, containers, or any other
-sandbox." `@agentkit-js/kernel-quickjs` is exactly that. The
+sandbox." `@wasmagent/kernel-quickjs` is exactly that. The
 2026-06-12 optimization brief's Direction 1 makes the case bluntly:
 *one* link from the official codemode page is worth more than the
 four adapter packages combined.
 
 The pre-submission gate is real, not a stall: the recipe references
-an `agentkitCodemodeExecutor` shim in `@agentkit-js/aisdk` that has
+an `agentkitCodemodeExecutor` shim in `@wasmagent/aisdk` that has
 to ship first so the example actually runs. That shim is the next
 landed change in this direction.
 

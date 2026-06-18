@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * eval-runner.mjs — generic benchmark driver over any combination of
- * REFERENCE_SUITES from @agentkit-js/evals-runner. Used for:
+ * REFERENCE_SUITES from @wasmagent/evals-runner. Used for:
  *
  *   - LoCoMo-Refined / MemoryAgentBench memory evals
  *   - longContextRecall / multiTurnMemory / toolSequence / agentTrajectory
@@ -54,7 +54,7 @@ async function main() {
 
   if (!values.models || !values.suites) {
     console.error("Error: --models and --suites both required");
-    console.error("Available suites depend on REFERENCE_SUITES in @agentkit-js/evals-runner.");
+    console.error("Available suites depend on REFERENCE_SUITES in @wasmagent/evals-runner.");
     process.exit(2);
   }
   const models = values.models.split(",").map((m) => m.trim()).filter(Boolean);
@@ -70,7 +70,7 @@ async function main() {
 
   const evalsPath = join(REPO_ROOT, "packages/evals-runner/dist/index.js");
   if (!existsSync(evalsPath)) {
-    console.error("Error: @agentkit-js/evals-runner is not built. Run: bun run -F '@agentkit-js/evals-runner' build");
+    console.error("Error: @wasmagent/evals-runner is not built. Run: bun run -F '@wasmagent/evals-runner' build");
     process.exit(2);
   }
   const evals = await import(evalsPath);

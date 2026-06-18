@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/openai-agents",
+  "name": "@wasmagent/openai-agents",
   "version": "0.1.0",
-  "description": "Drop agentkit-js sandbox kernels into the OpenAI Agents JS SDK as a Tool — edge-safe code execution with one capability manifest, no E2B sandbox needed",
+  "description": "Drop wasmagent sandbox kernels into the OpenAI Agents JS SDK as a Tool — edge-safe code execution with one capability manifest, no E2B sandbox needed",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*"
+    "@wasmagent/core": "workspace:*"
   },
   "peerDependencies": {
     "@openai/agents": ">=0.1.0",
@@ -53,12 +53,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/openai-agents"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/openai-agents#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/openai-agents#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
     "access": "public",

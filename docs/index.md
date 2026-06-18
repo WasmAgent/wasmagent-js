@@ -14,7 +14,7 @@ hero:
       link: /kernels/comparison
     - theme: alt
       text: GitHub
-      link: https://github.com/telleroutlook/agentkit-js
+      link: https://github.com/WasmAgent/wasmagent-js
 
 features:
   - icon: 🧱
@@ -47,11 +47,11 @@ features:
     linkText: See the numbers
   - icon: 📊
     title: Pareto-first model evaluation
-    details: <code>@agentkit-js/evals-runner</code> ships six benchmark suites and paired statistics (McNemar / Wilson / bootstrap) — multi-model comparisons surface trade-off fronts, not single-number ranks.
+    details: <code>@wasmagent/evals-runner</code> ships six benchmark suites and paired statistics (McNemar / Wilson / bootstrap) — multi-model comparisons surface trade-off fronts, not single-number ranks.
     link: /guides/evals-runner
     linkText: Open guide
 ---
 
 <div style="text-align: center; margin-top: 3rem; opacity: 0.7;">
-<small>Apache-2.0 · <a href="https://github.com/telleroutlook/agentkit-js/blob/main/README.md#comparison-with-other-agent-frameworks">vs Vercel AI SDK / Mastra / LangGraph</a></small>
+<small>Apache-2.0 · <a href="https://github.com/WasmAgent/wasmagent-js/blob/main/README.md#comparison-with-other-agent-frameworks">vs Vercel AI SDK / Mastra / LangGraph</a></small>
 </div>

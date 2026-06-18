@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CardRenderer, ChatMessage, type ChatMessageInput, D2Card, MarkdownCard } from "./index.js";
 
-describe("@agentkit-js/ui-cards-react exports", () => {
+describe("@wasmagent/ui-cards-react exports", () => {
   it("exports MarkdownCard component", () => {
     expect(typeof MarkdownCard).toBe("function");
     expect(MarkdownCard.name).toBe("MarkdownCard");

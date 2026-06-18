@@ -8,7 +8,7 @@
  * frameworks).
  */
 
-import { MapKvBackend } from "@agentkit-js/core";
+import { MapKvBackend } from "@wasmagent/core";
 import { describe, expect, it } from "vitest";
 import { memoryTool } from "./memory.js";
 

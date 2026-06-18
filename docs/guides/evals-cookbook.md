@@ -6,7 +6,7 @@ and LLM-as-judge. This guide shows how to combine them for production-
 grade benchmarking.
 
 > **Looking for the multi-model harness?** See
-> [`@agentkit-js/evals-runner`](./evals-runner.md) — uses these same
+> [`@wasmagent/evals-runner`](./evals-runner.md) — uses these same
 > scorers to drive multi-model × multi-suite × multi-seed Pareto
 > reports with built-in paired statistics. The cookbook below covers
 > the per-trace scorer API; the runner sits on top.
@@ -34,7 +34,7 @@ grade benchmarking.
 ## Quick start
 
 ```ts
-import { runEval, exactMatch, toolCallAccuracy, trajectoryValidity } from "@agentkit-js/core";
+import { runEval, exactMatch, toolCallAccuracy, trajectoryValidity } from "@wasmagent/core";
 
 const dataset = [
   { id: "1", task: "What is 2+2?", expectedAnswer: "4" },
@@ -53,7 +53,7 @@ const results = await runEval(dataset, (task) => agent.run(task), [
 Combine multiple dimensions into one blended metric:
 
 ```ts
-import { compositeScorer, exactMatch, efficiencyScorer, recoveryScorer } from "@agentkit-js/core";
+import { compositeScorer, exactMatch, efficiencyScorer, recoveryScorer } from "@wasmagent/core";
 
 const overall = compositeScorer([
   { scorer: exactMatch, weight: 0.5 },
@@ -68,7 +68,7 @@ The faithfulness scorer needs an LLM judge — call its async variant
 from your eval runner:
 
 ```ts
-import { faithfulnessScorerAsync, collectTrace } from "@agentkit-js/core";
+import { faithfulnessScorerAsync, collectTrace } from "@wasmagent/core";
 
 const events = [];
 for await (const ev of agent.run(task)) events.push(ev);
@@ -87,8 +87,8 @@ judge to keep evals affordable.
 ## Relevance via embeddings
 
 ```ts
-import { relevanceScorerAsync } from "@agentkit-js/core";
-import { HttpEmbedder } from "@agentkit-js/tools-rag";
+import { relevanceScorerAsync } from "@wasmagent/core";
+import { HttpEmbedder } from "@wasmagent/tools-rag";
 
 const embedder = new HttpEmbedder({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -102,7 +102,7 @@ const result = await relevanceScorerAsync({ embedder }, trace, sample);
 ## Constraints (must / must-not)
 
 ```ts
-import { constraintScorer } from "@agentkit-js/core";
+import { constraintScorer } from "@wasmagent/core";
 
 const safetyCheck = constraintScorer({
   mustContain: ["disclaimer:"],
@@ -122,7 +122,7 @@ compositeScorer to balance with continuous metrics.
 duration from event timestamps, and step count from `step_start` events.
 
 ```ts
-import { efficiencyScorer } from "@agentkit-js/core";
+import { efficiencyScorer } from "@wasmagent/core";
 
 const eff = efficiencyScorer({
   maxTokens: 10_000,
@@ -140,7 +140,7 @@ total to 0.
 How well does the agent bounce back from tool failures?
 
 ```ts
-import { recoveryScorer } from "@agentkit-js/core";
+import { recoveryScorer } from "@wasmagent/core";
 
 // score = recoveries / total failures
 // 1.0 = recovered from every failure
@@ -182,7 +182,7 @@ import {
   answerCompletenessJudge,
   runJudgeScorer,
   trajectoryQualityJudge,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 
 // Cheap judge — Haiku / Doubao / DeepSeek all work; the agent stays on Sonnet.
 const judgeModel = new HaikuModel({ apiKey: process.env.ANTHROPIC_API_KEY });

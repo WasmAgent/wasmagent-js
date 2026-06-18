@@ -10,9 +10,9 @@ import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from
  * development, testing, and low-trust scenarios.
  *
  * For language-level isolation, use the WASM kernels:
- *   @agentkit-js/kernel-quickjs  (edge-safe, no native deps)
- *   @agentkit-js/kernel-pyodide  (CPython-in-WASM)
- *   @agentkit-js/kernel-wasmtime (Javy/WASM via native addon)
+ *   @wasmagent/kernel-quickjs  (edge-safe, no native deps)
+ *   @wasmagent/kernel-pyodide  (CPython-in-WASM)
+ *   @wasmagent/kernel-wasmtime (Javy/WASM via native addon)
  *
  * For full process isolation, use RemoteSandboxKernel with an E2B or
  * Cloudflare Sandbox provider.

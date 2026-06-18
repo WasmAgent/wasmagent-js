@@ -52,7 +52,7 @@ batch debugging. To see the timeline in a browser, import the React
 component:
 
 ```tsx
-import { DevTools } from "@agentkit-js/devtools/react";
+import { DevTools } from "@wasmagent/devtools/react";
 <DevTools events={collected} traceId="demo-trace-1" onFork={handleFork} />
 ```
 

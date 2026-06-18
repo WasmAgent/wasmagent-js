@@ -6,8 +6,8 @@
  * step.sleep / step.waitForEvent against the runWorkflowEntrypoint helper.
  */
 
-import type { WorkflowDefinition, WorkflowStateStore } from "@agentkit-js/core";
-import { KvWorkflowStateStore, MemoryKvBackend } from "@agentkit-js/core";
+import type { WorkflowDefinition, WorkflowStateStore } from "@wasmagent/core";
+import { KvWorkflowStateStore, MemoryKvBackend } from "@wasmagent/core";
 import { describe, expect, it } from "vitest";
 import {
   type CfStepConfig,

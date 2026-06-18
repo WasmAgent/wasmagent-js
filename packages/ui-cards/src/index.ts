@@ -1,5 +1,5 @@
 /**
- * @agentkit-js/ui-cards — Card block parser.
+ * @wasmagent/ui-cards — Card block parser.
  *
  * Parses ```card:<type>\n...\n``` fenced blocks embedded in AI reply text,
  * producing a structured list of segments (plain text interleaved with cards).

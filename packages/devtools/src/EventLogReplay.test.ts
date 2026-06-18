@@ -9,7 +9,7 @@
  *   - finalAnswer is surfaced when present in the prefix
  */
 
-import type { AgentEvent } from "@agentkit-js/core";
+import type { AgentEvent } from "@wasmagent/core";
 import { describe, expect, it } from "vitest";
 import { EventLogReplay, type LoggedEvent } from "./EventLogReplay.js";
 

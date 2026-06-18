@@ -3,15 +3,15 @@
  *
  * Validates the full data path that bscode uses:
  *
- *   1. Compose a system prompt from @agentkit-js/agent-prompts fragments.
+ *   1. Compose a system prompt from @wasmagent/agent-prompts fragments.
  *   2. Simulate an AI reply (bare D2 / Markdown — testing the auto-upgrade path).
- *   3. Run upgradeCardSyntax (from @agentkit-js/ui-cards) to wrap content.
- *   4. Run parseCardBlocks (also @agentkit-js/ui-cards) to extract card structure.
+ *   3. Run upgradeCardSyntax (from @wasmagent/ui-cards) to wrap content.
+ *   4. Run parseCardBlocks (also @wasmagent/ui-cards) to extract card structure.
  *   5. Verify the result matches what UI components would render.
  *
  * If this test passes, bscode's full pipeline is wire-correct from
  * prompt construction through final card extraction. UI rendering is
- * tested separately in @agentkit-js/ui-cards-react smoke tests.
+ * tested separately in @wasmagent/ui-cards-react smoke tests.
  */
 
 import { describe, expect, it } from "vitest";
@@ -24,8 +24,8 @@ import {
   OUTPUT_CONTRACT_FINAL_ANSWER,
   REASONING_FIRST,
   SANDBOX_QUICKJS,
-} from "@agentkit-js/agent-prompts";
-import { parseCardBlocks, upgradeCardSyntax } from "@agentkit-js/ui-cards";
+} from "@wasmagent/agent-prompts";
+import { parseCardBlocks, upgradeCardSyntax } from "@wasmagent/ui-cards";
 
 describe("cross-package integration: prompts → AI reply → upgrade → parse", () => {
   it("composes a JS code-agent prompt that includes all expected sections", () => {
@@ -81,7 +81,7 @@ api -> cache: Redis`;
     expect(parsed.cards[0]?.content).toContain("frontend -> api");
   });
 
-  it("upgrades + parses bare rich Markdown the AI emitted without card fence", () => {
+  it("leaves bare rich Markdown untouched (plain chat reply, not wrapped as card)", () => {
     const aiReply = `## Analysis Report
 
 | Metric | Value |
@@ -92,13 +92,9 @@ api -> cache: Redis`;
 **Conclusion**: System is healthy.`;
 
     const upgraded = upgradeCardSyntax(aiReply);
-    expect(upgraded).toContain("```card:markdown");
-
-    const parsed = parseCardBlocks(upgraded);
-    expect(parsed.cards).toHaveLength(1);
-    expect(parsed.cards[0]?.type).toBe("markdown");
-    expect(parsed.cards[0]?.content).toContain("Analysis Report");
-    expect(parsed.cards[0]?.content).toContain("| Latency | 120ms |");
+    // Plain Markdown is rendered inline — upgradeCardSyntax only wraps D2 diagrams
+    expect(upgraded).toBe(aiReply);
+    expect(upgraded).not.toContain("```card:");
   });
 
   it("preserves already-fenced cards through the upgrade + parse round-trip", () => {

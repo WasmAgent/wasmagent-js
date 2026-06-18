@@ -3,11 +3,11 @@
  *
  * Strategy:
  * - Pure functions (parseEventsFilter, camelCase, generateToolTemplate) are tested directly.
- * - runCommand is tested with vi.mock for @agentkit-js/core to avoid real API calls.
+ * - runCommand is tested with vi.mock for @wasmagent/core to avoid real API calls.
  * - stdout/stderr/console are spied on to verify output.
  */
 
-import type { AgentEvent } from "@agentkit-js/core";
+import type { AgentEvent } from "@wasmagent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildAnthropicModel,
@@ -19,11 +19,11 @@ import {
   runCommand,
 } from "./index.js";
 
-// ── Mock @agentkit-js/core ────────────────────────────────────────────────────
+// ── Mock @wasmagent/core ────────────────────────────────────────────────────
 
 let mockAgentEvents: AgentEvent[] = [];
 
-vi.mock("@agentkit-js/core", () => ({
+vi.mock("@wasmagent/core", () => ({
   CodeAgent: class {
     run(_task: string) {
       return (async function* () {
@@ -215,7 +215,7 @@ describe("generateToolTemplate", () => {
   it("includes ToolDefinition import", () => {
     const ts = generateToolTemplate("my-tool", "MyTool");
     expect(ts).toContain("ToolDefinition");
-    expect(ts).toContain("@agentkit-js/core");
+    expect(ts).toContain("@wasmagent/core");
   });
 
   it("includes readOnly and idempotent fields", () => {

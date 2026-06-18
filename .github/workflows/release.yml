@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   release:
-    if: github.repository == 'telleroutlook/agentkit-js'
+    if: github.repository == 'WasmAgent/wasmagent-js'
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/model-minimax",
+  "name": "@wasmagent/model-minimax",
   "version": "0.2.0",
-  "description": "MiniMax model adapter for agentkit-js",
+  "description": "MiniMax model adapter for wasmagent",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*"
+    "@wasmagent/core": "workspace:*"
   },
   "peerDependencies": {
     "openai": ">=4.80.0"
@@ -31,12 +31,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/model-minimax"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/model-minimax#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/model-minimax#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "engines": {
     "node": ">=20.0.0"

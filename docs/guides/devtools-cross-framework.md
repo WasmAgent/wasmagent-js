@@ -21,14 +21,14 @@ Either:
 
 ```bash
 # One-shot, no install:
-npx -p @agentkit-js/cli agentkit devtools --otel-events-file ./spans.ndjson
+npx -p @wasmagent/cli agentkit devtools --otel-events-file ./spans.ndjson
 
 # Or globally:
-npm install -g @agentkit-js/cli
+npm install -g @wasmagent/cli
 agentkit devtools --otel-events-file ./spans.ndjson --port 4317
 ```
 
-You do **not** need to install `@agentkit-js/core` for this path.
+You do **not** need to install `@wasmagent/core` for this path.
 The CLI loads the devtools package lazily; the GenAI-semconv adapter
 is a pure-data converter.
 
@@ -136,4 +136,4 @@ agentkit-js user to benefit from the Studio. Cross-framework
 issues land first because they are exactly the audience the package
 is positioned for in
 [`docs/strategy/maintenance-tiers.md`](../strategy/maintenance-tiers.md)
-(`@agentkit-js/devtools` is ◆ Narrative).
+(`@wasmagent/devtools` is ◆ Narrative).

@@ -1,19 +1,19 @@
-# @agentkit-js/kernel-pyodide
+# /kernel-pyodide
 
 CPython-in-WASM kernel (Pyodide) — run real Python code from agents on Node, Bun, and CF Workers.
 
-> Part of [agentkit-js](https://github.com/telleroutlook/agentkit-js) — a TypeScript + WASM agent runtime.
+> Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.
 
 ## Install
 
 ```bash
-npm install @agentkit-js/kernel-pyodide @agentkit-js/core pyodide
+npm install /kernel-pyodide /core pyodide
 ```
 
 ## Usage
 
 ```ts
-import { PyodideKernel } from "@agentkit-js/kernel-pyodide";
+import { PyodideKernel } from "/kernel-pyodide";
 
 const kernel = new PyodideKernel();
 const result = await kernel.run(`import math; print(math.gcd(2024, 56))`);
@@ -25,8 +25,8 @@ console.log(result.logs); // ["8"]
 > user code; for memory-heavy workloads use [`kernel-wasmtime`](../kernel-wasmtime) or
 > [`kernel-remote`](../kernel-remote) microVMs.
 
-See the [kernel decision tree](https://github.com/telleroutlook/agentkit-js/blob/main/docs/kernels/comparison.md).
+See the [kernel decision tree](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/kernels/comparison.md).
 
 ## License
 
-[Apache-2.0](./LICENSE) — © agentkit-js contributors
+[Apache-2.0](./LICENSE) — © wasmagent contributors

@@ -30,7 +30,7 @@
  *     real hardware.
  *
  *   `node local-model-cert.mjs --model qwen3.5-0.8b`
- *     Downloads the registry alias, loads it via @agentkit-js/model-local,
+ *     Downloads the registry alias, loads it via @wasmagent/model-local,
  *     runs all three test groups, and prints a markdown report. 🖥️ Real
  *     hardware required (GPU optional but ~5× faster).
  *
@@ -233,7 +233,7 @@ async function evalCodeAgent(model, opts) {
   if (!opts.kernelFactory) {
     return { skipped: true, reason: "no kernel factory supplied (use --kernel to enable)" };
   }
-  // Resolve @agentkit-js/core relative to this script.
+  // Resolve @wasmagent/core relative to this script.
   const { fileURLToPath } = await import("node:url");
   const { dirname, resolve } = await import("node:path");
   const here = dirname(fileURLToPath(import.meta.url));
@@ -242,7 +242,7 @@ async function evalCodeAgent(model, opts) {
   try {
     coreMod = await import(corePath);
   } catch {
-    coreMod = await import("@agentkit-js/core");
+    coreMod = await import("@wasmagent/core");
   }
   const { CodeAgent } = coreMod;
   const tasks = CODEAGENT_TASKS.slice(0, opts.limit ?? CODEAGENT_TASKS.length);
@@ -412,7 +412,7 @@ async function main() {
     label = "MockLocalModel (self-test)";
     mode = "self-test (no real model — verifies the harness only)";
   } else if (values.model || values.path || values.url) {
-    // Resolve @agentkit-js/model-local relative to this script so the cert
+    // Resolve @wasmagent/model-local relative to this script so the cert
     // harness works whether run from the workspace root (no node_modules
     // hoist) or from a downstream consumer that has the package installed
     // normally.
@@ -425,7 +425,7 @@ async function main() {
       modelLocal = await import(localPath);
     } catch {
       // Fall back to package name resolution (works when installed as a dep).
-      modelLocal = await import("@agentkit-js/model-local");
+      modelLocal = await import("@wasmagent/model-local");
     }
     const { LocalModel } = modelLocal;
     if (values.model) {
@@ -458,7 +458,7 @@ async function main() {
       try {
         mod = await import(kpath);
       } catch {
-        mod = await import("@agentkit-js/kernel-quickjs");
+        mod = await import("@wasmagent/kernel-quickjs");
       }
       const { QuickJSKernel } = mod;
       return new QuickJSKernel();

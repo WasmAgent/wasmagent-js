@@ -24,7 +24,7 @@ whether we are still in "in-flight" or "published."
 |-----------------|-----------------------------------------|------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|-----------------------------------------------------|
 | Memory          | [LongMemEval-500](https://github.com/xiaowu0162/LongMemEval) | [`examples/benchmarks/longmemeval-500.mjs`](../../examples/benchmarks/longmemeval-500.mjs)                       | [`docs/reports/longmemeval-500-pending.md`](../reports/longmemeval-500-pending.md)              | 🟡 harness ready, run funding-dependent (🖥️)     |
 | Code-mode       | SWE-bench-lite (300 tasks)              | [`examples/benchmarks/swe-bench-lite.mjs`](../../examples/benchmarks/swe-bench-lite.mjs) (all 5 slots filled — `loadTasks`, `dispatchCodemode`, `dispatchDirect`, `runTests` container judge, `reportPareto`; 26-check `--smoke`) | [`docs/reports/swe-bench-lite-pending.md`](../reports/swe-bench-lite-pending.md)                | 🟡 harness ready, real-mode answerer + funded API run remaining |
-| Pareto cost     | LongMemEval × evals-runner stats        | [`@agentkit-js/evals-runner`](../../packages/evals-runner/) + the harness above                                 | inline in the LongMemEval-500 report                                                            | 🟡 ready alongside the LongMemEval headline         |
+| Pareto cost     | LongMemEval × evals-runner stats        | [`@wasmagent/evals-runner`](../../packages/evals-runner/) + the harness above                                 | inline in the LongMemEval-500 report                                                            | 🟡 ready alongside the LongMemEval headline         |
 
 🟢 published | 🟡 ready, awaiting budget | 🟠 in-flight design
 
@@ -50,7 +50,7 @@ trace"; the offensive value is the cache-hit column.
 
 There is no published task-completion number for **any** code-mode
 dispatch pattern on a real coding benchmark. Cloudflare Code Mode
-MCP (closest competitor to `@agentkit-js/mcp-server`) sells on the
+MCP (closest competitor to `@wasmagent/mcp-server`) sells on the
 1,000-token bootstrap savings — a real story, but one that does not
 answer the buying question of *does the agent actually solve more
 issues?*

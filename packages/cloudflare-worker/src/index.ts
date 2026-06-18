@@ -30,9 +30,9 @@
  * variant/variantLoader options. No runtime WASM compilation is needed.
  */
 
-import type { RunAgentInput } from "@agentkit-js/ag-ui";
-import { fromRunAgentInput, toAgUiSseStream, wantsAgUiSse } from "@agentkit-js/ag-ui";
-import type { AgentEvent } from "@agentkit-js/core";
+import type { RunAgentInput } from "@wasmagent/ag-ui";
+import { fromRunAgentInput, toAgUiSseStream, wantsAgUiSse } from "@wasmagent/ag-ui";
+import type { AgentEvent } from "@wasmagent/core";
 import {
   AnthropicModel,
   AnthropicModels,
@@ -43,14 +43,14 @@ import {
   KvCheckpointer,
   resumeFromHuman,
   ToolCallingAgent,
-} from "@agentkit-js/core";
-import type { QuickJSKernelOptions } from "@agentkit-js/kernel-quickjs";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+} from "@wasmagent/core";
+import type { QuickJSKernelOptions } from "@wasmagent/kernel-quickjs";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 import cfVariant from "@jitl/quickjs-wasmfile-release-sync";
 import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
 
 // Cloudflare Workflows engine — same WorkflowDefinition/WorkflowRunHandle
-// surface as @agentkit-js/core's LocalWorkflowEngine, backed by CF Workflows.
+// surface as @wasmagent/core's LocalWorkflowEngine, backed by CF Workflows.
 export type {
   CfStepConfig,
   CfToolCallContext,
@@ -69,7 +69,7 @@ export {
 } from "./CloudflareWorkflowEngine.js";
 // A1 — KvBackend adapters re-exported so consumers can `import {
 // CloudflareKvBackend, DurableObjectKvBackend } from
-// "@agentkit-js/cloudflare-worker"`.
+// "@wasmagent/cloudflare-worker"`.
 export type {
   CloudflareKVNamespace,
   CloudflareKvBackendOptions,

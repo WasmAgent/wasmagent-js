@@ -1,6 +1,6 @@
 # DevTools — 事件时间线 & 时间旅行调试
 
-> **A2** — 检查 agent 执行轨迹、从任意一步分叉重跑的 UI。基于 agentkit-js 已有的 [`EventLog`](../../packages/core/src/streaming/EventLog.ts) + [`KvCheckpointer`](../../packages/core/src/checkpoint/index.ts) 持久化能力构建。无需新存储 — 数据本来就在那里，DevTools 是把它变成"人能用"的消费者。
+> **A2** — 检查 agent 执行轨迹、从任意一步分叉重跑的 UI。基于 wasmagent 已有的 [`EventLog`](../../packages/core/src/streaming/EventLog.ts) + [`KvCheckpointer`](../../packages/core/src/checkpoint/index.ts) 持久化能力构建。无需新存储 — 数据本来就在那里，DevTools 是把它变成"人能用"的消费者。
 
 ## 提供的能力
 
@@ -13,10 +13,10 @@
 
 ```ts
 // 纯逻辑 — 无 React。
-import { EventLogReplay } from "@agentkit-js/devtools";
+import { EventLogReplay } from "@wasmagent/devtools";
 
 // React UI — 可选。
-import { DevTools } from "@agentkit-js/devtools/react";
+import { DevTools } from "@wasmagent/devtools/react";
 ```
 
 React 子路径标为可选 peer dep，无 React 用户不背包体积。
@@ -24,7 +24,7 @@ React 子路径标为可选 peer dep，无 React 用户不背包体积。
 ## 快速上手
 
 ```tsx
-import { DevTools } from "@agentkit-js/devtools/react";
+import { DevTools } from "@wasmagent/devtools/react";
 
 function DebugPanel({ events, onFork }) {
   return (
@@ -55,7 +55,7 @@ function DebugPanel({ events, onFork }) {
 **1. 从 `EventLog.replay()`**（服务端或 CF Worker）：
 
 ```ts
-import { EventLog } from "@agentkit-js/core";
+import { EventLog } from "@wasmagent/core";
 
 const log = new EventLog(kvBackend);
 const events: LoggedEvent[] = [];
@@ -85,13 +85,13 @@ replay.stepForEventId(id);  // 反查事件 id 所属步号
 
 ## 为什么要有 fork API？
 
-LangGraph Studio 时间旅行调试器最大的 UX 卖点是"回到第 N 步、改点东西、再跑一次"。agentkit-js 已经有持久化的一半（EventLog 用稳定 id 记录每个事件；KvCheckpointer 每步保存 assembler 状态）。缺的只是一个小巧、与运行时解耦的引擎，能算出"截至第 N 步的前缀"并产出元数据包给新 run。
+LangGraph Studio 时间旅行调试器最大的 UX 卖点是"回到第 N 步、改点东西、再跑一次"。wasmagent 已经有持久化的一半（EventLog 用稳定 id 记录每个事件；KvCheckpointer 每步保存 assembler 状态）。缺的只是一个小巧、与运行时解耦的引擎，能算出"截至第 N 步的前缀"并产出元数据包给新 run。
 
 Fork **不会** mutate 原日志。原 trace 保持原样；分叉是宿主页面用返回的 `prefixEvents` + `meta` 自己干的事。
 
 ## 测试
 
-`packages/devtools/src/EventLogReplay.test.ts` 覆盖 9 个场景，包括零步 trace、越界 cursor 钳位、防御性拷贝、fork 元数据形状。`packages/devtools/src/react/DevTools.test.tsx` 加 8 个 jsdom 渲染测试，覆盖初始 cursor 位置、步导航（`aria-pressed` 切换）、prelude 事件、Fork 面板的 task/model/note 覆盖、空覆盖回落默认值、零步 / 空 trace 边界。跑：`pnpm --filter @agentkit-js/devtools test`。
+`packages/devtools/src/EventLogReplay.test.ts` 覆盖 9 个场景，包括零步 trace、越界 cursor 钳位、防御性拷贝、fork 元数据形状。`packages/devtools/src/react/DevTools.test.tsx` 加 8 个 jsdom 渲染测试，覆盖初始 cursor 位置、步导航（`aria-pressed` 切换）、prelude 事件、Fork 面板的 task/model/note 覆盖、空覆盖回落默认值、零步 / 空 trace 边界。跑：`pnpm --filter @wasmagent/devtools test`。
 
 ## 参考
 

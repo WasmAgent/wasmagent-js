@@ -50,7 +50,7 @@ Mapped onto evomerge CLAUDE.md:
 
 ## 3. The eval target — what "success" measures against
 
-**The ruler is `@agentkit-js/evals-runner`'s
+**The ruler is `@wasmagent/evals-runner`'s
 `multi-turn-tool-exec` suite + arm-f param-only**, both already
 implemented and validated in:
 

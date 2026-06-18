@@ -69,11 +69,11 @@ async function main() {
     : join(REPO_ROOT, "docs", "reports", `local-model-cert-${today}`);
   await mkdir(outDir, { recursive: true });
 
-  // Resolve @agentkit-js/model-local from dist (built via `bun run -F ... build`).
+  // Resolve @wasmagent/model-local from dist (built via `bun run -F ... build`).
   const localPath = join(REPO_ROOT, "packages/model-local/dist/index.js");
   if (!existsSync(localPath)) {
     console.error(
-      `[cert-all] @agentkit-js/model-local is not built. Run: bun run -F '@agentkit-js/model-local' build`
+      `[cert-all] @wasmagent/model-local is not built. Run: bun run -F '@wasmagent/model-local' build`
     );
     process.exit(2);
   }

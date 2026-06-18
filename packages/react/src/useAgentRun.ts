@@ -14,7 +14,7 @@
  * status. It exposes `isRunning` so the UI can show a spinner during execution.
  */
 
-import type { AgentEvent } from "@agentkit-js/core";
+import type { AgentEvent } from "@wasmagent/core";
 import { useCallback, useRef, useState } from "react";
 
 export type MessageRole = "assistant" | "tool" | "error";

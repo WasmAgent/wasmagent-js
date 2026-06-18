@@ -7,7 +7,7 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     server: {
       deps: {
-        external: ["pyodide", "@agentkit-js/kernel-pyodide"],
+        external: ["pyodide", "@wasmagent/kernel-pyodide"],
       },
     },
   },

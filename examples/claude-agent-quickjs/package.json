@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": { "start": "node index.mjs" },
   "dependencies": {
-    "@agentkit-js/claude-agent-sdk": "workspace:*",
-    "@agentkit-js/kernel-quickjs": "workspace:*",
+    "@wasmagent/claude-agent-sdk": "workspace:*",
+    "@wasmagent/kernel-quickjs": "workspace:*",
     "quickjs-emscripten": "^0.31.0",
     "@jitl/quickjs-wasmfile-release-sync": "^0.31.0",
     "zod": "^3.23.0"

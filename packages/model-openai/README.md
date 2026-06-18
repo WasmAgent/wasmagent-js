@@ -1,19 +1,19 @@
-# @agentkit-js/model-openai
+# /model-openai
 
-OpenAI / Azure OpenAI adapter for agentkit-js.
+OpenAI / Azure OpenAI adapter for wasmagent.
 
-> Part of [agentkit-js](https://github.com/telleroutlook/agentkit-js) — a TypeScript + WASM agent runtime.
+> Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.
 
 ## Install
 
 ```bash
-npm install @agentkit-js/model-openai @agentkit-js/core openai
+npm install /model-openai /core openai
 ```
 
 ## Usage
 
 ```ts
-import { OpenAIModel, OpenAIModels } from "@agentkit-js/model-openai";
+import { OpenAIModel, OpenAIModels } from "/model-openai";
 const model = new OpenAIModel(OpenAIModels.GPT_4_1, {
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -21,4 +21,4 @@ const model = new OpenAIModel(OpenAIModels.GPT_4_1, {
 
 ## License
 
-[Apache-2.0](./LICENSE) — © agentkit-js contributors
+[Apache-2.0](./LICENSE) — © wasmagent contributors

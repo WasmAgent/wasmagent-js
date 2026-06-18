@@ -15,8 +15,8 @@
  *     reused without reset() — which is the documented "stateful kernel"
  *     contract.
  */
-import { JsKernel } from "@agentkit-js/core";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { JsKernel } from "@wasmagent/core";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
 let failed = 0;
 function ok(label) {

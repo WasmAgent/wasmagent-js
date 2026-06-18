@@ -1,5 +1,5 @@
-import type { GenerateOptions, ModelCapabilities } from "@agentkit-js/core/models";
-import { OpenAICompatModel, type OpenAICompatModelOptions } from "@agentkit-js/core/models";
+import type { GenerateOptions, ModelCapabilities } from "@wasmagent/core/models";
+import { OpenAICompatModel, type OpenAICompatModelOptions } from "@wasmagent/core/models";
 
 export const DOUBAO_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
 

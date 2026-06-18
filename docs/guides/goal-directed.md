@@ -123,7 +123,7 @@ verifier from a freeform task description.
 It is not a replacement for any of these — they remain agentkit's
 other axes of differentiation:
 
-- **Multi-provider model adapters** (`@agentkit-js/model-anthropic`,
+- **Multi-provider model adapters** (`@wasmagent/model-anthropic`,
   `model-doubao`, `model-qwen`, `model-zhipu`, `model-deepseek`,
   `model-moonshot`, `model-minimax`, `model-local`) — bring your own
   vendor.
@@ -208,7 +208,7 @@ default — because for casual chat the extra cost is wasted.
 ## Minimum viable usage
 
 ```ts
-import { GoalDirectedAgent } from "@agentkit-js/core";
+import { GoalDirectedAgent } from "@wasmagent/core";
 
 const agent = new GoalDirectedAgent({
   model: executor,            // sonnet 4.6

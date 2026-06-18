@@ -8,7 +8,7 @@
  * (the exact same primitive evals-runner ships in `stats/mcnemar.ts`).
  *
  * Why this script lives outside the package: the suites import
- * `@agentkit-js/kernel-quickjs` lazily, but a benchmark run also wants to
+ * `@wasmagent/kernel-quickjs` lazily, but a benchmark run also wants to
  * call into ad-hoc model registries (Ollama-served evomerge GGUFs) and
  * fold them into a Pareto report. Keeping the logic here lets each side
  * stay generic — the suite knows about arms and judges, the script knows
@@ -80,7 +80,7 @@ async function main() {
   // Resolve evals-runner from dist.
   const evalsPath = join(REPO_ROOT, "packages/evals-runner/dist/index.js");
   if (!existsSync(evalsPath)) {
-    console.error("Error: @agentkit-js/evals-runner is not built. Run: bun run -F '@agentkit-js/evals-runner' build");
+    console.error("Error: @wasmagent/evals-runner is not built. Run: bun run -F '@wasmagent/evals-runner' build");
     process.exit(2);
   }
   const evals = await import(evalsPath);

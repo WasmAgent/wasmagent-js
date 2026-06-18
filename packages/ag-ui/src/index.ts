@@ -1,5 +1,5 @@
 /**
- * AG-UI protocol adapter for @agentkit-js/core.
+ * AG-UI protocol adapter for @wasmagent/core.
  *
  * Maps the private AgentEvent stream to the AG-UI 16-class event protocol
  * (docs.ag-ui.com), enabling any AG-UI-compatible frontend (CopilotKit,
@@ -27,7 +27,7 @@
  *   toAgUiSseStream() when present, while also accepting RunAgentInput bodies.
  */
 
-import type { AgentEvent, ModelMessage } from "@agentkit-js/core";
+import type { AgentEvent, ModelMessage } from "@wasmagent/core";
 
 // ── AG-UI official event types (aligned with ag-ui-protocol 2026-04) ──────────
 

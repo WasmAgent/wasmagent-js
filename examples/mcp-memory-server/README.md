@@ -2,7 +2,7 @@
 
 A minimal MCP server that exposes 4 memory tools — `memory_read`,
 `memory_write`, `memory_list`, `memory_delete` — backed by
-[`@agentkit-js/core`'s `StructuredMemory`](../../packages/core/src/memory/StructuredMemory.ts).
+[`@wasmagent/core`'s `StructuredMemory`](../../packages/core/src/memory/StructuredMemory.ts).
 Drops into any MCP-compatible host (Claude Desktop, Cursor, Glama,
 your own client) so the model on the other side can persist and
 recall facts across turns.
@@ -36,8 +36,8 @@ Build the workspace once, then run from the example dir:
 ```bash
 # from repo root
 bun install
-bun run -F '@agentkit-js/core' build
-bun run -F '@agentkit-js/mcp-server' build
+bun run -F '@wasmagent/core' build
+bun run -F '@wasmagent/mcp-server' build
 
 # then
 cd examples/mcp-memory-server
@@ -100,7 +100,7 @@ common options:
 ### Redis (any host)
 
 ```ts
-import { RedisKvBackend } from "@agentkit-js/core/checkpoint";
+import { RedisKvBackend } from "@wasmagent/core/checkpoint";
 const kv = adaptStructuredKvBackend(
   new RedisKvBackend({ url: process.env.REDIS_URL }),
 );
@@ -109,7 +109,7 @@ const kv = adaptStructuredKvBackend(
 ### Cloudflare KV (Workers / Pages)
 
 ```ts
-import { CloudflareKvBackend } from "@agentkit-js/cloudflare-worker";
+import { CloudflareKvBackend } from "@wasmagent/cloudflare-worker";
 const kv = adaptStructuredKvBackend(new CloudflareKvBackend(env.MEMORY_KV));
 ```
 
@@ -124,7 +124,7 @@ HTTP variant of the same MCP server.
 TTL-based decay.
 
 **Don't write large values.** `StructuredMemory` is a KV; values >100KB
-should be vector-indexed via `@agentkit-js/tools-rag` or stored as
+should be vector-indexed via `@wasmagent/tools-rag` or stored as
 references (e.g. `memory_write({key, value: { docId: "..." }})`).
 
 **Don't skip the namespace.** A model that always writes to

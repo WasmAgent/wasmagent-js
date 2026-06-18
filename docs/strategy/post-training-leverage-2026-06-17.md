@@ -72,7 +72,7 @@ trajectory.diff(other): TrajectoryDiff       // 两次 run 的步骤级差异
 - evomerge 训练数据来源
 - 用户排错
 
-### A3 — `@agentkit-js/evals-runner` 加 verified-reward graders（高把握 · 1-2 天）
+### A3 — `@wasmagent/evals-runner` 加 verified-reward graders（高把握 · 1-2 天）
 
 **现状**：evals-runner 已存在（[[strategic_plan_2026_06_12]]），跑 LongMemEval / MAB / LoCoMo。
 

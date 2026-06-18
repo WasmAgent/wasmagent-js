@@ -9,8 +9,8 @@
     "stdio": "node stdio-server.mjs"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*",
-    "@agentkit-js/mcp-server": "workspace:*",
+    "@wasmagent/core": "workspace:*",
+    "@wasmagent/mcp-server": "workspace:*",
     "zod": "^3.23.0"
   }
 }

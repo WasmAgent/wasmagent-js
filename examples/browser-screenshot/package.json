@@ -2,15 +2,15 @@
   "name": "example-browser-screenshot",
   "version": "0.1.1",
   "private": true,
-  "description": "Headless Chromium screenshot via @agentkit-js/tools-browser",
+  "description": "Headless Chromium screenshot via @wasmagent/tools-browser",
   "type": "module",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*",
-    "@agentkit-js/tools-browser": "workspace:*",
-    "@agentkit-js/model-anthropic": "workspace:*"
+    "@wasmagent/core": "workspace:*",
+    "@wasmagent/tools-browser": "workspace:*",
+    "@wasmagent/model-anthropic": "workspace:*"
   },
   "devDependencies": {
     "playwright": "^1.40.0"

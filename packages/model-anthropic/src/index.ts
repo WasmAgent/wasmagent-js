@@ -1,2 +1,2 @@
-export type { AnthropicModelId, AnthropicModelOptions } from "@agentkit-js/core/models";
-export { AnthropicModel, AnthropicModels, CACHE_MIN_TOKENS } from "@agentkit-js/core/models";
+export type { AnthropicModelId, AnthropicModelOptions } from "@wasmagent/core/models";
+export { AnthropicModel, AnthropicModels, CACHE_MIN_TOKENS } from "@wasmagent/core/models";

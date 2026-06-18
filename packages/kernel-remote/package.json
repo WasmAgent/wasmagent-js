@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/kernel-remote",
+  "name": "@wasmagent/kernel-remote",
   "version": "0.2.0",
-  "description": "RemoteSandboxKernel — microVM third isolation tier for agentkit-js via E2B / Cloudflare Sandbox",
+  "description": "RemoteSandboxKernel — microVM third isolation tier for wasmagent via E2B / Cloudflare Sandbox",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*"
+    "@wasmagent/core": "workspace:*"
   },
   "peerDependencies": {
     "e2b": ">=1.0.0"
@@ -38,21 +38,25 @@
     "node": ">=20.0.0"
   },
   "keywords": [
-    "microvm",
-    "e2b",
+    "wasmagent",
+    "wasm",
+    "agent",
+    "portable",
     "sandbox",
-    "remote",
-    "agentkit"
+    "executor",
+    "ai",
+    "llm",
+    "typescript"
   ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/kernel-remote"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/kernel-remote#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/kernel-remote#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
     "access": "public",

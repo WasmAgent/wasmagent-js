@@ -18,4 +18,4 @@ node index.mjs
 
 ## See also
 
-- [`@agentkit-js/mastra-sandbox` README](../../packages/mastra-sandbox/README.md)
+- [`@wasmagent/mastra-sandbox` README](../../packages/mastra-sandbox/README.md)

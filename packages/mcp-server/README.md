@@ -1,15 +1,15 @@
-# @agentkit-js/mcp-server
+# /mcp-server
 
-[![Glama MCP server](https://glama.ai/mcp/servers/telleroutlook/agentkit-js/badges/score.svg)](https://glama.ai/mcp/servers/telleroutlook/agentkit-js)
+[![Glama MCP server](https://glama.ai/mcp/servers/WasmAgent/wasmagent-js/badges/score.svg)](https://glama.ai/mcp/servers/WasmAgent/wasmagent-js)
 
-Expose any agentkit-js agent as a Model Context Protocol (MCP) server.
+Expose any wasmagent agent as a Model Context Protocol (MCP) server.
 
-> Part of [agentkit-js](https://github.com/telleroutlook/agentkit-js) — a TypeScript + WASM agent runtime.
+> Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.
 
 ## Install
 
 ```bash
-npm install @agentkit-js/mcp-server @agentkit-js/core
+npm install /mcp-server /core
 ```
 
 ## Three transports, one server
@@ -23,7 +23,7 @@ your host:
 ```bash
 # Zero-config default — code-mode server with VmKernel and no
 # downstream tools. Useful for sanity / introspection only.
-npx @agentkit-js/mcp-server
+npx /mcp-server
 ```
 
 For a real deployment, write a small Node script and call
@@ -31,9 +31,9 @@ For a real deployment, write a small Node script and call
 
 ```ts
 // server.mjs
-import { createCodeModeServer, runStdio } from "@agentkit-js/mcp-server/stdio";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
-import { ToolRegistry } from "@agentkit-js/core";
+import { createCodeModeServer, runStdio } from "/mcp-server/stdio";
+import { QuickJSKernel } from "/kernel-quickjs";
+import { ToolRegistry } from "/core";
 
 const tools = new ToolRegistry();
 // tools.register(...)  — your tools here
@@ -49,7 +49,7 @@ await runStdio(createCodeModeServer({
 ### 2. HTTP / Streamable (Cloudflare Workers, Vercel, etc.)
 
 ```ts
-import { createCodeModeServer, createFetchHandler } from "@agentkit-js/mcp-server";
+import { createCodeModeServer, createFetchHandler } from "/mcp-server";
 
 const server = createCodeModeServer({ /* … */ });
 const handler = createFetchHandler(server);
@@ -66,8 +66,8 @@ If you have a custom transport, the protocol-level brain is one
 `createCodeModeServer()` wraps any tool registry into a
 `docs_search` + `execute_code` MCP surface. At N=30 downstream
 tools the bootstrap-token cost drops to 13.6% of direct MCP. See
-[docs/guides/code-mode.md](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/code-mode.md).
+[docs/guides/code-mode.md](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/code-mode.md).
 
 ## License
 
-[Apache-2.0](./LICENSE) — © agentkit-js contributors
+[Apache-2.0](./LICENSE) — © wasmagent contributors

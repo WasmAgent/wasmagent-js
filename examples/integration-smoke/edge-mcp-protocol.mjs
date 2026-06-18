@@ -5,8 +5,8 @@
  * and adversarial scripts. Asserts the server returns a JSON-RPC error
  * (the right code, the right shape) rather than crashing or hanging.
  */
-import { JsKernel, ToolRegistry } from "@agentkit-js/core";
-import { createCodeModeServer, InMemoryTaskStore } from "@agentkit-js/mcp-server";
+import { JsKernel, ToolRegistry } from "@wasmagent/core";
+import { createCodeModeServer, InMemoryTaskStore } from "@wasmagent/mcp-server";
 import { z } from "zod";
 
 let failed = 0;

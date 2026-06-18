@@ -1,7 +1,7 @@
 /**
- * @agentkit-js/ui-cards-react — React components for rendering card blocks.
+ * @wasmagent/ui-cards-react — React components for rendering card blocks.
  *
- * Companion to {@link @agentkit-js/ui-cards} that provides ready-to-use
+ * Companion to {@link @wasmagent/ui-cards} that provides ready-to-use
  * React components:
  *
  * - {@link MarkdownCard} — GFM Markdown with .md/.docx export

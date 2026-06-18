@@ -12,7 +12,7 @@
  * Node, edge runtimes, and tests alike.
  */
 
-import type { AgentEvent } from "@agentkit-js/core";
+import type { AgentEvent } from "@wasmagent/core";
 
 /** Shape we accept — kept structurally compatible with EventLog's LoggedEvent. */
 export interface LoggedEvent {

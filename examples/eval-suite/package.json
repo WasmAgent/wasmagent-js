@@ -8,7 +8,7 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*",
-    "@agentkit-js/model-anthropic": "workspace:*"
+    "@wasmagent/core": "workspace:*",
+    "@wasmagent/model-anthropic": "workspace:*"
   }
 }

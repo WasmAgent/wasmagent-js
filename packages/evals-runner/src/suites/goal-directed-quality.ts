@@ -40,12 +40,12 @@
  * change.
  */
 
-import type { Model, ToolDefinition } from "@agentkit-js/core";
+import type { Model, ToolDefinition } from "@wasmagent/core";
 import {
   GenericOpenAICompatModel,
   GoalDirectedAgent,
   type WorkspaceReader,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 import { z } from "zod";
 import type { BenchmarkItem, BenchmarkSuite, ModelSpec, RunItemResult } from "../types.js";
 

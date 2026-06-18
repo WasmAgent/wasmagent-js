@@ -5,8 +5,8 @@
  * each kernel separately, but this smoke runs both side-by-side with the
  * exact same manifest to catch drift.
  */
-import { JsKernel } from "@agentkit-js/core";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { JsKernel } from "@wasmagent/core";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
 function check(label, cond, detail) {
   if (!cond) {

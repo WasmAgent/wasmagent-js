@@ -5,9 +5,9 @@
  * parameters, execute })` shape an AI SDK 4–6 caller would use, and the
  * Mastra `execute(code, options)` contract.
  */
-import { JsKernel, ToolRegistry } from "@agentkit-js/core";
-import { codeModeTool, sandboxedJsTool } from "@agentkit-js/aisdk";
-import { agentkitMastraSandbox } from "@agentkit-js/mastra-sandbox";
+import { JsKernel, ToolRegistry } from "@wasmagent/core";
+import { codeModeTool, sandboxedJsTool } from "@wasmagent/aisdk";
+import { agentkitMastraSandbox } from "@wasmagent/mastra-sandbox";
 import { z } from "zod";
 
 // ── 1. sandboxedJsTool ──────────────────────────────────────────────────────

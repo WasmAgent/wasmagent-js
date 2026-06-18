@@ -1,4 +1,4 @@
-// Standalone usage of @agentkit-js/kernel-quickjs.
+// Standalone usage of @wasmagent/kernel-quickjs.
 //
 // This example is intentionally minimal: it imports ONLY the kernel package.
 // No CodeAgent, no ToolCallingAgent, no model adapter. The point is that the
@@ -8,7 +8,7 @@
 //
 // Run: node examples/kernel-only/index.mjs
 
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
 async function main() {
   const kernel = new QuickJSKernel();
@@ -34,7 +34,7 @@ async function main() {
 
   await kernel[Symbol.asyncDispose]?.();
 
-  console.log("\n✓ kernel works standalone — no @agentkit-js/core required.");
+  console.log("\n✓ kernel works standalone — no @wasmagent/core required.");
 }
 
 main().catch((err) => {

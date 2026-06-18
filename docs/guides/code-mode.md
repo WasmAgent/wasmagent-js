@@ -1,6 +1,6 @@
 # Code Mode — collapse 30+ MCP tools into one safe `execute_code`
 
-> **Status**: shipped in `@agentkit-js/mcp-server@0.3` (S1/A1, 2026-06).
+> **Status**: shipped in `@wasmagent/mcp-server@0.3` (S1/A1, 2026-06).
 > Designed against the same pattern Cloudflare's Code Mode MCP server (InfoQ,
 > 2026-04), Red Hat codemode-lite (next.redhat.com, 2026-04), and Anthropic's
 > "code execution with MCP" guide all converged on in 2026.
@@ -23,9 +23,9 @@ identically across language and isolation tier.
 ## What you ship
 
 ```ts
-import { JsKernel, ToolRegistry } from "@agentkit-js/core";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
-import { createCodeModeServer, createFetchHandler } from "@agentkit-js/mcp-server";
+import { JsKernel, ToolRegistry } from "@wasmagent/core";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+import { createCodeModeServer, createFetchHandler } from "@wasmagent/mcp-server";
 
 const tools = new ToolRegistry();
 tools.register({ name: "search_docs", /* … */ });

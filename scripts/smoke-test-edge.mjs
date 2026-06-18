@@ -34,7 +34,7 @@ async function run() {
     "pnpm",
     [
       "--filter",
-      "@agentkit-js/cloudflare-worker",
+      "@wasmagent/cloudflare-worker",
       "exec",
       "wrangler",
       "dev",

@@ -12,7 +12,7 @@
  *      to end without an actual LLM.
  */
 
-import type { Model, StreamEvent } from "@agentkit-js/core";
+import type { Model, StreamEvent } from "@wasmagent/core";
 import { describe, expect, it } from "vitest";
 import type { ModelSpec, RunItemResult } from "../types.js";
 import { __test__, multiTurnToolExecSuite } from "./multi-turn-tool-exec.js";

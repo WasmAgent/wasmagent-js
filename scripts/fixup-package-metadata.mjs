@@ -21,7 +21,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..");
 const packagesDir = join(repoRoot, "packages");
 
-const REPO_URL = "https://github.com/telleroutlook/agentkit-js";
+const REPO_URL = "https://github.com/WasmAgent/wasmagent-js";
 
 const checkOnly = process.argv.includes("--check");
 
@@ -67,7 +67,7 @@ for (const name of pkgs) {
 
   // keywords (only if missing)
   if (!pkg.keywords) {
-    pkg.keywords = ["agentkit", "agent", "ai", "llm"];
+    pkg.keywords = ["wasmagent", "agent", "ai", "llm"];
   }
 
   // publishConfig — public for non-private packages
@@ -82,7 +82,7 @@ for (const name of pkgs) {
 
   // author
   if (!pkg.author) {
-    pkg.author = "agentkit-js contributors";
+    pkg.author = "wasmagent-js contributors";
   }
 
   const after = JSON.stringify(pkg);

@@ -163,4 +163,4 @@ automatically. Configure sampling via `OTEL_SAMPLER` (`always`,
 
 - [otel-jaeger example](../otel-jaeger/) — Jaeger backend with
   docker-compose
-- [`@agentkit-js/cloudflare-worker` README](../../packages/cloudflare-worker/README.md)
+- [`@wasmagent/cloudflare-worker` README](../../packages/cloudflare-worker/README.md)

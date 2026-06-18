@@ -23,10 +23,10 @@
 
 ```ts
 // Pure logic — no React.
-import { EventLogReplay } from "@agentkit-js/devtools";
+import { EventLogReplay } from "@wasmagent/devtools";
 
 // React UI — opt-in.
-import { DevTools } from "@agentkit-js/devtools/react";
+import { DevTools } from "@wasmagent/devtools/react";
 ```
 
 The React subpath is marked as an optional peer dep, so users without
@@ -35,7 +35,7 @@ React don't pay the bundle cost.
 ## Quick start
 
 ```tsx
-import { DevTools } from "@agentkit-js/devtools/react";
+import { DevTools } from "@wasmagent/devtools/react";
 
 function DebugPanel({ events, onFork }) {
   return (
@@ -66,7 +66,7 @@ Two common shapes:
 **1. From `EventLog.replay()`** (server-side or CF Worker):
 
 ```ts
-import { EventLog } from "@agentkit-js/core";
+import { EventLog } from "@wasmagent/core";
 
 const log = new EventLog(kvBackend);
 const events: LoggedEvent[] = [];
@@ -119,7 +119,7 @@ adds 8 jsdom-driven render tests covering initial cursor placement,
 step navigation (`aria-pressed` toggling), prelude events, the Fork
 panel's task/model/note overrides, empty-overrides defaulting, and
 zero-step / empty-trace edge cases. Run with
-`pnpm --filter @agentkit-js/devtools test`.
+`pnpm --filter @wasmagent/devtools test`.
 
 ## Reference
 

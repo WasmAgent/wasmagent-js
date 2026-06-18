@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to **agentkit-js** are recorded here. The format
+All notable changes to **wasmagent** are recorded here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
@@ -37,7 +37,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   scope for this commit). The capability honouring matrix in
   `packages/core/src/executor/types.ts` now reflects reality
   (Pyodide cpuMs ⚠️ advisory; Wasmtime memoryLimitBytes ⚠️ no native).
-- **`@agentkit-js/evals-runner` — `multiTurnMemorySuiteOriginal` exposed
+- **`@wasmagent/evals-runner` — `multiTurnMemorySuiteOriginal` exposed
   (2026-06-16).** The 6-item original variant of the multi-turn-memory
   suite is now (a) registered in `REFERENCE_SUITES` under the name
   `"multi-turn-memory-original-6"` and (b) re-exported as a named
@@ -46,9 +46,9 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   contract / smoke tests that wanted a fixed denominator had nowhere
   to go — the original 6-item variant was defined but unreachable.
   Now both consumption paths work:
-    - `import { REFERENCE_SUITES } from "@agentkit-js/evals-runner"`
+    - `import { REFERENCE_SUITES } from "@wasmagent/evals-runner"`
       and pick `REFERENCE_SUITES["multi-turn-memory-original-6"]`,
-    - `import { multiTurnMemorySuiteOriginal } from "@agentkit-js/evals-runner"`
+    - `import { multiTurnMemorySuiteOriginal } from "@wasmagent/evals-runner"`
       and use directly.
   Caught by `examples/integration-smoke/edge-evals-runner.mjs` as
   part of the 4-axis audit's full-validation pass.
@@ -96,9 +96,9 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   hit `apps/web/src/app/api/recipes/run/route.ts` (POST handler with
   7 vitest cases). Each upstream link carries
   `?utm_source=bscode-<framework>-recipe` so attribution back to
-  agentkit-js is preserved end-to-end. The bscode home page navbar
+  wasmagent is preserved end-to-end. The bscode home page navbar
   gains a purple "their framework + our kernel →" pill alongside
-  the existing green "npm add @agentkit-js/core →" pill so the
+  the existing green "npm add @wasmagent/core →" pill so the
   reverse-funnel pitch is visible from the very first paint.
   bscode commit
   [`19bc56d`](https://github.com/WasmAgent/bscode/commit/19bc56d).
@@ -126,7 +126,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
     rejected cleanly).
 - **`agentkitCodemodeExecutor` shim — Direction 1 pre-submission
   gate cleared (2026-06-13).** New
-  `@agentkit-js/aisdk` export `agentkitCodemodeExecutor(opts)`
+  `@wasmagent/aisdk` export `agentkitCodemodeExecutor(opts)`
   conforms to the Cloudflare codemode `Executor` interface
   (`execute(code, providersOrFns) => Promise<{result, error?, logs?}>`)
   and runs the LLM-emitted code inside any agentkit `WasmKernel`
@@ -146,7 +146,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   typecheck` passes 50/50. Unblocks the `cloudflare/agents`
   recipe-page PR draft at
   `docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md`.
-- **`@agentkit-js/mcp-server` stdio entry point — response to
+- **`@wasmagent/mcp-server` stdio entry point — response to
   `awesome-mcp-servers#7910`'s Glama listing requirement.** New
   `packages/mcp-server/src/stdio.ts` wires the existing
   transport-agnostic `McpAgentServer.handle()` to a
@@ -205,12 +205,12 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   of the 2026-06-12 optimization brief.** New draft
   `docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md`
   proposes a recipe page in `cloudflare/agents` pointing
-  codemode users to `@agentkit-js/kernel-quickjs` /
+  codemode users to `@wasmagent/kernel-quickjs` /
   `kernel-pyodide` / `kernel-remote` as a community-maintained
   executor that closes the three explicit gaps in the default
   `DynamicWorkerExecutor` (no Workers binding, Python support,
   `needsApproval` lifecycle). Pre-submission gate: ship the
-  `agentkitCodemodeExecutor` shim in `@agentkit-js/aisdk` first
+  `agentkitCodemodeExecutor` shim in `@wasmagent/aisdk` first
   so the example runs. The directory's `README.md` was raised
   from "appendix" framing to "Direction 1 priority" with the
   rationale and a contributor pointer that ties co-maintainer
@@ -223,9 +223,9 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   `docs/guides/devtools-cross-framework.md` provides per-producer
   capture recipes plus a `devtools:cross-framework` issue label
   for prioritizing producers users actually have. The CLI is
-  reachable via `npx -p @agentkit-js/cli agentkit devtools
+  reachable via `npx -p @wasmagent/cli agentkit devtools
   --otel-events-file <path>` so non-agentkit users do not need
-  to install `@agentkit-js/core`. The adapter
+  to install `@wasmagent/core`. The adapter
   (`convertGenAiSpansToEvents`) was already shipped in 2026-06-12;
   this is the discovery surface upgrade.
 - **Maintenance tiers — Direction 4 of the 2026-06-12 optimization
@@ -244,7 +244,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   2027-Q1 graduate to "deprecated → archive."
 - **Governance signals — Direction 3 of the 2026-06-12 optimization
   brief.** `docs/strategy/api-stability.md` now publishes a
-  **2026-12-15 1.0-freeze date** for `@agentkit-js/core`, with a
+  **2026-12-15 1.0-freeze date** for `@wasmagent/core`, with a
   six-item gating checklist (co-maintainer, six bi-weekly releases
   without stall, sandbox-escape drill on file, public-benchmark
   number, experimental table reviewed, migration note). Two new
@@ -257,12 +257,12 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   `GOVERNANCE.md` link both ledgers; `CONTRIBUTING.md` opens with
   a top-level "looking for a co-maintainer" pointer rather than
   burying it in governance.
-- `@agentkit-js/claude-agent-sdk` (D1) — agentkit kernels as Claude
+- `@wasmagent/claude-agent-sdk` (D1) — agentkit kernels as Claude
   Agent SDK tools. `sandboxedJsClaudeTool()` and `codeModeClaudeTool()`
   emit the Anthropic-shape `{name, description, input_schema, handler}`
   quadruple, structurally typed so they survive both the v0 and the
   upcoming v1 line of `@anthropic-ai/sdk`. 7 unit tests.
-- `@agentkit-js/openai-agents` (D1) — agentkit kernels as OpenAI
+- `@wasmagent/openai-agents` (D1) — agentkit kernels as OpenAI
   Agents JS tools. `sandboxedJsAgentTool()` and `codeModeAgentTool()`
   emit the `@openai/agents` `Tool<T>` shape (Zod parameters +
   `execute()`). 6 unit tests.
@@ -329,14 +329,14 @@ version per-package via changesets.
 - Speculative DAG scheduler (`Scheduler` + `SimpleIR` +
   `deriveDependencies`).
 - Multi-criteria `JudgeScorer` for LLM-as-judge evals.
-- Code-mode MCP server (`@agentkit-js/mcp-server` ≥ 0.3) with a
+- Code-mode MCP server (`@wasmagent/mcp-server` ≥ 0.3) with a
   two-tool surface (`docs_search` + `execute_code`) shown to use
   ≤14% of the tokens of direct-MCP at N=30 tools.
 - Zero-deploy local Studio: `RunsAggregator` + `EventLogReplay` +
   `agentkit devtools` CLI serving an inline HTML dashboard.
-- Statistically rigorous evaluation harness (`@agentkit-js/evals-runner`)
+- Statistically rigorous evaluation harness (`@wasmagent/evals-runner`)
   with McNemar exact, Wilson CI, paired bootstrap, six reference
   benchmark suites, and Pareto-front rendering.
 
-[Unreleased]: https://github.com/telleroutlook/agentkit-js/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/telleroutlook/agentkit-js/releases/tag/v0.2.0
+[Unreleased]: https://github.com/WasmAgent/wasmagent-js/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/WasmAgent/wasmagent-js/releases/tag/v0.2.0

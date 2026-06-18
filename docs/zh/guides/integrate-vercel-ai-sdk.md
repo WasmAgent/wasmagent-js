@@ -1,6 +1,6 @@
-# 在 Vercel AI SDK 中使用 agentkit-js kernel
+# 在 Vercel AI SDK 中使用 wasmagent kernel
 
-agentkit-js 的代码执行 kernel（`@agentkit-js/kernel-quickjs`、`kernel-pyodide`、`kernel-wasmtime`、`kernel-remote`）**不依赖 agentkit-js 的其余部分**。你可以把它们放进任何允许注册自定义工具的 agent 框架 —— 包括 Vercel AI SDK。
+wasmagent 的代码执行 kernel（`@wasmagent/kernel-quickjs`、`kernel-pyodide`、`kernel-wasmtime`、`kernel-remote`）**不依赖 wasmagent 的其余部分**。你可以把它们放进任何允许注册自定义工具的 agent 框架 —— 包括 Vercel AI SDK。
 
 本页展示如何把 `QuickJSKernel` 暴露为 Vercel AI SDK 工具，给 AI SDK 提供今天它还没有的 **边缘安全的沙箱化代码执行能力**。
 
@@ -8,12 +8,12 @@ agentkit-js 的代码执行 kernel（`@agentkit-js/kernel-quickjs`、`kernel-pyo
 
 Vercel AI SDK 6 有世界级的 React DX、流式 UI primitives、Next.js 模板里的默认位置。它没有的是：在边缘上把模型生成的代码放进真沙箱里跑。`node:vm` 在 Cloudflare Workers 和 Vercel Edge 被禁；OS 级沙箱需要服务器。
 
-`@agentkit-js/kernel-quickjs` 在 QuickJS-in-WASM 里跑 JavaScript — 语言级隔离、无 `node:vm`、~2 MB 冷启动。正好填这个缺。
+`@wasmagent/kernel-quickjs` 在 QuickJS-in-WASM 里跑 JavaScript — 语言级隔离、无 `node:vm`、~2 MB 冷启动。正好填这个缺。
 
 ## 安装
 
 ```bash
-npm install ai @ai-sdk/openai @agentkit-js/kernel-quickjs quickjs-emscripten @jitl/quickjs-wasmfile-release-sync zod
+npm install ai @ai-sdk/openai @wasmagent/kernel-quickjs quickjs-emscripten @jitl/quickjs-wasmfile-release-sync zod
 ```
 
 ## 把 kernel 接成工具
@@ -21,7 +21,7 @@ npm install ai @ai-sdk/openai @agentkit-js/kernel-quickjs quickjs-emscripten @ji
 ```ts
 import { generateText, tool } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 import { z } from "zod";
 
 const kernel = new QuickJSKernel();
@@ -53,11 +53,11 @@ console.log(text);
 
 - **不需要 `node:vm`** — 在 Cloudflare Workers、Vercel Edge、Deno Deploy 都工作。
 - **紧隔离** — QuickJS 是独立 VM；沙箱代码碰不到 worker 的全局或环境。
-- **能力受控** — 给 `kernel.run(code, capabilities)` 传第二个 [`CapabilityManifest`](https://github.com/telleroutlook/agentkit-js/blob/main/packages/core/src/executor/types.ts) 参数即可授予或回收特定主机导入。
-- **平滑升级到更高隔离层** — 切到 `@agentkit-js/kernel-pyodide` 跑 Python、`@agentkit-js/kernel-remote` 走 E2B 微 VM，工具包装代码不用改。
+- **能力受控** — 给 `kernel.run(code, capabilities)` 传第二个 [`CapabilityManifest`](https://github.com/WasmAgent/wasmagent-js/blob/main/packages/core/src/executor/types.ts) 参数即可授予或回收特定主机导入。
+- **平滑升级到更高隔离层** — 切到 `@wasmagent/kernel-pyodide` 跑 Python、`@wasmagent/kernel-remote` 走 E2B 微 VM，工具包装代码不用改。
 
 ## 同时参见
 
 - [Kernel 决策树](/zh/kernels-comparison) — 选对正确的等级
-- [`@agentkit-js/kernel-quickjs` README](https://github.com/telleroutlook/agentkit-js/tree/main/packages/kernel-quickjs) — 包级文档
+- [`@wasmagent/kernel-quickjs` README](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/kernel-quickjs) — 包级文档
 - [在 Mastra 中使用 kernel](./integrate-mastra) — Mastra 框架的同样套路

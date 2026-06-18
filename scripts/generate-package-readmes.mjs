@@ -25,9 +25,9 @@ const force = process.argv.includes("--force");
 const PACKAGES = {
   core: {
     tagline: "Agent runtime — agents, kernels, models, tools, quality runners, evals, checkpoints.",
-    install: `npm install @agentkit-js/core @anthropic-ai/sdk`,
+    install: `npm install @wasmagent/core @anthropic-ai/sdk`,
     body: `\`\`\`ts
-import { CodeAgent, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+import { CodeAgent, AnthropicModel, AnthropicModels } from "@wasmagent/core";
 
 const agent = new CodeAgent({
   model: new AnthropicModel(AnthropicModels.SONNET_4_6, { apiKey: process.env.ANTHROPIC_API_KEY }),
@@ -37,16 +37,16 @@ const result = await agent.run({ task: "What is 12 * 13?" });
 console.log(result.finalAnswer);
 \`\`\`
 
-See the [main README](https://github.com/telleroutlook/agentkit-js#readme) for the full surface area:
+See the [main README](https://github.com/WasmAgent/wasmagent-js#readme) for the full surface area:
 agents, runners, kernels, models, tools, evals, checkpoints, and observability.`,
   },
 
   a2a: {
     tagline: "A2A (Agent2Agent) adapter — expose agents as A2A servers and call remote A2A agents.",
-    install: `npm install @agentkit-js/a2a @agentkit-js/core`,
+    install: `npm install @wasmagent/a2a @wasmagent/core`,
     body: `\`\`\`ts
-import { A2AServer, A2ARemoteAgent } from "@agentkit-js/a2a";
-import { CodeAgent, AnthropicModel } from "@agentkit-js/core";
+import { A2AServer, A2ARemoteAgent } from "@wasmagent/a2a";
+import { CodeAgent, AnthropicModel } from "@wasmagent/core";
 
 // Expose your agent as A2A:
 const server = new A2AServer(new CodeAgent({ model: new AnthropicModel(/*...*/) }));
@@ -55,55 +55,55 @@ const server = new A2AServer(new CodeAgent({ model: new AnthropicModel(/*...*/) 
 const remote = new A2ARemoteAgent({ url: "https://other-team.example/a2a" });
 \`\`\`
 
-Aligns with the [Agent2Agent](https://github.com/google/A2A) protocol so agentkit-js
+Aligns with the [Agent2Agent](https://github.com/google/A2A) protocol so wasmagent-js
 agents interoperate with frameworks that support A2A (Google ADK, CrewAI 1.14+, etc.).`,
   },
 
   "ag-ui": {
-    tagline: "AG-UI (inbound) HTTP transport for agentkit-js agents — frame protocol + streaming.",
-    install: `npm install @agentkit-js/ag-ui @agentkit-js/core`,
+    tagline: "AG-UI (inbound) HTTP transport for wasmagent-js agents — frame protocol + streaming.",
+    install: `npm install @wasmagent/ag-ui @wasmagent/core`,
     body: `Expose any agent over the [AG-UI](https://github.com/ag-ui-protocol/ag-ui) frame protocol so
 front-ends and agent IDEs can drive runs over a standard transport.`,
   },
 
   "agent-prompts": {
-    tagline: "Reusable system prompt templates for agentkit-js — code/tool/framework prompts with D2 + Markdown card conventions.",
-    install: `npm install @agentkit-js/agent-prompts`,
+    tagline: "Reusable system prompt templates for wasmagent-js — code/tool/framework prompts with D2 + Markdown card conventions.",
+    install: `npm install @wasmagent/agent-prompts`,
     body: `\`\`\`ts
-import { composePrompt, codeAgentPrompt, cardConventions } from "@agentkit-js/agent-prompts";
+import { composePrompt, codeAgentPrompt, cardConventions } from "@wasmagent/agent-prompts";
 
 const system = composePrompt([codeAgentPrompt(), cardConventions()]);
 \`\`\``,
   },
 
   cli: {
-    tagline: "\`agentkit\` command-line interface — run a single agent task from your shell.",
-    install: `npm install -g @agentkit-js/cli`,
+    tagline: "\`wasmagent\` command-line interface — run a single agent task from your shell.",
+    install: `npm install -g @wasmagent/cli`,
     body: `\`\`\`bash
 export ANTHROPIC_API_KEY=sk-ant-...
-agentkit run "What is 12 * 13?"
+wasmagent run "What is 12 * 13?"
 \`\`\``,
   },
 
   devtools: {
     tagline: "Time-travel debugger — \`EventLogReplay\` engine + opt-in \`<DevTools />\` React UI.",
-    install: `npm install @agentkit-js/devtools @agentkit-js/core`,
+    install: `npm install @wasmagent/devtools @wasmagent/core`,
     body: `Step-replay any \`EventLog\` and **fork from any step**. The React surface is opt-in via
 the \`/react\` subpath (peer-depends on React, but never required for the core engine).
 
 \`\`\`tsx
-import { EventLogReplay } from "@agentkit-js/devtools";
-import { DevTools } from "@agentkit-js/devtools/react";
+import { EventLogReplay } from "@wasmagent/devtools";
+import { DevTools } from "@wasmagent/devtools/react";
 \`\`\`
 
-See [docs/guides/devtools.md](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/devtools.md).`,
+See [docs/guides/devtools.md](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/devtools.md).`,
   },
 
   "kernel-pyodide": {
     tagline: "CPython-in-WASM kernel (Pyodide) — run real Python code from agents on Node, Bun, and CF Workers.",
-    install: `npm install @agentkit-js/kernel-pyodide @agentkit-js/core pyodide`,
+    install: `npm install @wasmagent/kernel-pyodide @wasmagent/core pyodide`,
     body: `\`\`\`ts
-import { PyodideKernel } from "@agentkit-js/kernel-pyodide";
+import { PyodideKernel } from "@wasmagent/kernel-pyodide";
 
 const kernel = new PyodideKernel();
 const result = await kernel.execute({
@@ -117,14 +117,14 @@ console.log(result.stdout); // 8
 > user code; for memory-heavy workloads use [\`kernel-wasmtime\`](../kernel-wasmtime) or
 > [\`kernel-remote\`](../kernel-remote) microVMs.
 
-See the [kernel decision tree](https://github.com/telleroutlook/agentkit-js/blob/main/docs/kernels/comparison.md).`,
+See the [kernel decision tree](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/kernels/comparison.md).`,
   },
 
   "kernel-quickjs": {
     tagline: "QuickJS-in-WASM kernel — sandboxed JavaScript, edge-safe, no \`node:vm\` required.",
-    install: `npm install @agentkit-js/kernel-quickjs @agentkit-js/core quickjs-emscripten @jitl/quickjs-wasmfile-release-sync`,
+    install: `npm install @wasmagent/kernel-quickjs @wasmagent/core quickjs-emscripten @jitl/quickjs-wasmfile-release-sync`,
     body: `\`\`\`ts
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
 const kernel = new QuickJSKernel();
 const result = await kernel.execute({
@@ -137,25 +137,25 @@ Drop-in replacement for \`VmKernel\` on **Cloudflare Workers** (which forbids \`
 Vercel Edge, Deno Deploy, and any environment where you want true language-level sandboxing
 without spinning up a microVM.
 
-See the [kernel decision tree](https://github.com/telleroutlook/agentkit-js/blob/main/docs/kernels/comparison.md).`,
+See the [kernel decision tree](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/kernels/comparison.md).`,
   },
 
   "kernel-wasmtime": {
     tagline: "True WASM sandbox via Javy + WASI — language-level isolation with zero \`node:vm\`.",
-    install: `npm install @agentkit-js/kernel-wasmtime @agentkit-js/core`,
+    install: `npm install @wasmagent/kernel-wasmtime @wasmagent/core`,
     body: `Compile JavaScript to WebAssembly via [Javy](https://github.com/bytecodealliance/javy) and run
 it under a WASI host. Strongest sandboxing tier short of a microVM.
 
 > Requires the \`javy\` CLI on your build environment.
 
-See the [kernel decision tree](https://github.com/telleroutlook/agentkit-js/blob/main/docs/kernels/comparison.md).`,
+See the [kernel decision tree](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/kernels/comparison.md).`,
   },
 
   "kernel-remote": {
     tagline: "Remote sandbox kernel — execute agent code in E2B, Cloudflare Sandbox, or any HTTP-driven microVM.",
-    install: `npm install @agentkit-js/kernel-remote @agentkit-js/core`,
+    install: `npm install @wasmagent/kernel-remote @wasmagent/core`,
     body: `\`\`\`ts
-import { RemoteSandboxKernel } from "@agentkit-js/kernel-remote";
+import { RemoteSandboxKernel } from "@wasmagent/kernel-remote";
 
 const kernel = new RemoteSandboxKernel({
   endpoint: process.env.SANDBOX_URL!,  // E2B / CF Sandbox / your own
@@ -166,30 +166,30 @@ const kernel = new RemoteSandboxKernel({
 Use this tier when agents need real shell access, npm install, or compilation chains —
 i.e. things WASM kernels structurally cannot provide.
 
-See the [kernel decision tree](https://github.com/telleroutlook/agentkit-js/blob/main/docs/kernels/comparison.md).`,
+See the [kernel decision tree](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/kernels/comparison.md).`,
   },
 
   "mcp-server": {
-    tagline: "Expose any agentkit-js agent as a Model Context Protocol (MCP) server.",
-    install: `npm install @agentkit-js/mcp-server @agentkit-js/core @modelcontextprotocol/sdk`,
+    tagline: "Expose any wasmagent-js agent as a Model Context Protocol (MCP) server.",
+    install: `npm install @wasmagent/mcp-server @wasmagent/core @modelcontextprotocol/sdk`,
     body: `Wraps your agent's run loop in MCP so Claude Desktop, IDEs, and other MCP clients can call it
 as a tool. Supports synchronous \`tools/call\` and the 2025-11-25 Tasks extension for long-running runs.
 
 \`\`\`ts
-import { McpAgentServer } from "@agentkit-js/mcp-server";
+import { McpAgentServer } from "@wasmagent/mcp-server";
 
 const server = new McpAgentServer({ agent: myAgent });
 await server.serve(); // listens on stdio (or pass { transport: "sse" } for HTTP)
 \`\`\`
 
-See [docs/guides/mcp-server.md](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/mcp-server.md).`,
+See [docs/guides/mcp-server.md](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/mcp-server.md).`,
   },
 
   "model-anthropic": {
     tagline: "Anthropic Claude adapter — auto prompt-cache breakpoints + 1-hour TTL.",
-    install: `npm install @agentkit-js/model-anthropic @agentkit-js/core @anthropic-ai/sdk`,
+    install: `npm install @wasmagent/model-anthropic @wasmagent/core @anthropic-ai/sdk`,
     body: `\`\`\`ts
-import { AnthropicModel, AnthropicModels } from "@agentkit-js/model-anthropic";
+import { AnthropicModel, AnthropicModels } from "@wasmagent/model-anthropic";
 const model = new AnthropicModel(AnthropicModels.SONNET_4_6, {
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -197,10 +197,10 @@ const model = new AnthropicModel(AnthropicModels.SONNET_4_6, {
   },
 
   "model-openai": {
-    tagline: "OpenAI / Azure OpenAI adapter for agentkit-js.",
-    install: `npm install @agentkit-js/model-openai @agentkit-js/core openai`,
+    tagline: "OpenAI / Azure OpenAI adapter for wasmagent-js.",
+    install: `npm install @wasmagent/model-openai @wasmagent/core openai`,
     body: `\`\`\`ts
-import { OpenAIModel, OpenAIModels } from "@agentkit-js/model-openai";
+import { OpenAIModel, OpenAIModels } from "@wasmagent/model-openai";
 const model = new OpenAIModel(OpenAIModels.GPT_4_1, {
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -209,9 +209,9 @@ const model = new OpenAIModel(OpenAIModels.GPT_4_1, {
 
   "model-doubao": {
     tagline: "Doubao / Volcengine Ark adapter — thinking tiers + \`auto-prefix\` / \`ark-context\` cache strategies.",
-    install: `npm install @agentkit-js/model-doubao @agentkit-js/core`,
+    install: `npm install @wasmagent/model-doubao @wasmagent/core`,
     body: `\`\`\`ts
-import { DoubaoModel, DoubaoModels } from "@agentkit-js/model-doubao";
+import { DoubaoModel, DoubaoModels } from "@wasmagent/model-doubao";
 
 const model = new DoubaoModel(DoubaoModels.DOUBAO_SEED_1_6, {
   apiKey: process.env.DOUBAO_API_KEY,
@@ -224,9 +224,9 @@ const model = new DoubaoModel(DoubaoModels.DOUBAO_SEED_1_6, {
 
   "model-deepseek": {
     tagline: "DeepSeek V4 adapter — \`thinking: { type, effort }\` + auto-prefix prompt cache.",
-    install: `npm install @agentkit-js/model-deepseek @agentkit-js/core`,
+    install: `npm install @wasmagent/model-deepseek @wasmagent/core`,
     body: `\`\`\`ts
-import { DeepSeekModel, DeepSeekModels } from "@agentkit-js/model-deepseek";
+import { DeepSeekModel, DeepSeekModels } from "@wasmagent/model-deepseek";
 
 const model = new DeepSeekModel(DeepSeekModels.V4, {
   apiKey: process.env.DEEPSEEK_API_KEY,
@@ -239,9 +239,9 @@ const model = new DeepSeekModel(DeepSeekModels.V4, {
 
   "model-moonshot": {
     tagline: "Moonshot / Kimi K2.6 adapter — per-version reasoning field handling + auto-prefix cache.",
-    install: `npm install @agentkit-js/model-moonshot @agentkit-js/core`,
+    install: `npm install @wasmagent/model-moonshot @wasmagent/core`,
     body: `\`\`\`ts
-import { MoonshotModel, KimiModels } from "@agentkit-js/model-moonshot";
+import { MoonshotModel, KimiModels } from "@wasmagent/model-moonshot";
 
 const model = new MoonshotModel(KimiModels.K2_6, {
   apiKey: process.env.MOONSHOT_API_KEY,
@@ -254,9 +254,9 @@ const model = new MoonshotModel(KimiModels.K2_6, {
 
   "model-qwen": {
     tagline: "Qwen3 (Alibaba DashScope) adapter — \`enable_thinking\` + \`thinking_budget\`, intl region routing.",
-    install: `npm install @agentkit-js/model-qwen @agentkit-js/core`,
+    install: `npm install @wasmagent/model-qwen @wasmagent/core`,
     body: `\`\`\`ts
-import { QwenModel, QwenModels } from "@agentkit-js/model-qwen";
+import { QwenModel, QwenModels } from "@wasmagent/model-qwen";
 
 const model = new QwenModel(QwenModels.QWEN3_MAX, {
   apiKey: process.env.DASHSCOPE_API_KEY,
@@ -271,9 +271,9 @@ const model = new QwenModel(QwenModels.QWEN3_MAX, {
 
   "model-zhipu": {
     tagline: "Zhipu GLM-5 adapter — \`thinking: { type }\` via \`extra_body\`, auto-prefix cache.",
-    install: `npm install @agentkit-js/model-zhipu @agentkit-js/core`,
+    install: `npm install @wasmagent/model-zhipu @wasmagent/core`,
     body: `\`\`\`ts
-import { ZhipuModel, GLMModels } from "@agentkit-js/model-zhipu";
+import { ZhipuModel, GLMModels } from "@wasmagent/model-zhipu";
 
 const model = new ZhipuModel(GLMModels.GLM_5, {
   apiKey: process.env.ZHIPU_API_KEY,
@@ -285,9 +285,9 @@ const model = new ZhipuModel(GLMModels.GLM_5, {
 
   "model-minimax": {
     tagline: "MiniMax M2/M3 adapter — \`reasoning_split\` + \`<think>\` tag parsing.",
-    install: `npm install @agentkit-js/model-minimax @agentkit-js/core`,
+    install: `npm install @wasmagent/model-minimax @wasmagent/core`,
     body: `\`\`\`ts
-import { MiniMaxModel, MiniMaxModels } from "@agentkit-js/model-minimax";
+import { MiniMaxModel, MiniMaxModels } from "@wasmagent/model-minimax";
 
 const model = new MiniMaxModel(MiniMaxModels.M3, {
   apiKey: process.env.MINIMAX_API_KEY,
@@ -298,17 +298,17 @@ const model = new MiniMaxModel(MiniMaxModels.M3, {
   },
 
   "otel-exporter": {
-    tagline: "OpenTelemetry exporter — wire agentkit-js \`EventLog\` into Jaeger / Tempo / any OTLP collector.",
-    install: `npm install @agentkit-js/otel-exporter @agentkit-js/core`,
+    tagline: "OpenTelemetry exporter — wire wasmagent-js \`EventLog\` into Jaeger / Tempo / any OTLP collector.",
+    install: `npm install @wasmagent/otel-exporter @wasmagent/core`,
     body: `Bridges agent events (model calls, tool calls, kernel executions) to OTLP traces with
 correct parent/child span relationships. See \`examples/otel-jaeger\`.`,
   },
 
   react: {
     tagline: "React hook — \`useAgentRun()\` for streaming SSE agent events in Next.js / React apps.",
-    install: `npm install @agentkit-js/react @agentkit-js/core`,
+    install: `npm install @wasmagent/react @wasmagent/core`,
     body: `\`\`\`tsx
-import { useAgentRun } from "@agentkit-js/react";
+import { useAgentRun } from "@wasmagent/react";
 
 const { events, finalAnswer, isRunning } = useAgentRun({ url: "/api/run" });
 \`\`\``,
@@ -316,7 +316,7 @@ const { events, finalAnswer, isRunning } = useAgentRun({ url: "/api/run" });
 
   "tools-browser": {
     tagline: "Browser automation tools — Playwright session + CDP-bridge session, 5 tools (navigate / click / fill / screenshot / extract).",
-    install: `npm install @agentkit-js/tools-browser @agentkit-js/core`,
+    install: `npm install @wasmagent/tools-browser @wasmagent/core`,
     body: `Two interchangeable sessions: \`PlaywrightSession\` for local headless work,
 \`CdpSession\` for connecting to an existing browser via the Chrome DevTools Protocol
 (works inside Cloudflare Browser Rendering, browserless.io, or your own instance).`,
@@ -324,34 +324,34 @@ const { events, finalAnswer, isRunning } = useAgentRun({ url: "/api/run" });
 
   "tools-rag": {
     tagline: "RAG tools — \`HttpEmbedder\` + \`ragTool\` + Pinecone / Qdrant / in-memory connectors.",
-    install: `npm install @agentkit-js/tools-rag @agentkit-js/core`,
+    install: `npm install @wasmagent/tools-rag @wasmagent/core`,
     body: `\`\`\`ts
-import { ragTool, HttpEmbedder, InMemoryVectorStore } from "@agentkit-js/tools-rag";
+import { ragTool, HttpEmbedder, InMemoryVectorStore } from "@wasmagent/tools-rag";
 \`\`\``,
   },
 
   "tools-web": {
     tagline: "Web search tool adapters — Tavily, Brave, Perplexity (LRU-cached, \`readOnly: true\`, \`idempotent: true\`).",
-    install: `npm install @agentkit-js/tools-web @agentkit-js/core`,
+    install: `npm install @wasmagent/tools-web @wasmagent/core`,
     body: `\`\`\`ts
-import { tavilySearch, braveSearch, perplexitySearch } from "@agentkit-js/tools-web";
+import { tavilySearch, braveSearch, perplexitySearch } from "@wasmagent/tools-web";
 \`\`\``,
   },
 
   "ui-cards": {
     tagline: "Card block parser — extracts \`\`\`card:* fenced blocks (Markdown / D2 / extensible) from AI replies.",
-    install: `npm install @agentkit-js/ui-cards`,
+    install: `npm install @wasmagent/ui-cards`,
     body: `\`\`\`ts
-import { parseCards } from "@agentkit-js/ui-cards";
+import { parseCards } from "@wasmagent/ui-cards";
 const cards = parseCards(modelText);
 \`\`\``,
   },
 
   "ui-cards-react": {
     tagline: "React components — \`MarkdownCard\`, \`D2Card\`, \`CardRenderer\`, \`ChatMessage\`.",
-    install: `npm install @agentkit-js/ui-cards-react @agentkit-js/ui-cards react react-dom`,
+    install: `npm install @wasmagent/ui-cards-react @wasmagent/ui-cards react react-dom`,
     body: `\`\`\`tsx
-import { ChatMessage } from "@agentkit-js/ui-cards-react";
+import { ChatMessage } from "@wasmagent/ui-cards-react";
 \`\`\``,
   },
 };
@@ -378,7 +378,7 @@ for (const name of readdirSync(packagesDir).sort()) {
 
 ${meta.tagline}
 
-> Part of [agentkit-js](https://github.com/telleroutlook/agentkit-js) — a TypeScript + WASM agent runtime.
+> Part of [wasmagent-js](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.
 
 ## Install
 
@@ -392,7 +392,7 @@ ${meta.body}
 
 ## License
 
-[Apache-2.0](./LICENSE) — © agentkit-js contributors
+[Apache-2.0](./LICENSE) — © wasmagent-js contributors
 `;
 
   writeFileSync(readmePath, content, "utf8");

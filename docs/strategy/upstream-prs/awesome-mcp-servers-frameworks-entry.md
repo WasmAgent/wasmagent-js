@@ -10,7 +10,7 @@ The list's contribution surface is the README itself. Categories use
 emoji legends (🎖️ official / 📇 TypeScript / ☁️ cloud or 🏠 local /
 OS markers). The `Frameworks` section currently lists implementations
 that *help users build* MCP servers (FastMCP, EasyMCP, Mastra MCP,
-…). `@agentkit-js/mcp-server` belongs there.
+…). `@wasmagent/mcp-server` belongs there.
 
 A maintained web directory is synced from the repo
 ([glama.ai/mcp/servers](https://glama.ai/mcp/servers)), so a merged
@@ -19,7 +19,7 @@ entry shows up in two places.
 ## Proposed entry
 
 ```markdown
-- [telleroutlook/agentkit-js](https://github.com/telleroutlook/agentkit-js/tree/main/packages/mcp-server) 📇 ☁️ 🏠 - `@agentkit-js/mcp-server`: code-mode MCP server (`execute_code` + `docs_search` two-tool surface) backed by a unified capability manifest across three sandbox kernels (in-process node:vm, WASM via QuickJS / Pyodide / Wasmtime, and remote microVM via E2B / Cloudflare Sandbox). At N=30 tools the bootstrap-context cost drops to 13.6% of direct tool-use. Apache-2.0.
+- [WasmAgent/wasmagent-js](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-server) 📇 ☁️ 🏠 - `@wasmagent/mcp-server`: code-mode MCP server (`execute_code` + `docs_search` two-tool surface) backed by a unified capability manifest across three sandbox kernels (in-process node:vm, WASM via QuickJS / Pyodide / Wasmtime, and remote microVM via E2B / Cloudflare Sandbox). At N=30 tools the bootstrap-context cost drops to 13.6% of direct tool-use. Apache-2.0.
 ```
 
 Insertion point: alphabetic under the existing `Frameworks`
@@ -28,11 +28,11 @@ will be re-ordered against `main` at PR time.)
 
 ## PR title
 
-> docs(frameworks): add @agentkit-js/mcp-server (code-mode + sandbox kernels)
+> docs(frameworks): add @wasmagent/mcp-server (code-mode + sandbox kernels)
 
 ## PR body (proposed)
 
-> Adds `@agentkit-js/mcp-server` under Frameworks.
+> Adds `@wasmagent/mcp-server` under Frameworks.
 >
 > The package implements the *code-mode* MCP server pattern that
 > [Cloudflare's blog](https://blog.cloudflare.com/code-mode/) and
@@ -52,13 +52,13 @@ will be re-ordered against `main` at PR time.)
 > changing the policy face.
 >
 > Project metadata:
-> - Repo: https://github.com/telleroutlook/agentkit-js
+> - Repo: https://github.com/WasmAgent/wasmagent-js
 > - License: Apache-2.0
 > - Lang: TypeScript (📇)
 > - Scope: works as both 🏠 local-service (Node/Bun host) and ☁️
 >   cloud-service (Cloudflare Workers / Vercel / Bun deploy)
 > - Code: `packages/mcp-server/`
-> - Docs: https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/code-mode.md
+> - Docs: https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/code-mode.md
 
 ## Caveats noted during drafting
 
@@ -79,7 +79,7 @@ will be re-ordered against `main` at PR time.)
 ## Acceptance criteria for "this PR worked"
 
 - Merged into `punkpeye/awesome-mcp-servers` `main`.
-- `@agentkit-js/mcp-server` shows up at glama.ai/mcp/servers within
+- `@wasmagent/mcp-server` shows up at glama.ai/mcp/servers within
   one ingestion cycle.
-- Inbound stargazers / weekly downloads on `@agentkit-js/mcp-server`
+- Inbound stargazers / weekly downloads on `@wasmagent/mcp-server`
   show a traceable shift after listing.

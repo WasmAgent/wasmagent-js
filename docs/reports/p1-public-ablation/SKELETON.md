@@ -20,7 +20,7 @@
 git clone https://github.com/<org>/agentkit-js
 cd agentkit-js
 bun install
-bun run -F '@agentkit-js/evals-runner' build
+bun run -F '@wasmagent/evals-runner' build
 
 # Pull the same models we used (Stage-0 ≤2GB winner + community baselines)
 ollama pull qwen2.5:1.5b

@@ -18,5 +18,5 @@ OPENAI_API_KEY=sk-... node index.mjs
 
 ## See also
 
-- [`@agentkit-js/aisdk` README](../../packages/aisdk/README.md)
+- [`@wasmagent/aisdk` README](../../packages/aisdk/README.md)
 - [`docs/guides/code-mode.md`](../../docs/guides/code-mode.md)

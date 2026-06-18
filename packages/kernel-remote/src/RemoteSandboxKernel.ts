@@ -3,7 +3,7 @@ import type {
   KernelOptions,
   KernelResult,
   WasmKernel,
-} from "@agentkit-js/core/executor";
+} from "@wasmagent/core/executor";
 
 export interface RemoteSandboxOptions extends KernelOptions {
   /** E2B API key. Defaults to process.env.E2B_API_KEY. */
@@ -39,7 +39,7 @@ export interface RemoteSandboxOptions extends KernelOptions {
  *
  * @example
  * ```ts
- * import { RemoteSandboxKernel } from "@agentkit-js/kernel-remote";
+ * import { RemoteSandboxKernel } from "@wasmagent/kernel-remote";
  * await using kernel = new RemoteSandboxKernel({ apiKey: process.env.E2B_API_KEY });
  * const result = await kernel.run("console.log('hello from microVM')");
  * console.log(result.logs); // ["hello from microVM"]
@@ -170,7 +170,7 @@ async function loadE2B(): Promise<E2BModule> {
     return (await import("e2b")) as E2BModule;
   } catch (cause) {
     const err = new Error(
-      "@agentkit-js/kernel-remote requires the 'e2b' package.\n" +
+      "@wasmagent/kernel-remote requires the 'e2b' package.\n" +
         "  Install: pnpm add e2b\n" +
         "  Docs: https://e2b.dev/docs"
     ) as Error & { code: string; cause: unknown };

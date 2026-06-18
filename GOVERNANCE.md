@@ -6,15 +6,15 @@
 
 Selection guides for AI-agent frameworks in 2026 weight bus factor,
 release cadence, and security-response time as first-class indicators
-alongside features. agentkit-js currently has a single primary
-maintainer and one published version of `@agentkit-js/core` on npm.
+alongside features. wasmagent currently has a single primary
+maintainer and one published version of `@wasmagent/core` on npm.
 This file is the public commitment to closing that gap and the
 public description of how decisions get made until then.
 
 ## Decision rights today
 
 - **Code merges into `main`** — the primary maintainer (the GitHub
-  account holding `repo:write` on the `agentkit-js` org), with the
+  account holding `repo:write` on the `wasmagent` org), with the
   CI gates from [`CONTRIBUTING.md`](CONTRIBUTING.md) honored on every
   PR (lint / typecheck / test / benchmark CI gate).
 - **npm publishes** — the same account, via the GitHub Actions
@@ -57,7 +57,7 @@ public description of how decisions get made until then.
   so the SLA is a rehearsed process, not a paper commitment.
 
 - **1.0 freeze date.** Public commitment to ship
-  `@agentkit-js/core@1.0.0` on **2026-12-15**, with a checklist
+  `@wasmagent/core@1.0.0` on **2026-12-15**, with a checklist
   (co-maintainer landed, six bi-weekly releases without stall,
   drill record on file, public benchmark number, experimental
   table reviewed, migration note) gating the tag. See

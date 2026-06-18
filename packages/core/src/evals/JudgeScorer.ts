@@ -6,7 +6,7 @@
  * 2026 Studio scorers go for. JudgeScorer adds:
  *   - configurable score scale (default: 0–10, normalized to 0..1)
  *   - structured criterion-level breakdown
- *   - works with ANY @agentkit-js/core Model — judges can run on cheap
+ *   - works with ANY @wasmagent/core Model — judges can run on cheap
  *     models (Haiku/Doubao/DeepSeek) while the agent uses expensive ones
  *   - two built-in domain judges (trajectory-quality, answer-completeness)
  *     so consumers get value without authoring a rubric from scratch

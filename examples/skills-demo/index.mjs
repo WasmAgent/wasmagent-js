@@ -14,7 +14,7 @@ import {
   runToolPostHooks,
   SkillRegistry,
   truncatePostHook,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 
 // ── 1. Register three skills ────────────────────────────────────────────────
 

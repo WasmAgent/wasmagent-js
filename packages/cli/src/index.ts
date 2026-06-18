@@ -23,7 +23,7 @@ import type {
   Criterion,
   ToolDefinition,
   WorkspaceReader,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 import {
   AnthropicModel,
   AnthropicModels,
@@ -31,7 +31,7 @@ import {
   DeterministicVerifier,
   GoalDirectedAgent,
   VerificationPipeline,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 
 /**
  * Build an `AnthropicModel` from CLI flags + env vars.
@@ -108,7 +108,7 @@ if (isMain) {
       "base-url": { type: "string" },
       "report-file": { type: "string" },
       // 2026-06-12: `agentkit model` (L6) flags. Loaded lazily via
-      // @agentkit-js/model-local — no impact on `agentkit run` users who
+      // @wasmagent/model-local — no impact on `agentkit run` users who
       // don't install the local-model peer.
       mirror: { type: "string" },
       "cache-dir": { type: "string" },
@@ -354,7 +354,7 @@ async function initToolRust(
 
 export function generateToolTemplate(kebabName: string, pascalName: string): string {
   return `import { z } from "zod";
-import type { ToolDefinition } from "@agentkit-js/core";
+import type { ToolDefinition } from "@wasmagent/core";
 
 /**
  * ${pascalName} tool.
@@ -477,7 +477,7 @@ function generateRustWrapperTemplate(
  * Then this file imports from the generated ./pkg/ directory.
  */
 import { z } from "zod";
-import type { ToolDefinition } from "@agentkit-js/core";
+import type { ToolDefinition } from "@wasmagent/core";
 
 // Lazy-loaded WASM module — initialised on first call.
 let _wasmModule: { ${snakeName}: (input: string) => string } | null = null;
@@ -655,7 +655,7 @@ Examples:
  *
  * Why an HTML+JSON server and not a desktop GUI: per the S3 brief, Studio
  * must stay zero-deploy and runtime-agnostic. Plain HTML lets us serve from
- * Node, Bun, Workers; the React overlay (in `@agentkit-js/devtools/react`)
+ * Node, Bun, Workers; the React overlay (in `@wasmagent/devtools/react`)
  * is opt-in for callers who already have a Vite/Next pipeline.
  */
 export async function devtoolsCommand(
@@ -665,7 +665,7 @@ export async function devtoolsCommand(
   const { readFile } = await import("node:fs/promises");
   // Lazy import — devtools is its own peer with React types; we don't want
   // run/init-tool callers to load it.
-  const dt = (await import("@agentkit-js/devtools")) as {
+  const dt = (await import("@wasmagent/devtools")) as {
     groupByTraceId: (e: unknown[]) => Map<string, unknown[]>;
     rollupRuns: (s: unknown[]) => unknown;
     summariseRun: (e: unknown[]) => unknown;
@@ -780,7 +780,7 @@ function renderStudioHtml(): string {
 </head>
 <body>
   <h1>agentkit Studio</h1>
-  <div class="sub">A4 — local runs overview · pure-logic aggregator from <code>@agentkit-js/devtools</code></div>
+  <div class="sub">A4 — local runs overview · pure-logic aggregator from <code>@wasmagent/devtools</code></div>
   <div id="cards" class="cards"></div>
   <table>
     <thead><tr>
@@ -838,7 +838,7 @@ function renderStudioHtml(): string {
 /**
  * `agentkit evals run --suite=<name,name> --models=<id@url#modelId,...> --seeds=0,1,2`
  *
- * Wraps `@agentkit-js/evals-runner` so users can fire a multi-model
+ * Wraps `@wasmagent/evals-runner` so users can fire a multi-model
  * multi-suite evaluation without writing TypeScript. Maps to the same
  * runEvaluation()/REFERENCE_SUITES API surface — nothing CLI-specific.
  *
@@ -1261,7 +1261,7 @@ export async function evalsCommand(
 ): Promise<void> {
   const sub = positionals[0] ?? "list";
   const { REFERENCE_SUITES, runEvaluation, renderReportMarkdown } = await import(
-    "@agentkit-js/evals-runner"
+    "@wasmagent/evals-runner"
   );
 
   if (sub === "list") {
@@ -1360,7 +1360,7 @@ export async function evalsCommand(
 /**
  * `agentkit model <list|pull|verify|rm> [alias|path]`
  *
- * Thin wrapper over @agentkit-js/model-local's downloader + registry. We
+ * Thin wrapper over @wasmagent/model-local's downloader + registry. We
  * dynamic-import the peer so users who don't install the local-LLM provider
  * still see no overhead and no missing-module error from the main CLI.
  *
@@ -1381,13 +1381,13 @@ export async function modelCommand(
 ): Promise<void> {
   const sub = positionals[0] ?? "list";
 
-  let local: typeof import("@agentkit-js/model-local");
+  let local: typeof import("@wasmagent/model-local");
   try {
-    local = (await import("@agentkit-js/model-local")) as typeof import("@agentkit-js/model-local");
+    local = (await import("@wasmagent/model-local")) as typeof import("@wasmagent/model-local");
   } catch (_err) {
     console.error(
-      "Error: @agentkit-js/model-local is not installed.\n" +
-        "  npm install @agentkit-js/model-local\n" +
+      "Error: @wasmagent/model-local is not installed.\n" +
+        "  npm install @wasmagent/model-local\n" +
         "  (also requires the optional peer: npm install node-llama-cpp)"
     );
     process.exit(2);

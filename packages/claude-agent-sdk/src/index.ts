@@ -1,12 +1,12 @@
 /**
- * @agentkit-js/claude-agent-sdk — agentkit kernels as Claude Agent SDK tools.
+ * @wasmagent/claude-agent-sdk — agentkit kernels as Claude Agent SDK tools.
  *
  * Anthropic's Claude Agent SDK (and the equivalent shape inside the
  * `@anthropic-ai/sdk` `tools` parameter) accepts user-defined tools as
  * a `name + description + input_schema + handler` quadruple. When the
  * model proposes `tool_use` blocks, the host calls the handler.
  *
- * That's the same shape `@agentkit-js/aisdk` adapts for Vercel AI SDK,
+ * That's the same shape `@wasmagent/aisdk` adapts for Vercel AI SDK,
  * just with different field names. Rather than reinvent the kernel
  * lifecycle, this package re-exposes the two factories as Claude
  * Agent SDK tool definitions:
@@ -19,7 +19,7 @@
  *     sends a snippet that may call `callTool(name, args)` against any
  *     registered downstream tool; only the script's final return value
  *     re-enters the model context. Token-savings parity with the
- *     `@agentkit-js/mcp-server` `execute_code` surface (see
+ *     `@wasmagent/mcp-server` `execute_code` surface (see
  *     `examples/benchmarks/code-mode-tokens.mjs` — ≤14% of direct-MCP
  *     at N=30 tools).
  *
@@ -42,7 +42,7 @@ import {
   ProgrammaticOrchestrator,
   type ToolRegistry,
   type WasmKernel,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 
 /**
  * The Claude Agent SDK tool shape, structurally typed so we are not
@@ -108,7 +108,7 @@ export interface SandboxedJsClaudeToolOptions {
 
 /**
  * One-shot sandboxed JS execution as a Claude Agent SDK tool. Mirrors
- * `sandboxedJsTool()` from `@agentkit-js/aisdk` field-for-field; only
+ * `sandboxedJsTool()` from `@wasmagent/aisdk` field-for-field; only
  * the surface (Claude Agent SDK quadruple vs Vercel AI SDK
  * `tool({…})`) differs. Output is `{ output, logs }`.
  */

@@ -19,7 +19,7 @@ The split is in the type system: experimental exports carry a
 TypeDoc-generated docs label them accordingly. Removing the tag is
 the act of stabilizing a name.
 
-## Stable surface (SemVer-protected) — `@agentkit-js/core`
+## Stable surface (SemVer-protected) — `@wasmagent/core`
 
 The barrel file [`packages/core/src/index.ts`](../../packages/core/src/index.ts)
 is the entire stable face. Every name re-exported there is in scope
@@ -34,7 +34,7 @@ The shape promise:
   non-breaking; changing the order of required parameters is
   breaking; adding a required method to an interface a user
   implements is breaking.
-- **Re-exports from sub-paths** (`@agentkit-js/core/executor`,
+- **Re-exports from sub-paths** (`@wasmagent/core/executor`,
   `/tools`, `/models`) — same rules.
 
 If a stable name needs to change shape, the workflow is:
@@ -54,10 +54,10 @@ remember to graduate them:
 
 | Surface                                 | Why experimental                                                                                          |
 |-----------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| `@agentkit-js/evals-runner`             | Statistics axis (warmup, energy, McNemar) is still being shaped by P16 work; types may grow fields        |
-| `@agentkit-js/mastra-sandbox`           | Tracks Mastra's sandbox provider contract; pinned to upstream signature                                   |
-| `@agentkit-js/aisdk` `codeModeTool()`   | Awaiting AI SDK v6.x type stabilization                                                                   |
-| `@agentkit-js/devtools` HTTP endpoints  | URL surface still flexing as we add framework-agnostic OTel ingest (D5)                                   |
+| `@wasmagent/evals-runner`             | Statistics axis (warmup, energy, McNemar) is still being shaped by P16 work; types may grow fields        |
+| `@wasmagent/mastra-sandbox`           | Tracks Mastra's sandbox provider contract; pinned to upstream signature                                   |
+| `@wasmagent/aisdk` `codeModeTool()`   | Awaiting AI SDK v6.x type stabilization                                                                   |
+| `@wasmagent/devtools` HTTP endpoints  | URL surface still flexing as we add framework-agnostic OTel ingest (D5)                                   |
 | `core/src/scheduler/SimpleIR`           | DAG IR shape may consolidate with `ActionIR`                                                              |
 | `core/src/skills/SkillRegistry`         | Skill manifest schema is converging with [agents.md] cross-tool conventions                                |
 | `core/src/checkpoint/redis`             | Awaiting at least one production deployment to confirm the resume protocol                                |
@@ -66,7 +66,7 @@ If you depend on an experimental surface and want it stabilized,
 open an issue with your use case — that is exactly the signal we
 need to graduate something.
 
-## Non-`@agentkit-js/core` packages
+## Non-`@wasmagent/core` packages
 
 Each kernel package, model preset, tool package, and integration
 package independently tracks SemVer. Their public face is the
@@ -91,7 +91,7 @@ governance bug, not a feature delay; flag it as such.
 > "stable surface" reads as aspirational; with one, it becomes a
 > commitment users and co-maintainer candidates can plan around.
 
-The plan is to ship `@agentkit-js/core` **v1.0.0 on 2026-12-15**.
+The plan is to ship `@wasmagent/core` **v1.0.0 on 2026-12-15**.
 That is six months after the first npm publish (2026-06-12) and is
 a hard date, not "when ready" — slipping it requires a public
 RFC under `docs/rfcs/` explaining what changed.
@@ -121,7 +121,7 @@ What 1.0 does **not** mean:
   fixes, documentation, and performance work continue under the
   same cadence.
 - It is not a promise that *every* package reaches 1.0 by the same
-  date. Only `@agentkit-js/core` is on the calendar above.
+  date. Only `@wasmagent/core` is on the calendar above.
 
 ### Pre-freeze checklist (gates the 2026-12-15 tag)
 

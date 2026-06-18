@@ -1,5 +1,5 @@
 /**
- * @agentkit-js/aisdk — make agentkit kernels available as Vercel AI SDK tools.
+ * @wasmagent/aisdk — make agentkit kernels available as Vercel AI SDK tools.
  *
  * The Vercel AI SDK (`ai` package) ships great DX for streaming, tool calling,
  * and agent loops — but its default tool execution path runs the JS function
@@ -16,7 +16,7 @@
  *     workflows. Output is whatever the snippet returns.
  *
  *   - {@link codeModeTool} — the heavyweight version. Same idea as
- *     `@agentkit-js/mcp-server`'s code-mode server, but as an AI SDK tool:
+ *     `@wasmagent/mcp-server`'s code-mode server, but as an AI SDK tool:
  *     the LLM script can call any tool you registered into the supplied
  *     `ToolRegistry` via `callTool(name, args)`, and only the script's final
  *     return value re-enters the model context.
@@ -35,7 +35,7 @@ import {
   ProgrammaticOrchestrator,
   type ToolRegistry,
   type WasmKernel,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 import { z } from "zod";
 
 // We intentionally type the AI SDK's `tool()` helper structurally instead of

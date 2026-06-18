@@ -1,4 +1,4 @@
-import type { ModelMessage, StreamEvent } from "@agentkit-js/core/models";
+import type { ModelMessage, StreamEvent } from "@wasmagent/core/models";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -186,7 +186,7 @@ describe("OpenAIModel streaming", () => {
  * OpenAIModel message conversion tests — test convertMessages indirectly
  * through MessageAssembler producing ModelMessage[] with structured blocks.
  */
-import { MessageAssembler } from "@agentkit-js/core";
+import { MessageAssembler } from "@wasmagent/core";
 
 describe("OpenAIModel convertMessages (via MessageAssembler)", () => {
   it("system message content is passed as string", () => {

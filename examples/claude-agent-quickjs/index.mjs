@@ -7,8 +7,8 @@
  * Agent SDK as a tool. We exercise `.run()` directly so the demo runs
  * without an Anthropic API key.
  */
-import { sandboxedJsClaudeTool } from "@agentkit-js/claude-agent-sdk";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { sandboxedJsClaudeTool } from "@wasmagent/claude-agent-sdk";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
 const tool = sandboxedJsClaudeTool({
   kernel: new QuickJSKernel(),

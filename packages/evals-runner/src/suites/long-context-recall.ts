@@ -8,7 +8,7 @@
  * middle" failure mode.
  */
 
-import { exactMatch } from "@agentkit-js/core";
+import { exactMatch } from "@wasmagent/core";
 import type { BenchmarkItem, BenchmarkSuite } from "../types.js";
 
 /**

@@ -48,8 +48,8 @@
  * cliff per-tier in the report.
  */
 
-import type { AgentEvent, Model, ToolDefinition } from "@agentkit-js/core";
-import { GenericOpenAICompatModel, ToolCallingAgent } from "@agentkit-js/core";
+import type { AgentEvent, Model, ToolDefinition } from "@wasmagent/core";
+import { GenericOpenAICompatModel, ToolCallingAgent } from "@wasmagent/core";
 import { z } from "zod";
 import type { BenchmarkItem, BenchmarkSuite, ModelSpec, RunItemResult } from "../types.js";
 

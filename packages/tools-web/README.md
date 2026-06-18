@@ -1,21 +1,21 @@
-# @agentkit-js/tools-web
+# /tools-web
 
 Web search tool adapters — Tavily, Brave, Perplexity (LRU-cached, `readOnly: true`, `idempotent: true`).
 
-> Part of [agentkit-js](https://github.com/telleroutlook/agentkit-js) — a TypeScript + WASM agent runtime.
+> Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.
 
 ## Install
 
 ```bash
-npm install @agentkit-js/tools-web @agentkit-js/core
+npm install /tools-web /core
 ```
 
 ## Usage
 
 ```ts
-import { tavilySearch, braveSearch, perplexitySearch } from "@agentkit-js/tools-web";
+import { tavilySearch, braveSearch, perplexitySearch } from "/tools-web";
 ```
 
 ## License
 
-[Apache-2.0](./LICENSE) — © agentkit-js contributors
+[Apache-2.0](./LICENSE) — © wasmagent contributors

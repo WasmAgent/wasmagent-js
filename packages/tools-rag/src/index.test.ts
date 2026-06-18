@@ -1,4 +1,4 @@
-import type { Embedder, Retriever, SearchResult } from "@agentkit-js/core";
+import type { Embedder, Retriever, SearchResult } from "@wasmagent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   HttpEmbedder,

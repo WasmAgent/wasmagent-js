@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/model-openai",
+  "name": "@wasmagent/model-openai",
   "version": "0.2.0",
-  "description": "OpenAI model adapter for agentkit-js",
+  "description": "OpenAI model adapter for wasmagent",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*"
+    "@wasmagent/core": "workspace:*"
   },
   "peerDependencies": {
     "openai": ">=4.90.0"
@@ -31,21 +31,26 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/model-openai"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/model-openai#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/model-openai#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "engines": {
     "node": ">=20.0.0"
   },
   "keywords": [
-    "agentkit",
+    "wasmagent",
+    "wasm",
     "agent",
+    "portable",
+    "sandbox",
+    "executor",
     "ai",
-    "llm"
+    "llm",
+    "typescript"
   ],
   "publishConfig": {
     "access": "public",

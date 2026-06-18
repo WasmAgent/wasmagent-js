@@ -1,6 +1,6 @@
 # Compare
 
-A short cut of the [comparison table from the main README](https://github.com/telleroutlook/agentkit-js#readme).
+A short cut of the [comparison table from the main README](https://github.com/WasmAgent/wasmagent-js#readme).
 
 > **2026-06-17 update.** The framework field has shifted: OpenAI Agents
 > SDK now has a *native sandbox* (2026-04), Vercel AI SDK 6 ships
@@ -10,7 +10,7 @@ A short cut of the [comparison table from the main README](https://github.com/te
 > *swappability* (drop our kernel into any framework's executor
 > socket) and *governance* (`CapabilityManifest` ↔ OWASP Agentic
 > Top 10 with real WASM isolation; see
-> [`docs/security/capability-manifest-owasp.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/security/capability-manifest-owasp.md)).
+> [`docs/security/capability-manifest-owasp.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/security/capability-manifest-owasp.md)).
 
 |  | Vercel AI SDK 6 | Mastra | LangGraph.js | OpenAI Agents JS | CF Agents SDK | **agentkit-js** |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
@@ -39,7 +39,7 @@ We are intentionally **not** competing on:
 - Number of integrations — LangChain has 300+; we won't catch up on raw breadth.
 - React-first DX — Vercel AI SDK 6 ships as the default in Next.js templates; we don't try to dethrone that.
 - Hosted commercial SaaS — Mastra Cloud, LangSmith, Vercel platform. We're a runtime + framework, not a hosted product.
-- **Headline benchmark numbers.** Agent benchmarks are in a "self-reported, never independently reproduced" trust crisis (2026-Q1/Q2 industry consensus). Our angle is the *referee, not the contestant* — `evals-runner` (paired McNemar / Wilson / bootstrap, scipy-aligned 1e-7) is the harness anyone can re-run on any pair of agents. Worked example: [three-round arm-f vs bare vs batch-grammar ablation](https://github.com/telleroutlook/agentkit-js/tree/main/docs/reports/arm-f-vs-bare-2026-06-17).
+- **Headline benchmark numbers.** Agent benchmarks are in a "self-reported, never independently reproduced" trust crisis (2026-Q1/Q2 industry consensus). Our angle is the *referee, not the contestant* — `evals-runner` (paired McNemar / Wilson / bootstrap, scipy-aligned 1e-7) is the harness anyone can re-run on any pair of agents. Worked example: [three-round arm-f vs bare vs batch-grammar ablation](https://github.com/WasmAgent/wasmagent-js/tree/main/docs/reports/arm-f-vs-bare-2026-06-17).
 
 If you're choosing between agentkit-js and one of the above frameworks, the question is whether you need any of the rows in the table that say "✅" only for agentkit-js. If you don't, the bigger ecosystems are the right call.
 
@@ -55,6 +55,6 @@ If you already use Vercel AI SDK 6, Mastra, OpenAI Agents JS, Claude Agent SDK, 
 - [Use kernels with Mastra](/guides/integrate-mastra)
 - [Use kernels with Claude Agent SDK](/guides/integrate-claude-agent-sdk)
 - [Use kernels with OpenAI Agents JS](/guides/integrate-openai-agents)
-- *Coming Q3:* drop `kernel-quickjs` / `kernel-pyodide` into Cloudflare codemode's `DynamicWorkerExecutor` socket — the architecture document is at [`docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md).
+- *Coming Q3:* drop `kernel-quickjs` / `kernel-pyodide` into Cloudflare codemode's `DynamicWorkerExecutor` socket — the architecture document is at [`docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md).
 
 The single sentence: **swap the executor, keep your framework**.

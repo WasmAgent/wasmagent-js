@@ -17,7 +17,7 @@
 | **Automations**（自动触发） | 不在范围 — 留给上层 (cron / Cloudflare Cron Triggers / GitHub Actions) | ⚪ 刻意不做 |
 | **Worktrees**（隔离工作树） | `BranchableWorkspace` (F3) + `isolation: "worktree"` 选项 | ✅ 已有 |
 | **Skills**（项目知识文档） | `Skill` + `SKILL.md` + `agentsMd` (`packages/core/src/skills/`) | ✅ 已有 |
-| **Plugins / Connectors** | `@agentkit-js/mcp-server` + `tools-rag` + tool registry | ✅ 已有 |
+| **Plugins / Connectors** | `@wasmagent/mcp-server` + `tools-rag` + tool registry | ✅ 已有 |
 | **Sub-agents**（Maker-Checker） | `Subagent` + `asTool()` + `AgentTeam` + `Handoff` | ✅ 已有 |
 | **Memory / State** | `Checkpointer` + `StructuredMemory` + `ObservationalMemory` + `MemoryBlockSet` | ✅ 已有 |
 | **`/goal` 声明式原语** | `GoalAgent` (2026-06-15) | ✅ 已有 |
@@ -161,7 +161,7 @@ shortcut rate 压到零。
 **用法**：在 evals-runner suite 里写一组同结构、不同 surface form 的任务对：
 
 ```ts
-import { iptShortcutRate, iptClassify } from "@agentkit-js/evals-runner";
+import { iptShortcutRate, iptClassify } from "@wasmagent/evals-runner";
 
 // 跑了一个套件，得到每个任务的 pass/fail
 const cohort = [
@@ -241,8 +241,8 @@ import {
   InMemoryStructuredKv,
   Checkpointer,
   CapabilityManifest,
-} from "@agentkit-js/core";
-import { iptShortcutRate } from "@agentkit-js/evals-runner";
+} from "@wasmagent/core";
+import { iptShortcutRate } from "@wasmagent/evals-runner";
 
 // 1. 状态层
 const memory = new StructuredMemory(new InMemoryStructuredKv());

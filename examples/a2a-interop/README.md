@@ -1,6 +1,6 @@
 # a2a-interop example
 
-End-to-end demo proving `@agentkit-js/a2a` implements the
+End-to-end demo proving `@wasmagent/a2a` implements the
 [A2A v1.0 protocol](https://github.com/google/A2A) correctly. Two complementary paths
 run inside a single Node process:
 

@@ -30,8 +30,8 @@ import type {
   SubagentRunnable,
   ToolRegistry,
   WasmKernel,
-} from "@agentkit-js/core";
-import { ProgrammaticOrchestrator } from "@agentkit-js/core";
+} from "@wasmagent/core";
+import { ProgrammaticOrchestrator } from "@wasmagent/core";
 import { McpAgentServer } from "./McpAgentServer.js";
 import { InMemoryTaskStore } from "./taskStore.js";
 import type { McpAgentServerOptions, McpServerInfo, McpTaskStore } from "./types.js";

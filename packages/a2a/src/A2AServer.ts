@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import type { SubagentRunnable } from "@agentkit-js/core";
+import type { SubagentRunnable } from "@wasmagent/core";
 import type {
   A2AAgentCard,
   A2AServer,

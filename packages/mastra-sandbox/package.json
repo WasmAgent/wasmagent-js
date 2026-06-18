@@ -1,7 +1,7 @@
 {
-  "name": "@agentkit-js/mastra-sandbox",
+  "name": "@wasmagent/mastra-sandbox",
   "version": "0.1.0",
-  "description": "Mastra sandbox provider backed by agentkit-js kernels — WASM isolation with no external infrastructure (alternative to Blaxel/E2B providers)",
+  "description": "Mastra sandbox provider backed by wasmagent kernels — WASM isolation with no external infrastructure (alternative to Blaxel/E2B providers)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@agentkit-js/core": "workspace:*"
+    "@wasmagent/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -29,22 +29,25 @@
     "node": ">=20.0.0"
   },
   "keywords": [
-    "mastra",
-    "sandbox",
-    "code-execution",
+    "wasmagent",
     "wasm",
     "agent",
-    "agentkit"
+    "portable",
+    "sandbox",
+    "executor",
+    "ai",
+    "llm",
+    "typescript"
   ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/telleroutlook/agentkit-js.git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/mastra-sandbox"
   },
-  "homepage": "https://github.com/telleroutlook/agentkit-js/tree/main/packages/mastra-sandbox#readme",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mastra-sandbox#readme",
   "bugs": {
-    "url": "https://github.com/telleroutlook/agentkit-js/issues"
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
     "access": "public",

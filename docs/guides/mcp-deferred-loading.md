@@ -2,7 +2,7 @@
 
 > **背景**：当一个 Agent 暴露了几十甚至上百个工具（典型场景：MCP server 接入了多个外部数据源），把所有工具的 schema 一次性塞进 system prompt 是巨大的 token 浪费。
 >
-> 这篇说明 agentkit-js 的延迟加载机制，并把 [`examples/benchmarks/defer-loading.mjs`](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/defer-loading.mjs) 验证的 **−85% token** 数字背后的原理交代清楚。
+> 这篇说明 agentkit-js 的延迟加载机制，并把 [`examples/benchmarks/defer-loading.mjs`](https://github.com/WasmAgent/wasmagent-js/blob/main/examples/benchmarks/defer-loading.mjs) 验证的 **−85% token** 数字背后的原理交代清楚。
 
 ## 机制
 
@@ -22,7 +22,7 @@ agentkit-js + deferred:
   + 触发后再注入完整 schema             = 100 tokens × 命中工具数
 ```
 
-在 [defer-loading benchmark](https://telleroutlook.github.io/agentkit-js/benchmarks) 里，10 工具每个 1500 token 的设定下：
+在 [defer-loading benchmark](https://WasmAgent.github.io/wasmagent-js/benchmarks) 里，10 工具每个 1500 token 的设定下：
 
 | 模式 | 总 token |
 |---|---:|

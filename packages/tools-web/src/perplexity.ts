@@ -1,4 +1,4 @@
-import type { ToolDefinition } from "@agentkit-js/core";
+import type { ToolDefinition } from "@wasmagent/core";
 import { z } from "zod";
 import { LruCache } from "./lruCache.js";
 import type { WebSearchToolOpts } from "./types.js";

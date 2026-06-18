@@ -1,10 +1,12 @@
-# agentkit-js
+# wasmagent
 
-[![npm version](https://img.shields.io/npm/v/@agentkit-js/core.svg?label=%40agentkit-js%2Fcore)](https://www.npmjs.com/package/@agentkit-js/core)
+**WASM Agent Kernel & Portable Code Executor**
+
+[![npm version](https://img.shields.io/npm/v/@wasmagent/core.svg?label=%40wasmagent%2Fcore)](https://www.npmjs.com/package/@wasmagent/core)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
-[![CI](https://github.com/telleroutlook/agentkit-js/actions/workflows/ci.yml/badge.svg)](https://github.com/telleroutlook/agentkit-js/actions/workflows/ci.yml)
-[![Docs](https://img.shields.io/badge/docs-vitepress-brightgreen.svg)](https://telleroutlook.github.io/agentkit-js/)
-[![Glama MCP server](https://glama.ai/mcp/servers/telleroutlook/agentkit-js/badges/score.svg)](https://glama.ai/mcp/servers/telleroutlook/agentkit-js)
+[![CI](https://github.com/WasmAgent/wasmagent-js/actions/workflows/ci.yml/badge.svg)](https://github.com/WasmAgent/wasmagent-js/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-vitepress-brightgreen.svg)](https://WasmAgent.github.io/wasmagent-js/)
+[![Glama MCP server](https://glama.ai/mcp/servers/WasmAgent/wasmagent-js/badges/score.svg)](https://glama.ai/mcp/servers/WasmAgent/wasmagent-js)
 
 **TypeScript agent runtime with WASM sandboxing, prompt-cache optimization, and parallel quality runners.**
 
@@ -12,25 +14,25 @@ Build production-grade AI agents in TypeScript — code-execution agents, tool-c
 
 ```bash
 # For Anthropic (Claude)
-npm add @agentkit-js/core @anthropic-ai/sdk
+npm add @wasmagent/core @anthropic-ai/sdk
 
 # For OpenAI / compatible endpoints (Ollama, vLLM, etc.)
-npm add @agentkit-js/core openai
+npm add @wasmagent/core openai
 ```
 
-> 📚 **Docs site:** <https://telleroutlook.github.io/agentkit-js/> · **Getting started in 5 min:** [docs/guides/getting-started.md](./docs/guides/getting-started.md) · **Benchmarks:** [docs/benchmarks.md](./docs/benchmarks.md) · **Changelog:** [CHANGELOG.md](./CHANGELOG.md) · **API stability:** [docs/strategy/api-stability.md](./docs/strategy/api-stability.md) · **Strategy memo:** [docs/strategy/2026-06-competitiveness.md](./docs/strategy/2026-06-competitiveness.md) · **Trust Page (D4):** [docs/strategy/trust.md](./docs/strategy/trust.md) · **Enterprise security face:** [docs/strategy/security-face.md](./docs/strategy/security-face.md)
+> 📚 **Docs site:** <https://WasmAgent.github.io/wasmagent-js/> · **Getting started in 5 min:** [docs/guides/getting-started.md](./docs/guides/getting-started.md) · **Benchmarks:** [docs/benchmarks.md](./docs/benchmarks.md) · **Changelog:** [CHANGELOG.md](./CHANGELOG.md) · **API stability:** [docs/strategy/api-stability.md](./docs/strategy/api-stability.md) · **Strategy memo:** [docs/strategy/2026-06-competitiveness.md](./docs/strategy/2026-06-competitiveness.md) · **Trust Page (D4):** [docs/strategy/trust.md](./docs/strategy/trust.md) · **Enterprise security face:** [docs/strategy/security-face.md](./docs/strategy/security-face.md)
 >
 > 🆕 **2026-06-17 strategy update:** code-mode is now table stakes (CF / OpenAI / Anthropic all ship it). The differentiation tightened to **portable executor + governance + paired-statistics referee**. New: [`docs/security/capability-manifest-owasp.md`](./docs/security/capability-manifest-owasp.md) (OWASP Agentic Top 10 mapping) · [`docs/strategy/2026-06-17-update.md`](./docs/strategy/2026-06-17-update.md) (delta on top of S1–S4) · [`docs/reports/arm-batch-grammar-2026-06-17/analysis.md`](./docs/reports/arm-batch-grammar-2026-06-17/analysis.md) (worked example: how `evals-runner` falsified our own hypothesis in 30 minutes).
 >
 > 🎯 **2026-06-18 — `GoalDirectedAgent` shipped.** New first-class loop primitive: agent synthesises its own success criteria, verifies them deterministically (or with adversarial-defaulted LLM judge), retries with hints. The eighth axis of differentiation — see [`docs/guides/goal-directed.md`](./docs/guides/goal-directed.md). One-shot `ToolCallingAgent` is still the default; goal-directed is opt-in for tasks where "did this actually deliver" matters.
 >
-> 🤝 **Looking for a co-maintainer.** `@agentkit-js/core@1.0.0` is on the calendar for **2026-12-15**. If you ship to the Vercel AI SDK / Mastra / Claude Agent SDK / OpenAI Agents JS / Cloudflare Agents / LangGraph.js communities and want npm-publish + merge rights, see [CONTRIBUTING.md](./CONTRIBUTING.md#looking-for-a-co-maintainer) and [GOVERNANCE.md](./GOVERNANCE.md). Release cadence ledger: [docs/strategy/release-cadence-log.md](./docs/strategy/release-cadence-log.md). Sandbox-escape SLA drill log: [docs/strategy/security-drill-log.md](./docs/strategy/security-drill-log.md).
+> 🤝 **Looking for a co-maintainer.** `@wasmagent/core@1.0.0` is on the calendar for **2026-12-15**. If you ship to the Vercel AI SDK / Mastra / Claude Agent SDK / OpenAI Agents JS / Cloudflare Agents / LangGraph.js communities and want npm-publish + merge rights, see [CONTRIBUTING.md](./CONTRIBUTING.md#looking-for-a-co-maintainer) and [GOVERNANCE.md](./GOVERNANCE.md). Release cadence ledger: [docs/strategy/release-cadence-log.md](./docs/strategy/release-cadence-log.md). Sandbox-escape SLA drill log: [docs/strategy/security-drill-log.md](./docs/strategy/security-drill-log.md).
 
 ---
 
 ## Nine differentiation axes — at a glance
 
-> **What this table is.** The eight surfaces where agentkit-js is doing
+> **What this table is.** The eight surfaces where wasmagent is doing
 > something the other JS agent frameworks (Vercel AI SDK, OpenAI Agents
 > JS, Mastra, LangGraph.js, CF Agents SDK, smolagents-ts) are not — at
 > least not all in one place. Each row links to the guide that explains
@@ -48,7 +50,7 @@ npm add @agentkit-js/core openai
 |---|------|----------------|--------|-----|
 | 1 | **Multi-provider model adapters** | One `Model` interface across Anthropic / OpenAI / Doubao / DeepSeek / Kimi / Qwen / GLM / MiniMax / local node-llama-cpp — bring your own vendor, swap with one line. | shipped | [getting-started](./docs/guides/getting-started.md) · [openai-compat-recipes](./docs/guides/openai-compat-recipes.md) |
 | 2 | **Multi-tier kernel matrix** | Three execution tiers (`VmKernel` in-process · `QuickJS`/`Pyodide`/`Wasmtime` WASM · `RemoteSandboxKernel` microVM) under one `Kernel` API — same `CapabilityManifest` (network/fs/env/cpu/memory) across every tier. | shipped | [kernels/comparison](./docs/kernels/comparison.md) |
-| 3 | **Cross-runtime + offline closure** | Same kernel API on Node / any edge runtime / browser / air-gapped laptop. `@agentkit-js/model-local` + WASM kernel = full agent loop, **zero outbound traffic**. | shipped | [model-local](./packages/model-local/README.md) · [getting-started](./docs/guides/getting-started.md) |
+| 3 | **Cross-runtime + offline closure** | Same kernel API on Node / any edge runtime / browser / air-gapped laptop. `@wasmagent/model-local` + WASM kernel = full agent loop, **zero outbound traffic**. | shipped | [model-local](./packages/model-local/README.md) · [getting-started](./docs/guides/getting-started.md) |
 | 4 | **Memory layers** | `MemoryBlockSet` (Letta-style in-context blocks, prompt-cache safe) + observational memory + Checkpointer + 4 KV backends (CF KV / DO / Redis / Upstash). | shipped | [memory](./docs/guides/memory.md) · [observational-memory](./docs/guides/observational-memory.md) |
 | 5 | **Durable workflow engine** | `LocalWorkflowEngine` + `CloudflareWorkflowEngine` against the same `WorkflowDefinition` — observable, terminable, resumable, with the same contract test on both. | shipped | [durable-runtime](./docs/guides/durable-runtime.md) |
 | 6 | **Code-mode (compress N MCP tools into 1)** | Single `execute_code` tool that compresses N MCP tools into one. Token cost on tool registries that grow stays flat instead of linear. Drop-in for Cloudflare codemode `DynamicWorkerExecutor` / OpenAI Agents SDK / Mastra. | shipped | [code-mode](./docs/guides/code-mode.md) |
@@ -68,18 +70,18 @@ or a goal turning out infeasible.
 
 ## Comparison
 
-There are several mature TypeScript agent frameworks. Here is an honest assessment of where agentkit-js fits.
+There are several mature TypeScript agent frameworks. Here is an honest assessment of where wasmagent fits.
 
 > **Last verified: 2026-06-15.** Each ⚠️/❌ cell links to its source on the column header's project. The "sandbox" rows have been re-framed (D2, 2026-06-13) so that having *some* sandbox is no longer the differentiator — three competitors now ship one. The remaining axes — **isolation tier composability**, **cross-runtime neutrality**, **offline closure** — are what no other framework offers in one package.
 
-| | [Vercel AI SDK](https://github.com/vercel/ai) | [LangGraph.js](https://github.com/langchain-ai/langgraphjs) | [OpenAI Agents JS](https://github.com/openai/openai-agents-js) | [Mastra](https://github.com/mastra-ai/mastra) | [CF Agents SDK](https://github.com/cloudflare/agents) | **agentkit-js** |
+| | [Vercel AI SDK](https://github.com/vercel/ai) | [LangGraph.js](https://github.com/langchain-ai/langgraphjs) | [OpenAI Agents JS](https://github.com/openai/openai-agents-js) | [Mastra](https://github.com/mastra-ai/mastra) | [CF Agents SDK](https://github.com/cloudflare/agents) | **wasmagent** |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
 | **npm downloads/month** | ~57M | ~10M | ~3.8M | ~4M | ~3.2M | early-stage |
 | **ToolCallingAgent** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Sandboxed code execution** | ❌ ([none in core](https://github.com/vercel/ai)) | ❌ ([none in core](https://github.com/langchain-ai/langgraphjs)) | ✅ [SandboxAgent](https://github.com/openai/openai-agents-js) — Unix-local / Docker / hosted | ✅ [Workspace](https://github.com/mastra-ai/mastra/tree/main/workspaces) — E2B / Daytona / Modal / Blaxel / Railway | ✅ [@cloudflare/sandbox](https://github.com/cloudflare/sandbox-sdk) container | ✅ kernels |
 | **Isolation tiers — composable in one process** | n/a | n/a | ⚠️ 1 tier (process / container, picked at run time per client) | ⚠️ 1 tier per provider (you swap providers, not tiers) | ⚠️ 1 tier (container-per-DO, vendor-bound) | ✅ **3 tiers, swap with one line** — `VmKernel` (in-process) / WASM kernel (`QuickJS` / `Pyodide` / `Wasmtime`) / `RemoteSandboxKernel` (microVM); `factory.createKernel()` selects per call |
 | **Cross-runtime neutrality** | ⚠️ Node + edge runtime patches | ✅ Node + edge | ⚠️ Node + Docker hosts (sandbox path needs a host process) | ⚠️ provider-specific (each provider has its own runtime constraint) | ❌ Cloudflare-only (sandbox is a CF Container) | ✅ **same kernel API on Node, any edge runtime, browser, and offline laptop** |
-| **Offline / air-gapped closure** | ❌ requires provider HTTP | ❌ requires provider HTTP | ❌ Sandbox + model both need network | ❌ all sandbox providers are cloud SaaS | ❌ vendor-bound | ✅ `@agentkit-js/model-local` + WASM kernel = full agent loop with **zero outbound traffic** |
+| **Offline / air-gapped closure** | ❌ requires provider HTTP | ❌ requires provider HTTP | ❌ Sandbox + model both need network | ❌ all sandbox providers are cloud SaaS | ❌ vendor-bound | ✅ `@wasmagent/model-local` + WASM kernel = full agent loop with **zero outbound traffic** |
 | **Python execution (edge-safe, no container)** | ❌ | ❌ | ❌ (containers required) | ❌ (containers required) | ❌ | ✅ Pyodide-in-WASM, runs inside a Worker isolate |
 | **Anthropic prompt-cache management** | ⚠️ pass-through | ⚠️ pass-through | ⚠️ via adapter | ⚠️ pass-through | ❌ | ✅ auto breakpoints + 1h TTL |
 | **Self-consistency / reflect-refine runners** | ❌ | ❌ manual | ❌ | ❌ | ❌ | ✅ built-in |
@@ -96,41 +98,41 @@ There are several mature TypeScript agent frameworks. Here is an honest assessme
 | **Durable workflows / checkpointing** | ✅ DurableAgent (AI SDK 6) | ✅ LangGraph | ❌ (Assistants API retiring 2026-08-26) | ⚠️ partial | ✅ Durable Objects | ✅ Checkpointer + 4 backends (CF KV / DO / Redis / Upstash) |
 | **SSE Last-Event-ID resume** | ⚠️ via DurableAgent | ✅ runtime | ❌ | ❌ | ❌ | ✅ EventLog primitive + worker-native |
 | **HITL persisted suspend/resume** | ✅ | ✅ | ❌ | ⚠️ partial | ⚠️ via DO | ✅ stateless `/resume` endpoint, hours-to-days durations |
-| **Embedded local LLM (in-process, offline)** | ⚠️ via Ollama HTTP | ⚠️ via Ollama HTTP | ❌ | ⚠️ via Ollama HTTP | ❌ | ✅ `@agentkit-js/model-local` — node-llama-cpp + grammar-constrained tool calls + multi-mirror downloads (HF / hf-mirror / ModelScope) |
+| **Embedded local LLM (in-process, offline)** | ⚠️ via Ollama HTTP | ⚠️ via Ollama HTTP | ❌ | ⚠️ via Ollama HTTP | ❌ | ✅ `@wasmagent/model-local` — node-llama-cpp + grammar-constrained tool calls + multi-mirror downloads (HF / hf-mirror / ModelScope) |
 
 ### Where competitors are stronger
 
 - **Vercel AI SDK** — If you're building a chat UI with Next.js, use this. The React hooks (`useChat`, `useAgent`), `DurableAgent` for stateful/resumable workflows (AI SDK 6), native MCP support, and DevTools panel are all best-in-class. 57M monthly downloads.
 - **LangChain/LangGraph.js** — If you need 300+ integrations (vector stores, document loaders, obscure providers) or graph-based durable workflows with checkpointing and human-in-the-loop, LangGraph is battle-tested at LinkedIn, Uber, and GitLab scale.
-- **Mastra** — Best eval framework (12+ built-in scorers including trajectory and tool accuracy). Strong developer onboarding. Their "Observational memory" pattern was first-mover; agentkit-js now ships an equivalent (`ObservationalMemory`) plus extra prompt-cache-aware compression — see [docs/guides/observational-memory.md](docs/guides/observational-memory.md).
+- **Mastra** — Best eval framework (12+ built-in scorers including trajectory and tool accuracy). Strong developer onboarding. Their "Observational memory" pattern was first-mover; wasmagent now ships an equivalent (`ObservationalMemory`) plus extra prompt-cache-aware compression — see [docs/guides/observational-memory.md](docs/guides/observational-memory.md).
 - **Cloudflare Agents SDK** — If you're building on Cloudflare specifically, Durable Objects give you stateful agents with persistent scheduling that nothing else matches natively.
 - **OpenAI Agents JS** — If your stack is OpenAI-only and you want first-party support, the cleanest path. The 2026-04 release added [`SandboxAgent`](https://github.com/openai/openai-agents-js) with Unix-local, Docker, and hosted clients; for OS-level isolation backed by OpenAI itself, this is the path of least resistance.
 
-### Where agentkit-js is differentiated
+### Where wasmagent is differentiated
 
-- **Three isolation tiers under one swappable interface (D2, 2026-06-13).** OpenAI Agents JS now ships `SandboxAgent` (Unix-local / Docker / hosted) and Mastra ships Workspace providers (E2B / Daytona / Modal / Blaxel / Railway). The differentiator is no longer "has a sandbox" — it's that **agentkit-js exposes three tiers (`VmKernel` in-process, `QuickJSKernel` / `PyodideKernel` / `WasmtimeKernel` true WASM, `RemoteSandboxKernel` microVM) under one `Kernel` interface**, swap them with one line at call time, and apply one `CapabilityManifest` (network/fs/env/cpu/memory) across every tier. Competitors give you one tier wired to one provider. See [docs/kernels/comparison.md](docs/kernels/comparison.md) for the decision tree.
-- **Cross-runtime neutrality.** Cloudflare's sandbox is fast on Cloudflare. Mastra's providers are SaaS. agentkit-js kernels run on Node, on any edge runtime, in a browser tab, and on a laptop with the network unplugged — same `Kernel` API, same security manifest. This is the structural advantage no platform-bound competitor can match.
-- **Offline / air-gapped closure.** `@agentkit-js/model-local` (node-llama-cpp + grammar-constrained tool calls + multi-mirror downloads HF / hf-mirror / ModelScope) plus a WASM kernel = full agent loop with zero outbound traffic. For compliance-bound and air-gapped deployments, no other framework gives you this without writing the integration yourself.
+- **Three isolation tiers under one swappable interface (D2, 2026-06-13).** OpenAI Agents JS now ships `SandboxAgent` (Unix-local / Docker / hosted) and Mastra ships Workspace providers (E2B / Daytona / Modal / Blaxel / Railway). The differentiator is no longer "has a sandbox" — it's that **wasmagent exposes three tiers (`VmKernel` in-process, `QuickJSKernel` / `PyodideKernel` / `WasmtimeKernel` true WASM, `RemoteSandboxKernel` microVM) under one `Kernel` interface**, swap them with one line at call time, and apply one `CapabilityManifest` (network/fs/env/cpu/memory) across every tier. Competitors give you one tier wired to one provider. See [docs/kernels/comparison.md](docs/kernels/comparison.md) for the decision tree.
+- **Cross-runtime neutrality.** Cloudflare's sandbox is fast on Cloudflare. Mastra's providers are SaaS. wasmagent kernels run on Node, on any edge runtime, in a browser tab, and on a laptop with the network unplugged — same `Kernel` API, same security manifest. This is the structural advantage no platform-bound competitor can match.
+- **Offline / air-gapped closure.** `@wasmagent/model-local` (node-llama-cpp + grammar-constrained tool calls + multi-mirror downloads HF / hf-mirror / ModelScope) plus a WASM kernel = full agent loop with zero outbound traffic. For compliance-bound and air-gapped deployments, no other framework gives you this without writing the integration yourself.
 - **Durable runtime** — Same `KvBackend` powers checkpoints, the SSE event log, and structured memory. Four production backends ship out of the box (Cloudflare KV / Durable Objects / Redis / Upstash REST). A paused `await_human_input` survives worker recycle for hours/days; `POST /resume` is stateless. See [docs/guides/durable-runtime.md](docs/guides/durable-runtime.md).
 - **Quality runners** — Self-consistency with answer extraction (boxed / last-line / custom), reflect-refine, budget forcing ("Wait" prefill), and parallel fork-join are not shipped as first-class APIs by any competitor.
 - **Anthropic prompt-cache optimization** — Framework actively manages `cache_control` breakpoint placement across multi-turn history, supports the 1-hour extended TTL (`ttl:"1h"`), and reports per-TTL cache usage. Competitors pass through or validate limits but do not optimise placement.
 - **Speculative tool execution** — Read-only, idempotent tools are pre-executed ahead of write barriers within a DAG step. The scheduler is awakened by `$<callId>` dependency references in the system prompt, enabling true parallel + ordered hybrid scheduling. No competitor implements this.
 - **GenAI semantic conventions** — `OtelBridge` emits standard `gen_ai.*` attributes (Datadog / Honeycomb / Grafana GenAI view compatible) alongside legacy names, switchable via `semconvMode`.
 - **Observational Memory + cache-stable prefix (A1)** — Background "observer" model continuously compresses history into ranked observation paragraphs. The compressed prefix is byte-stable so Anthropic prompt cache hits stay hot across observations — Mastra's reference work has no equivalent. ~22% of baseline tokens on a 50-turn synthetic trace; see [`examples/benchmarks/observational-memory.mjs`](examples/benchmarks/observational-memory.mjs).
-- **Time-travel debugger (A2)** — `@agentkit-js/devtools` exposes the existing `EventLog` + `Checkpointer` data through a navigable step timeline + "fork from any step" UI. LangGraph Studio's headline feature, shipped as a tiny opt-in package (logic core ~250 LOC, React UI optional).
+- **Time-travel debugger (A2)** — `@wasmagent/devtools` exposes the existing `EventLog` + `Checkpointer` data through a navigable step timeline + "fork from any step" UI. LangGraph Studio's headline feature, shipped as a tiny opt-in package (logic core ~250 LOC, React UI optional).
 - **Skills + lifecycle hooks (A3)** — `SkillRegistry` for progressive instruction/tool disclosure (Claude Agent SDK / CrewAI v1.12 convention). `ToolPostHook` chain (redact, truncate, audit) sits beside the existing `ToolGuardrail` — pre/post symmetry without confusing block vs transform semantics.
 - **Multi-criterion LLM judges (A4)** — `judgeScorer` extends `llmJudge` with weighted criterion-level scoring + configurable scale. Two built-in judges (`trajectoryQualityJudge`, `answerCompletenessJudge`) work with any cheap Model adapter so judges run on Haiku/Doubao while the agent stays on Sonnet/Opus.
 - **Reproducible benchmarks** — Every percentage in this README (`−37%`, `72→90%`, `−85%`, `−84%`) is verified by an offline benchmark in [`examples/benchmarks/`](examples/benchmarks/). Run `pnpm bench` to reproduce. CI fails the PR if any number drifts outside its tolerance.
 
 ### Honest caveats
 
-agentkit-js is early-stage. The differentiating features (code execution kernels, durable runtime, quality runners, speculative scheduling) are technically novel but also niche — most teams pick a framework based on ecosystem breadth and documentation volume, where the mature options above win. Choose agentkit-js when sandboxed code execution, durable agent runs, prompt-cache cost control, or output quality runners are first-order concerns.
+wasmagent is early-stage. The differentiating features (code execution kernels, durable runtime, quality runners, speculative scheduling) are technically novel but also niche — most teams pick a framework based on ecosystem breadth and documentation volume, where the mature options above win. Choose wasmagent when sandboxed code execution, durable agent runs, prompt-cache cost control, or output quality runners are first-order concerns.
 
 ### Verified status
 
 | | Number | Verified by |
 |---|---|---|
-| Tests passing (all packages) | **1341** | `bun run test` (CI matrix on every push) — `@agentkit-js/core` 716 · `@agentkit-js/mcp-server` 47 (D1: +11 portal) · `@agentkit-js/devtools` 34 · `@agentkit-js/evals-runner` 31 · `@agentkit-js/aisdk` 17 (D3: +3 memory) · `@agentkit-js/claude-agent-sdk` 7 · `@agentkit-js/openai-agents` 6 · others 483 |
+| Tests passing (all packages) | **1341** | `bun run test` (CI matrix on every push) — `@wasmagent/core` 716 · `@wasmagent/mcp-server` 47 (D1: +11 portal) · `@wasmagent/devtools` 34 · `@wasmagent/evals-runner` 31 · `@wasmagent/aisdk` 17 (D3: +3 memory) · `@wasmagent/claude-agent-sdk` 7 · `@wasmagent/openai-agents` 6 · others 483 |
 | README percentages reproducible | **8 / 8** | `bun run bench` — runs in CI; non-zero exit blocks the PR (incl. A1 ≤25% target + S1/A1 code-mode ≤50% target + D1 Portal ≤10% / ≤66.7%) |
 | Cross-process kill-and-resume (A1 DoD ①) | ✓ Redis + ✓ Cloudflare KV + ✓ Durable Object | `redis.test.ts` + `kvAdapters.test.ts` |
 | SSE Last-Event-ID gap-free replay (A2 DoD ①) | ✓ | `EventLog.test.ts` round-trip test |
@@ -163,15 +165,15 @@ agentkit-js is early-stage. The differentiating features (code execution kernels
 - **Long-history compaction** — `agent.assembler.compact(model, keepRecentSteps)` summarises old steps; inject a custom `MessageAssembler` via `assembler` option
 - **Production resilience** — automatic exponential backoff + jitter retry for 429 / 5xx / network errors on all model adapters; configurable via `RetryPolicy`
 - **Evals framework** — `runEval()` with 16 built-in scorers covering correctness (`exactMatch`, `toolCallAccuracy`, `trajectoryValidity`, `finalAnswerLength`, `guardrailCompliance`), faithfulness, relevance, recovery, efficiency, constraints, plus two multi-criterion `JudgeScorer` judges (`trajectoryQualityJudge`, `answerCompletenessJudge`)
-- **Evaluation harness** (`@agentkit-js/evals-runner`) — `runEvaluation()` plus `agentkit evals run` CLI: multi-model × multi-suite × multi-seed Pareto reports over (accuracy, cost, p95 wall). Six reference suites cover the gaps single-task benchmarks miss (long-context recall, multi-turn memory, agent trajectory, latency-under-budget, cost-per-correct, tool-sequence). Built-in paired statistics (McNemar exact / Wilson CI / paired bootstrap / G1 gate) match scipy reference values to ±1e-7. All synthetic fixtures — no overlap with public training corpora.
-- **Code-mode MCP server** (`@agentkit-js/mcp-server`) — `createCodeModeServer()` collapses N downstream tools into a `docs_search` + `execute_code` two-tool MCP surface. At 30 tools the bootstrap-token cost drops to 13.6% of direct MCP (codemode-lite reported 53%); pairs with any agentkit kernel for unified security policy.
+- **Evaluation harness** (`@wasmagent/evals-runner`) — `runEvaluation()` plus `agentkit evals run` CLI: multi-model × multi-suite × multi-seed Pareto reports over (accuracy, cost, p95 wall). Six reference suites cover the gaps single-task benchmarks miss (long-context recall, multi-turn memory, agent trajectory, latency-under-budget, cost-per-correct, tool-sequence). Built-in paired statistics (McNemar exact / Wilson CI / paired bootstrap / G1 gate) match scipy reference values to ±1e-7. All synthetic fixtures — no overlap with public training corpora.
+- **Code-mode MCP server** (`@wasmagent/mcp-server`) — `createCodeModeServer()` collapses N downstream tools into a `docs_search` + `execute_code` two-tool MCP surface. At 30 tools the bootstrap-token cost drops to 13.6% of direct MCP (codemode-lite reported 53%); pairs with any agentkit kernel for unified security policy.
 - **MCP Portal — federate N upstream servers behind one neutral two-tool surface (D1, 2026-06-13)** — `createPortalServer()` wraps multiple `ToolRegistry` / MCP upstreams (filesystem + GitHub + memory + …) into one code-mode face. Bootstrap stays O(1) regardless of how many upstreams are federated; at **5 servers × 30 tools = 150 tools**, the Portal is **3.1% of direct multi-MCP** and **19.8% of code-mode-per-server** (`examples/benchmarks/portal-tokens.mjs`). One `CapabilityManifest` spans every upstream — the audit boundary platform-bound Portals (Cloudflare's announced version) cannot give you across heterogeneous providers. See [`examples/mcp-portal/`](examples/mcp-portal/).
-- **AI SDK + Mastra + Claude Agent SDK + OpenAI Agents JS plugin packages** (`@agentkit-js/aisdk`, `@agentkit-js/mastra-sandbox`, `@agentkit-js/claude-agent-sdk`, `@agentkit-js/openai-agents`) — drop agentkit's WASM kernels into Vercel AI SDK 4–6 (`sandboxedJsTool`, `codeModeTool`), Mastra (`agentkitMastraSandbox`), Anthropic Claude Agent SDK (`sandboxedJsClaudeTool`, `codeModeClaudeTool`), or OpenAI Agents JS (`sandboxedJsAgentTool`, `codeModeAgentTool`) without an external sandbox provider.
+- **AI SDK + Mastra + Claude Agent SDK + OpenAI Agents JS plugin packages** (`@wasmagent/aisdk`, `@wasmagent/mastra-sandbox`, `@wasmagent/claude-agent-sdk`, `@wasmagent/openai-agents`) — drop agentkit's WASM kernels into Vercel AI SDK 4–6 (`sandboxedJsTool`, `codeModeTool`), Mastra (`agentkitMastraSandbox`), Anthropic Claude Agent SDK (`sandboxedJsClaudeTool`, `codeModeClaudeTool`), or OpenAI Agents JS (`sandboxedJsAgentTool`, `codeModeAgentTool`) without an external sandbox provider.
 - **Observability** — `OtelBridge` maps `AgentEvent` streams to OTel-compatible spans; emits `gen_ai.*` semantic convention attributes (Datadog/Honeycomb/Grafana GenAI view compatible) with `semconvMode: "both" | "stable" | "legacy"`
 - **Durable runtime** — `KvCheckpointer` with four production backends: `CloudflareKvBackend`, `DurableObjectKvBackend`, `RedisKvBackend` (ioredis-style), `RedisRestKvBackend` (Upstash REST, edge-safe). `CheckpointableRun` saves state after every step; `await_human_input` persists `pendingHumanInput` and exits the iterator so the worker can recycle while a human reviews.
 - **SSE Last-Event-ID resume** — `EventLog` tags every event with a monotonic id, persists to the same `KvBackend`, and replays only the missing tail when a client reconnects. The reference Cloudflare Worker honors `Last-Event-ID` natively; `useAgentRun({ resume: { maxAttempts } })` retries automatically.
 - **Stateless human-in-the-loop** — `resumeFromHuman(checkpointer, traceId, promptId, response)` writes the human's reply into a paused snapshot. Because there is no in-memory state, the worker that pauses and the worker that resumes can be different processes (and different days). See `examples/durable-runtime/`.
-- **React hooks** — `@agentkit-js/react` provides `useAgentRun()` for streaming SSE agent events in Next.js / React apps
+- **React hooks** — `@wasmagent/react` provides `useAgentRun()` for streaming SSE agent events in Next.js / React apps
 - **Multi-model** — Anthropic (Claude) and OpenAI-compatible endpoints (Ollama, vLLM, llama.cpp)
 - **MCP support** — `McpToolCollection` wraps any MCP server's tools as first-class agentkit tools
 - **Cloudflare Workers** — HTTP API entry point with KV session caching, ready to deploy with Wrangler
@@ -183,7 +185,7 @@ agentkit-js is early-stage. The differentiating features (code execution kernels
 ### Code Agent
 
 ```ts
-import { CodeAgent, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+import { CodeAgent, AnthropicModel, AnthropicModels } from "@wasmagent/core";
 
 const agent = new CodeAgent({
   tools: [],
@@ -199,7 +201,7 @@ for await (const event of agent.run("What is 42 * 1337?")) {
 ### Tool-Calling Agent
 
 ```ts
-import { ToolCallingAgent, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+import { ToolCallingAgent, AnthropicModel, AnthropicModels } from "@wasmagent/core";
 import { z } from "zod";
 
 const searchTool = {
@@ -227,7 +229,7 @@ for await (const event of agent.run("Search for recent AI news")) {
 
 ```bash
 # Install globally
-npm install -g @agentkit-js/cli
+npm install -g @wasmagent/cli
 
 # Run a task
 agentkit run "What is the square root of 144?"
@@ -246,7 +248,7 @@ agentkit run "Write a haiku" --model claude-opus-4-8 --max-steps 5
 ### Self-Consistency — majority vote across N independent runs
 
 ```ts
-import { SelfConsistencyRunner, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+import { SelfConsistencyRunner, AnthropicModel, AnthropicModels } from "@wasmagent/core";
 
 const runner = new SelfConsistencyRunner({
   model: new AnthropicModel(AnthropicModels.SONNET_LATEST),
@@ -262,7 +264,7 @@ const answer = await runner.run("What is the capital of France?");
 ### Reflect-Refine — critique loop until quality signal passes
 
 ```ts
-import { ReflectRefineRunner, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+import { ReflectRefineRunner, AnthropicModel, AnthropicModels } from "@wasmagent/core";
 
 const runner = new ReflectRefineRunner({
   model: new AnthropicModel(AnthropicModels.SONNET_LATEST),
@@ -277,7 +279,7 @@ const answer = await runner.run("Write a detailed analysis of...");
 ### Parallel Fork-Join — diverse reasoning paths, synthesised answer
 
 ```ts
-import { ParallelForkJoinRunner, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+import { ParallelForkJoinRunner, AnthropicModel, AnthropicModels } from "@wasmagent/core";
 
 const runner = new ParallelForkJoinRunner({
   branches: 3,
@@ -300,7 +302,7 @@ console.log(result.branches); // individual paths
 ### Long-history compaction
 
 ```ts
-import { CodeAgent, AnthropicModel, AnthropicModels, MessageAssembler } from "@agentkit-js/core";
+import { CodeAgent, AnthropicModel, AnthropicModels, MessageAssembler } from "@wasmagent/core";
 
 const model = new AnthropicModel(AnthropicModels.SONNET_LATEST);
 const assembler = new MessageAssembler({ chunkSizeSteps: 8 });
@@ -324,7 +326,7 @@ Both adapters accept an optional `baseURL` to point at any compatible endpoint �
 ### OpenAI-compatible (Ollama / vLLM / llama.cpp / any proxy)
 
 ```ts
-import { OpenAIModel, OpenAIModels } from "@agentkit-js/core";
+import { OpenAIModel, OpenAIModels } from "@wasmagent/core";
 
 // Hosted OpenAI
 const gpt4o = new OpenAIModel(OpenAIModels.GPT_4O);
@@ -340,7 +342,7 @@ const local = new OpenAIModel("mistral-7b", {
 ### Anthropic-compatible proxy or private deployment
 
 ```ts
-import { AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+import { AnthropicModel, AnthropicModels } from "@wasmagent/core";
 
 // Standard usage — reads ANTHROPIC_API_KEY from environment
 const model = new AnthropicModel(AnthropicModels.SONNET_LATEST);
@@ -358,28 +360,28 @@ Seven providers ship as dedicated packages with full thinking-mode, reasoning-fi
 
 ```ts
 // Doubao / Volcengine Ark (first-class thinking + effort tiers)
-import { DoubaoModel, DoubaoModels } from "@agentkit-js/model-doubao";
+import { DoubaoModel, DoubaoModels } from "@wasmagent/model-doubao";
 const doubao = new DoubaoModel(DoubaoModels.LATEST, process.env.ARK_API_KEY);
 for await (const e of doubao.generate(msgs, { thinking: { mode: "enabled", effort: "high" } })) { ... }
 
 // DeepSeek V4 (thinking:{type} + effort, V4_FLASH available)
-import { DeepSeekModel, DeepSeekModels } from "@agentkit-js/model-deepseek";
+import { DeepSeekModel, DeepSeekModels } from "@wasmagent/model-deepseek";
 const ds = new DeepSeekModel(DeepSeekModels.V4_PRO, process.env.DEEPSEEK_API_KEY);
 
 // Kimi K2.6 (reasoning field: delta.reasoning, thinking:{type} via extra_body)
-import { MoonshotModel, KimiModels } from "@agentkit-js/model-moonshot";
+import { MoonshotModel, KimiModels } from "@wasmagent/model-moonshot";
 const kimi = new MoonshotModel(KimiModels.LATEST, process.env.MOONSHOT_API_KEY);
 
 // Qwen3 (enable_thinking + thinking_budget, intl region option)
-import { QwenModel, QwenModels } from "@agentkit-js/model-qwen";
+import { QwenModel, QwenModels } from "@wasmagent/model-qwen";
 const qwen = new QwenModel(QwenModels.QWEN3_MAX, { region: "cn" });
 
 // GLM-5 (Zhipu self-hosted, thinking:{type} via extra_body)
-import { ZhipuModel, GLMModels } from "@agentkit-js/model-zhipu";
+import { ZhipuModel, GLMModels } from "@wasmagent/model-zhipu";
 const glm = new ZhipuModel(GLMModels.GLM_5, process.env.ZHIPU_API_KEY);
 
 // MiniMax M3 (reasoning_split=true → reasoning_details; or <think> tag parsing)
-import { MiniMaxModel, MiniMaxModels } from "@agentkit-js/model-minimax";
+import { MiniMaxModel, MiniMaxModels } from "@wasmagent/model-minimax";
 const mm = new MiniMaxModel(MiniMaxModels.M3, process.env.MINIMAX_API_KEY);
 ```
 
@@ -413,7 +415,7 @@ The Worker exposes a POST `/run` endpoint. Session state is stored in KV for cos
 
 ## Packages
 
-agentkit-js is a 33-package monorepo. See **[`docs/packages.md`](docs/packages.md)** for the canonical, tier-classified list (★ Core / ◆ Narrative / ▽ Maintenance), with one-line descriptions of each package and links to its README.
+wasmagent is a 33-package monorepo. See **[`docs/packages.md`](docs/packages.md)** for the canonical, tier-classified list (★ Core / ◆ Narrative / ▽ Maintenance), with one-line descriptions of each package and links to its README.
 
 For the maintenance-tier rationale, see [`docs/strategy/maintenance-tiers.md`](docs/strategy/maintenance-tiers.md).
 
@@ -426,7 +428,7 @@ For the maintenance-tier rationale, see [`docs/strategy/maintenance-tiers.md`](d
 All model adapters automatically retry 429 / 5xx / network errors with exponential backoff + jitter:
 
 ```ts
-import { AnthropicModel } from "@agentkit-js/core";
+import { AnthropicModel } from "@wasmagent/core";
 
 const model = new AnthropicModel("claude-sonnet-4-6", {
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -437,7 +439,7 @@ const model = new AnthropicModel("claude-sonnet-4-6", {
 ### Evals (B1)
 
 ```ts
-import { runEval, exactMatch, toolCallAccuracy } from "@agentkit-js/core";
+import { runEval, exactMatch, toolCallAccuracy } from "@wasmagent/core";
 
 const results = await runEval(dataset, async function* (task) {
   yield* agent.run(task);
@@ -447,7 +449,7 @@ const results = await runEval(dataset, async function* (task) {
 ### OpenTelemetry Bridge (C2)
 
 ```ts
-import { OtelBridge, InMemorySpanExporter, withOtel } from "@agentkit-js/core";
+import { OtelBridge, InMemorySpanExporter, withOtel } from "@wasmagent/core";
 
 const exporter = new InMemorySpanExporter(); // swap for OTLP in production
 const bridge = new OtelBridge({ exporter });
@@ -469,9 +471,9 @@ import {
   resumeFromHuman,
   applyHumanResponse,
   restoreFromSnapshot,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 // Pick a backend that matches your runtime.
-import { CloudflareKvBackend } from "@agentkit-js/cloudflare-worker";
+import { CloudflareKvBackend } from "@wasmagent/cloudflare-worker";
 // Other options: DurableObjectKvBackend (CF), RedisKvBackend (Node/Bun),
 // RedisRestKvBackend (Upstash, edge-safe), MapKvBackend (tests).
 
@@ -515,12 +517,12 @@ applyHumanResponse(snap, agent.assembler); // injects user_message into history
 // Then continue with `wrapper.run(agent.run(snap.task, traceId), ...)`.
 ```
 
-The reference Cloudflare Worker (`@agentkit-js/cloudflare-worker`) wires all of this for you — bind `AGENTKIT_EVENT_LOG` and `AGENTKIT_CHECKPOINTS` in `wrangler.toml` and you get `Last-Event-ID` resume + a `POST /resume` endpoint out of the box. Full guide: [docs/guides/durable-runtime.md](docs/guides/durable-runtime.md).
+The reference Cloudflare Worker (`@wasmagent/cloudflare-worker`) wires all of this for you — bind `AGENTKIT_EVENT_LOG` and `AGENTKIT_CHECKPOINTS` in `wrangler.toml` and you get `Last-Event-ID` resume + a `POST /resume` endpoint out of the box. Full guide: [docs/guides/durable-runtime.md](docs/guides/durable-runtime.md).
 
 ### React Hook (B2)
 
 ```tsx
-import { useAgentRun } from "@agentkit-js/react";
+import { useAgentRun } from "@wasmagent/react";
 
 function ChatUI() {
   const { messages, isRunning, run } = useAgentRun("/api/run");
@@ -540,7 +542,7 @@ function ChatUI() {
 Exclude large MCP server tool schemas from the context prefix; load on-demand via Anthropic Tool Search. Reduces token usage by up to 85% on servers with many tools.
 
 ```ts
-import { McpToolCollection, ToolCallingAgent, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+import { McpToolCollection, ToolCallingAgent, AnthropicModel, AnthropicModels } from "@wasmagent/core";
 
 // Option A: defer all tools from an MCP server with many tools.
 const tools = await McpToolCollection.fromHttp("https://big-mcp-server.example.com");
@@ -581,7 +583,7 @@ const searchTool = {
 Truncate old tool outputs reversibly to reduce context size without breaking conversation structure.
 
 ```ts
-import { MessageAssembler, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+import { MessageAssembler, AnthropicModel, AnthropicModels } from "@wasmagent/core";
 
 const model = new AnthropicModel(AnthropicModels.SONNET_LATEST);
 const assembler = new MessageAssembler({ chunkSizeSteps: 8 });
@@ -598,7 +600,7 @@ console.log(`Truncated ${truncated} tool outputs`);
 Give agents persistent memory that survives across separate `run()` calls.
 
 ```ts
-import { createMemoryTool, MapKvBackend, ToolCallingAgent, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+import { createMemoryTool, MapKvBackend, ToolCallingAgent, AnthropicModel, AnthropicModels } from "@wasmagent/core";
 
 // Use MapKvBackend for in-process use, or KvCheckpointer's backend for persistence.
 const memory = createMemoryTool({ backend: new MapKvBackend() });
@@ -622,7 +624,7 @@ for await (const ev of agent.run("What did you remember about France's capital?"
 Execute model-generated orchestration scripts inside a kernel; only the final result enters the context window.
 
 ```ts
-import { ProgrammaticOrchestrator, JsKernel, ToolRegistry } from "@agentkit-js/core";
+import { ProgrammaticOrchestrator, JsKernel, ToolRegistry } from "@wasmagent/core";
 
 const kernel = new JsKernel();
 const registry = new ToolRegistry();
@@ -701,7 +703,7 @@ cd packages/cloudflare-worker && wrangler dev
 
 ## Acknowledgements
 
-Inspired by Hugging Face's [smolagents](https://github.com/huggingface/smolagents). agentkit-js is a ground-up TypeScript reimplementation — not a port — targeting async-first execution, WASM sandboxing, and edge deployment.
+Inspired by Hugging Face's [smolagents](https://github.com/huggingface/smolagents). wasmagent is a ground-up TypeScript reimplementation — not a port — targeting async-first execution, WASM sandboxing, and edge deployment.
 
 ## License
 

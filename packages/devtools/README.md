@@ -1,10 +1,10 @@
-# @agentkit-js/devtools
+# /devtools
 
 **Zero-deploy local Studio for any GenAI-OTel agent trace.**
 
 > 🆕 **Framework-agnostic.** Works on Vercel AI SDK, Mastra, OpenAI Agents JS, Anthropic SDK, LangSmith-instrumented runs, *and* agentkit's own `EventLog`. If your agent emits [OpenTelemetry GenAI semantic-convention](https://opentelemetry.io/docs/specs/semconv/gen-ai/) spans (NDJSON or OTLP/JSON), this tool renders them. No SaaS. No account. No phone-home.
 
-> Part of [agentkit-js](https://github.com/telleroutlook/agentkit-js) — but you do **not** need to use the agentkit-js framework to use this.
+> Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — but you do **not** need to use the wasmagent framework to use this.
 
 ---
 
@@ -16,53 +16,53 @@
 
 ## Two ways to use it
 
-### A — You're not on agentkit-js (the cross-framework path)
+### A — You're not on wasmagent (the cross-framework path)
 
 You have GenAI-semconv OTel traces from Vercel AI SDK 6, Mastra, OpenAI Agents JS, Anthropic SDK, or anything else that follows the [OTel GenAI conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/).
 
 ```bash
 # Capture spans to NDJSON via the OTel collector or your producer's exporter.
 # Then:
-npx -p @agentkit-js/cli agentkit devtools --otel-events-file ./spans.ndjson
+npx -p /cli agentkit devtools --otel-events-file ./spans.ndjson
 ```
 
 The adapter accepts both NDJSON (one span per line) and OTLP/JSON (`{resourceSpans: [...]}`). It maps `gen_ai.operation.name = invoke_agent | chat | execute_tool` spans onto the same Studio view agentkit uses for its own runs.
 
-See [docs/guides/devtools-cross-framework.md](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/devtools-cross-framework.md) for capture recipes per framework.
+See [docs/guides/devtools-cross-framework.md](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/devtools-cross-framework.md) for capture recipes per framework.
 
-### B — You're on agentkit-js (the EventLog path)
+### B — You're on wasmagent (the EventLog path)
 
 ```bash
-npx -p @agentkit-js/cli agentkit devtools --events-file ./run.ndjson
+npx -p /cli agentkit devtools --events-file ./run.ndjson
 ```
 
 Or embed the React UI in your own page:
 
 ```tsx
-import { EventLogReplay } from "@agentkit-js/devtools";
-import { DevTools } from "@agentkit-js/devtools/react";
+import { EventLogReplay } from "/devtools";
+import { DevTools } from "/devtools/react";
 ```
 
-See [docs/guides/devtools.md](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/devtools.md) for the embed story.
+See [docs/guides/devtools.md](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/devtools.md) for the embed story.
 
 ## Install
 
-You only need `@agentkit-js/devtools` for embed; `@agentkit-js/core` is optional unless you call into the `EventLog` primitives directly:
+You only need `/devtools` for embed; `/core` is optional unless you call into the `EventLog` primitives directly:
 
 ```bash
-npm install @agentkit-js/devtools          # engine + react UI
+npm install /devtools          # engine + react UI
 # or:
-npm install -g @agentkit-js/cli            # CLI wrapper around `devtools`
+npm install -g /cli            # CLI wrapper around `devtools`
 ```
 
-For pure CLI use, `npx -p @agentkit-js/cli agentkit devtools …` works without a global install.
+For pure CLI use, `npx -p /cli agentkit devtools …` works without a global install.
 
 ## Why this exists, framed honestly
 
-Mastra Studio and Vercel AI SDK DevTools each ship a polished panel — but bound to their framework. agentkit-js already emits GenAI-semconv attributes alongside the legacy ones, and the adapter (`convertGenAiSpansToEvents`) reads any producer that does the same. That puts this package in a position the bigger framework studios *cannot* fill without breaking their own boundary: a neutral local Studio that surveys runs across the framework you actually have.
+Mastra Studio and Vercel AI SDK DevTools each ship a polished panel — but bound to their framework. wasmagent already emits GenAI-semconv attributes alongside the legacy ones, and the adapter (`convertGenAiSpansToEvents`) reads any producer that does the same. That puts this package in a position the bigger framework studios *cannot* fill without breaking their own boundary: a neutral local Studio that surveys runs across the framework you actually have.
 
-If you find this useful and you don't otherwise use agentkit-js, that is exactly the point — and we'd love to hear about it: tag your issue `devtools:cross-framework` so we can prioritize the producers users actually have.
+If you find this useful and you don't otherwise use wasmagent, that is exactly the point — and we'd love to hear about it: tag your issue `devtools:cross-framework` so we can prioritize the producers users actually have.
 
 ## License
 
-[Apache-2.0](./LICENSE) — © agentkit-js contributors
+[Apache-2.0](./LICENSE) — © wasmagent contributors

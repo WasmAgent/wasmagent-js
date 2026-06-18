@@ -2,8 +2,8 @@
 
 A complete agentkit-js agent running with **no cloud calls** at all:
 
-- **Model**: `@agentkit-js/model-local` + `node-llama-cpp` (Qwen 3.5 0.8B by default)
-- **Execution**: `@agentkit-js/kernel-quickjs` — WASM sandbox, no Node.js APIs reachable
+- **Model**: `@wasmagent/model-local` + `node-llama-cpp` (Qwen 3.5 0.8B by default)
+- **Execution**: `@wasmagent/kernel-quickjs` — WASM sandbox, no Node.js APIs reachable
 - **State**: in-memory `KvBackend` (the framework default)
 
 After the first model download (~530 MB), you can disconnect from the network and re-run the demo — it still answers.
@@ -54,15 +54,15 @@ Sub-1B models can be unreliable for **complex tool routing or deep multi-step re
 2. **`localFirst` routing** — pair the local model with a cloud fallback for production workloads:
 
    ```js
-   import { localFirst, LocalModel } from "@agentkit-js/model-local";
-   import { AnthropicModel } from "@agentkit-js/core";
+   import { localFirst, LocalModel } from "@wasmagent/model-local";
+   import { AnthropicModel } from "@wasmagent/core";
    const model = localFirst(
      new LocalModel({ source: { model: "qwen3.5-0.8b" } }),
      new AnthropicModel("claude-haiku-4-5-20251001", process.env.ANTHROPIC_API_KEY),
    );
    ```
 
-   Local handles the easy cases; the cloud catches the rest. See the L5 routing presets in `@agentkit-js/model-local`.
+   Local handles the easy cases; the cloud catches the rest. See the L5 routing presets in `@wasmagent/model-local`.
 
 ## Hardware notes
 

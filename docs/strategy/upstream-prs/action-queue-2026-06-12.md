@@ -18,14 +18,14 @@ Status: 🟡 OPEN, awaiting Glama prerequisites.
 From the [bot
 comment](https://github.com/punkpeye/awesome-mcp-servers/pull/7910#issuecomment-4689364380):
 
-1. List `@agentkit-js/mcp-server` at `glama.ai/mcp/servers`.
+1. List `@wasmagent/mcp-server` at `glama.ai/mcp/servers`.
    Glama runs a health check (server must start and answer
    introspection); a Dockerfile must be added "directly to
    Glama" (their listing UI takes the Dockerfile).
 2. Amend the PR entry to include the Glama score badge:
 
    ```markdown
-   [![telleroutlook/agentkit-js MCP server](https://glama.ai/mcp/servers/telleroutlook/agentkit-js/badges/score.svg)](https://glama.ai/mcp/servers/telleroutlook/agentkit-js)
+   [![WasmAgent/wasmagent-js MCP server](https://glama.ai/mcp/servers/WasmAgent/wasmagent-js/badges/score.svg)](https://glama.ai/mcp/servers/WasmAgent/wasmagent-js)
    ```
 
 ### Step 1 (manual — needs the maintainer in a browser)
@@ -33,7 +33,7 @@ comment](https://github.com/punkpeye/awesome-mcp-servers/pull/7910#issuecomment-
 `glama.ai/mcp/servers` requires an account + the Glama submission
 form. The submission form takes:
 
-- Repo URL: `https://github.com/telleroutlook/agentkit-js`
+- Repo URL: `https://github.com/WasmAgent/wasmagent-js`
 - Server entry path: `packages/mcp-server`
 - Dockerfile: see the proposed `packages/mcp-server/Dockerfile.glama` below.
 
@@ -43,7 +43,7 @@ co-maintainer when one is named) does not have to re-derive it.
 ### Pre-requisite — stdio entry point
 
 ⚠️ **Verified 2026-06-12 against the package source.** Today
-`@agentkit-js/mcp-server` is a **transport-agnostic** library: its
+`@wasmagent/mcp-server` is a **transport-agnostic** library: its
 `index.ts` exports `McpAgentServer` (with a `.handle()` method) and
 `fetchHandler.ts` adds an HTTP transport, but there is **no
 out-of-the-box stdio CLI** entry point. Glama's health check
@@ -66,7 +66,7 @@ So the Glama listing PR has to land in two parts:
    }
    ```
 
-   so both `npx @agentkit-js/mcp-server` (for Glama health-check
+   so both `npx @wasmagent/mcp-server` (for Glama health-check
    and for users who want stdio MCP) and the existing `import`
    path (for users who want the library) work.
 
@@ -87,7 +87,7 @@ FROM node:20-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends git \
  && rm -rf /var/lib/apt/lists/*
-RUN git clone --depth 1 https://github.com/telleroutlook/agentkit-js.git . \
+RUN git clone --depth 1 https://github.com/WasmAgent/wasmagent-js.git . \
  && npm install -g bun \
  && bun install \
  && bun run build
@@ -102,13 +102,13 @@ to verify: `packages/mcp-server/package.json` `bin` field.)
 
 ### Step 2 (mechanical — we can do this once Glama listing exists)
 
-Once `glama.ai/mcp/servers/telleroutlook/agentkit-js` returns
+Once `glama.ai/mcp/servers/WasmAgent/wasmagent-js` returns
 200, amend [PR
 #7910](https://github.com/punkpeye/awesome-mcp-servers/pull/7910)
 by editing the entry to:
 
 ```markdown
-- [telleroutlook/agentkit-js](https://github.com/telleroutlook/agentkit-js/tree/main/packages/mcp-server) [![telleroutlook/agentkit-js MCP server](https://glama.ai/mcp/servers/telleroutlook/agentkit-js/badges/score.svg)](https://glama.ai/mcp/servers/telleroutlook/agentkit-js) 📇 ☁️ 🏠 - `@agentkit-js/mcp-server`: code-mode MCP server (`execute_code` + `docs_search` two-tool surface) backed by a unified capability manifest across three sandbox kernels (in-process node:vm, WASM via QuickJS / Pyodide / Wasmtime, and remote microVM via E2B / Cloudflare Sandbox). At N=30 tools the bootstrap-context cost drops to 13.6% of direct tool-use. Apache-2.0.
+- [WasmAgent/wasmagent-js](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-server) [![WasmAgent/wasmagent-js MCP server](https://glama.ai/mcp/servers/WasmAgent/wasmagent-js/badges/score.svg)](https://glama.ai/mcp/servers/WasmAgent/wasmagent-js) 📇 ☁️ 🏠 - `@wasmagent/mcp-server`: code-mode MCP server (`execute_code` + `docs_search` two-tool surface) backed by a unified capability manifest across three sandbox kernels (in-process node:vm, WASM via QuickJS / Pyodide / Wasmtime, and remote microVM via E2B / Cloudflare Sandbox). At N=30 tools the bootstrap-context cost drops to 13.6% of direct tool-use. Apache-2.0.
 ```
 
 The `gh pr edit` command (when Glama listing is live):
@@ -120,7 +120,7 @@ $EDITOR README.md   # apply the line above
 git commit -am "Add Glama badge per maintainer-bot request"
 git push
 # 2. Reply on the PR thread:
-gh pr comment 7910 --repo punkpeye/awesome-mcp-servers --body "Listed at glama.ai/mcp/servers/telleroutlook/agentkit-js and added the score badge per the listing-bot request."
+gh pr comment 7910 --repo punkpeye/awesome-mcp-servers --body "Listed at glama.ai/mcp/servers/WasmAgent/wasmagent-js and added the score badge per the listing-bot request."
 ```
 
 ## 2. `mastra-ai/mastra#17884` — explicit decline
@@ -158,7 +158,7 @@ Then resume waiting. Do not bump twice.
 Status: 🟢 **gate cleared 2026-06-13.**
 
 The pre-submission requirement (`agentkitCodemodeExecutor` shim in
-`@agentkit-js/aisdk` so the recipe in
+`@wasmagent/aisdk` so the recipe in
 [`cloudflare-codemode-byo-executor.md`](cloudflare-codemode-byo-executor.md)
 actually runs) is now met. The shim ships in
 `packages/aisdk/src/codemodeExecutor.ts` with 14 unit tests
@@ -174,7 +174,7 @@ Next concrete action: file the recipe-page PR against
 [`cloudflare-codemode-byo-executor.md`](cloudflare-codemode-byo-executor.md);
 the only change before submission is to update the import in the
 example from "shim is in flight" to "shipping in
-`@agentkit-js/aisdk@0.1.x` on npm" (verify version on npm at PR
+`@wasmagent/aisdk@0.1.x` on npm" (verify version on npm at PR
 time).
 
 ## How this file is updated

@@ -9,7 +9,7 @@ import type { Embedder, Retriever, SearchResult } from "./Retriever.js";
  *
  * Plug in any agentkit `Embedder` and an underlying `Retriever` that
  * already does dense ANN search (InMemoryVectorStore, PineconeStore,
- * QdrantStore from `@agentkit-js/tools-rag`, etc.). HybridRetriever
+ * QdrantStore from `@wasmagent/tools-rag`, etc.). HybridRetriever
  * maintains its own BM25 index in parallel.
  */
 export interface HybridRetrieverOpts {

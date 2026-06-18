@@ -67,7 +67,7 @@ for (const file of ORDER) {
   const start = Date.now();
   process.stdout.write(`[run-all] RUN  ${file} ... `);
   // We invoke `bun` rather than `node` because the smoke scripts use
-  // workspace `@agentkit-js/*` imports — bun resolves those via
+  // workspace `@wasmagent/*` imports — bun resolves those via
   // workspace symlinks; node would need an `--experimental-resolve` dance.
   const code = await new Promise((resolveFn) => {
     const p = spawn("bun", [path], {

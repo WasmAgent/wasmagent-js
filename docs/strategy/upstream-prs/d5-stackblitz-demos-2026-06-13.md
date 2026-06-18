@@ -18,10 +18,10 @@ The four adapter packages now each have:
 
 | Adapter | StackBlitz demo dir | Verified |
 |---|---|---|
-| `@agentkit-js/aisdk` | [`examples/aisdk-quickjs/`](../../../examples/aisdk-quickjs/) | requires `OPENAI_API_KEY` to run end-to-end (Vercel AI SDK round-trip) |
-| `@agentkit-js/mastra-sandbox` | [`examples/mastra-quickjs/`](../../../examples/mastra-quickjs/) | ✅ smoke-tested 2026-06-13 — `1+2 → 3`, `sum → 15` |
-| `@agentkit-js/claude-agent-sdk` | [`examples/claude-agent-quickjs/`](../../../examples/claude-agent-quickjs/) | ✅ smoke-tested 2026-06-13 — `[1,4,9]` |
-| `@agentkit-js/openai-agents` | [`examples/openai-agents-quickjs/`](../../../examples/openai-agents-quickjs/) | ✅ smoke-tested 2026-06-13 — `'hello-from-quickjs'` |
+| `@wasmagent/aisdk` | [`examples/aisdk-quickjs/`](../../../examples/aisdk-quickjs/) | requires `OPENAI_API_KEY` to run end-to-end (Vercel AI SDK round-trip) |
+| `@wasmagent/mastra-sandbox` | [`examples/mastra-quickjs/`](../../../examples/mastra-quickjs/) | ✅ smoke-tested 2026-06-13 — `1+2 → 3`, `sum → 15` |
+| `@wasmagent/claude-agent-sdk` | [`examples/claude-agent-quickjs/`](../../../examples/claude-agent-quickjs/) | ✅ smoke-tested 2026-06-13 — `[1,4,9]` |
+| `@wasmagent/openai-agents` | [`examples/openai-agents-quickjs/`](../../../examples/openai-agents-quickjs/) | ✅ smoke-tested 2026-06-13 — `'hello-from-quickjs'` |
 
 ## Why per-adapter, not one omnibus example
 

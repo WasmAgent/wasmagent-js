@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * agentkit-evals — independent CLI for the @agentkit-js/evals-runner.
+ * agentkit-evals — independent CLI for the @wasmagent/evals-runner.
  *
  * # Why a separate bin from `agentkit evals run`
  *
- * `@agentkit-js/cli` exposes the same evals surface via
+ * `@wasmagent/cli` exposes the same evals surface via
  * `agentkit evals run …`, but pulls in every transitive dep that the
  * multi-tool needs (devtools, model adapters, etc.). The independent
  * `agentkit-evals` binary lets eval-only consumers (CI matrix runners,
  * researchers comparing models, our own regression harness) install
- * just `@agentkit-js/evals-runner` and get a usable CLI without
+ * just `@wasmagent/evals-runner` and get a usable CLI without
  * pulling in the rest of agentkit's surface area.
  *
  * Until 2026-06-18 this binary was a *dead link* — `package.json`
@@ -40,7 +40,7 @@
  *
  * No `init`, no `run` of arbitrary tasks, no model bootstrapping. This
  * binary is **only** for evaluation. Anything else: install
- * `@agentkit-js/cli` and use `agentkit`.
+ * `@wasmagent/cli` and use `agentkit`.
  */
 
 import { writeFile } from "node:fs/promises";
@@ -53,7 +53,7 @@ import { type ModelSpec, REFERENCE_SUITES, renderReportMarkdown, runEvaluation }
 // symlinked layouts, so a literal is the safe default.
 const VERSION = "0.1.0";
 
-const HELP = `agentkit-evals — eval runner for @agentkit-js/evals-runner
+const HELP = `agentkit-evals — eval runner for @wasmagent/evals-runner
 
 USAGE
   agentkit-evals list
@@ -94,10 +94,10 @@ EXAMPLES
 
 NOTES
   - This binary is a thin wrapper over runEvaluation() from
-    @agentkit-js/evals-runner. Anything you can do here you can do in
+    @wasmagent/evals-runner. Anything you can do here you can do in
     a Node script that imports the same module.
   - For the multi-tool experience (run, init-tool, devtools, model)
-    install @agentkit-js/cli and use \`agentkit evals run\` instead;
+    install @wasmagent/cli and use \`agentkit evals run\` instead;
     the underlying runner is the same.
 `;
 

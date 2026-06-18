@@ -2,12 +2,12 @@
 
 `AGENTS.md` 是 Codex / Cursor / Copilot / Gemini 共用的项目约定文件 —— 在仓库根目录或子目录放一个 Markdown，列明项目的代码风格、构建命令、不要碰的目录等等，让 agent 在产生改动前先读懂这些规则。
 
-## 在 agentkit-js 里启用
+## 在 wasmagent 里启用
 
-agentkit-js 不在 core 里强制 AGENTS.md 协议（保持框架的中立性 — 见 [Generic Foundation Principle](https://github.com/telleroutlook/agentkit-js#design-principles)），但提供了"加到 system prompt 前缀"的清晰套路。bscode 的实现是参考做法。
+wasmagent 不在 core 里强制 AGENTS.md 协议（保持框架的中立性 — 见 [Generic Foundation Principle](https://github.com/WasmAgent/wasmagent-js#design-principles)），但提供了"加到 system prompt 前缀"的清晰套路。bscode 的实现是参考做法。
 
 ```ts
-import { CodeAgent } from "@agentkit-js/core";
+import { CodeAgent } from "@wasmagent/core";
 
 // 自己的辅助函数，把仓库 AGENTS.md 拼成系统提示前缀
 function loadAgentsMd(workspaceRoot: string): string {
@@ -44,7 +44,7 @@ bscode 还提供了一个 `init_agents_md` 工具，让 agent 自己起草 AGENT
 
 ## 适用边界
 
-- ✅ 多 agent 协作（Codex、Cursor、Claude Code、agentkit-js 都能消费同一份 AGENTS.md）
+- ✅ 多 agent 协作（Codex、Cursor、Claude Code、wasmagent 都能消费同一份 AGENTS.md）
 - ✅ 仓库级约定（构建命令、风格、目录边界）
 - ❌ **机密信息** —— AGENTS.md 进 system prompt，会出现在每次 model 调用中；不要放 secrets
 

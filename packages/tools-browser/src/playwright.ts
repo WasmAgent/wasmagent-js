@@ -43,7 +43,7 @@ export async function openPlaywrightSession(
     pw = (await import("playwright")) as unknown as PlaywrightModule;
   } catch (e) {
     throw new Error(
-      `@agentkit-js/tools-browser: 'playwright' is not installed. Install with: bun add playwright (or npm install playwright). Original error: ${
+      `@wasmagent/tools-browser: 'playwright' is not installed. Install with: bun add playwright (or npm install playwright). Original error: ${
         e instanceof Error ? e.message : String(e)
       }`
     );

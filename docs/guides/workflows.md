@@ -35,7 +35,7 @@ import {
   MemoryKvBackend,
   ToolRegistry,
   type WorkflowDefinition,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 
 const tools = new ToolRegistry();
 tools.register({ /* echo, fetch, summarise, … */ });
@@ -93,7 +93,7 @@ Switching from local to Cloudflare requires **zero changes** to your
 
 ```ts
 // Cloudflare side — one-line entrypoint:
-import { runWorkflowEntrypoint } from "@agentkit-js/cloudflare-worker";
+import { runWorkflowEntrypoint } from "@wasmagent/cloudflare-worker";
 
 export class ResearchWf extends WorkflowEntrypoint<Env, Params> {
   async run(event, step) {
@@ -242,5 +242,5 @@ includes:
 - Cross-backend store parity (`MemoryKvBackend` and a filesystem KV both pass
   the same test suite).
 
-Run them with `npm test --workspace @agentkit-js/core` and
-`npm test --workspace @agentkit-js/cloudflare-worker`.
+Run them with `npm test --workspace @wasmagent/core` and
+`npm test --workspace @wasmagent/cloudflare-worker`.

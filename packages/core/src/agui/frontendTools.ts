@@ -41,7 +41,7 @@ import type { ToolDefinition } from "../tools/types.js";
 /**
  * Minimal shape we accept for a frontend-declared tool. Mirrors AG-UI's
  * `AgUiToolDef`. Kept here (not imported) so the core package does not gain
- * a runtime dependency on @agentkit-js/ag-ui — F5 must work even when the
+ * a runtime dependency on @wasmagent/ag-ui — F5 must work even when the
  * AG-UI package is not installed (e.g. raw cloudflare-worker hosts that
  * implement the protocol themselves).
  */

@@ -24,7 +24,7 @@ Cold episodic entries (accessCount=0 and >30 days old) are also evicted
 on `decay()`, regardless of TTL.
 
 ```ts
-import { StructuredMemory, InMemoryStructuredKv } from "@agentkit-js/core";
+import { StructuredMemory, InMemoryStructuredKv } from "@wasmagent/core";
 
 const mem = new StructuredMemory(new InMemoryStructuredKv());
 await mem.set("user:42", { name: "Alice" }, { namespace: "semantic" });
@@ -45,7 +45,7 @@ The tool reads/writes through any `KvBackend`, so swap the backend
 between in-memory (dev) and Cloudflare KV (prod).
 
 ```ts
-import { createMemoryTool, MapKvBackend } from "@agentkit-js/core";
+import { createMemoryTool, MapKvBackend } from "@wasmagent/core";
 
 const memoryTool = createMemoryTool({
   backend: new MapKvBackend(), // or a CF KV-backed impl
@@ -66,12 +66,12 @@ The agent gets four built-in operations: `memory_set`, `memory_get`,
 ## RAG / retrieval pattern
 
 For semantic recall over large corpora, use `HybridRetriever` with a
-dense embedder (`@agentkit-js/tools-rag`'s `HttpEmbedder`) and any
+dense embedder (`@wasmagent/tools-rag`'s `HttpEmbedder`) and any
 vector store:
 
 ```ts
-import { HybridRetriever, InMemoryVectorStore } from "@agentkit-js/core";
-import { HttpEmbedder, ragTool } from "@agentkit-js/tools-rag";
+import { HybridRetriever, InMemoryVectorStore } from "@wasmagent/core";
+import { HttpEmbedder, ragTool } from "@wasmagent/tools-rag";
 
 const embedder = new HttpEmbedder({
   apiKey: process.env.OPENAI_API_KEY!,

@@ -1,7 +1,7 @@
 /**
- * @agentkit-js/devtools/react — React UI for the replay engine.
+ * @wasmagent/devtools/react — React UI for the replay engine.
  *
- * Imported via `import { DevTools } from "@agentkit-js/devtools/react";`.
+ * Imported via `import { DevTools } from "@wasmagent/devtools/react";`.
  * Pure component layer; the underlying logic lives in EventLogReplay
  * (one subpath up).
  */

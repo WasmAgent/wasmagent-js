@@ -39,7 +39,7 @@ that exposes one `execute_code` surface plus a `docs_search` surface
 covering N downstream tools. Notable open-source implementations a
 Mastra app might consume:
 
-- [`@agentkit-js/mcp-server`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/mcp-server)
+- [`@wasmagent/mcp-server`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-server)
   — `createCodeModeServer` plus a `createFetchHandler` for any
   Workers / Node / Bun host. Three-tier sandbox kernel (in-process
   / WASM / remote) is honoured uniformly via a unified
@@ -63,7 +63,7 @@ referencing this section.)
 >
 > This PR adds a single sub-section ("Notable third-party MCP
 > servers") to `overview.mdx`. The first entry is
-> [`@agentkit-js/mcp-server`](https://github.com/telleroutlook/agentkit-js/tree/main/packages/mcp-server),
+> [`@wasmagent/mcp-server`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-server),
 > which exposes the `execute_code` + `docs_search` two-tool code-mode
 > surface introduced by Cloudflare's Code Mode MCP and Anthropic's
 > Code Execution with MCP. It pairs with any of agentkit's three
@@ -93,6 +93,6 @@ referencing this section.)
 ## Acceptance criteria for "this PR worked"
 
 - Merged into `mastra-ai/mastra` `main`.
-- `@agentkit-js/mcp-server` weekly downloads non-zero with a
+- `@wasmagent/mcp-server` weekly downloads non-zero with a
   traceable shift after the docs site rebuilds.
 - One inbound issue or PR from a Mastra user referencing the listing.

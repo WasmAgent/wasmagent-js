@@ -18,14 +18,14 @@
 
 | Package | Version |
 |---------|---------|
-| `@agentkit-js/core` | 0.2.0 |
-| `@agentkit-js/mcp-server` | 0.2.0 |
-| `@agentkit-js/aisdk` | 0.1.0 (unchanged — codemodeExecutor docstring refresh only) |
+| `@wasmagent/core` | 0.2.0 |
+| `@wasmagent/mcp-server` | 0.2.0 |
+| `@wasmagent/aisdk` | 0.1.0 (unchanged — codemodeExecutor docstring refresh only) |
 
 **Why this entry exists**
 
 A meaningful strategy delta + the first Glama-published release of
-`@agentkit-js/mcp-server`, plus an upstream PR landed at
+`@wasmagent/mcp-server`, plus an upstream PR landed at
 [`cloudflare/agents#1771`](https://github.com/cloudflare/agents/issues/1771)
 (filed as a community-recipe issue because the repo restricts PR
 creation to collaborators).

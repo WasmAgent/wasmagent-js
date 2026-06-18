@@ -19,7 +19,7 @@
  * the connection details (see comments at the bottom for the
  * adapter-import pattern; we deliberately do not import Redis / CF
  * adapters at the top level so this example stays zero-dep beyond
- * @agentkit-js/core + @agentkit-js/mcp-server).
+ * @wasmagent/core + @wasmagent/mcp-server).
  *
  * Usage from any MCP host:
  *
@@ -34,8 +34,8 @@
 import {
   InMemoryStructuredKv,
   StructuredMemory,
-} from "@agentkit-js/core";
-import { McpAgentServer, runStdio } from "@agentkit-js/mcp-server";
+} from "@wasmagent/core";
+import { McpAgentServer, runStdio } from "@wasmagent/mcp-server";
 
 // ── Backend selection ────────────────────────────────────────────────────────
 
@@ -274,10 +274,10 @@ await runStdio(server);
 //
 // Replace the in-memory backend at the top of this file with one of:
 //
-//   import { RedisKvBackend } from "@agentkit-js/core/checkpoint";
+//   import { RedisKvBackend } from "@wasmagent/core/checkpoint";
 //   const kv = adaptStructuredKvBackend(new RedisKvBackend({ url: process.env.REDIS_URL }));
 //
-//   import { CloudflareKvBackend } from "@agentkit-js/cloudflare-worker";
+//   import { CloudflareKvBackend } from "@wasmagent/cloudflare-worker";
 //   const kv = adaptStructuredKvBackend(new CloudflareKvBackend(env.MEMORY_KV));
 //
 // (The CF Worker path has its own deployment shape — see

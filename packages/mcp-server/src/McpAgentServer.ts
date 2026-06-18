@@ -2,7 +2,7 @@
  * F1 — McpAgentServer: serve any SubagentRunnable over MCP JSON-RPC.
  */
 
-import type { AgentEvent } from "@agentkit-js/core";
+import type { AgentEvent } from "@wasmagent/core";
 import { InMemoryTaskStore } from "./taskStore.js";
 import type {
   McpAgentServerOptions,

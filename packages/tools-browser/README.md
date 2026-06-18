@@ -1,13 +1,13 @@
-# @agentkit-js/tools-browser
+# /tools-browser
 
 Browser automation tools — Playwright session + CDP-bridge session, 5 tools (navigate / click / fill / screenshot / extract).
 
-> Part of [agentkit-js](https://github.com/telleroutlook/agentkit-js) — a TypeScript + WASM agent runtime.
+> Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.
 
 ## Install
 
 ```bash
-npm install @agentkit-js/tools-browser @agentkit-js/core
+npm install /tools-browser /core
 ```
 
 ## Usage
@@ -18,4 +18,4 @@ Two interchangeable sessions: `PlaywrightSession` for local headless work,
 
 ## License
 
-[Apache-2.0](./LICENSE) — © agentkit-js contributors
+[Apache-2.0](./LICENSE) — © wasmagent contributors

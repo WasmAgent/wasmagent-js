@@ -1,12 +1,12 @@
 /**
- * @agentkit-js/tools-web — web-search tool adapters for agentkit-js.
+ * @wasmagent/tools-web — web-search tool adapters for agentkit-js.
  *
  * Three production-ready providers, normalized to a common
  * {@link SearchResult} schema so an agent can swap providers without
  * touching its prompt or tool-handling code.
  *
  * @example
- *   import { tavilySearchTool } from "@agentkit-js/tools-web";
+ *   import { tavilySearchTool } from "@wasmagent/tools-web";
  *   const search = tavilySearchTool({ apiKey: process.env.TAVILY_API_KEY! });
  *   const agent = new ToolCallingAgent({ model, tools: [search] });
  */

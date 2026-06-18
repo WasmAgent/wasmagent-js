@@ -1,9 +1,9 @@
-# @agentkit-js/aisdk
+# /aisdk
 
-> Drop agentkit-js sandbox kernels into the **Vercel AI SDK** as a `tool()`.
+> Drop wasmagent sandbox kernels into the **Vercel AI SDK** as a `tool()`.
 > Edge-safe code execution, one capability manifest, no E2B / OS sandbox needed.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/telleroutlook/agentkit-js/tree/main/examples/aisdk-quickjs?file=index.mjs)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/WasmAgent/wasmagent-js/tree/main/examples/aisdk-quickjs?file=index.mjs)
 
 ## Why this exists
 
@@ -14,7 +14,7 @@ forbidden on Cloudflare Workers and Vercel Edge; OS-level sandboxes (E2B,
 Daytona, Blaxel) need a server you don't have.
 
 agentkit's WASM kernels run JavaScript inside QuickJS-in-WASM
-(`@agentkit-js/kernel-quickjs`) — language-level isolation, no `node:vm`,
+(`/kernel-quickjs`) — language-level isolation, no `node:vm`,
 ~2 MB cold start. Perfect fill for that gap.
 
 ## Compared to E2B / Blaxel
@@ -35,7 +35,7 @@ binaries, or untrusted multi-tenant isolation.
 ## Install
 
 ```bash
-npm install ai @ai-sdk/openai @agentkit-js/aisdk @agentkit-js/kernel-quickjs \
+npm install ai @ai-sdk/openai /aisdk /kernel-quickjs \
   quickjs-emscripten @jitl/quickjs-wasmfile-release-sync zod
 ```
 
@@ -44,8 +44,8 @@ npm install ai @ai-sdk/openai @agentkit-js/aisdk @agentkit-js/kernel-quickjs \
 ```ts
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { sandboxedJsTool } from "@agentkit-js/aisdk";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { sandboxedJsTool } from "/aisdk";
+import { QuickJSKernel } from "/kernel-quickjs";
 
 const kernel = new QuickJSKernel();
 
@@ -66,9 +66,9 @@ const { text } = await generateText({
 ```ts
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { codeModeTool } from "@agentkit-js/aisdk";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
-import { ToolRegistry } from "@agentkit-js/core";
+import { codeModeTool } from "/aisdk";
+import { QuickJSKernel } from "/kernel-quickjs";
+import { ToolRegistry } from "/core";
 import { z } from "zod";
 
 const tools = new ToolRegistry();
@@ -112,10 +112,10 @@ into the same `kernel:` slot and the rest of your code is unchanged:
 
 | Kernel | When to pick it | Edge-safe |
 | ------ | --------------- | --------- |
-| `QuickJSKernel` (`@agentkit-js/kernel-quickjs`) | Default. JS/TS workloads. ~2 MB cold start. | ✅ |
-| `PyodideKernel` (`@agentkit-js/kernel-pyodide`) | Model emits Python (numpy, pandas, regex-heavy). | ✅ (heavy) |
-| `WasmtimeKernel` (`@agentkit-js/kernel-wasmtime`) | Multi-language WASM modules / Javy-compiled JS for max isolation. | ✅ |
-| `RemoteSandboxKernel` (`@agentkit-js/kernel-remote`) | Need full POSIX, native binaries, multi-tenant trust. Backed by E2B / Cloudflare Sandbox. | n/a |
+| `QuickJSKernel` (`/kernel-quickjs`) | Default. JS/TS workloads. ~2 MB cold start. | ✅ |
+| `PyodideKernel` (`/kernel-pyodide`) | Model emits Python (numpy, pandas, regex-heavy). | ✅ (heavy) |
+| `WasmtimeKernel` (`/kernel-wasmtime`) | Multi-language WASM modules / Javy-compiled JS for max isolation. | ✅ |
+| `RemoteSandboxKernel` (`/kernel-remote`) | Need full POSIX, native binaries, multi-tenant trust. Backed by E2B / Cloudflare Sandbox. | n/a |
 
 Swap is a one-liner — `kernel: new QuickJSKernel()` becomes `kernel: new PyodideKernel()`. Same `CapabilityManifest`, same tool-call shape, same SDK loop.
 
@@ -132,26 +132,26 @@ Every kernel honours the same `CapabilityManifest`:
 | `cpuMs`             | Per-call timeout (tightens kernel default)   |
 | `memoryLimitBytes`  | Hard runtime memory cap (where supported)    |
 
-See [the unified policy face docs](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/code-mode.md#security-policy-face)
+See [the unified policy face docs](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/code-mode.md#security-policy-face)
 for the per-kernel honouring matrix.
 
 ## See also
 
-- [`docs/guides/code-mode.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/code-mode.md)
+- [`docs/guides/code-mode.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/code-mode.md)
   — the same code-mode pattern as a standalone MCP server.
-- [`@agentkit-js/mastra-sandbox`](https://www.npmjs.com/package/@agentkit-js/mastra-sandbox)
+- [`/mastra-sandbox`](https://www.npmjs.com/package//mastra-sandbox)
   — the same kernels as a Mastra sandbox provider.
 
 ## Memory tool (D3, 2026-06-13)
 
 Cross-session memory backed by any `KvBackend` (Cloudflare KV, Redis,
 in-memory Map, …) — same primitive as `createMemoryTool` in
-`@agentkit-js/core`, exposed as a Vercel AI SDK `tool()`:
+`/core`, exposed as a Vercel AI SDK `tool()`:
 
 ```ts
 import { generateText } from "ai";
-import { memoryTool } from "@agentkit-js/aisdk";
-import { MapKvBackend } from "@agentkit-js/core";
+import { memoryTool } from "/aisdk";
+import { MapKvBackend } from "/core";
 
 await generateText({
   model: openai("gpt-4o-mini"),
@@ -160,8 +160,8 @@ await generateText({
 });
 ```
 
-The same `memoryTool` is also exposed by `@agentkit-js/claude-agent-sdk`
-(as `memoryClaudeTool`) and `@agentkit-js/openai-agents` (as
+The same `memoryTool` is also exposed by `/claude-agent-sdk`
+(as `memoryClaudeTool`) and `/openai-agents` (as
 `memoryAgentTool`) — pick the one that matches your framework and the
 backend follows you across them.
 

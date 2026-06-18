@@ -3,12 +3,12 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "description": "Standalone usage of @agentkit-js/kernel-quickjs WITHOUT pulling in the rest of agentkit-js — proves the kernel packages can be embedded into any agent framework.",
+  "description": "Standalone usage of @wasmagent/kernel-quickjs WITHOUT pulling in the rest of agentkit-js — proves the kernel packages can be embedded into any agent framework.",
   "scripts": {
     "start": "node index.mjs"
   },
   "dependencies": {
-    "@agentkit-js/kernel-quickjs": "workspace:*",
+    "@wasmagent/kernel-quickjs": "workspace:*",
     "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
     "quickjs-emscripten": "0.32.0",
     "quickjs-emscripten-core": "0.32.0"

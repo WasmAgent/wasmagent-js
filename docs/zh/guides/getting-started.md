@@ -1,19 +1,19 @@
-# 5 分钟上手 agentkit-js
+# 5 分钟上手 wasmagent
 
 这份文档把你从零带到第一个跑起来的 Agent，配套的英文版在 [getting-started](../guides/getting-started.md)。
 
 ## 1. 安装
 
 ```bash
-npm install @agentkit-js/core @anthropic-ai/sdk
+npm install @wasmagent/core @anthropic-ai/sdk
 # 或者用 Bun / pnpm
-bun add @agentkit-js/core @anthropic-ai/sdk
+bun add @wasmagent/core @anthropic-ai/sdk
 ```
 
 > 用国产模型？换成对应的适配器：
-> `@agentkit-js/model-doubao`（豆包）、`@agentkit-js/model-deepseek`（DeepSeek）、
-> `@agentkit-js/model-moonshot`（Kimi）、`@agentkit-js/model-qwen`（通义千问）、
-> `@agentkit-js/model-zhipu`（智谱 GLM）、`@agentkit-js/model-minimax`（MiniMax）。
+> `@wasmagent/model-doubao`（豆包）、`@wasmagent/model-deepseek`（DeepSeek）、
+> `@wasmagent/model-moonshot`（Kimi）、`@wasmagent/model-qwen`（通义千问）、
+> `@wasmagent/model-zhipu`（智谱 GLM）、`@wasmagent/model-minimax`（MiniMax）。
 >
 > ⚠️ **合规提示**：使用国产模型前请阅读各家服务条款，确认数据出境与存储策略符合你的合规要求。
 
@@ -27,7 +27,7 @@ export ANTHROPIC_API_KEY=sk-ant-...   # 或者 DOUBAO_API_KEY、DEEPSEEK_API_KEY
 
 ```ts
 // hello-agent.ts
-import { CodeAgent, AnthropicModel, AnthropicModels } from "@agentkit-js/core";
+import { CodeAgent, AnthropicModel, AnthropicModels } from "@wasmagent/core";
 
 const agent = new CodeAgent({
   model: new AnthropicModel(AnthropicModels.SONNET_4_6, {
@@ -42,8 +42,8 @@ console.log(result.finalAnswer); // → 156
 或者用豆包（Doubao Seed 1.6）：
 
 ```ts
-import { CodeAgent } from "@agentkit-js/core";
-import { DoubaoModel, DoubaoModels } from "@agentkit-js/model-doubao";
+import { CodeAgent } from "@wasmagent/core";
+import { DoubaoModel, DoubaoModels } from "@wasmagent/model-doubao";
 
 const agent = new CodeAgent({
   model: new DoubaoModel(DoubaoModels.DOUBAO_SEED_1_6, {
@@ -67,8 +67,8 @@ Agent 会决定写一段 `12 * 13` 在默认的 `VmKernel` 里跑出答案，把
 `VmKernel` 用的是 `node:vm`，不能在 Workers 跑。换成 QuickJS WASM：
 
 ```ts
-import { CodeAgent } from "@agentkit-js/core";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { CodeAgent } from "@wasmagent/core";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
 const agent = new CodeAgent({
   model: /* … */,
@@ -85,4 +85,4 @@ const agent = new CodeAgent({
 - [DevTools](../guides/devtools.md) — 时间旅行调试器
 - [Evals cookbook](../guides/evals-cookbook.md) — 16 个内置打分器、多准则评委
 
-遇到问题可以 [提 issue](https://github.com/telleroutlook/agentkit-js/issues) — 5 分钟内卡住就是我们要修的 bug。
+遇到问题可以 [提 issue](https://github.com/WasmAgent/wasmagent-js/issues) — 5 分钟内卡住就是我们要修的 bug。

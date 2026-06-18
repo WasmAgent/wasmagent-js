@@ -57,10 +57,10 @@ node examples/mcp-portal/index.mjs
 ## Swap kernels for production
 
 ```ts
-import { createPortalServer } from "@agentkit-js/mcp-server";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs"; // edge-safe WASM
+import { createPortalServer } from "@wasmagent/mcp-server";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs"; // edge-safe WASM
 // or:
-import { RemoteSandboxKernel } from "@agentkit-js/core";       // microVM (E2B / CF Sandbox)
+import { RemoteSandboxKernel } from "@wasmagent/core";       // microVM (E2B / CF Sandbox)
 
 createPortalServer({ ...same config..., kernel: new QuickJSKernel() });
 ```
@@ -69,7 +69,7 @@ createPortalServer({ ...same config..., kernel: new QuickJSKernel() });
 
 Anything that exposes a `ToolRegistry`-shaped surface plugs in. For real
 upstream MCP servers, use `McpToolCollection.fromHttp()` /
-`fromStdio()` in `@agentkit-js/core` and pass the resulting collection
+`fromStdio()` in `@wasmagent/core` and pass the resulting collection
 as `tools`.
 
 ## Token math

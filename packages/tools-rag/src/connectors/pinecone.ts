@@ -1,4 +1,4 @@
-import type { Embedder, Retriever, SearchResult } from "@agentkit-js/core";
+import type { Embedder, Retriever, SearchResult } from "@wasmagent/core";
 
 export interface PineconeStoreOpts {
   /** Pinecone API key. */

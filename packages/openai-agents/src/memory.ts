@@ -1,16 +1,16 @@
 /**
- * @agentkit-js/openai-agents — Memory tool adapter (D3, 2026-06-13).
+ * @wasmagent/openai-agents — Memory tool adapter (D3, 2026-06-13).
  *
  * Exposes agentkit's `createMemoryTool` (cross-session KV-backed memory)
  * as an OpenAI Agents JS Tool.
  *
- * See `@agentkit-js/aisdk/memory` for the rationale (D3 cross-framework
+ * See `@wasmagent/aisdk/memory` for the rationale (D3 cross-framework
  * memory product surface).
  */
 import {
   createMemoryTool as createMemoryToolCore,
   type MemoryToolOptions,
-} from "@agentkit-js/core";
+} from "@wasmagent/core";
 import type { z } from "zod";
 
 import type { OpenAiAgentTool } from "./index.js";
@@ -27,5 +27,5 @@ export function memoryAgentTool(opts: MemoryToolOptions): OpenAiAgentTool<unknow
   };
 }
 
-export { ObservationalMemory } from "@agentkit-js/core";
+export { ObservationalMemory } from "@wasmagent/core";
 export type { MemoryToolOptions };

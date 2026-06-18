@@ -12,7 +12,7 @@
       "inputs": ["src/**/*.ts", "tests/**/*.ts", "vitest.config.ts"],
       "outputs": []
     },
-    "@agentkit-js/kernel-pyodide#test": {
+    "@wasmagent/kernel-pyodide#test": {
       "dependsOn": ["^build"],
       "cache": false
     },

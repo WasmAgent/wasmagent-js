@@ -1,10 +1,10 @@
-# @agentkit-js/claude-agent-sdk
+# /claude-agent-sdk
 
-> Drop agentkit-js sandbox kernels into the **Anthropic Claude Agent SDK**
+> Drop wasmagent sandbox kernels into the **Anthropic Claude Agent SDK**
 > as native tools. Edge-safe code execution, one `CapabilityManifest`
 > shared with your MCP servers, no external sandbox provider.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/telleroutlook/agentkit-js/tree/main/examples/claude-agent-quickjs?file=index.mjs)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/WasmAgent/wasmagent-js/tree/main/examples/claude-agent-quickjs?file=index.mjs)
 
 ## Why this exists
 
@@ -24,15 +24,15 @@ Pick a tier; pick a manifest; the tool drops straight into the agent SDK's
 ## Install
 
 ```bash
-npm install @anthropic-ai/sdk @agentkit-js/claude-agent-sdk @agentkit-js/kernel-quickjs \
+npm install @anthropic-ai/sdk /claude-agent-sdk /kernel-quickjs \
   quickjs-emscripten @jitl/quickjs-wasmfile-release-sync zod
 ```
 
 ## One-shot snippet evaluation
 
 ```ts
-import { sandboxedJsClaudeTool } from "@agentkit-js/claude-agent-sdk";
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { sandboxedJsClaudeTool } from "/claude-agent-sdk";
+import { QuickJSKernel } from "/kernel-quickjs";
 
 const tool = sandboxedJsClaudeTool({
   kernel: new QuickJSKernel(),
@@ -46,8 +46,8 @@ const tool = sandboxedJsClaudeTool({
 ## Code-mode: collapse N tools
 
 ```ts
-import { codeModeClaudeTool } from "@agentkit-js/claude-agent-sdk";
-import { ToolRegistry } from "@agentkit-js/core";
+import { codeModeClaudeTool } from "/claude-agent-sdk";
+import { ToolRegistry } from "/core";
 
 const tools = new ToolRegistry();
 // register your downstream tools here…
@@ -68,20 +68,20 @@ one line, the rest of your code is unchanged:
 
 | Kernel | When to pick it | Edge-safe |
 | ------ | --------------- | --------- |
-| `QuickJSKernel` (`@agentkit-js/kernel-quickjs`) | Default. JS/TS workloads. ~2 MB cold start. | ✅ |
-| `PyodideKernel` (`@agentkit-js/kernel-pyodide`) | Model emits Python (numpy, pandas, regex-heavy). | ✅ (heavy) |
-| `WasmtimeKernel` (`@agentkit-js/kernel-wasmtime`) | Multi-language WASM modules / Javy-compiled JS for max isolation. | ✅ |
-| `RemoteSandboxKernel` (`@agentkit-js/kernel-remote`) | Need full POSIX, native binaries, multi-tenant trust. Backed by E2B / Cloudflare Sandbox. | n/a |
+| `QuickJSKernel` (`/kernel-quickjs`) | Default. JS/TS workloads. ~2 MB cold start. | ✅ |
+| `PyodideKernel` (`/kernel-pyodide`) | Model emits Python (numpy, pandas, regex-heavy). | ✅ (heavy) |
+| `WasmtimeKernel` (`/kernel-wasmtime`) | Multi-language WASM modules / Javy-compiled JS for max isolation. | ✅ |
+| `RemoteSandboxKernel` (`/kernel-remote`) | Need full POSIX, native binaries, multi-tenant trust. Backed by E2B / Cloudflare Sandbox. | n/a |
 
 Swap is a one-liner — `kernel: new QuickJSKernel()` becomes `kernel: new PyodideKernel()`. Same `CapabilityManifest`, same Claude Agent SDK tool shape.
 
 ## Capability manifest
 
 Same `CapabilityManifest` as every other agentkit kernel — see
-[`docs/guides/code-mode.md`](https://github.com/telleroutlook/agentkit-js/blob/main/docs/guides/code-mode.md#security-policy-face).
+[`docs/guides/code-mode.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/code-mode.md#security-policy-face).
 
 ## See also
 
-- [`@agentkit-js/aisdk`](https://www.npmjs.com/package/@agentkit-js/aisdk) — same kernels for Vercel AI SDK
-- [`@agentkit-js/openai-agents`](https://www.npmjs.com/package/@agentkit-js/openai-agents) — same kernels for OpenAI Agents JS
-- [`@agentkit-js/mastra-sandbox`](https://www.npmjs.com/package/@agentkit-js/mastra-sandbox) — same kernels as a Mastra sandbox provider
+- [`/aisdk`](https://www.npmjs.com/package//aisdk) — same kernels for Vercel AI SDK
+- [`/openai-agents`](https://www.npmjs.com/package//openai-agents) — same kernels for OpenAI Agents JS
+- [`/mastra-sandbox`](https://www.npmjs.com/package//mastra-sandbox) — same kernels as a Mastra sandbox provider

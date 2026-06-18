@@ -11,7 +11,7 @@ page](https://github.com/vercel/ai/tree/main/content/providers/03-community-prov
 That page is wrong: its [template](https://github.com/vercel/ai/blob/main/content/providers/03-community-providers/01-custom-providers.mdx)
 explicitly scopes the section to **Language Model Providers**
 implementing AI SDK's Language Model Specification V4. agentkit-js
-is a *sandbox/kernel runtime* (`@agentkit-js/aisdk` exposes
+is a *sandbox/kernel runtime* (`@wasmagent/aisdk` exposes
 `sandboxedJsTool()` / `codeModeTool()` for `tool()`-shaped use); it
 does not implement V4.
 
@@ -37,7 +37,7 @@ The shape mirrors `examples/mcp/`. The example:
 - Builds a `ToolRegistry` with two trivial tools (a calculator + a
   string formatter).
 - Wraps them in `codeModeTool({ kernel: new QuickJSKernel(), tools })`
-  from `@agentkit-js/aisdk`.
+  from `@wasmagent/aisdk`.
 - Runs an Anthropic / OpenAI agent against a single user message,
   shows the model proposing one `execute_code` call rather than
   multiple direct tool calls.
@@ -51,7 +51,7 @@ The shape mirrors `examples/mcp/`. The example:
 ## PR body (proposed)
 
 > This adds a runnable example showing how to use AI SDK's `tool()`
-> with [`@agentkit-js/aisdk`](https://www.npmjs.com/package/@agentkit-js/aisdk),
+> with [`@wasmagent/aisdk`](https://www.npmjs.com/package/@wasmagent/aisdk),
 > which lets the agent's tool-execution path run inside a WASM
 > sandbox (QuickJS, Wasmtime, or Pyodide) instead of running JS
 > directly in the host runtime.
@@ -62,12 +62,12 @@ The shape mirrors `examples/mcp/`. The example:
 >   surfaces *one* `execute_code` tool to the model instead of N
 >   direct tools — at N=30 tools the bootstrap-token cost drops to
 >   13.6% of direct-tool-use ([benchmark in agentkit-js
->   CI](https://github.com/telleroutlook/agentkit-js/blob/main/examples/benchmarks/code-mode-tokens.mjs)).
+>   CI](https://github.com/WasmAgent/wasmagent-js/blob/main/examples/benchmarks/code-mode-tokens.mjs)).
 > - Capability gating (`allowedHosts`, `cpuMs`, `memoryLimitBytes`)
 >   is enforced cross-kernel, so the same example works on Workers
 >   (QuickJS), Node (Pyodide for Python), or behind a remote sandbox.
 >
-> No new dependency in the AI SDK package itself — `@agentkit-js/aisdk`
+> No new dependency in the AI SDK package itself — `@wasmagent/aisdk`
 > only declares `ai ^4 || ^5 || ^6` as a peer-dep, so the example
 > consumes whatever AI SDK version `examples/` is pinned to.
 >
@@ -101,7 +101,7 @@ The shape mirrors `examples/mcp/`. The example:
 ## Acceptance criteria for "this PR worked"
 
 - Merged into `vercel/ai` `main`.
-- `@agentkit-js/aisdk` weekly downloads non-zero and traceable to AI
+- `@wasmagent/aisdk` weekly downloads non-zero and traceable to AI
   SDK referrer (npm registry referrer header is unreliable; we'll
   read the magnitude shift instead).
 - One inbound issue or PR from an AI SDK user citing the example.

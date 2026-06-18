@@ -1,6 +1,6 @@
-# @agentkit-js/model-local
+# /model-local
 
-> Embedded local-LLM provider for [agentkit-js](https://github.com/telleroutlook/agentkit-js) — `node-llama-cpp` adapter with grammar-constrained tool calling, multi-mirror downloads (HuggingFace / hf-mirror / ModelScope), and a certification harness for picking which models actually work in agent workflows.
+> Embedded local-LLM provider for [wasmagent](https://github.com/WasmAgent/wasmagent-js) — `node-llama-cpp` adapter with grammar-constrained tool calling, multi-mirror downloads (HuggingFace / hf-mirror / ModelScope), and a certification harness for picking which models actually work in agent workflows.
 
 The whole agent stack — model, code execution, state — runs on the user's machine. No cloud LLM, no API key, no telemetry.
 
@@ -8,7 +8,7 @@ The whole agent stack — model, code execution, state — runs on the user's ma
 
 ```bash
 # Provider (small package, no native deps).
-npm install @agentkit-js/model-local
+npm install /model-local
 
 # Optional native peer — pre-built binaries for macOS/Linux/Windows + ARM/x64.
 npm install node-llama-cpp
@@ -19,8 +19,8 @@ The native peer is **optional**: if you only want the registry/downloader/types 
 ## Quick start
 
 ```ts
-import { LocalModel, localFirst } from "@agentkit-js/model-local";
-import { AnthropicModel, CodeAgent } from "@agentkit-js/core";
+import { LocalModel, localFirst } from "/model-local";
+import { AnthropicModel, CodeAgent } from "/core";
 
 // Pick one of three sources:
 const local = new LocalModel({ source: { model: "qwen2.5-1.5b" } });        // alias
@@ -99,12 +99,12 @@ agentkit model verify qwen2.5-1.5b
 agentkit model rm qwen2.5-1.5b
 ```
 
-`agentkit-js/cli` declares `@agentkit-js/model-local` as an **optional peer** — if you don't install this package, the CLI falls back to a clean error message rather than crashing.
+`wasmagent/cli` declares `/model-local` as an **optional peer** — if you don't install this package, the CLI falls back to a clean error message rather than crashing.
 
 ## Routing presets
 
 ```ts
-import { localFirst, offlineOnly, devLocalOr } from "@agentkit-js/model-local";
+import { localFirst, offlineOnly, devLocalOr } from "/model-local";
 
 // Try local; fall through to cloud on any error.
 const a = localFirst(localModel, cloudModel);
@@ -117,7 +117,7 @@ const b = offlineOnly(localModel);
 const c = devLocalOr(localModel, cloudModel);
 ```
 
-These are documented combinations of the existing `FallbackModel` from `@agentkit-js/core` — *not* a parallel routing mechanism. You get the same retry/fallover semantics as everywhere else in the framework.
+These are documented combinations of the existing `FallbackModel` from `/core` — *not* a parallel routing mechanism. You get the same retry/fallover semantics as everywhere else in the framework.
 
 ## Recommended models — current registry
 
@@ -131,7 +131,7 @@ These are documented combinations of the existing `FallbackModel` from `@agentki
 | `gemma-3-1b` | English tasks, ggml-org mirror | Gemma ToU | ~769 MB (q4_k_m, sha256 pinned 2026-06-13) |
 | `llama-3.2-1b` | English/code, 128K context, lmstudio-community mirror | Llama 3.2 Community | ~770 MB (q4_k_m, sha256 pinned 2026-06-13) |
 
-See `docs/reports/local-model-cert-2026-06-12.md` in the agentkit-js repo for the full real-machine baseline.
+See `docs/reports/local-model-cert-2026-06-12.md` in the wasmagent repo for the full real-machine baseline.
 
 Run the cert harness on any of them (or your own GGUF):
 

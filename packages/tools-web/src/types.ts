@@ -1,5 +1,5 @@
 /**
- * Shared types for @agentkit-js/tools-web search tool adapters.
+ * Shared types for @wasmagent/tools-web search tool adapters.
  *
  * All built-in adapters (tavily, brave, perplexity) normalize their
  * provider-specific response into the same SearchResult shape so an

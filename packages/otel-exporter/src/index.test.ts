@@ -1,4 +1,4 @@
-import type { ReadableSpan } from "@agentkit-js/core";
+import type { ReadableSpan } from "@wasmagent/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OtlpHttpExporter } from "./index.js";
 

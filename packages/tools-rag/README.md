@@ -1,21 +1,21 @@
-# @agentkit-js/tools-rag
+# /tools-rag
 
 RAG tools — `HttpEmbedder` + `ragTool` + Pinecone / Qdrant / in-memory connectors.
 
-> Part of [agentkit-js](https://github.com/telleroutlook/agentkit-js) — a TypeScript + WASM agent runtime.
+> Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.
 
 ## Install
 
 ```bash
-npm install @agentkit-js/tools-rag @agentkit-js/core
+npm install /tools-rag /core
 ```
 
 ## Usage
 
 ```ts
-import { ragTool, HttpEmbedder, InMemoryVectorStore } from "@agentkit-js/tools-rag";
+import { ragTool, HttpEmbedder, InMemoryVectorStore } from "/tools-rag";
 ```
 
 ## License
 
-[Apache-2.0](./LICENSE) — © agentkit-js contributors
+[Apache-2.0](./LICENSE) — © wasmagent contributors

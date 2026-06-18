@@ -1,5 +1,5 @@
 {
-  "name": "@agentkit-js/integration-tests",
+  "name": "@wasmagent/integration-tests",
   "version": "0.2.0",
   "private": true,
   "type": "module",
@@ -7,8 +7,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@agentkit-js/agent-prompts": "workspace:*",
-    "@agentkit-js/ui-cards": "workspace:*"
+    "@wasmagent/agent-prompts": "workspace:*",
+    "@wasmagent/ui-cards": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^2.1.0"

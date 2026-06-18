@@ -1,7 +1,7 @@
 # kernel-only example
 
 This example demonstrates that the agentkit-js code-execution kernels are
-**standalone WASM sandboxes** — they don't require `@agentkit-js/core` or any
+**standalone WASM sandboxes** — they don't require `@wasmagent/core` or any
 framework-level integration. You can drop them into any agent framework that
 takes a tool definition.
 
@@ -18,7 +18,7 @@ shutdown — without any agentkit-js framework code on the import graph.
 The kernel API is small and stable:
 
 ```ts
-import { QuickJSKernel } from "@agentkit-js/kernel-quickjs";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
 const kernel = new QuickJSKernel();
 const { value, stdout, error } = await kernel.execute({
