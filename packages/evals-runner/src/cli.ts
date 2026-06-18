@@ -43,14 +43,9 @@
  * `@agentkit-js/cli` and use `agentkit`.
  */
 
-import { parseArgs } from "node:util";
 import { writeFile } from "node:fs/promises";
-import {
-  REFERENCE_SUITES,
-  renderReportMarkdown,
-  runEvaluation,
-  type ModelSpec,
-} from "./index.js";
+import { parseArgs } from "node:util";
+import { type ModelSpec, REFERENCE_SUITES, renderReportMarkdown, runEvaluation } from "./index.js";
 
 // Source-of-truth synced manually from package.json on each release.
 // Same approach as packages/cli/src/index.ts — runtime path resolution
@@ -132,9 +127,7 @@ async function listCommand(): Promise<void> {
     process.stdout.write(`  ${name.padEnd(28)} — ${suite.title}\n`);
     process.stdout.write(`    ${suite.description}\n`);
   }
-  process.stdout.write(
-    "\nRun with:  agentkit-evals run --suite=<name,…> --models=<spec,…>\n"
-  );
+  process.stdout.write("\nRun with:  agentkit-evals run --suite=<name,…> --models=<spec,…>\n");
 }
 
 async function runCommand(opts: Record<string, string | boolean | undefined>): Promise<void> {
@@ -157,7 +150,7 @@ async function runCommand(opts: Record<string, string | boolean | undefined>): P
     .filter(Boolean);
   if (modelsRaw.length === 0) {
     fail(
-      'Error: --models=<id[@url][#modelId],…> is required.\n' +
+      "Error: --models=<id[@url][#modelId],…> is required.\n" +
         '  Example: --models="qwen2.5:0.5b@http://localhost:11434/v1"'
     );
   }

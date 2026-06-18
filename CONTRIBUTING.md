@@ -128,6 +128,48 @@ PRs in `bscode` that fail this test will be redirected to land the
 generic piece here first. Reviewers should reference S4 by name in
 the redirect, so the rule is visible to future contributors.
 
+## Differentiation gets documented in the same PR (S5)
+
+When a PR adds, sharpens, or removes a **differentiation axis** —
+something a reader of `README.md` or `docs/compare.md` would scan to
+decide whether agentkit-js is worth picking — the *narrative for that
+axis lands in the same PR as the code*. Code without a narrative is
+silent: `git log` cannot reconstruct why a class was added, and the
+next reader (human or LLM) has to infer it from filenames.
+
+A differentiation-axis PR includes **at minimum**:
+
+1. **A guide page** under `docs/guides/` explaining what the axis
+   does, when to use it, and how it composes with existing axes. If a
+   guide already exists, extend it rather than creating a sibling.
+2. **A line on the comparison table** — either `README.md`'s 8-axis
+   table at the top, or `docs/compare.md`'s row-per-feature grid.
+   "Status: shipped 2026-06-18" with a link to the guide is enough.
+3. **One end-to-end evidence artefact**, kept in `docs/eval-reports/`
+   or `docs/strategy/`. This can be a CLI baseline transcript, a
+   short ablation, or a comparison run; what matters is that someone
+   reading the PR sees the axis *demonstrated*, not just declared.
+4. **A strategy doc entry** when the axis is large enough that the
+   roadmap or the competitive table shifts. The `docs/strategy/YYYY-MM-DD-<topic>.md`
+   pattern (see [2026-06-17 update](docs/strategy/2026-06-17-update.md),
+   [2026-06-18 update](docs/strategy/2026-06-18-goal-directed-shipped.md))
+   is the convention. One short doc per *delta day* is better than
+   one long doc per quarter — the day-stamp keeps the narrative
+   composable.
+
+This rule is the dual of S4. S4 keeps the *code* neutral and
+foundation-shaped; S5 keeps the *narrative* visible. Without S5, an
+axis can ship correctly but stay invisible to anyone who doesn't read
+diffs — which is the audience that decides whether the project is
+worth depending on. The cost is small (an hour of writing per
+shipping day) and the leverage is large (the docs become the project's
+primary surface; reviewers and future maintainers reuse the framing
+for free).
+
+If you are unsure whether a PR triggers this rule, the test is: *would
+a reader of the README's comparison table notice the change?* If yes,
+S5 applies. Trivial fixes, refactors, and dependency bumps don't.
+
 ## Co-maintainers wanted
 
 The repository is currently single-maintainer; we are explicitly

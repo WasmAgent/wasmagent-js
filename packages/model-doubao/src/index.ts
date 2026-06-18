@@ -30,10 +30,7 @@ const EFFORT_TO_THINKING_LEVEL: Record<string, string> = {
 };
 
 /** Model IDs that support adaptive ("auto") thinking type. */
-const AUTO_CAPABLE_MODELS = new Set<string>([
-  "doubao-seed-2-0-pro",
-  "doubao-seed-2-0-lite-260215",
-]);
+const AUTO_CAPABLE_MODELS = new Set<string>(["doubao-seed-2-0-pro", "doubao-seed-2-0-lite-260215"]);
 
 /** Model IDs that support thinking/reasoning. */
 const REASONING_MODELS = new Set<string>([

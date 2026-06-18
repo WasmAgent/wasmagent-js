@@ -175,9 +175,7 @@ export class DeterministicVerifier implements Verifier {
     switch (criterion.verify_method) {
       case "file_exists": {
         const path = requirePath(criterion);
-        return (await ws.fileExists(path))
-          ? pass()
-          : fail(`file ${path} does not exist`);
+        return (await ws.fileExists(path)) ? pass() : fail(`file ${path} does not exist`);
       }
       case "file_size_min": {
         const path = requirePath(criterion);
@@ -215,11 +213,11 @@ export class DeterministicVerifier implements Verifier {
         try {
           re = new RegExp(pattern);
         } catch (e) {
-          return fail(`pattern ${JSON.stringify(pattern)} is not a valid RegExp: ${e instanceof Error ? e.message : String(e)}`);
+          return fail(
+            `pattern ${JSON.stringify(pattern)} is not a valid RegExp: ${e instanceof Error ? e.message : String(e)}`
+          );
         }
-        return re.test(body)
-          ? pass()
-          : fail(`file ${path} does not match /${pattern}/`);
+        return re.test(body) ? pass() : fail(`file ${path} does not match /${pattern}/`);
       }
       case "headings_count_min": {
         const path = requirePath(criterion);

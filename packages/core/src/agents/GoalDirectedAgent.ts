@@ -260,10 +260,7 @@ export class GoalDirectedAgent {
     this.#synthSystemPrompt = opts.synthSystemPrompt ?? DEFAULT_CRITERIA_SYNTH_SYSTEM_PROMPT;
   }
 
-  async *run(
-    task: string,
-    parentTraceId: string | null = null
-  ): AsyncGenerator<AgentEvent> {
+  async *run(task: string, parentTraceId: string | null = null): AsyncGenerator<AgentEvent> {
     let totalInput = 0;
     let totalOutput = 0;
 

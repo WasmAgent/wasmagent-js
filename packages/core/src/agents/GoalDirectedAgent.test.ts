@@ -122,7 +122,13 @@ describe("parseCriteriaReply", () => {
         { id: "ok", description: "good", verify_method: "file_exists", path: "a.md" },
         { id: 42, description: "bad-id" }, // wrong types
         null,
-        { id: "ok2", description: "good2", verify_method: "word_count_min", arg: 100, path: "b.md" },
+        {
+          id: "ok2",
+          description: "good2",
+          verify_method: "word_count_min",
+          arg: 100,
+          path: "b.md",
+        },
       ],
     });
     const out = parseCriteriaReply(reply);

@@ -217,10 +217,7 @@ describe("DeterministicVerifier", () => {
     // pipeline catches it. Direct call shows the throw is the right
     // shape for the pipeline to rescue.
     await expect(
-      v.verify(
-        { id: "x", description: "missing path", verify_method: "file_exists" },
-        ws
-      )
+      v.verify({ id: "x", description: "missing path", verify_method: "file_exists" }, ws)
     ).rejects.toThrow(/requires a path/);
   });
 });
@@ -300,8 +297,8 @@ describe("LLMJudgeVerifier", () => {
 
   it("tolerates code-fence-wrapped JSON replies", async () => {
     const { model } = scriptedJudgeModel([
-      "```json\n{\"pass\":true,\"reasoning\":\"x\"}\n```",
-      "```\n{\"pass\":true,\"reasoning\":\"x\"}\n```",
+      '```json\n{"pass":true,"reasoning":"x"}\n```',
+      '```\n{"pass":true,"reasoning":"x"}\n```',
       `{"pass":true,"reasoning":"x"}`,
     ]);
     const v = new LLMJudgeVerifier({ model });
@@ -386,9 +383,7 @@ describe("VerificationPipeline", () => {
       },
     };
     const pipe = new VerificationPipeline({ ws, verifiers: [angry] });
-    const result = await pipe.run([
-      { id: "z", description: "feels", verify_method: "mood" },
-    ]);
+    const result = await pipe.run([{ id: "z", description: "feels", verify_method: "mood" }]);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       const v = result.verdicts[0];

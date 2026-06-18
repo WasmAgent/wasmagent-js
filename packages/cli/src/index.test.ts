@@ -10,6 +10,7 @@
 import type { AgentEvent } from "@agentkit-js/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  buildAnthropicModel,
   camelCase,
   generateTestTemplate,
   generateToolTemplate,
@@ -29,7 +30,16 @@ vi.mock("@agentkit-js/core", () => ({
       })();
     }
   },
-  AnthropicModel: class {},
+  AnthropicModel: class {
+    // Capture constructor args so tests can assert that the CLI wires
+    // baseURL / apiKey / modelId correctly without making a real SDK call.
+    static lastArgs: { modelId: unknown; opts: unknown }[] = [];
+    constructor(modelId: unknown, opts: unknown) {
+      (this.constructor as typeof Object & { lastArgs: unknown[] }).lastArgs = (
+        this.constructor as { lastArgs: { modelId: unknown; opts: unknown }[] }
+      ).lastArgs.concat([{ modelId, opts }]);
+    }
+  },
   AnthropicModels: {
     OPUS_LATEST: "claude-opus-4-8",
     SONNET_LATEST: "claude-sonnet-4-6",
@@ -54,7 +64,14 @@ vi.mock("@agentkit-js/core", () => ({
       "headings_count_min",
       "word_count_min",
     ];
-    async verify(criterion: { id: string; verify_method: string; arg?: unknown; path?: string }, ws: { fileExists: (p: string) => Promise<boolean>; fileSize: (p: string) => Promise<number>; readFile: (p: string) => Promise<string> }) {
+    async verify(
+      criterion: { id: string; verify_method: string; arg?: unknown; path?: string },
+      ws: {
+        fileExists: (p: string) => Promise<boolean>;
+        fileSize: (p: string) => Promise<number>;
+        readFile: (p: string) => Promise<string>;
+      }
+    ) {
       // Deliberately tiny re-implementation — enough for the verifyCommand
       // smoke test to discriminate pass/fail. The full deterministic
       // semantics are pinned by tests in packages/core itself.
@@ -79,13 +96,27 @@ vi.mock("@agentkit-js/core", () => ({
     }
   },
   VerificationPipeline: class {
-    #ws: { fileExists: (p: string) => Promise<boolean>; fileSize: (p: string) => Promise<number>; readFile: (p: string) => Promise<string> };
-    #v: { verify: (c: unknown, ws: unknown) => Promise<{ ok: boolean; criterionId: string; hint?: string }> };
+    #ws: {
+      fileExists: (p: string) => Promise<boolean>;
+      fileSize: (p: string) => Promise<number>;
+      readFile: (p: string) => Promise<string>;
+    };
+    #v: {
+      verify: (
+        c: unknown,
+        ws: unknown
+      ) => Promise<{ ok: boolean; criterionId: string; hint?: string }>;
+    };
     constructor(opts: { ws: unknown; verifiers: unknown[] }) {
       this.#ws = opts.ws as never;
-      this.#v = (opts.verifiers as Array<{
-        verify: (c: unknown, ws: unknown) => Promise<{ ok: boolean; criterionId: string; hint?: string }>;
-      }>)[0]!;
+      this.#v = (
+        opts.verifiers as Array<{
+          verify: (
+            c: unknown,
+            ws: unknown
+          ) => Promise<{ ok: boolean; criterionId: string; hint?: string }>;
+        }>
+      )[0]!;
     }
     async run(criteria: unknown[]) {
       const verdicts: Array<{ ok: boolean; criterionId: string; hint?: string }> = [];
@@ -93,7 +124,11 @@ vi.mock("@agentkit-js/core", () => ({
       const failing = verdicts.filter((v) => !v.ok);
       return failing.length === 0
         ? { ok: true, verdicts }
-        : { ok: false, verdicts, hint: failing.map((v) => `- ${v.criterionId}: ${v.hint}`).join("\n") };
+        : {
+            ok: false,
+            verdicts,
+            hint: failing.map((v) => `- ${v.criterionId}: ${v.hint}`).join("\n"),
+          };
     }
   },
 }));
@@ -481,9 +516,7 @@ describe("goalCommand", () => {
     delete process.env.ANTHROPIC_API_KEY;
     const { goalCommand } = await import("./index.js");
     await expect(goalCommand("write a doc", { workspace: "." })).rejects.toThrow(/__exit_1/);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("ANTHROPIC_API_KEY")
-    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("ANTHROPIC_API_KEY"));
   });
 
   it("rejects out-of-range --max-iterations", async () => {
@@ -642,7 +675,12 @@ describe("verifyCommand", () => {
       criteriaPath,
       JSON.stringify({
         criteria: [
-          { id: "exists", description: "doc.md exists", verify_method: "file_exists", path: "doc.md" },
+          {
+            id: "exists",
+            description: "doc.md exists",
+            verify_method: "file_exists",
+            path: "doc.md",
+          },
           {
             id: "size",
             description: "≥100 bytes",
@@ -668,7 +706,12 @@ describe("verifyCommand", () => {
     await fs.writeFile(
       criteriaPath,
       JSON.stringify([
-        { id: "exists", description: "doc.md exists", verify_method: "file_exists", path: "doc.md" },
+        {
+          id: "exists",
+          description: "doc.md exists",
+          verify_method: "file_exists",
+          path: "doc.md",
+        },
       ]),
       "utf8"
     );
@@ -695,8 +738,65 @@ describe("verifyCommand", () => {
     const { verifyCommand } = await import("./index.js");
     await verifyCommand({ criteria: criteriaPath, workspace: tmpDir });
     expect(process.exitCode).toBe(0);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("skipping 1 llm_judge")
-    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("skipping 1 llm_judge"));
+  });
+});
+
+// ── buildAnthropicModel (CLI <-> SDK env-var wiring) ─────────────────────────
+
+describe("buildAnthropicModel", () => {
+  // Snapshot ANTHROPIC_BASE_URL: tests must restore whatever was set in the
+  // user's actual env so we don't leak state across the suite.
+  let prevBaseUrl: string | undefined;
+  beforeEach(() => {
+    prevBaseUrl = process.env.ANTHROPIC_BASE_URL;
+    delete process.env.ANTHROPIC_BASE_URL;
+  });
+  afterEach(() => {
+    if (prevBaseUrl === undefined) delete process.env.ANTHROPIC_BASE_URL;
+    else process.env.ANTHROPIC_BASE_URL = prevBaseUrl;
+  });
+
+  it("uses default model and forwards apiKey when no flags or env are set", () => {
+    const m = buildAnthropicModel({}, "k-default") as unknown as {
+      constructor: { lastArgs: { modelId: unknown; opts: unknown }[] };
+    };
+    const args = m.constructor.lastArgs[m.constructor.lastArgs.length - 1]!;
+    expect(args.modelId).toBe("claude-sonnet-4-6");
+    expect(args.opts).toEqual({ apiKey: "k-default" });
+  });
+
+  it("--model overrides default", () => {
+    const m = buildAnthropicModel({ model: "claude-opus-4-8" }, "k") as unknown as {
+      constructor: { lastArgs: { modelId: unknown; opts: unknown }[] };
+    };
+    const args = m.constructor.lastArgs[m.constructor.lastArgs.length - 1]!;
+    expect(args.modelId).toBe("claude-opus-4-8");
+  });
+
+  it("ANTHROPIC_BASE_URL env var is forwarded as baseURL", () => {
+    process.env.ANTHROPIC_BASE_URL = "https://example.invalid/v1";
+    const m = buildAnthropicModel({}, "k") as unknown as {
+      constructor: { lastArgs: { modelId: unknown; opts: unknown }[] };
+    };
+    const args = m.constructor.lastArgs[m.constructor.lastArgs.length - 1]!;
+    expect(args.opts).toEqual({ apiKey: "k", baseURL: "https://example.invalid/v1" });
+  });
+
+  it("--base-url flag overrides ANTHROPIC_BASE_URL env var", () => {
+    process.env.ANTHROPIC_BASE_URL = "https://env.invalid/v1";
+    const m = buildAnthropicModel({ "base-url": "https://flag.invalid/v1" }, "k") as unknown as {
+      constructor: { lastArgs: { modelId: unknown; opts: unknown }[] };
+    };
+    const args = m.constructor.lastArgs[m.constructor.lastArgs.length - 1]!;
+    expect(args.opts).toEqual({ apiKey: "k", baseURL: "https://flag.invalid/v1" });
+  });
+
+  it("does not set baseURL when neither flag nor env are present", () => {
+    const m = buildAnthropicModel({}, "k") as unknown as {
+      constructor: { lastArgs: { modelId: unknown; opts: unknown }[] };
+    };
+    const args = m.constructor.lastArgs[m.constructor.lastArgs.length - 1]!;
+    expect((args.opts as Record<string, unknown>).baseURL).toBeUndefined();
   });
 });

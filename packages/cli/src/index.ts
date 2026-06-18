@@ -11,10 +11,17 @@
  * Mirrors smolagents' `smolagent` CLI (cli.py:294).
  */
 
-import { mkdir, readFile as fsReadFile, writeFile } from "node:fs/promises";
+import { readFile as fsReadFile, mkdir, writeFile } from "node:fs/promises";
 import { join, resolve as pathResolve } from "node:path";
 import { parseArgs } from "node:util";
-import type { AgentEvent, Criterion, ToolDefinition, WorkspaceReader } from "@agentkit-js/core";
+import type {
+  AgentEvent,
+  AnthropicModelId,
+  AnthropicModelOptions,
+  Criterion,
+  ToolDefinition,
+  WorkspaceReader,
+} from "@agentkit-js/core";
 import {
   AnthropicModel,
   AnthropicModels,
@@ -23,6 +30,33 @@ import {
   GoalDirectedAgent,
   VerificationPipeline,
 } from "@agentkit-js/core";
+
+/**
+ * Build an `AnthropicModel` from CLI flags + env vars.
+ *
+ * The official `@anthropic-ai/sdk` honors `ANTHROPIC_BASE_URL` directly when
+ * the user constructs the SDK client themselves, but `AnthropicModel` only
+ * forwards `baseURL` if it is passed in `AnthropicModelOptions`. CLI users
+ * setting `ANTHROPIC_BASE_URL` (e.g. to point at a local proxy) would
+ * otherwise be silently ignored — so we wire the env var through here, in
+ * one place shared by `agentkit run` and `agentkit goal`.
+ *
+ * Precedence: explicit `--base-url` flag > `ANTHROPIC_BASE_URL` env > unset.
+ */
+export function buildAnthropicModel(
+  opts: Record<string, string | boolean | undefined>,
+  apiKey: string
+): AnthropicModel {
+  const modelId =
+    typeof opts.model === "string"
+      ? (opts.model as AnthropicModelId)
+      : AnthropicModels.SONNET_LATEST;
+  const baseURL =
+    typeof opts["base-url"] === "string" ? opts["base-url"] : process.env.ANTHROPIC_BASE_URL;
+  const modelOpts: AnthropicModelOptions = { apiKey };
+  if (baseURL) modelOpts.baseURL = baseURL;
+  return new AnthropicModel(modelId, modelOpts);
+}
 
 // Source-of-truth for the CLI version. Synced manually from
 // packages/cli/package.json's "version" field on each release. We
@@ -85,6 +119,10 @@ if (isMain) {
       "judge-majority": { type: "boolean", default: false },
       workspace: { type: "string", default: "." },
       criteria: { type: "string" },
+      // Note: --base-url flag is already declared above for `agentkit evals`
+      // (it falls back to http://localhost:11434/v1 there). buildAnthropicModel
+      // reuses the same flag for `agentkit run` / `agentkit goal`, falling back
+      // to ANTHROPIC_BASE_URL env var instead of a hardcoded ollama URL.
       help: { type: "boolean", short: "h", default: false },
       version: { type: "boolean", short: "v", default: false },
     },
@@ -170,10 +208,7 @@ export async function runCommand(
     streamMode
   );
 
-  const model = new AnthropicModel(
-    typeof opts.model === "string" ? opts.model : AnthropicModels.SONNET_LATEST,
-    apiKey
-  );
+  const model = buildAnthropicModel(opts, apiKey);
   const maxSteps = parseInt(typeof opts["max-steps"] === "string" ? opts["max-steps"] : "20", 10);
   if (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 1000) {
     console.error("Error: --max-steps must be a whole number between 1 and 1000");
@@ -537,6 +572,8 @@ run options:
   --model <id>             Model ID (default: claude-sonnet-4-6)
   --max-steps <n>          Maximum agent steps (default: 20)
   --api-key <key>          Anthropic API key (or set ANTHROPIC_API_KEY)
+  --base-url <url>         Override Anthropic base URL — useful for local proxies
+                           (or set ANTHROPIC_BASE_URL; e.g. an in-house gateway)
   --stream                 Output all events as NDJSON (pipe-friendly)
   --events <types>         Comma-separated event types to include
   -h, --help               Show this help
@@ -548,6 +585,7 @@ goal options:
   --judge-samples <n>      LLMJudge calls per llm_judge criterion (default: 3)
   --judge-majority         Pass criterion on majority vote instead of unanimous
   --api-key <key>          Anthropic API key (or set ANTHROPIC_API_KEY)
+  --base-url <url>         Override Anthropic base URL (or set ANTHROPIC_BASE_URL)
   --stream                 Output all events as NDJSON (pipe-friendly)
 
 verify options:
@@ -876,10 +914,7 @@ async function buildLocalFsWorkspace(rootDir: string): Promise<{
       return { ok: true as const };
     },
   };
-  const readFileTool: ToolDefinition<
-    { path: string },
-    { content: string } | { error: string }
-  > = {
+  const readFileTool: ToolDefinition<{ path: string }, { content: string } | { error: string }> = {
     name: "read_file",
     description: "Read a file relative to the workspace root.",
     inputSchema: z.object({ path: z.string() }),
@@ -935,10 +970,7 @@ export async function goalCommand(
   await mkdir(workspaceDir, { recursive: true });
   const { ws, tools, scoutEntries, rootAbs } = await buildLocalFsWorkspace(workspaceDir);
 
-  const model = new AnthropicModel(
-    typeof opts.model === "string" ? opts.model : AnthropicModels.SONNET_LATEST,
-    apiKey
-  );
+  const model = buildAnthropicModel(opts, apiKey);
 
   const streamMode = opts.stream === true;
   const agent = new GoalDirectedAgent({
@@ -1061,19 +1093,23 @@ export async function verifyCommand(
   try {
     raw = await fsReadFile(criteriaPath, "utf8");
   } catch (e) {
-    console.error(`Error: cannot read ${criteriaPath}: ${e instanceof Error ? e.message : String(e)}`);
+    console.error(
+      `Error: cannot read ${criteriaPath}: ${e instanceof Error ? e.message : String(e)}`
+    );
     process.exit(1);
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch (e) {
-    console.error(`Error: ${criteriaPath} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`);
+    console.error(
+      `Error: ${criteriaPath} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`
+    );
     process.exit(1);
   }
   const criteriaArr: Criterion[] = Array.isArray(parsed)
     ? (parsed as Criterion[])
-    : (parsed as { criteria?: Criterion[] }).criteria ?? [];
+    : ((parsed as { criteria?: Criterion[] }).criteria ?? []);
   if (!Array.isArray(criteriaArr) || criteriaArr.length === 0) {
     console.error("Error: criteria file contains no Criterion entries");
     process.exit(1);

@@ -28,6 +28,35 @@ npm add @agentkit-js/core openai
 
 ---
 
+## Eight differentiation axes — at a glance
+
+> **What this table is.** The eight surfaces where agentkit-js is doing
+> something the other JS agent frameworks (Vercel AI SDK, OpenAI Agents
+> JS, Mastra, LangGraph.js, CF Agents SDK, smolagents-ts) are not — at
+> least not all in one place. Each row links to the guide that explains
+> it. The detailed feature grid below this section breaks each axis
+> into the specific cells where competitors do or don't ship the same
+> capability. [Last verified 2026-06-18.]
+
+| # | Axis | One-line value | Status | Doc |
+|---|------|----------------|--------|-----|
+| 1 | **Multi-provider model adapters** | One `Model` interface across Anthropic / OpenAI / Doubao / DeepSeek / Kimi / Qwen / GLM / MiniMax / local node-llama-cpp — bring your own vendor, swap with one line. | shipped | [getting-started](./docs/guides/getting-started.md) · [openai-compat-recipes](./docs/guides/openai-compat-recipes.md) |
+| 2 | **Multi-tier kernel matrix** | Three execution tiers (`VmKernel` in-process · `QuickJS`/`Pyodide`/`Wasmtime` WASM · `RemoteSandboxKernel` microVM) under one `Kernel` API — same `CapabilityManifest` (network/fs/env/cpu/memory) across every tier. | shipped | [kernels/comparison](./docs/kernels/comparison.md) |
+| 3 | **Cross-runtime + offline closure** | Same kernel API on Node / any edge runtime / browser / air-gapped laptop. `@agentkit-js/model-local` + WASM kernel = full agent loop, **zero outbound traffic**. | shipped | [model-local](./packages/model-local/README.md) · [getting-started](./docs/guides/getting-started.md) |
+| 4 | **Memory layers** | `MemoryBlockSet` (Letta-style in-context blocks, prompt-cache safe) + observational memory + Checkpointer + 4 KV backends (CF KV / DO / Redis / Upstash). | shipped | [memory](./docs/guides/memory.md) · [observational-memory](./docs/guides/observational-memory.md) |
+| 5 | **Durable workflow engine** | `LocalWorkflowEngine` + `CloudflareWorkflowEngine` against the same `WorkflowDefinition` — observable, terminable, resumable, with the same contract test on both. | shipped | [durable-runtime](./docs/guides/durable-runtime.md) |
+| 6 | **Code-mode (compress N MCP tools into 1)** | Single `execute_code` tool that compresses N MCP tools into one. Token cost on tool registries that grow stays flat instead of linear. Drop-in for Cloudflare codemode `DynamicWorkerExecutor` / OpenAI Agents SDK / Mastra. | shipped | [code-mode](./docs/guides/code-mode.md) |
+| 7 | **Devtools + GenAI semconv OTel** | Zero-deploy local Studio (run-overview UI). `OtelBridge` emits standard `gen_ai.*` attributes (Datadog / Honeycomb / Grafana GenAI compatible) alongside legacy names. | shipped | [devtools](./packages/devtools/README.md) · [otel-exporter](./packages/otel-exporter/README.md) |
+| 8 | **Goal-directed loop** | Agent synthesises its own success criteria, executes, verifies (deterministic + adversarial-defaulted LLM judge), retries with hints. The user states a goal; the framework supplies the loop. | **shipped 2026-06-18** | [goal-directed](./docs/guides/goal-directed.md) · [baseline](./docs/eval-reports/goal-directed-2026-06-18-baseline.md) · [strategy](./docs/strategy/2026-06-18-goal-directed-shipped.md) |
+
+The eight axes compose. A goal-directed run can use a local model
+(axis 1+3) running in a WASM kernel (axis 2), with a verifier that
+checks workspace state via the workflow engine (axis 5), traced
+through OTel (axis 7), and persisted to memory (axis 4). The eighth
+axis raises the ceiling on what the first seven can deliver.
+
+---
+
 ## Comparison
 
 There are several mature TypeScript agent frameworks. Here is an honest assessment of where agentkit-js fits.

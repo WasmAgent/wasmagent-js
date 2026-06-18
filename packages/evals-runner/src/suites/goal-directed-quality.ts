@@ -47,12 +47,7 @@ import {
   type WorkspaceReader,
 } from "@agentkit-js/core";
 import { z } from "zod";
-import type {
-  BenchmarkItem,
-  BenchmarkSuite,
-  ModelSpec,
-  RunItemResult,
-} from "../types.js";
+import type { BenchmarkItem, BenchmarkSuite, ModelSpec, RunItemResult } from "../types.js";
 
 interface ItemMeta {
   /** Final-pass criteria the suite checks externally — independent of the agent's own criteria. */
@@ -205,10 +200,7 @@ function buildHarness(): {
     name: "read_file",
     description: "Read the current contents of a file.",
     inputSchema: z.object({ path: z.string() }),
-    outputSchema: z.union([
-      z.object({ content: z.string() }),
-      z.object({ error: z.string() }),
-    ]),
+    outputSchema: z.union([z.object({ content: z.string() }), z.object({ error: z.string() })]),
     readOnly: true,
     idempotent: true,
     async forward({ path }: { path: string }) {
