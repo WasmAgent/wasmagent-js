@@ -30,7 +30,7 @@
     "node": ">=20.0.0"
   },
   "keywords": [
-    "agentkit",
+    "wasmagent",
     "tools",
     "web-search",
     "tavily",
@@ -56,5 +56,5 @@
     "LICENSE",
     "README.md"
   ],
-  "author": "agentkit-js contributors"
+  "author": "wasmagent contributors"
 }

@@ -4,7 +4,7 @@
   "description": "CLI for wasmagent — mirrors smolagents' `smolagent` CLI (D6)",
   "type": "module",
   "bin": {
-    "agentkit": "./dist/index.js"
+    "wasmagent": "./dist/index.js"
   },
   "main": "./dist/index.js",
   "scripts": {
@@ -46,7 +46,7 @@
     "node": ">=20.0.0"
   },
   "keywords": [
-    "agentkit",
+    "wasmagent",
     "agent",
     "ai",
     "llm"
@@ -60,5 +60,5 @@
     "LICENSE",
     "README.md"
   ],
-  "author": "agentkit-js contributors"
+  "author": "wasmagent contributors"
 }

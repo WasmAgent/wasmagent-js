@@ -34,7 +34,7 @@
     "ui",
     "protocol",
     "sse",
-    "agentkit"
+    "wasmagent"
   ],
   "license": "Apache-2.0",
   "repository": {
@@ -55,5 +55,5 @@
     "LICENSE",
     "README.md"
   ],
-  "author": "agentkit-js contributors"
+  "author": "wasmagent contributors"
 }

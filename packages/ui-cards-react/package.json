@@ -50,7 +50,7 @@
     "node": ">=20.0.0"
   },
   "keywords": [
-    "agentkit",
+    "wasmagent",
     "react",
     "cards",
     "markdown",
@@ -76,5 +76,5 @@
     "LICENSE",
     "README.md"
   ],
-  "author": "agentkit-js contributors"
+  "author": "wasmagent contributors"
 }

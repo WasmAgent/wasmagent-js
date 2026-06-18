@@ -54,7 +54,7 @@
     "node": ">=20.0.0"
   },
   "keywords": [
-    "agentkit",
+    "wasmagent",
     "agent",
     "ai",
     "llm"
@@ -68,5 +68,5 @@
     "LICENSE",
     "README.md"
   ],
-  "author": "agentkit-js contributors"
+  "author": "wasmagent contributors"
 }
