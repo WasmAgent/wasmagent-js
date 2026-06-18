@@ -10,8 +10,8 @@
  *   - empty / zero-step traces render without throwing
  */
 
-import type { AgentEvent } from "@wasmagent/core";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import type { AgentEvent } from "@wasmagent/core";
 import { describe, expect, it, vi } from "vitest";
 import type { Fork, LoggedEvent } from "../EventLogReplay.js";
 import { DevTools } from "./DevTools.js";
