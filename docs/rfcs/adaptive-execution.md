@@ -1,9 +1,9 @@
 # RFC: adaptive execution (L1 fallback / L2 synthesis / L3 goal adaptation)
 
-> **Status:** L1 + L2 + L3 shipped on agentkit-js core 2026-06-18 · bscode UI integration in flight
+> **Status:** all 4 phases shipped 2026-06-18 · paired-stat ablation green (L1/L2/L3 all p = 1.86e-9 on mock-LLM, n=30 per arm) · bscode UI integration in flight
 > **Author:** maintainer + Claude (paired)
 > **Tracks:** [`docs/strategy/2026-06-18-adaptive-execution.md`](../strategy/2026-06-18-adaptive-execution.md) (the *why*)
-> **Phases 1–3 of 4 complete on agentkit-js** — see strategy doc §5 for the full plan.
+> **All phases of 4 complete on agentkit-js** — see [`docs/eval-reports/adaptive-execution-2026-06-18-baseline.md`](../eval-reports/adaptive-execution-2026-06-18-baseline.md) for the ablation evidence.
 
 This RFC proposes the **API shape** for the ninth differentiation axis. It does not propose implementation details beyond what's needed to commit to the public surface. Phases 2–4 will each get their own follow-up RFC for the per-layer mechanics.
 
