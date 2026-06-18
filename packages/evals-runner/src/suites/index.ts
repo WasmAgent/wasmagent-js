@@ -1,5 +1,6 @@
 export { agentTrajectorySuite } from "./agent-trajectory.js";
 export { costPerCorrectSuite } from "./cost-per-correct.js";
+export { goalDirectedQualitySuite } from "./goal-directed-quality.js";
 export { latencyUnderBudgetSuite } from "./latency-under-budget.js";
 export { locomoRefinedSuite } from "./locomo-refined.js";
 export { longContextRecallSuite } from "./long-context-recall.js";
@@ -24,6 +25,7 @@ export { toolSequenceSuite } from "./tool-sequence.js";
 import type { BenchmarkSuite } from "../types.js";
 import { agentTrajectorySuite } from "./agent-trajectory.js";
 import { costPerCorrectSuite } from "./cost-per-correct.js";
+import { goalDirectedQualitySuite } from "./goal-directed-quality.js";
 import { latencyUnderBudgetSuite } from "./latency-under-budget.js";
 import { locomoRefinedSuite } from "./locomo-refined.js";
 import { longContextRecallSuite } from "./long-context-recall.js";
@@ -48,4 +50,5 @@ export const REFERENCE_SUITES: Record<string, BenchmarkSuite> = {
   [multiTurnToolExecSuite.name]: multiTurnToolExecSuite,
   [locomoRefinedSuite.name]: locomoRefinedSuite,
   [memoryAgentBenchSuite.name]: memoryAgentBenchSuite,
+  [goalDirectedQualitySuite.name]: goalDirectedQualitySuite,
 };

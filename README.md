@@ -22,6 +22,8 @@ npm add @agentkit-js/core openai
 >
 > 🆕 **2026-06-17 strategy update:** code-mode is now table stakes (CF / OpenAI / Anthropic all ship it). The differentiation tightened to **portable executor + governance + paired-statistics referee**. New: [`docs/security/capability-manifest-owasp.md`](./docs/security/capability-manifest-owasp.md) (OWASP Agentic Top 10 mapping) · [`docs/strategy/2026-06-17-update.md`](./docs/strategy/2026-06-17-update.md) (delta on top of S1–S4) · [`docs/reports/arm-batch-grammar-2026-06-17/analysis.md`](./docs/reports/arm-batch-grammar-2026-06-17/analysis.md) (worked example: how `evals-runner` falsified our own hypothesis in 30 minutes).
 >
+> 🎯 **2026-06-18 — `GoalDirectedAgent` shipped.** New first-class loop primitive: agent synthesises its own success criteria, verifies them deterministically (or with adversarial-defaulted LLM judge), retries with hints. The eighth axis of differentiation — see [`docs/guides/goal-directed.md`](./docs/guides/goal-directed.md). One-shot `ToolCallingAgent` is still the default; goal-directed is opt-in for tasks where "did this actually deliver" matters.
+>
 > 🤝 **Looking for a co-maintainer.** `@agentkit-js/core@1.0.0` is on the calendar for **2026-12-15**. If you ship to the Vercel AI SDK / Mastra / Claude Agent SDK / OpenAI Agents JS / Cloudflare Agents / LangGraph.js communities and want npm-publish + merge rights, see [CONTRIBUTING.md](./CONTRIBUTING.md#looking-for-a-co-maintainer) and [GOVERNANCE.md](./GOVERNANCE.md). Release cadence ledger: [docs/strategy/release-cadence-log.md](./docs/strategy/release-cadence-log.md). Sandbox-escape SLA drill log: [docs/strategy/security-drill-log.md](./docs/strategy/security-drill-log.md).
 
 ---
