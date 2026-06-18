@@ -4,7 +4,8 @@
   "description": "CLI for wasmagent — mirrors smolagents' `smolagent` CLI (D6)",
   "type": "module",
   "bin": {
-    "wasmagent": "./dist/index.js"
+    "wasmagent": "./dist/index.js",
+    "wasmagent-cli": "./dist/index.js"
   },
   "main": "./dist/index.js",
   "scripts": {

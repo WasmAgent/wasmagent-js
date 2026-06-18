@@ -4,6 +4,22 @@
   "private": true,
   "description": "WASM Agent Kernel & Portable Code Executor — three-tier sandboxed execution, prompt-cache optimization, edge-native TypeScript.",
   "license": "Apache-2.0",
+  "keywords": [
+    "wasm",
+    "agent",
+    "sandbox",
+    "executor",
+    "portable",
+    "code-mode",
+    "wasm-kernel",
+    "agent-sandbox",
+    "portable-executor",
+    "llm",
+    "ai",
+    "typescript",
+    "cloudflare-workers",
+    "offline-agent"
+  ],
   "type": "module",
   "packageManager": "bun@1.3.14",
   "workspaces": [

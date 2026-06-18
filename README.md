@@ -20,13 +20,33 @@ npm add @wasmagent/core @anthropic-ai/sdk
 npm add @wasmagent/core openai
 ```
 
-> 📚 **Docs site:** <https://WasmAgent.github.io/wasmagent-js/> · **Getting started in 5 min:** [docs/guides/getting-started.md](./docs/guides/getting-started.md) · **Benchmarks:** [docs/benchmarks.md](./docs/benchmarks.md) · **Changelog:** [CHANGELOG.md](./CHANGELOG.md) · **API stability:** [docs/strategy/api-stability.md](./docs/strategy/api-stability.md) · **Strategy memo:** [docs/strategy/2026-06-competitiveness.md](./docs/strategy/2026-06-competitiveness.md) · **Trust Page (D4):** [docs/strategy/trust.md](./docs/strategy/trust.md) · **Enterprise security face:** [docs/strategy/security-face.md](./docs/strategy/security-face.md)
->
-> 🆕 **2026-06-17 strategy update:** code-mode is now table stakes (CF / OpenAI / Anthropic all ship it). The differentiation tightened to **portable executor + governance + paired-statistics referee**. New: [`docs/security/capability-manifest-owasp.md`](./docs/security/capability-manifest-owasp.md) (OWASP Agentic Top 10 mapping) · [`docs/strategy/2026-06-17-update.md`](./docs/strategy/2026-06-17-update.md) (delta on top of S1–S4) · [`docs/reports/arm-batch-grammar-2026-06-17/analysis.md`](./docs/reports/arm-batch-grammar-2026-06-17/analysis.md) (worked example: how `evals-runner` falsified our own hypothesis in 30 minutes).
->
-> 🎯 **2026-06-18 — `GoalDirectedAgent` shipped.** New first-class loop primitive: agent synthesises its own success criteria, verifies them deterministically (or with adversarial-defaulted LLM judge), retries with hints. The eighth axis of differentiation — see [`docs/guides/goal-directed.md`](./docs/guides/goal-directed.md). One-shot `ToolCallingAgent` is still the default; goal-directed is opt-in for tasks where "did this actually deliver" matters.
->
-> 🤝 **Looking for a co-maintainer.** `@wasmagent/core@1.0.0` is on the calendar for **2026-12-15**. If you ship to the Vercel AI SDK / Mastra / Claude Agent SDK / OpenAI Agents JS / Cloudflare Agents / LangGraph.js communities and want npm-publish + merge rights, see [CONTRIBUTING.md](./CONTRIBUTING.md#looking-for-a-co-maintainer) and [GOVERNANCE.md](./GOVERNANCE.md). Release cadence ledger: [docs/strategy/release-cadence-log.md](./docs/strategy/release-cadence-log.md). Sandbox-escape SLA drill log: [docs/strategy/security-drill-log.md](./docs/strategy/security-drill-log.md).
+```ts
+// 15-line agent that runs sandboxed code — copy-paste ready
+import { AnthropicModel, ToolCallingAgent } from "@wasmagent/core";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+import { sandboxedJsTool } from "@wasmagent/aisdk";
+
+const kernel = new QuickJSKernel();
+const agent = new ToolCallingAgent({
+  model: new AnthropicModel({ model: "claude-haiku-4-5-20251001" }),
+  tools: [sandboxedJsTool({ kernel })],
+  systemPrompt: "You are a coding assistant with a safe JS sandbox.",
+});
+
+const result = await agent.run("Calculate the first 10 Fibonacci numbers.");
+console.log(result.finalAnswer);
+```
+
+Or scaffold a new project in one command — no install required first:
+
+```bash
+npx @wasmagent/cli init my-agent
+cd my-agent && npm install && npm start
+```
+
+📚 **Docs:** <https://WasmAgent.github.io/wasmagent-js/> · [Getting started](./docs/guides/getting-started.md) · [Kernels](./docs/kernels/comparison.md) · [Goal-directed agent](./docs/guides/goal-directed.md) · [OWASP governance](./docs/security/capability-manifest-owasp.md) · [Changelog](./CHANGELOG.md)
+
+🤝 **Co-maintainer wanted** for the 2026-12-15 `@wasmagent/core@1.0.0` release — see [CONTRIBUTING.md](./CONTRIBUTING.md#looking-for-a-co-maintainer).
 
 ---
 
