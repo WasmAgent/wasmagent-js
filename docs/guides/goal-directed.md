@@ -243,6 +243,45 @@ The UI surface — showing the synthesized criteria *before* the user
 even sees the answer — is the point. It is the visible difference
 between a chat that hopes and a chat that delivers.
 
+## Auto-routing in product UIs (the bscode pattern)
+
+A user-facing chat product should NOT make people pick "Goal mode vs
+Tool mode". The whole point of goal-directed is that the *agent*
+decides. So the recommended product wiring is:
+
+1. Keep your existing **task classifier** (or build one — a one-shot
+   `claude-haiku` call into a structured-output endpoint is enough).
+2. Add a `loop: "single" | "verify"` axis to the classifier's reply
+   alongside whatever `mode` axis you already use. The dispatch rule:
+
+   ```ts
+   const agentMode =
+     classify.loop === "verify" && classify.mode !== "framework"
+       ? "goalDirected"
+       : classify.mode;
+   ```
+
+   `framework` mode is exempt because a real-app build already has its
+   own plan→build→preview loop (the WebContainer side-channel) —
+   stacking another verify-loop on top is redundant.
+
+3. **Don't ship a manual toggle.** A `🎯 Goal` button in the UI is a
+   complexity tax: most users won't know when to flick it, and the
+   classifier can decide better than they can. bscode shipped one
+   for half a day before the user asked "why am I picking this?" —
+   they were right.
+
+4. **Do** show the classifier's choice on the turn badge ("Tool + DAG
+   · 🎯") so users can see what the agent is about to do. Hidden
+   routing is one bad eval away from "sometimes the chat behaves
+   differently and I can't tell why" — visible routing is honest.
+
+The classifier prompt that anchors the `loop` axis is product-specific
+(bscode's lives in `apps/worker/src/app.ts`'s `/classify` route). The
+shape it produces — `{mode, framework, loop}` — is what your dispatcher
+maps. Keep agentkit's `GoalDirectedAgent` agnostic of how you decided
+to invoke it.
+
 ## See also
 
 - [`GoalAgent`](../../packages/core/src/agents/GoalAgent.ts) — the
