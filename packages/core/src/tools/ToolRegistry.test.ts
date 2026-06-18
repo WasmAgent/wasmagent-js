@@ -608,3 +608,63 @@ describe("ToolRegistry — C3 toModelOutput hook", () => {
     expect(result.output).toBe("result:hello");
   });
 });
+
+// 2026-06-18 (axis 9, L1 — adaptive execution) ──────────────────────────────
+describe("ToolRegistry.fallbacksFor", () => {
+  const writeFile: ToolDefinition<{ path: string }, string> = {
+    name: "write_file",
+    description: "Write a file (will fail in this fixture)",
+    inputSchema: z.object({ path: z.string() }),
+    outputSchema: z.string(),
+    readOnly: false,
+    idempotent: true,
+    alternatives: ["append_file", "patch_file", "ghost_tool"],
+    forward: async () => "wrote",
+  };
+  const appendFile: ToolDefinition<{ path: string }, string> = {
+    name: "append_file",
+    description: "Append to a file",
+    inputSchema: z.object({ path: z.string() }),
+    outputSchema: z.string(),
+    readOnly: false,
+    idempotent: false,
+    forward: async () => "appended",
+  };
+  const patchFile: ToolDefinition<{ path: string }, string> = {
+    name: "patch_file",
+    description: "Patch a file",
+    inputSchema: z.object({ path: z.string() }),
+    outputSchema: z.string(),
+    readOnly: false,
+    idempotent: false,
+    forward: async () => "patched",
+  };
+
+  it("returns alternatives in declared order, dropping dangling names", () => {
+    const r = new ToolRegistry();
+    r.register(writeFile);
+    r.register(appendFile);
+    r.register(patchFile);
+    // ghost_tool was listed in alternatives but never registered → drop.
+    const out = r.fallbacksFor("write_file");
+    expect(out.map((t) => t.name)).toEqual(["append_file", "patch_file"]);
+  });
+
+  it("returns empty when the failed tool is unknown", () => {
+    const r = new ToolRegistry();
+    r.register(appendFile);
+    expect(r.fallbacksFor("write_file")).toEqual([]);
+  });
+
+  it("returns empty when the failed tool has no alternatives field", () => {
+    const r = new ToolRegistry();
+    r.register(appendFile); // appendFile has no .alternatives
+    expect(r.fallbacksFor("append_file")).toEqual([]);
+  });
+
+  it("returns empty when none of the listed alternatives resolve", () => {
+    const r = new ToolRegistry();
+    r.register(writeFile); // writeFile.alternatives all dangling
+    expect(r.fallbacksFor("write_file")).toEqual([]);
+  });
+});

@@ -191,6 +191,35 @@ export class ToolRegistry {
   }
 
   /**
+   * 2026-06-18 (axis 9, L1 — adaptive execution).
+   *
+   * Resolve the alternative tools the framework should suggest when
+   * `name`'s `forward()` failed. Reads `tool.alternatives` (a list of
+   * tool names declared on the failed tool itself), drops dangling
+   * names that don't resolve in this registry (fail-closed), and
+   * returns the matching `ToolDefinition`s in declared order.
+   *
+   * Returns an empty array when:
+   * - the failed tool is not registered (e.g. transient unregistration);
+   * - the failed tool has no `alternatives` field;
+   * - none of the named alternatives resolve in this registry.
+   *
+   * Caller (the agent loop) is responsible for capping the surfaced
+   * set, deduping across turns, and rendering the prompt insertion.
+   * The registry stays a pure data structure.
+   */
+  fallbacksFor(name: string): ToolDefinition[] {
+    const tool = this.#tools.get(name);
+    if (!tool?.alternatives?.length) return [];
+    const out: ToolDefinition[] = [];
+    for (const altName of tool.alternatives) {
+      const alt = this.#tools.get(altName);
+      if (alt) out.push(alt);
+    }
+    return out;
+  }
+
+  /**
    * JSON schema for all non-deferred tools — passed to model as tool definitions.
    * Deferred tools (deferLoading: true) are excluded; they are loaded on-demand.
    * Sorted by name for deterministic cache keys across registrations.

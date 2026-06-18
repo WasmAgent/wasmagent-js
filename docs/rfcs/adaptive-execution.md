@@ -1,11 +1,11 @@
 # RFC: adaptive execution (L1 fallback / L2 synthesis / L3 goal adaptation)
 
-> **Status:** draft (2026-06-18)
+> **Status:** L1 shipped 2026-06-18 · L2 + L3 draft
 > **Author:** maintainer + Claude (paired)
 > **Tracks:** [`docs/strategy/2026-06-18-adaptive-execution.md`](../strategy/2026-06-18-adaptive-execution.md) (the *why*)
-> **Phase 0 of 4** — see strategy doc §5 for the full plan.
+> **Phase 1 of 4 complete** — see strategy doc §5 for the full plan.
 
-This RFC proposes the **API shape** for the ninth differentiation axis. It does not propose implementation details beyond what's needed to commit to the public surface. Phases 1–4 will each get their own follow-up RFC for the per-layer mechanics.
+This RFC proposes the **API shape** for the ninth differentiation axis. It does not propose implementation details beyond what's needed to commit to the public surface. Phases 2–4 will each get their own follow-up RFC for the per-layer mechanics.
 
 CONTRIBUTING.md mandates an RFC for any public-API change. The 9th axis touches three public surfaces (`Tool`, `Kernel`, `GoalDirectedAgentOptions`), so this RFC lands first; implementation PRs reference back to it.
 

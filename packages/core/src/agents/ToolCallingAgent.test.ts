@@ -630,3 +630,162 @@ describe("ToolCallingAgent — outputSchema (A2)", () => {
     );
   });
 });
+
+// ── 2026-06-18 (axis 9, L1 — adaptive execution) ───────────────────────────
+describe("ToolCallingAgent — L1 tool fallback offering", () => {
+  // A failing tool with a registered alternative.
+  const failingWriteFile: ToolDefinition<{ path: string }, string> = {
+    name: "write_file",
+    description: "Write a file (deliberately broken in this fixture)",
+    inputSchema: z.object({ path: z.string() }),
+    outputSchema: z.string(),
+    readOnly: false,
+    idempotent: true,
+    alternatives: ["append_file"],
+    forward: async () => {
+      throw new Error("EROFS: read-only filesystem");
+    },
+  };
+  const appendFile: ToolDefinition<{ path: string }, string> = {
+    name: "append_file",
+    description: "Append text to a file",
+    inputSchema: z.object({ path: z.string() }),
+    outputSchema: z.string(),
+    readOnly: false,
+    idempotent: false,
+    forward: async () => "ok",
+  };
+
+  /** Model that calls write_file once and then text-answers, capturing the
+   *  tool_result it receives so the test can assert what hint the prompt got. */
+  function captureToolResultModel(): {
+    model: Model;
+    seenToolResults: string[];
+  } {
+    const seenToolResults: string[] = [];
+    let callCount = 0;
+    const model: Model = {
+      providerId: "mock/capture",
+      async *generate(messages): AsyncGenerator<StreamEvent> {
+        callCount++;
+        // After first call, scan messages to find the most recent tool_result text.
+        if (callCount > 1) {
+          const last = messages.at(-1);
+          if (last && Array.isArray(last.content)) {
+            for (const block of last.content) {
+              const b = block as { type?: string; content?: unknown };
+              if (b.type === "tool_result") {
+                const c = Array.isArray(b.content) ? b.content : [b.content];
+                for (const inner of c) {
+                  const i = inner as { text?: string } | string;
+                  const text = typeof i === "string" ? i : (i?.text ?? "");
+                  if (text) seenToolResults.push(text);
+                }
+              }
+            }
+          }
+        }
+        if (callCount === 1) {
+          yield {
+            type: "tool_call",
+            toolCall: { type: "tool_use", id: "c1", name: "write_file", input: { path: "/x" } },
+          };
+        } else {
+          yield { type: "text_delta", delta: "done" };
+        }
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    };
+    return { model, seenToolResults };
+  }
+
+  it("emits tool_fallback_offered event when a tool with alternatives fails", async () => {
+    const { model } = captureToolResultModel();
+    const agent = new ToolCallingAgent({
+      tools: [failingWriteFile, appendFile],
+      model,
+      maxSteps: 3,
+    });
+    const events = [];
+    for await (const e of agent.run("write x")) events.push(e);
+    const fallback = events.find((e) => e.event === "tool_fallback_offered");
+    expect(fallback).toBeDefined();
+    const data = fallback?.data as {
+      failedTool: string;
+      candidates: { name: string; description: string }[];
+    };
+    expect(data.failedTool).toBe("write_file");
+    expect(data.candidates).toEqual([
+      { name: "append_file", description: "Append text to a file" },
+    ]);
+  });
+
+  it("injects fallback hint into the next-turn tool_result the model sees", async () => {
+    // Ablation half 1: with alternatives → hint appears.
+    const { model, seenToolResults } = captureToolResultModel();
+    const agent = new ToolCallingAgent({
+      tools: [failingWriteFile, appendFile],
+      model,
+      maxSteps: 3,
+    });
+    for await (const _ of agent.run("write x")) void _;
+    expect(seenToolResults.length).toBeGreaterThan(0);
+    expect(seenToolResults[0]).toMatch(/\[framework hint\]/);
+    expect(seenToolResults[0]).toContain("append_file");
+  });
+
+  it("does NOT inject hint when the tool has no alternatives", async () => {
+    // Ablation half 2: without alternatives → no hint, model sees raw error only.
+    const noAltFailing: ToolDefinition<{ path: string }, string> = {
+      ...failingWriteFile,
+      alternatives: undefined,
+    };
+    const { model, seenToolResults } = captureToolResultModel();
+    const agent = new ToolCallingAgent({
+      tools: [noAltFailing, appendFile],
+      model,
+      maxSteps: 3,
+    });
+    const events = [];
+    for await (const e of agent.run("write x")) events.push(e);
+    expect(events.find((e) => e.event === "tool_fallback_offered")).toBeUndefined();
+    expect(seenToolResults.length).toBeGreaterThan(0);
+    expect(seenToolResults[0]).not.toMatch(/\[framework hint\]/);
+  });
+
+  it("caps the candidate list at 3 even when more alternatives are declared", async () => {
+    const manyAlts: ToolDefinition<{ path: string }, string> = {
+      ...failingWriteFile,
+      alternatives: ["alt_1", "alt_2", "alt_3", "alt_4", "alt_5"],
+    };
+    const mkAlt = (name: string): ToolDefinition<{ path: string }, string> => ({
+      name,
+      description: `${name} desc`,
+      inputSchema: z.object({ path: z.string() }),
+      outputSchema: z.string(),
+      readOnly: false,
+      idempotent: false,
+      forward: async () => "ok",
+    });
+    const { model } = captureToolResultModel();
+    const agent = new ToolCallingAgent({
+      tools: [
+        manyAlts,
+        mkAlt("alt_1"),
+        mkAlt("alt_2"),
+        mkAlt("alt_3"),
+        mkAlt("alt_4"),
+        mkAlt("alt_5"),
+      ],
+      model,
+      maxSteps: 3,
+    });
+    const events = [];
+    for await (const e of agent.run("write x")) events.push(e);
+    const data = events.find((e) => e.event === "tool_fallback_offered")?.data as {
+      candidates: { name: string }[];
+    };
+    expect(data.candidates).toHaveLength(3);
+    expect(data.candidates.map((c) => c.name)).toEqual(["alt_1", "alt_2", "alt_3"]);
+  });
+});

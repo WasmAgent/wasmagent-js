@@ -844,6 +844,13 @@ export class ToolCallingAgent {
                 },
             timestampMs: Date.now(),
           };
+          // 2026-06-18 (axis 9, L1) — surface tool fallbacks on failure.
+          // The framework offers candidates the registry says are
+          // alternatives to the failed tool; the model picks. See
+          // emitFallbacksIfAny for the cap/dedupe rules.
+          if (res.isError) {
+            yield* this.#emitFallbacksIfAny(call.name, res.output, traceId, parentTraceId, step);
+          }
           // F2: action_completed — outcome for frontend/observability dashboards.
           yield {
             traceId,
@@ -862,7 +869,9 @@ export class ToolCallingAgent {
             toolCallId: call.id,
             toolName: call.name,
             toolInput: call.input,
-            toolOutput: res.output,
+            toolOutput: res.isError
+              ? this.#augmentErrorWithFallbacks(call.name, res.output)
+              : res.output,
             isError: res.isError,
             ...(res.isUntrusted ? { isUntrusted: true } : {}),
           });
@@ -945,11 +954,18 @@ export class ToolCallingAgent {
                 },
             timestampMs: Date.now(),
           };
+          // 2026-06-18 (axis 9, L1) — surface tool fallbacks on failure
+          // (parallel-batch path; see the early-return path above).
+          if (isError) {
+            yield* this.#emitFallbacksIfAny(call.name, toolOutput, traceId, parentTraceId, step);
+          }
           resolvedCalls.push({
             toolCallId: call.id,
             toolName: call.name,
             toolInput: call.input,
-            toolOutput,
+            toolOutput: isError
+              ? this.#augmentErrorWithFallbacks(call.name, toolOutput)
+              : toolOutput,
             isError,
             ...(isUntrusted ? { isUntrusted: true } : {}),
           });
@@ -1002,5 +1018,52 @@ export class ToolCallingAgent {
     budget: TokenBudget
   ): AsyncGenerator<AgentEvent> {
     yield* runPlanningStep(traceId, parentTraceId, step, this.#model, this.#assembler, budget);
+  }
+
+  // ── 2026-06-18 (axis 9, L1 — adaptive execution) ───────────────────────────
+  // Two helpers that surface tool fallbacks on failure. Capped at 3
+  // candidates per failure (token-budget hygiene from RFC §"Open
+  // questions" #2). The framework does NOT auto-call the alternative —
+  // it just makes them visible so the model can pick. See
+  // `docs/strategy/2026-06-18-adaptive-execution.md`.
+
+  #FALLBACK_CAP = 3;
+
+  /** Emit a `tool_fallback_offered` event when the failed tool has alternatives. */
+  async *#emitFallbacksIfAny(
+    failedTool: string,
+    errorMessage: string,
+    traceId: string,
+    parentTraceId: string | null,
+    step: number
+  ): AsyncGenerator<AgentEvent> {
+    const candidates = this.#tools.fallbacksFor(failedTool).slice(0, this.#FALLBACK_CAP);
+    if (candidates.length === 0) return;
+    yield {
+      traceId,
+      parentTraceId,
+      channel: "tool",
+      event: "tool_fallback_offered",
+      data: {
+        failedTool,
+        error: errorMessage,
+        candidates: candidates.map((c) => ({ name: c.name, description: c.description })),
+        stepIndex: step,
+      },
+      timestampMs: Date.now(),
+    };
+  }
+
+  /**
+   * Augment the failing tool_result string the model sees with a brief
+   * fallback hint listing registered alternatives. The model still
+   * decides what to do; this just removes the "did it occur to you to
+   * check the registry?" failure mode for small models.
+   */
+  #augmentErrorWithFallbacks(failedTool: string, errorOutput: string): string {
+    const candidates = this.#tools.fallbacksFor(failedTool).slice(0, this.#FALLBACK_CAP);
+    if (candidates.length === 0) return errorOutput;
+    const lines = candidates.map((c) => `- ${c.name}: ${c.description}`).join("\n");
+    return `${errorOutput}\n\n[framework hint] The registry lists these alternatives to ${failedTool} — you may try one, retry ${failedTool} with different args, or use execute_code to synthesise a one-off:\n${lines}`;
   }
 }

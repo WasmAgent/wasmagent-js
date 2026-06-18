@@ -50,6 +50,20 @@ export type AgentEvent =
       };
     })
   | (AgentEventBase & {
+      channel: "tool";
+      event: "tool_fallback_offered";
+      // 2026-06-18 (axis 9, L1) — surfaced when a tool fails AND its
+      // ToolDefinition.alternatives names at least one tool registered
+      // in the same ToolRegistry. The framework caps the candidate
+      // list at 3 per failure.
+      data: {
+        failedTool: string;
+        error: string;
+        candidates: { name: string; description: string }[];
+        stepIndex: number;
+      };
+    })
+  | (AgentEventBase & {
       channel: "thinking";
       event: "planning";
       data: { step: number; plan: string; facts: string };

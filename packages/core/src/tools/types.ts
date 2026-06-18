@@ -37,6 +37,32 @@ export interface ToolDefinition<TInput = unknown, TOutput = unknown> {
   /** True = calling multiple times with same args is safe. */
   idempotent: boolean;
   /**
+   * 2026-06-18 (axis 9, L1 — adaptive execution).
+   *
+   * Names of registered tools the framework should suggest as
+   * alternatives when this tool's `forward()` throws or returns a
+   * `tool_result.error`. The framework does NOT auto-call them — it
+   * surfaces them to the model in the next turn as "the tool you
+   * tried failed; here are tools the registry says are alternatives.
+   * You may pick one, retry the failed tool with different args, or
+   * use `execute_code` to synthesise a one-off tool."
+   *
+   * Why model picks instead of framework: tool semantics differ
+   * (an `append_file` is not a drop-in for `write_file`); silently
+   * substituting would be a sharper footgun than not surfacing the
+   * candidates at all.
+   *
+   * Resolution rules:
+   * - Names that don't resolve in the same `ToolRegistry` are
+   *   silently dropped (fail-closed; no exception).
+   * - The framework caps the candidate set at 3 per failure even if
+   *   more are listed (token budget hygiene).
+   *
+   * See `docs/strategy/2026-06-18-adaptive-execution.md` and
+   * `docs/rfcs/adaptive-execution.md`.
+   */
+  alternatives?: string[];
+  /**
    * Named capability required to call this tool.
    * If set, the agent must grant this capability in its CapabilityManifest.extraCapabilities.
    */
