@@ -148,6 +148,20 @@ export interface GoalDirectedAgentOptions {
    * cannot be evaluated mechanically. Replace at your own risk.
    */
   synthSystemPrompt?: string;
+  /**
+   * Skip Phase 1 (criteria synthesis) and use these criteria directly.
+   *
+   * Use when the success criteria are known up-front and you want the
+   * loop to be deterministic — typically CI gates feeding a frozen
+   * `criteria.json`, or A/B comparison where two runs need the *same*
+   * grader.
+   *
+   * When set, the synthModel is never called; `criteria_proposed` is
+   * still emitted (with this list) so observers see the same event
+   * stream as a synthesised run. An empty array still triggers the
+   * single-shot fallback path.
+   */
+  criteria?: Criterion[];
 }
 
 /** Default criteria-synthesis system prompt — frozen here so tests can lock its wording. */
@@ -243,6 +257,7 @@ export class GoalDirectedAgent {
   readonly #judgeSamples: number;
   readonly #judgeRequireMajority: boolean;
   readonly #synthSystemPrompt: string;
+  readonly #presetCriteria: Criterion[] | undefined;
 
   constructor(opts: GoalDirectedAgentOptions) {
     this.#model = opts.model;
@@ -258,6 +273,7 @@ export class GoalDirectedAgent {
     this.#judgeSamples = opts.judgeSamples ?? 3;
     this.#judgeRequireMajority = opts.judgeRequireMajority ?? false;
     this.#synthSystemPrompt = opts.synthSystemPrompt ?? DEFAULT_CRITERIA_SYNTH_SYSTEM_PROMPT;
+    this.#presetCriteria = opts.criteria;
   }
 
   async *run(task: string, parentTraceId: string | null = null): AsyncGenerator<AgentEvent> {
@@ -274,8 +290,12 @@ export class GoalDirectedAgent {
       });
     }
 
-    // ── Phase 1: synthesize criteria ────────────────────────────────
-    const criteria = await this.#synthesizeCriteria(task);
+    // ── Phase 1: synthesize criteria (or use preset) ────────────────
+    // When `criteria` is supplied via options, skip the synth model
+    // call entirely — the caller has supplied a frozen grader. The
+    // `criteria_proposed` event still fires so observers see the same
+    // shape regardless of whether Phase 1 ran live or was preset.
+    const criteria = this.#presetCriteria ?? (await this.#synthesizeCriteria(task));
     yield this.#mkStatusEvent(parentTraceId, "criteria_proposed", { criteria });
 
     if (criteria.length === 0) {

@@ -14,6 +14,7 @@ import {
   camelCase,
   generateTestTemplate,
   generateToolTemplate,
+  loadCriteriaFromFile,
   parseEventsFilter,
   runCommand,
 } from "./index.js";
@@ -798,5 +799,80 @@ describe("buildAnthropicModel", () => {
     };
     const args = m.constructor.lastArgs[m.constructor.lastArgs.length - 1]!;
     expect((args.opts as Record<string, unknown>).baseURL).toBeUndefined();
+  });
+});
+
+// ── loadCriteriaFromFile (CI-friendly --from-criteria) ──────────────────────
+
+describe("loadCriteriaFromFile", () => {
+  // Use unique paths under a vitest-supplied tmp dir so parallel test
+  // workers don't fight over the same filenames.
+  const fs = require("node:fs/promises") as typeof import("node:fs/promises");
+  const os = require("node:os") as typeof import("node:os");
+  const path = require("node:path") as typeof import("node:path");
+
+  let tmpDir = "";
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "agentkit-cli-criteria-"));
+    // process.exit throws so the function "exits" without ending the
+    // test runner. The string sentinel is caught by toThrow().
+    exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("__exit__");
+    });
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+  afterEach(async () => {
+    exitSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("loads a bare Criterion[] (top-level array)", async () => {
+    const file = path.join(tmpDir, "criteria.json");
+    const list = [
+      { id: "a", description: "x", verify_method: "file_exists", path: "doc.md" },
+      { id: "b", description: "y", verify_method: "file_size_min", arg: 100, path: "doc.md" },
+    ];
+    await fs.writeFile(file, JSON.stringify(list), "utf8");
+    const out = await loadCriteriaFromFile(file);
+    expect(out).toEqual(list);
+  });
+
+  it("loads {criteria: [...]} (matches GoalDirectedAgent's emitted shape)", async () => {
+    const file = path.join(tmpDir, "criteria.json");
+    const list = [{ id: "a", description: "x", verify_method: "file_exists", path: "doc.md" }];
+    await fs.writeFile(file, JSON.stringify({ criteria: list, meta: "ignored" }), "utf8");
+    const out = await loadCriteriaFromFile(file);
+    expect(out).toEqual(list);
+  });
+
+  it("exits with non-zero when the file is missing", async () => {
+    const missing = path.join(tmpDir, "no-such-file.json");
+    await expect(loadCriteriaFromFile(missing)).rejects.toThrow("__exit__");
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining(`cannot read ${missing}`));
+  });
+
+  it("exits with non-zero when the file is not valid JSON", async () => {
+    const file = path.join(tmpDir, "bad.json");
+    await fs.writeFile(file, "{not valid", "utf8");
+    await expect(loadCriteriaFromFile(file)).rejects.toThrow("__exit__");
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("not valid JSON"));
+  });
+
+  it("exits with non-zero when the file holds an empty list", async () => {
+    const file = path.join(tmpDir, "empty.json");
+    await fs.writeFile(file, "[]", "utf8");
+    await expect(loadCriteriaFromFile(file)).rejects.toThrow("__exit__");
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("no Criterion entries"));
+  });
+
+  it("exits with non-zero when the file is JSON without a criteria field", async () => {
+    const file = path.join(tmpDir, "wrong-shape.json");
+    await fs.writeFile(file, JSON.stringify({ foo: "bar" }), "utf8");
+    await expect(loadCriteriaFromFile(file)).rejects.toThrow("__exit__");
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("no Criterion entries"));
   });
 });

@@ -362,6 +362,76 @@ describe("GoalDirectedAgent: phase pipeline", () => {
     expect(data.outcome).toBe("verified");
     expect(judge.calls()).toBe(3);
   });
+
+  it("preset criteria via opts.criteria skip Phase 1 entirely", async () => {
+    // 2026-06-18 (--from-criteria): when the caller supplies a frozen
+    // Criterion[] list, the synth model must NOT be called — the loop
+    // is meant to be deterministic across runs. The criteria_proposed
+    // event still fires (with the supplied list) so observers see the
+    // same shape regardless of how Phase 1 produced the criteria.
+    const ws = fakeWs();
+    const synth = scriptedModel([{ text: "SYNTH SHOULD NOT BE CALLED" }]);
+    const exec = scriptedModel(
+      [{ text: "Done", sideEffect: { path: "doc.md", body: "the body" } }],
+      ws
+    );
+    const presetCriteria: Criterion[] = [
+      {
+        id: "exists",
+        description: "doc.md must exist",
+        verify_method: "file_exists",
+        path: "doc.md",
+      },
+    ];
+    const agent = new GoalDirectedAgent({
+      model: exec.model,
+      synthModel: synth.model,
+      tools: noTools,
+      workspaceReader: ws,
+      criteria: presetCriteria,
+      maxIterations: 1,
+      maxStepsPerIteration: 1,
+    });
+    const events = [];
+    for await (const ev of agent.run("write a doc")) events.push(ev);
+
+    // Synth model untouched — the whole point of the preset path.
+    expect(synth.calls()).toBe(0);
+
+    // The criteria_proposed event still fired, with our exact list.
+    const proposed = events.find((e) => e.event === ("criteria_proposed" as never));
+    expect((proposed?.data as { criteria: Criterion[] }).criteria).toEqual(presetCriteria);
+
+    // And the loop still verified.
+    const final = events.find((e) => e.event === ("goal_directed_done" as never));
+    expect((final?.data as { outcome: string }).outcome).toBe("verified");
+  });
+
+  it("preset criteria with empty array still triggers single-shot fallback", async () => {
+    // Edge case: caller passes [] explicitly. Same handling as a
+    // synth that returned 0 criteria — drop into single-shot mode
+    // rather than running an always-passing loop. Synth still skipped.
+    const ws = fakeWs();
+    const synth = scriptedModel([{ text: "SYNTH SHOULD NOT BE CALLED" }]);
+    const exec = scriptedModel([{ text: "Hello" }]);
+    const agent = new GoalDirectedAgent({
+      model: exec.model,
+      synthModel: synth.model,
+      tools: noTools,
+      workspaceReader: ws,
+      criteria: [],
+      maxIterations: 1,
+      maxStepsPerIteration: 1,
+    });
+    const events = [];
+    for await (const ev of agent.run("say hi")) events.push(ev);
+
+    expect(synth.calls()).toBe(0);
+    const final = events.find((e) => e.event === ("goal_directed_done" as never));
+    const data = final?.data as { outcome: string; emptyCriteriaFallback?: boolean };
+    expect(data.outcome).toBe("single-shot");
+    expect(data.emptyCriteriaFallback).toBe(true);
+  });
 });
 
 describe("GoalDirectedAgent: criteria type-shape sanity", () => {

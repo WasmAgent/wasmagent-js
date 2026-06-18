@@ -119,6 +119,11 @@ if (isMain) {
       "judge-majority": { type: "boolean", default: false },
       workspace: { type: "string", default: "." },
       criteria: { type: "string" },
+      // 2026-06-18: Skip Phase 1 synthesis and load Criterion[] from a
+      // JSON file. CI-friendly — the same input always produces the
+      // same grader. The file is the same shape `agentkit verify`
+      // accepts: either a top-level array, or `{criteria: [...]}`.
+      "from-criteria": { type: "string" },
       // Note: --base-url flag is already declared above for `agentkit evals`
       // (it falls back to http://localhost:11434/v1 there). buildAnthropicModel
       // reuses the same flag for `agentkit run` / `agentkit goal`, falling back
@@ -584,6 +589,8 @@ goal options:
   --max-iterations <n>     Goal-loop iteration cap (default: 5, max 20)
   --judge-samples <n>      LLMJudge calls per llm_judge criterion (default: 3)
   --judge-majority         Pass criterion on majority vote instead of unanimous
+  --from-criteria <path>   Skip Phase 1 synthesis; load Criterion[] from JSON
+                           (CI-friendly; same shape as agentkit verify accepts)
   --api-key <key>          Anthropic API key (or set ANTHROPIC_API_KEY)
   --base-url <url>         Override Anthropic base URL (or set ANTHROPIC_BASE_URL)
   --stream                 Output all events as NDJSON (pipe-friendly)
@@ -618,6 +625,7 @@ Examples:
   agentkit run "Analyse data" --stream | jq .
   agentkit run "Search AI news" --events final_answer,error
   agentkit goal "Write a 1500-word intro to OAuth in oauth.md" --workspace ./tmp
+  agentkit goal "Write the intro" --from-criteria ./criteria.json --workspace ./tmp
   agentkit verify --criteria criteria.json --workspace ./tmp
   agentkit init-tool --name web-search --output ./tools
   agentkit devtools --events-file ./events.ndjson
@@ -933,6 +941,46 @@ async function buildLocalFsWorkspace(rootDir: string): Promise<{
   return { ws, tools: [writeFileTool, readFileTool], scoutEntries, rootAbs };
 }
 
+/**
+ * Load `Criterion[]` from a JSON file path.
+ *
+ * Accepts both `[Criterion, ...]` (bare array) and `{criteria: [...]}`
+ * — the same shape `GoalDirectedAgent` emits in its `criteria_proposed`
+ * event payload, so a frozen-criteria run can be re-checked or replayed
+ * offline. Used by both `agentkit goal --from-criteria` (skip Phase 1
+ * synthesis) and `agentkit verify --criteria` (deterministic gate).
+ *
+ * Exits the process with a non-zero code on any failure (file missing,
+ * unreadable, not JSON, no `criteria` field, empty list). The CLI
+ * surface is the only caller, so process.exit is the right shape.
+ */
+export async function loadCriteriaFromFile(filePath: string): Promise<Criterion[]> {
+  let raw: string;
+  try {
+    raw = await fsReadFile(filePath, "utf8");
+  } catch (e) {
+    console.error(`Error: cannot read ${filePath}: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    console.error(
+      `Error: ${filePath} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`
+    );
+    process.exit(1);
+  }
+  const criteriaArr: Criterion[] = Array.isArray(parsed)
+    ? (parsed as Criterion[])
+    : ((parsed as { criteria?: Criterion[] }).criteria ?? []);
+  if (!Array.isArray(criteriaArr) || criteriaArr.length === 0) {
+    console.error(`Error: ${filePath} contains no Criterion entries`);
+    process.exit(1);
+  }
+  return criteriaArr;
+}
+
 export async function goalCommand(
   task: string,
   opts: Record<string, string | boolean | undefined>
@@ -970,6 +1018,17 @@ export async function goalCommand(
   await mkdir(workspaceDir, { recursive: true });
   const { ws, tools, scoutEntries, rootAbs } = await buildLocalFsWorkspace(workspaceDir);
 
+  // 2026-06-18: --from-criteria <path.json> skips Phase 1 synthesis. The
+  // file is JSON: either a bare Criterion[] or {criteria: [...]} (the
+  // shape `GoalDirectedAgent`'s criteria_proposed event emits, so a
+  // verified run can be replayed). When set, the synthModel is never
+  // called — useful for CI gates and for A/B comparisons that need the
+  // same grader across two runs.
+  const fromCriteriaPath = typeof opts["from-criteria"] === "string" ? opts["from-criteria"] : "";
+  const presetCriteria = fromCriteriaPath
+    ? await loadCriteriaFromFile(fromCriteriaPath)
+    : undefined;
+
   const model = buildAnthropicModel(opts, apiKey);
 
   const streamMode = opts.stream === true;
@@ -984,11 +1043,15 @@ export async function goalCommand(
     maxIterations,
     judgeSamples,
     judgeRequireMajority: opts["judge-majority"] === true,
+    ...(presetCriteria ? { criteria: presetCriteria } : {}),
   });
 
   if (!streamMode) {
     console.log(`Goal: ${task}`);
     console.log(`Workspace: ${rootAbs}`);
+    if (presetCriteria) {
+      console.log(`Criteria: ${fromCriteriaPath} (${presetCriteria.length}, Phase 1 skipped)`);
+    }
     console.log("");
   }
 
@@ -1089,31 +1152,7 @@ export async function verifyCommand(
     console.error("Error: --criteria=<path-to-json> is required");
     process.exit(1);
   }
-  let raw: string;
-  try {
-    raw = await fsReadFile(criteriaPath, "utf8");
-  } catch (e) {
-    console.error(
-      `Error: cannot read ${criteriaPath}: ${e instanceof Error ? e.message : String(e)}`
-    );
-    process.exit(1);
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (e) {
-    console.error(
-      `Error: ${criteriaPath} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`
-    );
-    process.exit(1);
-  }
-  const criteriaArr: Criterion[] = Array.isArray(parsed)
-    ? (parsed as Criterion[])
-    : ((parsed as { criteria?: Criterion[] }).criteria ?? []);
-  if (!Array.isArray(criteriaArr) || criteriaArr.length === 0) {
-    console.error("Error: criteria file contains no Criterion entries");
-    process.exit(1);
-  }
+  const criteriaArr = await loadCriteriaFromFile(criteriaPath);
   const skipped = criteriaArr.filter((c) => c.verify_method === "llm_judge");
   const checkable = criteriaArr.filter((c) => c.verify_method !== "llm_judge");
   if (skipped.length > 0) {

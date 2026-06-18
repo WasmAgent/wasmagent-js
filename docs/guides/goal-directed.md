@@ -243,6 +243,44 @@ The UI surface — showing the synthesized criteria *before* the user
 even sees the answer — is the point. It is the visible difference
 between a chat that hopes and a chat that delivers.
 
+### Frozen criteria for CI: `agentkit goal --from-criteria`
+
+For deterministic CI gates and A/B comparisons, you usually don't want
+the synth model to invent a fresh grader on every run. Pin the criteria
+once and feed them in:
+
+```bash
+# Phase 1 still runs the first time — capture the synthesized criteria.
+agentkit goal "Write the OAuth intro" --workspace ./tmp \
+  --stream | tee transcript.ndjson
+
+# Extract them into a frozen file your CI commits.
+jq -c 'select(.event=="criteria_proposed") | .data.criteria' \
+  transcript.ndjson | head -1 > criteria.json
+
+# Subsequent runs skip Phase 1 — same grader every time.
+agentkit goal "Write the OAuth intro" --workspace ./tmp \
+  --from-criteria criteria.json
+```
+
+Programmatic equivalent — pass `criteria` directly to
+`GoalDirectedAgent`:
+
+```ts
+const agent = new GoalDirectedAgent({
+  model,
+  tools,
+  workspaceReader: ws,
+  criteria: frozenCriteriaList,  // skip synth, use this list verbatim
+});
+```
+
+When `criteria` is supplied, the synth model is never called and the
+`criteria_proposed` event still fires (with the supplied list) so
+observers see the same shape regardless. Empty arrays still trigger
+the single-shot fallback path — same handling as a synth that returned
+zero criteria.
+
 ## Auto-routing in product UIs (the bscode pattern)
 
 A user-facing chat product should NOT make people pick "Goal mode vs
