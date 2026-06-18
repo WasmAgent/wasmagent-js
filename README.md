@@ -28,7 +28,7 @@ npm add @agentkit-js/core openai
 
 ---
 
-## Eight differentiation axes — at a glance
+## Nine differentiation axes — at a glance
 
 > **What this table is.** The eight surfaces where agentkit-js is doing
 > something the other JS agent frameworks (Vercel AI SDK, OpenAI Agents
@@ -37,6 +37,12 @@ npm add @agentkit-js/core openai
 > it. The detailed feature grid below this section breaks each axis
 > into the specific cells where competitors do or don't ship the same
 > capability. [Last verified 2026-06-18.]
+>
+> **🆕 A ninth axis is in flight.** "Adaptive execution" — tool fallback
+> when a tool fails, tool synthesis when none fits, goal adaptation
+> when the goal turns out unreachable. RFC drafted 2026-06-18, phased
+> implementation. See [`docs/strategy/2026-06-18-adaptive-execution.md`](./docs/strategy/2026-06-18-adaptive-execution.md)
+> and [`docs/rfcs/adaptive-execution.md`](./docs/rfcs/adaptive-execution.md).
 
 | # | Axis | One-line value | Status | Doc |
 |---|------|----------------|--------|-----|
@@ -48,12 +54,15 @@ npm add @agentkit-js/core openai
 | 6 | **Code-mode (compress N MCP tools into 1)** | Single `execute_code` tool that compresses N MCP tools into one. Token cost on tool registries that grow stays flat instead of linear. Drop-in for Cloudflare codemode `DynamicWorkerExecutor` / OpenAI Agents SDK / Mastra. | shipped | [code-mode](./docs/guides/code-mode.md) |
 | 7 | **Devtools + GenAI semconv OTel** | Zero-deploy local Studio (run-overview UI). `OtelBridge` emits standard `gen_ai.*` attributes (Datadog / Honeycomb / Grafana GenAI compatible) alongside legacy names. | shipped | [devtools](./packages/devtools/README.md) · [otel-exporter](./packages/otel-exporter/README.md) |
 | 8 | **Goal-directed loop** | Agent synthesises its own success criteria, executes, verifies (deterministic + adversarial-defaulted LLM judge), retries with hints. The user states a goal; the framework supplies the loop. | **shipped 2026-06-18** | [goal-directed](./docs/guides/goal-directed.md) · [baseline](./docs/eval-reports/goal-directed-2026-06-18-baseline.md) · [strategy](./docs/strategy/2026-06-18-goal-directed-shipped.md) |
+| 9 | **Adaptive execution (planned)** | When a tool fails, framework offers registered alternatives (L1). When none fits, agent synthesises a one-off via `execute_code` (L2). When the goal itself looks unreachable, agent proposes a relaxed criteria set the caller can accept/reject (L3). | RFC drafted 2026-06-18 | [strategy](./docs/strategy/2026-06-18-adaptive-execution.md) · [RFC](./docs/rfcs/adaptive-execution.md) |
 
-The eight axes compose. A goal-directed run can use a local model
-(axis 1+3) running in a WASM kernel (axis 2), with a verifier that
-checks workspace state via the workflow engine (axis 5), traced
-through OTel (axis 7), and persisted to memory (axis 4). The eighth
-axis raises the ceiling on what the first seven can deliver.
+The eight (soon nine) axes compose. A goal-directed run can use a
+local model (axis 1+3) running in a WASM kernel (axis 2), with a
+verifier that checks workspace state via the workflow engine (axis 5),
+traced through OTel (axis 7), and persisted to memory (axis 4). The
+eighth axis raises the ceiling on what the first seven can deliver.
+The ninth, when it lands, will let that ceiling survive a tool failing
+or a goal turning out infeasible.
 
 ---
 
