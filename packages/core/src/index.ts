@@ -1,6 +1,9 @@
 // Agents
 
 export type {
+  AdaptationDecision,
+  // 2026-06-18 (axis 9, L3) — adaptation negotiation types.
+  AdaptationProposal,
   AgentTeamFactory,
   AgentTeamMember,
   AgentTeamMemberResult,

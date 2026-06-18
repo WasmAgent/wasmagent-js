@@ -14,6 +14,8 @@ export { CodeAgent } from "./CodeAgent.js";
 export type { Goal, GoalAgentOptions, GoalOutcome, GoalRunResult } from "./GoalAgent.js";
 export { GoalAgent } from "./GoalAgent.js";
 export type {
+  AdaptationDecision,
+  AdaptationProposal,
   GoalDirectedAgentOptions,
   GoalDirectedOutcome,
   GoalDirectedRunResult,

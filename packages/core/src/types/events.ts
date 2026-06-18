@@ -80,6 +80,23 @@ export type AgentEvent =
       };
     })
   | (AgentEventBase & {
+      channel: "status";
+      event: "goal_adaptation_proposed";
+      // 2026-06-18 (axis 9, L3) — emitted when GoalDirectedAgent has
+      // exhausted iterations with `allowNegotiate: true` and the synth
+      // model has proposed a modified criteria set. The caller's
+      // `onAdaptationProposed` callback (or the CLI's stdin prompt)
+      // resolves to accept / reject / edit. On accept the loop
+      // resumes with the new criteria; reject/timeout terminates
+      // with outcome `"negotiation-proposed"`.
+      data: {
+        keepCriteria: unknown[];
+        relaxCriteria: { original: unknown; proposed: unknown; reasoning: string }[];
+        droppedCriteria: { original: unknown; reasoning: string }[];
+        iterationCount: number;
+      };
+    })
+  | (AgentEventBase & {
       channel: "thinking";
       event: "planning";
       data: { step: number; plan: string; facts: string };

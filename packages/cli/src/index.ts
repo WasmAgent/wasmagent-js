@@ -15,6 +15,8 @@ import { readFile as fsReadFile, mkdir, writeFile } from "node:fs/promises";
 import { join, resolve as pathResolve } from "node:path";
 import { parseArgs } from "node:util";
 import type {
+  AdaptationDecision,
+  AdaptationProposal,
   AgentEvent,
   AnthropicModelId,
   AnthropicModelOptions,
@@ -117,6 +119,10 @@ if (isMain) {
       "max-iterations": { type: "string", default: "5" },
       "judge-samples": { type: "string", default: "3" },
       "judge-majority": { type: "boolean", default: false },
+      // 2026-06-18 (axis 9, L3) — opt into goal adaptation negotiation.
+      // CI users with --from-criteria should leave this off (the
+      // determinism is the point); humans iterating in a UI/REPL benefit.
+      "allow-negotiate": { type: "boolean", default: false },
       workspace: { type: "string", default: "." },
       criteria: { type: "string" },
       // 2026-06-18: Skip Phase 1 synthesis and load Criterion[] from a
@@ -591,6 +597,9 @@ goal options:
   --judge-majority         Pass criterion on majority vote instead of unanimous
   --from-criteria <path>   Skip Phase 1 synthesis; load Criterion[] from JSON
                            (CI-friendly; same shape as agentkit verify accepts)
+  --allow-negotiate        On exhausted iterations, ask the synth model to
+                           propose a relaxed criteria set; prompts y/N on stdin.
+                           No-op when --from-criteria is set (CI determinism).
   --api-key <key>          Anthropic API key (or set ANTHROPIC_API_KEY)
   --base-url <url>         Override Anthropic base URL (or set ANTHROPIC_BASE_URL)
   --stream                 Output all events as NDJSON (pipe-friendly)
@@ -981,6 +990,42 @@ export async function loadCriteriaFromFile(filePath: string): Promise<Criterion[
   return criteriaArr;
 }
 
+/**
+ * 2026-06-18 (axis 9, L3) — interactive adaptation decision over stdin.
+ *
+ * Renders the proposal (kept / relaxed / dropped criteria) to stderr,
+ * then reads a single line ("y" / "n" / empty=reject) from stdin.
+ * Streams mode skips the UI entirely and treats it as auto-reject —
+ * piped/CI invocations should use `--from-criteria` instead and leave
+ * --allow-negotiate off.
+ */
+export function makeStdinAdaptationHandler(
+  streamMode: boolean
+): (proposal: AdaptationProposal) => Promise<AdaptationDecision> {
+  return async (proposal) => {
+    if (streamMode) return { decision: "reject" };
+    process.stderr.write("\n[goal-directed] adaptation proposed:\n");
+    process.stderr.write(`  keep:    ${proposal.keepCriteria.length} criteria\n`);
+    for (const r of proposal.relaxCriteria) {
+      process.stderr.write(`  relax:   ${r.original.id} — ${r.reasoning}\n`);
+    }
+    for (const d of proposal.droppedCriteria) {
+      process.stderr.write(`  drop:    ${d.original.id} — ${d.reasoning}\n`);
+    }
+    process.stderr.write("Accept? [y/N] ");
+    const reply = await new Promise<string>((resolve) => {
+      const onData = (chunk: Buffer) => {
+        process.stdin.removeListener("data", onData);
+        process.stdin.pause();
+        resolve(chunk.toString("utf8").trim().toLowerCase());
+      };
+      process.stdin.resume();
+      process.stdin.once("data", onData);
+    });
+    return reply === "y" || reply === "yes" ? { decision: "accept" } : { decision: "reject" };
+  };
+}
+
 export async function goalCommand(
   task: string,
   opts: Record<string, string | boolean | undefined>
@@ -1032,6 +1077,12 @@ export async function goalCommand(
   const model = buildAnthropicModel(opts, apiKey);
 
   const streamMode = opts.stream === true;
+  // 2026-06-18 (axis 9, L3) — wire CLI's --allow-negotiate to a stdin
+  // prompt when interactive AND not in CI deterministic mode (i.e.
+  // --from-criteria is unset). With --from-criteria the flag is a
+  // noop because the criteria are frozen by the caller and the loop
+  // is meant to be reproducible.
+  const allowNegotiate = opts["allow-negotiate"] === true && !fromCriteriaPath;
   const agent = new GoalDirectedAgent({
     model,
     tools,
@@ -1044,6 +1095,12 @@ export async function goalCommand(
     judgeSamples,
     judgeRequireMajority: opts["judge-majority"] === true,
     ...(presetCriteria ? { criteria: presetCriteria } : {}),
+    ...(allowNegotiate
+      ? {
+          allowNegotiate: true,
+          onAdaptationProposed: makeStdinAdaptationHandler(streamMode),
+        }
+      : {}),
   });
 
   if (!streamMode) {

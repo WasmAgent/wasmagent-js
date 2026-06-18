@@ -24,7 +24,12 @@
 import { describe, expect, it } from "vitest";
 import type { Model, ModelMessage, StreamEvent } from "../models/types.js";
 import type { ToolDefinition } from "../tools/types.js";
-import { GoalDirectedAgent, parseCriteriaReply, type ScoutSnapshot } from "./GoalDirectedAgent.js";
+import {
+  type AdaptationProposal,
+  GoalDirectedAgent,
+  parseCriteriaReply,
+  type ScoutSnapshot,
+} from "./GoalDirectedAgent.js";
 import type { Criterion, Verifier, WorkspaceReader } from "./verifiers/index.js";
 
 function fakeWs(initial: Record<string, string> = {}): WorkspaceReader & {
@@ -446,5 +451,194 @@ describe("GoalDirectedAgent: criteria type-shape sanity", () => {
     const reply = JSON.stringify({ criteria: [c] });
     const back = parseCriteriaReply(reply);
     expect(back).toEqual([c]);
+  });
+});
+
+// ── 2026-06-18 (axis 9, L3 — adaptive execution) ──────────────────────────
+describe("GoalDirectedAgent: L3 goal adaptation negotiation", () => {
+  // A criterion the verifier will always fail (file size below threshold).
+  const unattainable: Criterion = {
+    id: "size",
+    description: "≥1000 bytes",
+    verify_method: "file_size_min",
+    arg: 1000,
+    path: "doc.md",
+  };
+  // A relaxed proposal the synth model returns for round 2.
+  const relaxed: Criterion = {
+    id: "size",
+    description: "≥10 bytes",
+    verify_method: "file_size_min",
+    arg: 10,
+    path: "doc.md",
+  };
+  const synthInitial = JSON.stringify({ criteria: [unattainable] });
+  const synthAdaptation = JSON.stringify({
+    keep: [],
+    relax: [{ original: unattainable, proposed: relaxed, reasoning: "tighter floor unreachable" }],
+    dropped: [],
+  });
+
+  it("allowNegotiate=false → outcome 'exhausted' on iteration cap (backwards compat)", async () => {
+    const ws = fakeWs();
+    const synth = scriptedModel([{ text: synthInitial }]);
+    // Executor writes a tiny doc each iteration — never satisfies size>=1000.
+    const exec = scriptedModel(
+      [
+        { text: "try1", sideEffect: { path: "doc.md", body: "tiny" } },
+        { text: "try2", sideEffect: { path: "doc.md", body: "tiny" } },
+      ],
+      ws
+    );
+    const agent = new GoalDirectedAgent({
+      model: exec.model,
+      synthModel: synth.model,
+      tools: noTools,
+      workspaceReader: ws,
+      maxIterations: 2,
+      maxStepsPerIteration: 1,
+      // allowNegotiate intentionally unset
+    });
+    const events = [];
+    for await (const ev of agent.run("write a long doc")) events.push(ev);
+    expect(events.find((e) => e.event === "goal_adaptation_proposed")).toBeUndefined();
+    const final = events.find((e) => e.event === ("goal_directed_done" as never));
+    const data = final?.data as { outcome: string };
+    expect(data.outcome).toBe("exhausted");
+  });
+
+  it("allowNegotiate + accept → loop resumes with relaxed criteria, eventually verified", async () => {
+    const ws = fakeWs();
+    // Two synth calls: initial criteria, then adaptation proposal.
+    const synth = scriptedModel([{ text: synthInitial }, { text: synthAdaptation }]);
+    // Executor writes a 20-byte doc — fails first criterion (>=1000) but
+    // satisfies the relaxed (>=10) when re-run after acceptance.
+    const exec = scriptedModel(
+      [
+        { text: "round1-1", sideEffect: { path: "doc.md", body: "twenty-bytes-okay-?" } },
+        { text: "round1-2", sideEffect: { path: "doc.md", body: "twenty-bytes-okay-?" } },
+        { text: "round2-1", sideEffect: { path: "doc.md", body: "twenty-bytes-okay-?" } },
+      ],
+      ws
+    );
+    let proposalSeen: AdaptationProposal | null = null;
+    const agent = new GoalDirectedAgent({
+      model: exec.model,
+      synthModel: synth.model,
+      tools: noTools,
+      workspaceReader: ws,
+      maxIterations: 2,
+      maxStepsPerIteration: 1,
+      allowNegotiate: true,
+      onAdaptationProposed: async (p) => {
+        proposalSeen = p;
+        return { decision: "accept" };
+      },
+    });
+    const events = [];
+    for await (const ev of agent.run("write a long doc")) events.push(ev);
+    expect(proposalSeen).not.toBeNull();
+    expect((proposalSeen as unknown as AdaptationProposal).relaxCriteria).toHaveLength(1);
+    expect(events.find((e) => e.event === "goal_adaptation_proposed")).toBeDefined();
+    const final = events.find((e) => e.event === ("goal_directed_done" as never));
+    const data = final?.data as { outcome: string };
+    expect(data.outcome).toBe("verified");
+  });
+
+  it("allowNegotiate + reject → outcome 'negotiation-proposed', no resume", async () => {
+    const ws = fakeWs();
+    const synth = scriptedModel([{ text: synthInitial }, { text: synthAdaptation }]);
+    const exec = scriptedModel(
+      [
+        { text: "r1", sideEffect: { path: "doc.md", body: "tiny" } },
+        { text: "r2", sideEffect: { path: "doc.md", body: "tiny" } },
+      ],
+      ws
+    );
+    const agent = new GoalDirectedAgent({
+      model: exec.model,
+      synthModel: synth.model,
+      tools: noTools,
+      workspaceReader: ws,
+      maxIterations: 2,
+      maxStepsPerIteration: 1,
+      allowNegotiate: true,
+      onAdaptationProposed: async () => ({ decision: "reject" }),
+    });
+    const events = [];
+    for await (const ev of agent.run("write")) events.push(ev);
+    const final = events.find((e) => e.event === ("goal_directed_done" as never));
+    const data = final?.data as { outcome: string };
+    expect(data.outcome).toBe("negotiation-proposed");
+    // Synth was called for initial + adaptation, total 2.
+    expect(synth.calls()).toBe(2);
+  });
+
+  it("allowNegotiate + no callback → default-rejects → outcome 'negotiation-proposed'", async () => {
+    // Safety default: silent acceptance would let the framework rewrite goals
+    // without supervision. Without a callback, every proposal is rejected.
+    const ws = fakeWs();
+    const synth = scriptedModel([{ text: synthInitial }, { text: synthAdaptation }]);
+    const exec = scriptedModel([{ text: "r1", sideEffect: { path: "doc.md", body: "tiny" } }], ws);
+    const agent = new GoalDirectedAgent({
+      model: exec.model,
+      synthModel: synth.model,
+      tools: noTools,
+      workspaceReader: ws,
+      maxIterations: 1,
+      maxStepsPerIteration: 1,
+      allowNegotiate: true,
+      // onAdaptationProposed deliberately omitted
+    });
+    const events = [];
+    for await (const ev of agent.run("write")) events.push(ev);
+    const final = events.find((e) => e.event === ("goal_directed_done" as never));
+    const data = final?.data as { outcome: string };
+    expect(data.outcome).toBe("negotiation-proposed");
+  });
+
+  it("maxNegotiationRounds caps the loop even when caller keeps accepting", async () => {
+    // Pathological scenario: each proposal leaves criteria still unattainable,
+    // and the caller blindly accepts. The loop must terminate after
+    // maxNegotiationRounds (default 1).
+    const ws = fakeWs();
+    const synth = scriptedModel([
+      { text: synthInitial },
+      { text: synthAdaptation }, // round 1 proposal
+      { text: synthAdaptation }, // would be round 2 if allowed
+    ]);
+    const exec = scriptedModel(
+      [
+        { text: "r1-1", sideEffect: { path: "doc.md", body: "x" } },
+        { text: "r2-1", sideEffect: { path: "doc.md", body: "x" } },
+        { text: "r3-1", sideEffect: { path: "doc.md", body: "x" } },
+      ],
+      ws
+    );
+    let proposalCount = 0;
+    const agent = new GoalDirectedAgent({
+      model: exec.model,
+      synthModel: synth.model,
+      tools: noTools,
+      workspaceReader: ws,
+      maxIterations: 1,
+      maxStepsPerIteration: 1,
+      allowNegotiate: true,
+      // Even though caller accepts, the second-round criteria still fails;
+      // the cap (default 1) prevents infinite back-and-forth.
+      onAdaptationProposed: async () => {
+        proposalCount++;
+        return { decision: "accept" };
+      },
+    });
+    const events = [];
+    for await (const ev of agent.run("write")) events.push(ev);
+    expect(proposalCount).toBe(1);
+    const final = events.find((e) => e.event === ("goal_directed_done" as never));
+    const data = final?.data as { outcome: string };
+    // After round 1 the loop ran again with "tiny" body still failing relaxed
+    // criterion — capped, terminates exhausted (not negotiation-proposed,
+    // because the cap was hit, not the rejection).
+    expect(["exhausted", "negotiation-proposed"]).toContain(data.outcome);
   });
 });

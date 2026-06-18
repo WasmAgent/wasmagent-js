@@ -168,7 +168,64 @@ export interface GoalDirectedAgentOptions {
    * See `ToolCallingAgentOptions.enableToolSynthesis`.
    */
   enableToolSynthesis?: boolean | { codeToolName: string };
+  /**
+   * 2026-06-18 (axis 9, L3 — adaptive execution). Default false.
+   *
+   * When true, the loop hitting `exhausted` instead asks the synth
+   * model to propose a relaxed criteria set, emits a
+   * `goal_adaptation_proposed` event, and awaits the caller's
+   * `onAdaptationProposed` callback. On accept the loop resumes with
+   * the new criteria; on reject/timeout the run terminates with
+   * outcome `"negotiation-proposed"`.
+   *
+   * Off by default for CI determinism — a referee that lets the
+   * contestant change the rules mid-match isn't a referee. Opt in
+   * for human-in-the-loop UIs (bscode `🎯 Goal` mode) and for
+   * exploratory agent runs where re-scoping is cheaper than failing.
+   */
+  allowNegotiate?: boolean;
+  /**
+   * 2026-06-18 (axis 9, L3). Caller-supplied decision handler invoked
+   * when an adaptation has been proposed. Receives the proposal, returns
+   * one of:
+   *   { decision: "accept" }                           — resume with proposed criteria
+   *   { decision: "reject" }                           — terminate negotiation-proposed
+   *   { decision: "edit", criteria: Criterion[] }      — caller's counter-proposal
+   *
+   * Only consulted when `allowNegotiate: true`. If omitted, every
+   * proposal is treated as `reject` (safe default — silent acceptance
+   * would let the framework rewrite goals without supervision).
+   */
+  onAdaptationProposed?: (proposal: AdaptationProposal) => Promise<AdaptationDecision>;
+  /**
+   * 2026-06-18 (axis 9, L3). Maximum number of negotiation rounds per
+   * run. After this many proposals (each requiring caller decision)
+   * the loop terminates negotiation-proposed even with `allowNegotiate`.
+   * Prevents pathological back-and-forth. Default 1.
+   */
+  maxNegotiationRounds?: number;
 }
+
+/**
+ * 2026-06-18 (axis 9, L3) — payload of `goal_adaptation_proposed`.
+ *
+ * `keepCriteria` are unchanged; `relaxCriteria` carry both the original
+ * and the proposed replacement; `droppedCriteria` are removals with a
+ * reason. The synth model produces this shape; the caller's UI/CLI
+ * renders it for the human or the controlling script.
+ */
+export interface AdaptationProposal {
+  keepCriteria: Criterion[];
+  relaxCriteria: { original: Criterion; proposed: Criterion; reasoning: string }[];
+  droppedCriteria: { original: Criterion; reasoning: string }[];
+  iterationCount: number;
+}
+
+/** 2026-06-18 (axis 9, L3) — caller decision returned from `onAdaptationProposed`. */
+export type AdaptationDecision =
+  | { decision: "accept" }
+  | { decision: "reject" }
+  | { decision: "edit"; criteria: Criterion[] };
 
 /** Default criteria-synthesis system prompt — frozen here so tests can lock its wording. */
 export const DEFAULT_CRITERIA_SYNTH_SYSTEM_PROMPT = `You write success criteria for an agent that is about to attempt a user-stated task.
@@ -191,7 +248,19 @@ Rules:
 /**
  * Outcome of a GoalDirectedAgent.run() loop.
  */
-export type GoalDirectedOutcome = "verified" | "exhausted" | "budget" | "error" | "single-shot";
+export type GoalDirectedOutcome =
+  | "verified"
+  | "exhausted"
+  | "budget"
+  | "error"
+  | "single-shot"
+  // 2026-06-18 (axis 9, L3 — adaptive execution).
+  // Emitted instead of "exhausted" when allowNegotiate is on AND the
+  // loop's last failure cluster looks structurally unattainable. The
+  // agent has proposed a relaxed criteria set via the
+  // `goal_adaptation_proposed` event; the caller chose reject (or
+  // timed out). Distinct from "exhausted" so callers/CI can branch.
+  | "negotiation-proposed";
 
 export interface GoalDirectedRunResult {
   outcome: GoalDirectedOutcome;
@@ -265,6 +334,11 @@ export class GoalDirectedAgent {
   readonly #synthSystemPrompt: string;
   readonly #presetCriteria: Criterion[] | undefined;
   readonly #enableToolSynthesis: boolean | { codeToolName: string } | undefined;
+  readonly #allowNegotiate: boolean;
+  readonly #onAdaptationProposed:
+    | ((proposal: AdaptationProposal) => Promise<AdaptationDecision>)
+    | undefined;
+  readonly #maxNegotiationRounds: number;
 
   constructor(opts: GoalDirectedAgentOptions) {
     this.#model = opts.model;
@@ -282,6 +356,9 @@ export class GoalDirectedAgent {
     this.#synthSystemPrompt = opts.synthSystemPrompt ?? DEFAULT_CRITERIA_SYNTH_SYSTEM_PROMPT;
     this.#presetCriteria = opts.criteria;
     this.#enableToolSynthesis = opts.enableToolSynthesis;
+    this.#allowNegotiate = opts.allowNegotiate ?? false;
+    this.#onAdaptationProposed = opts.onAdaptationProposed;
+    this.#maxNegotiationRounds = opts.maxNegotiationRounds ?? 1;
   }
 
   async *run(task: string, parentTraceId: string | null = null): AsyncGenerator<AgentEvent> {
@@ -353,80 +430,140 @@ export class GoalDirectedAgent {
     }
 
     // ── Phase 2-5: GoalAgent with the synthesized criteria ──────────
-    const pipeline = new VerificationPipeline({
-      ws: this.#ws,
-      verifiers: [
-        new DeterministicVerifier(),
-        new LLMJudgeVerifier({
-          model: this.#judgeModel,
-          samples: this.#judgeSamples,
-          requirePassMajority: this.#judgeRequireMajority,
-        }),
-        ...this.#extraVerifiers,
-      ],
-    });
-
-    const goalAgent = new GoalAgent({
-      model: this.#model,
-      tools: this.#tools,
-      maxIterations: this.#maxIterations,
-      maxStepsPerIteration: this.#maxStepsPerIteration,
-      ...(this.#tokenBudget !== undefined ? { tokenBudget: this.#tokenBudget } : {}),
-      systemPromptAddendum: `Success criteria you must satisfy (a verifier will check):\n${JSON.stringify(criteria, null, 2)}`,
-      ...(this.#enableToolSynthesis !== undefined
-        ? { enableToolSynthesis: this.#enableToolSynthesis }
-        : {}),
-    });
-
-    let goalDoneCaptured: { data: unknown; iter: number } | null = null;
-    try {
-      for await (const ev of goalAgent.run(
-        { describe: task, verify: pipeline.asGoalVerify(criteria) },
-        parentTraceId
-      )) {
-        if (ev.event === "model_done") {
-          const data = ev.data as { inputTokens?: number; outputTokens?: number };
-          totalInput += data.inputTokens ?? 0;
-          totalOutput += data.outputTokens ?? 0;
-        }
-        if (ev.event === ("goal_done" as unknown as AgentEvent["event"])) {
-          goalDoneCaptured = {
-            data: ev.data,
-            iter: (ev.data as { iterationCount?: number }).iterationCount ?? 0,
-          };
-          // Don't re-yield the inner goal_done — we'll emit our own
-          // goal_directed_done with richer fields below.
-          continue;
-        }
-        yield ev;
-      }
-    } catch (e) {
-      yield this.#mkStatusEvent(parentTraceId, "goal_directed_done", {
-        outcome: "error",
-        criteria,
-        iterationCount: goalDoneCaptured?.iter ?? 0,
-        totalInputTokens: totalInput,
-        totalOutputTokens: totalOutput,
-        lastError: e instanceof Error ? e.message : String(e),
-      } satisfies GoalDirectedRunResult);
-      return;
-    }
-
-    // Translate inner goal_done into our richer goal_directed_done.
-    const inner = (goalDoneCaptured?.data ?? {}) as {
+    // 2026-06-18 (axis 9, L3) — wrapped in a negotiation loop. Each
+    // round runs a goalAgent against the current criteria; on
+    // exhausted, if allowNegotiate is on, the synth model proposes a
+    // relaxed set, the caller decides, and we go again with new
+    // criteria. Without L3 (or when allowNegotiate is off) the loop
+    // runs exactly once — matching pre-L3 behaviour.
+    let activeCriteria = criteria;
+    let totalIter = 0;
+    let lastInner: {
       outcome?: GoalDirectedOutcome;
       iterationCount?: number;
       lastHint?: string;
       lastError?: string;
-    };
+    } = {};
+    let negotiationRound = 0;
+    let terminalOutcome: GoalDirectedOutcome | null = null;
+
+    // biome-ignore lint/correctness/noConstantCondition: bounded by break statements + maxNegotiationRounds.
+    while (true) {
+      const pipeline = new VerificationPipeline({
+        ws: this.#ws,
+        verifiers: [
+          new DeterministicVerifier(),
+          new LLMJudgeVerifier({
+            model: this.#judgeModel,
+            samples: this.#judgeSamples,
+            requirePassMajority: this.#judgeRequireMajority,
+          }),
+          ...this.#extraVerifiers,
+        ],
+      });
+
+      const goalAgent = new GoalAgent({
+        model: this.#model,
+        tools: this.#tools,
+        maxIterations: this.#maxIterations,
+        maxStepsPerIteration: this.#maxStepsPerIteration,
+        ...(this.#tokenBudget !== undefined ? { tokenBudget: this.#tokenBudget } : {}),
+        systemPromptAddendum: `Success criteria you must satisfy (a verifier will check):\n${JSON.stringify(activeCriteria, null, 2)}`,
+        ...(this.#enableToolSynthesis !== undefined
+          ? { enableToolSynthesis: this.#enableToolSynthesis }
+          : {}),
+      });
+
+      let goalDoneCaptured: { data: unknown; iter: number } | null = null;
+      try {
+        for await (const ev of goalAgent.run(
+          { describe: task, verify: pipeline.asGoalVerify(activeCriteria) },
+          parentTraceId
+        )) {
+          if (ev.event === "model_done") {
+            const data = ev.data as { inputTokens?: number; outputTokens?: number };
+            totalInput += data.inputTokens ?? 0;
+            totalOutput += data.outputTokens ?? 0;
+          }
+          if (ev.event === ("goal_done" as unknown as AgentEvent["event"])) {
+            goalDoneCaptured = {
+              data: ev.data,
+              iter: (ev.data as { iterationCount?: number }).iterationCount ?? 0,
+            };
+            continue;
+          }
+          yield ev;
+        }
+      } catch (e) {
+        yield this.#mkStatusEvent(parentTraceId, "goal_directed_done", {
+          outcome: "error",
+          criteria: activeCriteria,
+          iterationCount: totalIter + (goalDoneCaptured?.iter ?? 0),
+          totalInputTokens: totalInput,
+          totalOutputTokens: totalOutput,
+          lastError: e instanceof Error ? e.message : String(e),
+        } satisfies GoalDirectedRunResult);
+        return;
+      }
+
+      lastInner = (goalDoneCaptured?.data ?? {}) as typeof lastInner;
+      totalIter += lastInner.iterationCount ?? 0;
+      const innerOutcome = lastInner.outcome ?? "exhausted";
+
+      // 2026-06-18 (axis 9, L3) — negotiation gate. Only "exhausted"
+      // qualifies for negotiation; verified / budget / error / single-
+      // shot all terminate immediately. Negotiation is also gated on
+      // allowNegotiate AND not having spent maxNegotiationRounds.
+      const canNegotiate =
+        innerOutcome === "exhausted" &&
+        this.#allowNegotiate &&
+        negotiationRound < this.#maxNegotiationRounds;
+      if (!canNegotiate) {
+        terminalOutcome = innerOutcome;
+        break;
+      }
+
+      negotiationRound++;
+      const proposal = await this.#synthesizeAdaptation(
+        task,
+        activeCriteria,
+        lastInner.lastHint ?? "(no hint captured)",
+        totalIter
+      );
+      yield this.#mkStatusEvent(parentTraceId, "goal_adaptation_proposed", {
+        keepCriteria: proposal.keepCriteria,
+        relaxCriteria: proposal.relaxCriteria,
+        droppedCriteria: proposal.droppedCriteria,
+        iterationCount: totalIter,
+      });
+
+      // Caller decision. Default-reject when no callback is supplied —
+      // silent acceptance would let the framework rewrite goals
+      // without supervision.
+      const decision: AdaptationDecision = this.#onAdaptationProposed
+        ? await this.#onAdaptationProposed(proposal)
+        : { decision: "reject" };
+
+      if (decision.decision === "reject") {
+        terminalOutcome = "negotiation-proposed";
+        break;
+      }
+      activeCriteria =
+        decision.decision === "edit"
+          ? decision.criteria
+          : [...proposal.keepCriteria, ...proposal.relaxCriteria.map((r) => r.proposed)];
+      // Re-emit criteria_proposed so observers see the post-negotiation set.
+      yield this.#mkStatusEvent(parentTraceId, "criteria_proposed", { criteria: activeCriteria });
+    }
+
     const result: GoalDirectedRunResult = {
-      outcome: inner.outcome ?? "exhausted",
-      criteria,
-      iterationCount: inner.iterationCount ?? 0,
+      outcome: terminalOutcome ?? "exhausted",
+      criteria: activeCriteria,
+      iterationCount: totalIter,
       totalInputTokens: totalInput,
       totalOutputTokens: totalOutput,
-      ...(inner.lastHint ? { lastHint: inner.lastHint } : {}),
-      ...(inner.lastError ? { lastError: inner.lastError } : {}),
+      ...(lastInner.lastHint ? { lastHint: lastInner.lastHint } : {}),
+      ...(lastInner.lastError ? { lastError: lastInner.lastError } : {}),
     };
     yield this.#mkStatusEvent(parentTraceId, "goal_directed_done", result);
   }
@@ -461,6 +598,84 @@ export class GoalDirectedAgent {
       if (ev.type === "text_delta" && ev.delta) buffer += ev.delta;
     }
     return parseCriteriaReply(buffer);
+  }
+
+  /**
+   * 2026-06-18 (axis 9, L3) — propose an adapted criteria set after the
+   * loop has exhausted iterations. Asks the synth model to look at the
+   * original criteria + the last verifier hint, and propose three
+   * lists: keep / relax / dropped.
+   *
+   * The synth model returns JSON in this shape:
+   *   { keep: Criterion[],
+   *     relax: { original, proposed, reasoning }[],
+   *     dropped: { original, reasoning }[] }
+   *
+   * Unparseable replies degrade to a "drop nothing, relax nothing"
+   * proposal — i.e. the caller will see an empty proposal and likely
+   * reject. This is the safer default than synthesising silently.
+   */
+  async #synthesizeAdaptation(
+    task: string,
+    criteria: Criterion[],
+    lastHint: string,
+    iterationCount: number
+  ): Promise<AdaptationProposal> {
+    const systemPrompt = `You revise success criteria for an agent that exhausted its iteration budget without satisfying them.
+
+Your job: look at the criteria + the verifier's last hint and decide which criteria look STRUCTURALLY UNATTAINABLE (vs ones the agent merely hasn't tried hard enough). For unattainable criteria, propose a relaxation OR a drop, with a one-sentence reason.
+
+Output a single JSON object:
+  {"keep":[<criteria>],
+   "relax":[{"original":<criterion>,"proposed":<criterion>,"reasoning":"…"}],
+   "dropped":[{"original":<criterion>,"reasoning":"…"}]}
+
+Rules:
+- Every criterion in the original list must appear in exactly one of keep/relax/dropped.
+- Prefer keep > relax > drop.
+- Be conservative: if you're not sure something is unattainable, keep it.`;
+
+    const userMessage = `Task:\n"""\n${task}\n"""\n\nOriginal criteria (after ${iterationCount} iteration${iterationCount === 1 ? "" : "s"}):\n${JSON.stringify(criteria, null, 2)}\n\nLast verifier hint:\n${lastHint}\n\nProduce the JSON now.`;
+
+    let buffer = "";
+    for await (const ev of this.#synthModel.generate(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
+      ],
+      { stream: true, temperature: 0.1, maxTokens: 1200 }
+    )) {
+      if (ev.type === "text_delta" && ev.delta) buffer += ev.delta;
+    }
+
+    // Strip ``` fences if present, parse, fall back to "no changes" on failure.
+    const fenced = buffer.match(/```(?:json)?\n?([\s\S]+?)```/);
+    const raw = (fenced?.[1] ?? buffer).trim();
+    const safeFallback: AdaptationProposal = {
+      keepCriteria: criteria,
+      relaxCriteria: [],
+      droppedCriteria: [],
+      iterationCount,
+    };
+    try {
+      const parsed = JSON.parse(raw) as {
+        keep?: unknown;
+        relax?: unknown;
+        dropped?: unknown;
+      };
+      const keep = Array.isArray(parsed.keep) ? (parsed.keep as Criterion[]) : [];
+      const relax = Array.isArray(parsed.relax)
+        ? (parsed.relax as { original: Criterion; proposed: Criterion; reasoning: string }[])
+        : [];
+      const dropped = Array.isArray(parsed.dropped)
+        ? (parsed.dropped as { original: Criterion; reasoning: string }[])
+        : [];
+      // Empty parse → fall back so callers see a coherent (no-op) proposal.
+      if (keep.length === 0 && relax.length === 0 && dropped.length === 0) return safeFallback;
+      return { keepCriteria: keep, relaxCriteria: relax, droppedCriteria: dropped, iterationCount };
+    } catch {
+      return safeFallback;
+    }
   }
 
   #mkStatusEvent(parentTraceId: string | null, eventName: string, data: unknown): AgentEvent {
