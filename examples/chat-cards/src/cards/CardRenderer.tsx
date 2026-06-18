@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { CardBlock } from "@agentkit-js/ui-cards";
+import type { CardBlock } from "@wasmagent/ui-cards";
 import { D2Card } from "./D2Card";
 import { MarkdownCard } from "./MarkdownCard";
 

@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
-import { parseCardBlocks } from "@agentkit-js/ui-cards";
-import type { AgentMessage } from "@agentkit-js/react";
+import { parseCardBlocks } from "@wasmagent/ui-cards";
+import type { AgentMessage } from "@wasmagent/react";
 import { CardRenderer } from "./CardRenderer";
 
 const TOOL_BADGE_STYLE: CSSProperties = {

@@ -1,8 +1,8 @@
 import { useState, useMemo, type CSSProperties } from "react";
 import { D2 } from "@terrastruct/d2";
-import type { AgentMessage } from "@agentkit-js/react";
+import type { AgentMessage } from "@wasmagent/react";
 import { ChatMessage } from "./cards/ChatMessage";
-import { parseCardBlocks } from "@agentkit-js/ui-cards";
+import { parseCardBlocks } from "@wasmagent/ui-cards";
 
 // ── D2 renderer ───────────────────────────────────────────────────────────────
 
@@ -83,7 +83,7 @@ agent -> db: read/write
 ### Quick Reference
 
 \`\`\`ts
-import { parseCardBlocks } from "@agentkit-js/ui-cards";
+import { parseCardBlocks } from "@wasmagent/ui-cards";
 
 const parsed = parseCardBlocks(aiReplyText);
 // → { segments: [...], cards: [...] }
@@ -244,7 +244,7 @@ export function App() {
     <div style={PAGE_STYLE}>
       <header style={HEADER_STYLE}>
         <h1 style={TITLE_STYLE}>agentkit-js Chat Cards Demo</h1>
-        <span style={BADGE_STYLE}>@agentkit-js/react</span>
+        <span style={BADGE_STYLE}>@wasmagent/react</span>
       </header>
 
       <main style={MAIN_STYLE}>
