@@ -11,11 +11,18 @@
  * Mirrors smolagents' `smolagent` CLI (cli.py:294).
  */
 
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readFile as fsReadFile, writeFile } from "node:fs/promises";
+import { join, resolve as pathResolve } from "node:path";
 import { parseArgs } from "node:util";
-import type { AgentEvent } from "@agentkit-js/core";
-import { AnthropicModel, AnthropicModels, CodeAgent } from "@agentkit-js/core";
+import type { AgentEvent, Criterion, ToolDefinition, WorkspaceReader } from "@agentkit-js/core";
+import {
+  AnthropicModel,
+  AnthropicModels,
+  CodeAgent,
+  DeterministicVerifier,
+  GoalDirectedAgent,
+  VerificationPipeline,
+} from "@agentkit-js/core";
 
 // Source-of-truth for the CLI version. Synced manually from
 // packages/cli/package.json's "version" field on each release. We
@@ -69,6 +76,15 @@ if (isMain) {
       // don't install the local-model peer.
       mirror: { type: "string" },
       "cache-dir": { type: "string" },
+      // 2026-06-18: `agentkit goal` (G2 of cli-gap-analysis-2026-06-18.md)
+      // and `agentkit verify` (G3) flags. Goal-directed loop: max
+      // iterations + judge sample count. Verify: a JSON file of
+      // Criterion[].
+      "max-iterations": { type: "string", default: "5" },
+      "judge-samples": { type: "string", default: "3" },
+      "judge-majority": { type: "boolean", default: false },
+      workspace: { type: "string", default: "." },
+      criteria: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
       version: { type: "boolean", short: "v", default: false },
     },
@@ -111,6 +127,12 @@ if (isMain) {
       break;
     case "model":
       await modelCommand(rest, values);
+      break;
+    case "goal":
+      await goalCommand(rest.join(" "), values);
+      break;
+    case "verify":
+      await verifyCommand(values);
       break;
     case "version":
     case "--version":
@@ -484,6 +506,8 @@ agentkit — TypeScript agent runtime (agentkit-js v0.1.0)
 
 Usage:
   agentkit run "<task>" [options]
+  agentkit goal "<task>" [options]
+  agentkit verify --criteria <path.json> [--workspace .]
   agentkit init-tool --name <tool-name> [options]
   agentkit devtools --events-file <ndjson> [--port 4317]
   agentkit devtools --otel-events-file <ndjson|otlp.json> [--port 4317]
@@ -495,10 +519,14 @@ Usage:
   agentkit model rm <alias> [--cache-dir=<path>]
 
 Commands:
-  run "<task>"              Run an agent on a task
+  run "<task>"              Run a single-shot CodeAgent loop on a task
+  goal "<task>"             Run a GoalDirectedAgent — synthesises success criteria,
+                            executes, verifies, retries until verified or capped
+  verify                    Run deterministic verifier checks against a workspace
+                            (no LLM); criteria from a JSON file. CI-friendly.
   init-tool                 Scaffold a new ToolDefinition file (TypeScript or Rust/WASM)
   devtools                  Start the local Studio (zero-deploy runs overview)
-  evals list                List the 6 reference benchmark suites
+  evals list                List the reference benchmark suites
   evals run                 Run a multi-model multi-suite evaluation; output a Pareto report
   model list                List registered local models (Qwen/Gemma/Llama 1B-class)
   model pull <alias>        Download a registered local model with sha256 verification
@@ -512,6 +540,19 @@ run options:
   --stream                 Output all events as NDJSON (pipe-friendly)
   --events <types>         Comma-separated event types to include
   -h, --help               Show this help
+
+goal options:
+  --model <id>             Executor model ID (default: claude-sonnet-4-6)
+  --workspace <dir>        Workspace root for read_file/write_file (default: .)
+  --max-iterations <n>     Goal-loop iteration cap (default: 5, max 20)
+  --judge-samples <n>      LLMJudge calls per llm_judge criterion (default: 3)
+  --judge-majority         Pass criterion on majority vote instead of unanimous
+  --api-key <key>          Anthropic API key (or set ANTHROPIC_API_KEY)
+  --stream                 Output all events as NDJSON (pipe-friendly)
+
+verify options:
+  --criteria <path>        JSON file with Criterion[] or {criteria: Criterion[]}
+  --workspace <dir>        Workspace root (default: .)
 
 init-tool options:
   --name <name>            Tool name in kebab-case (required)
@@ -538,6 +579,8 @@ Examples:
   agentkit run "What is 2+2?"
   agentkit run "Analyse data" --stream | jq .
   agentkit run "Search AI news" --events final_answer,error
+  agentkit goal "Write a 1500-word intro to OAuth in oauth.md" --workspace ./tmp
+  agentkit verify --criteria criteria.json --workspace ./tmp
   agentkit init-tool --name web-search --output ./tools
   agentkit devtools --events-file ./events.ndjson
   agentkit evals list
@@ -748,6 +791,336 @@ function renderStudioHtml(): string {
  * to id). Comma-separated. Example:
  *   --models=qwen2.5:0.5b@http://localhost:11434/v1,gpt4o@https://api.openai.com/v1#gpt-4o-mini
  *
+// ── goal command (G2 of cli-gap-analysis-2026-06-18.md) ──────────────────────
+
+/**
+ * `agentkit goal "<task>"` — instantiate a `GoalDirectedAgent` against a
+ * cwd-rooted workspace and stream its 5-phase loop (scout → criteria →
+ * execute → verify → done) to the terminal.
+ *
+ * Why this is at the CLI layer (not just a library import): the
+ * GoalDirectedAgent is the new "eighth axis" of agentkit-js
+ * differentiation (see docs/guides/goal-directed.md). A flagship
+ * primitive that ships only as a library has zero discovery surface;
+ * `agentkit --help` users won't know it exists. This subcommand makes
+ * `agentkit goal "write a 1500-word intro to OAuth in oauth.md"` a
+ * one-liner anyone can try.
+ *
+ * The toolset is intentionally minimal — `read_file` + `write_file`
+ * scoped to `--workspace`. Anyone needing a richer surface (web,
+ * shell, MCP) can layer on top of the same `GoalDirectedAgent` with
+ * their own tools; this command's job is to make the loop discoverable,
+ * not to be the all-in-one production agent.
+ */
+async function buildLocalFsWorkspace(rootDir: string): Promise<{
+  ws: WorkspaceReader;
+  tools: ToolDefinition[];
+  scoutEntries: string[];
+  rootAbs: string;
+}> {
+  const fs = await import("node:fs/promises");
+  const path = await import("node:path");
+  const { z } = await import("zod");
+  const rootAbs = pathResolve(rootDir);
+  const safeJoin = (rel: string): string => {
+    // Reject absolute / parent-traversal paths. Any tool call that
+    // tries to write outside the workspace is rejected with a clear
+    // error rather than silently escaping.
+    const joined = path.resolve(rootAbs, rel);
+    if (!joined.startsWith(`${rootAbs}${path.sep}`) && joined !== rootAbs) {
+      throw new Error(`path '${rel}' escapes workspace ${rootAbs}`);
+    }
+    return joined;
+  };
+
+  const ws: WorkspaceReader = {
+    async readFile(rel) {
+      return await fs.readFile(safeJoin(rel), "utf8");
+    },
+    async fileExists(rel) {
+      try {
+        await fs.access(safeJoin(rel));
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    async fileSize(rel) {
+      const stat = await fs.stat(safeJoin(rel));
+      return stat.size;
+    },
+  };
+
+  // Top-level scout snapshot. We only list the *top-level* entries to
+  // keep the synth prompt bounded; agents that need deeper traversal
+  // can issue list-style tool calls (not implemented here on purpose —
+  // `agentkit goal` is a thin discovery surface).
+  let scoutEntries: string[] = [];
+  try {
+    scoutEntries = (await fs.readdir(rootAbs)).slice(0, 60);
+  } catch {
+    scoutEntries = [];
+  }
+
+  const writeFileTool: ToolDefinition<{ path: string; content: string }, { ok: true }> = {
+    name: "write_file",
+    description: "Create or overwrite a file at the given workspace-relative path.",
+    inputSchema: z.object({ path: z.string(), content: z.string() }),
+    outputSchema: z.object({ ok: z.literal(true) }),
+    readOnly: false,
+    idempotent: true,
+    async forward({ path: rel, content }: { path: string; content: string }) {
+      const abs = safeJoin(rel);
+      await fs.mkdir(path.dirname(abs), { recursive: true });
+      await fs.writeFile(abs, content, "utf8");
+      return { ok: true as const };
+    },
+  };
+  const readFileTool: ToolDefinition<
+    { path: string },
+    { content: string } | { error: string }
+  > = {
+    name: "read_file",
+    description: "Read a file relative to the workspace root.",
+    inputSchema: z.object({ path: z.string() }),
+    outputSchema: z.union([z.object({ content: z.string() }), z.object({ error: z.string() })]),
+    readOnly: true,
+    idempotent: true,
+    async forward({ path: rel }: { path: string }) {
+      try {
+        return { content: await fs.readFile(safeJoin(rel), "utf8") };
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : String(e) };
+      }
+    },
+  };
+
+  return { ws, tools: [writeFileTool, readFileTool], scoutEntries, rootAbs };
+}
+
+export async function goalCommand(
+  task: string,
+  opts: Record<string, string | boolean | undefined>
+): Promise<void> {
+  if (!task) {
+    console.error('Error: no task provided. Usage: agentkit goal "<task>"');
+    process.exit(1);
+  }
+
+  const apiKey =
+    typeof opts["api-key"] === "string" ? opts["api-key"] : process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.error("Error: ANTHROPIC_API_KEY env var or --api-key flag required");
+    process.exit(1);
+  }
+
+  const maxIterations = parseInt(
+    typeof opts["max-iterations"] === "string" ? opts["max-iterations"] : "5",
+    10
+  );
+  if (!Number.isInteger(maxIterations) || maxIterations < 1 || maxIterations > 20) {
+    console.error("Error: --max-iterations must be a whole number between 1 and 20");
+    process.exit(1);
+  }
+  const judgeSamples = parseInt(
+    typeof opts["judge-samples"] === "string" ? opts["judge-samples"] : "3",
+    10
+  );
+  if (!Number.isInteger(judgeSamples) || judgeSamples < 1 || judgeSamples > 11) {
+    console.error("Error: --judge-samples must be a whole number between 1 and 11");
+    process.exit(1);
+  }
+
+  const workspaceDir = typeof opts.workspace === "string" ? opts.workspace : ".";
+  await mkdir(workspaceDir, { recursive: true });
+  const { ws, tools, scoutEntries, rootAbs } = await buildLocalFsWorkspace(workspaceDir);
+
+  const model = new AnthropicModel(
+    typeof opts.model === "string" ? opts.model : AnthropicModels.SONNET_LATEST,
+    apiKey
+  );
+
+  const streamMode = opts.stream === true;
+  const agent = new GoalDirectedAgent({
+    model,
+    tools,
+    workspaceReader: ws,
+    scout: {
+      tools: tools.map((t) => ({ name: t.name, description: t.description })),
+      workspaceEntries: scoutEntries,
+    },
+    maxIterations,
+    judgeSamples,
+    judgeRequireMajority: opts["judge-majority"] === true,
+  });
+
+  if (!streamMode) {
+    console.log(`Goal: ${task}`);
+    console.log(`Workspace: ${rootAbs}`);
+    console.log("");
+  }
+
+  for await (const event of agent.run(task)) {
+    if (streamMode) {
+      process.stdout.write(`${JSON.stringify(event)}\n`);
+      continue;
+    }
+    switch (event.event as string) {
+      case "scout_done": {
+        const d = event.data as { toolCount?: number; workspaceEntries?: string[] };
+        console.log(
+          `[scout]    tools=${d.toolCount ?? 0}, workspace=${d.workspaceEntries?.length ?? 0} entr${(d.workspaceEntries?.length ?? 0) === 1 ? "y" : "ies"}`
+        );
+        break;
+      }
+      case "criteria_proposed": {
+        const d = event.data as { criteria?: Criterion[] };
+        const cs = d.criteria ?? [];
+        console.log(`[criteria] ${cs.length} criterion(a) synthesised:`);
+        for (const c of cs) {
+          const arg = c.arg !== undefined ? `=${JSON.stringify(c.arg)}` : "";
+          const path = c.path ? ` (${c.path})` : "";
+          console.log(`  · ${c.verify_method}${arg}${path}  — ${c.description}`);
+        }
+        break;
+      }
+      case "goal_iteration_start": {
+        const d = event.data as { iteration?: number; hint?: string };
+        console.log(`\n[iter ${d.iteration ?? "?"}]`);
+        if (d.hint) console.log(`  retry hint: ${d.hint}`);
+        break;
+      }
+      case "tool_call": {
+        const d = event.data as { toolName?: string; args?: unknown };
+        console.log(`  → ${d.toolName}(${JSON.stringify(d.args).slice(0, 120)})`);
+        break;
+      }
+      case "tool_result": {
+        const d = event.data as { toolName?: string; error?: unknown };
+        if (d.error) console.log(`  ✗ ${d.toolName}: ${JSON.stringify(d.error).slice(0, 120)}`);
+        break;
+      }
+      case "goal_directed_done": {
+        const d = event.data as {
+          outcome?: string;
+          iterationCount?: number;
+          totalInputTokens?: number;
+          totalOutputTokens?: number;
+          lastHint?: string;
+        };
+        console.log("");
+        console.log(`Outcome:   ${d.outcome ?? "unknown"}`);
+        console.log(`Iterations: ${d.iterationCount ?? 0}`);
+        console.log(`Tokens:     ${d.totalInputTokens ?? 0} in / ${d.totalOutputTokens ?? 0} out`);
+        if (d.lastHint) {
+          console.log("");
+          console.log("Last hint:");
+          console.log(d.lastHint);
+        }
+        if (d.outcome === "verified") process.exitCode = 0;
+        else if (d.outcome === "single-shot") process.exitCode = 0;
+        else process.exitCode = 2;
+        break;
+      }
+      case "error": {
+        const d = event.data as { error?: string };
+        console.error(`\n[error] ${d.error ?? "unknown"}`);
+        process.exitCode = 1;
+        break;
+      }
+    }
+  }
+}
+
+// ── verify command (G3 of cli-gap-analysis-2026-06-18.md) ────────────────────
+
+/**
+ * `agentkit verify --criteria criteria.json [--workspace .]` — run the
+ * deterministic verifier protocol against a workspace without an LLM
+ * involved. Useful as a CI gate, a post-commit hook, or a sanity check
+ * during development.
+ *
+ * The criteria file is JSON: either a bare array of `Criterion` or an
+ * object `{criteria: Criterion[]}` (matches what `GoalDirectedAgent`'s
+ * Phase 1 emits, so a verified run can be re-checked offline).
+ *
+ * `llm_judge` criteria are silently skipped — the verifier subcommand
+ * is for the deterministic-only path. Anyone wanting LLM judgement
+ * should run `agentkit goal` instead, where the judge is part of the
+ * loop and gets adversarial defaults.
+ */
+export async function verifyCommand(
+  opts: Record<string, string | boolean | undefined>
+): Promise<void> {
+  const criteriaPath = typeof opts.criteria === "string" ? opts.criteria : "";
+  if (!criteriaPath) {
+    console.error("Error: --criteria=<path-to-json> is required");
+    process.exit(1);
+  }
+  let raw: string;
+  try {
+    raw = await fsReadFile(criteriaPath, "utf8");
+  } catch (e) {
+    console.error(`Error: cannot read ${criteriaPath}: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    console.error(`Error: ${criteriaPath} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+  }
+  const criteriaArr: Criterion[] = Array.isArray(parsed)
+    ? (parsed as Criterion[])
+    : (parsed as { criteria?: Criterion[] }).criteria ?? [];
+  if (!Array.isArray(criteriaArr) || criteriaArr.length === 0) {
+    console.error("Error: criteria file contains no Criterion entries");
+    process.exit(1);
+  }
+  const skipped = criteriaArr.filter((c) => c.verify_method === "llm_judge");
+  const checkable = criteriaArr.filter((c) => c.verify_method !== "llm_judge");
+  if (skipped.length > 0) {
+    console.error(
+      `[verify] skipping ${skipped.length} llm_judge criterion(a) — use \`agentkit goal\` for LLM-judged criteria.`
+    );
+  }
+  if (checkable.length === 0) {
+    console.error("Error: no deterministic criteria left to verify after dropping llm_judge.");
+    process.exit(1);
+  }
+
+  const workspaceDir = typeof opts.workspace === "string" ? opts.workspace : ".";
+  const { ws } = await buildLocalFsWorkspace(workspaceDir);
+
+  const pipeline = new VerificationPipeline({ ws, verifiers: [new DeterministicVerifier()] });
+  const result = await pipeline.run(checkable);
+
+  // Per-criterion table (compact). The hint column is what makes this
+  // useful in CI logs — operators read the failures directly.
+  for (const v of result.verdicts) {
+    const ok = v.ok ? "✓" : "✗";
+    const colour = v.ok ? "" : "";
+    if (v.ok) {
+      console.log(`  ${colour}${ok} ${v.criterionId}`);
+    } else {
+      console.log(`  ${colour}${ok} ${v.criterionId} — ${v.hint}`);
+    }
+  }
+  console.log("");
+  if (result.ok) {
+    console.log(`✓ all ${checkable.length} criterion(a) passed`);
+    process.exitCode = 0;
+  } else {
+    const failed = result.verdicts.filter((v) => !v.ok).length;
+    console.log(`✗ ${failed} of ${checkable.length} criterion(a) failed`);
+    process.exitCode = 1;
+  }
+}
+
+// ── evals command ────────────────────────────────────────────────────────────
+
+/**
  * Falls back to a global `--base-url` if the model spec omits `@`.
  */
 export async function evalsCommand(
@@ -805,12 +1178,15 @@ export async function evalsCommand(
   }
   const fallbackBaseUrl = (opts["base-url"] as string | undefined) ?? "http://localhost:11434/v1";
   const models = modelsRaw.map((spec) => {
-    // Format: id@baseUrl#modelId. baseUrl optional (falls back to --base-url).
+    // Format: id@baseUrl#modelId. baseUrl optional (falls back to --base-url
+    // if `@` is missing OR `@` is present but the segment is empty, e.g.
+    // `display@#wire-name`).
     const atIdx = spec.indexOf("@");
     const id = atIdx >= 0 ? spec.slice(0, atIdx) : spec;
     const tail = atIdx >= 0 ? spec.slice(atIdx + 1) : "";
     const hashIdx = tail.indexOf("#");
-    const baseUrl = hashIdx >= 0 ? tail.slice(0, hashIdx) : tail || fallbackBaseUrl;
+    const rawBaseUrl = hashIdx >= 0 ? tail.slice(0, hashIdx) : tail;
+    const baseUrl = rawBaseUrl || fallbackBaseUrl;
     const modelId = hashIdx >= 0 ? tail.slice(hashIdx + 1) : id;
     return { id, baseUrl, modelId };
   });

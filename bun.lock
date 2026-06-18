@@ -296,6 +296,7 @@
         "@agentkit-js/core": "workspace:*",
         "@agentkit-js/devtools": "workspace:*",
         "@agentkit-js/evals-runner": "workspace:*",
+        "zod": "^3.23.0",
       },
       "devDependencies": {
         "@agentkit-js/model-local": "workspace:*",
