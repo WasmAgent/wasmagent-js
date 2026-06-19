@@ -26,6 +26,11 @@ reads `bunfig.toml` from the CWD where `bun test` is invoked.
 **Why `--isolate` for cloudflare-worker**: The SSE resume test leaves a pending async operation
 that pollutes the next file's test run. `--isolate` runs each test file in a fresh global context.
 
+**CRITICAL: Never run `bun test packages/cloudflare-worker` (or any cloudflare-worker path)
+without `--isolate`.** Without it, the process hangs indefinitely at ~90% CPU and never exits.
+This applies doubly to background tasks (`run_in_background`): **never run any `bun test` as a
+background task** — a hung background test will silently burn CPU for hours.
+
 ## Lint
 
 ```bash
