@@ -50,7 +50,7 @@
 
 import type { Model } from "../models/types.js";
 import type { ToolDefinition } from "../tools/types.js";
-import type { AgentEvent } from "../types/events.js";
+import type { AgentEvent, AgentRunConfig } from "../types/events.js";
 import { GoalAgent } from "./GoalAgent.js";
 import { ToolCallingAgent } from "./ToolCallingAgent.js";
 import {
@@ -209,6 +209,8 @@ export interface GoalDirectedAgentOptions {
    * Prevents pathological back-and-forth. Default 1.
    */
   maxNegotiationRounds?: number;
+  /** SI-7 — Pre-bound AbortSignal; terminates between iterations at the next check. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -345,6 +347,8 @@ export class GoalDirectedAgent {
     | ((proposal: AdaptationProposal) => Promise<AdaptationDecision>)
     | undefined;
   readonly #maxNegotiationRounds: number;
+  /** SI-7 — pre-bound AbortSignal (optional). */
+  readonly #signal: AbortSignal | undefined;
 
   constructor(opts: GoalDirectedAgentOptions) {
     this.#model = opts.model;
@@ -369,11 +373,29 @@ export class GoalDirectedAgent {
     this.#allowNegotiate = opts.allowNegotiate ?? false;
     this.#onAdaptationProposed = opts.onAdaptationProposed;
     this.#maxNegotiationRounds = opts.maxNegotiationRounds ?? 1;
+    this.#signal = opts.signal;
   }
 
   async *run(task: string, parentTraceId: string | null = null): AsyncGenerator<AgentEvent> {
     let totalInput = 0;
     let totalOutput = 0;
+    const traceId = `agent-goal-${Math.random().toString(36).slice(2, 10)}`;
+
+    // SI-6: emit run_start with config snapshot.
+    const agentConfig: AgentRunConfig = {
+      model: this.#model.providerId,
+      tools: this.#tools.map((t) => t.name).sort(),
+      maxSteps: this.#maxIterations,
+      signal: !!this.#signal,
+    };
+    yield {
+      traceId,
+      parentTraceId,
+      channel: "text",
+      event: "run_start",
+      data: { task, agentConfig },
+      timestampMs: Date.now(),
+    };
 
     // ── Phase 0: scout ──────────────────────────────────────────────
     if (this.#scout) {
@@ -406,6 +428,7 @@ export class GoalDirectedAgent {
         ...(this.#enableToolSynthesis !== undefined
           ? { enableToolSynthesis: this.#enableToolSynthesis }
           : {}),
+        ...(this.#signal ? { signal: this.#signal } : {}),
       });
       try {
         for await (const ev of agent.run(task, parentTraceId)) {
@@ -458,6 +481,18 @@ export class GoalDirectedAgent {
     let terminalOutcome: GoalDirectedOutcome | null = null;
 
     while (true) {
+      // SI-7: check signal before each negotiation round.
+      if (this.#signal?.aborted) {
+        yield {
+          traceId,
+          parentTraceId,
+          channel: "text",
+          event: "error",
+          data: { error: "Agent aborted by external signal" },
+          timestampMs: Date.now(),
+        };
+        return;
+      }
       const pipeline = new VerificationPipeline({
         ws: this.#ws,
         verifiers: [
@@ -482,6 +517,7 @@ export class GoalDirectedAgent {
           ? { enableToolSynthesis: this.#enableToolSynthesis }
           : {}),
         maxNoProgressIterations: this.#maxNoProgressIterations,
+        ...(this.#signal ? { signal: this.#signal } : {}),
       });
 
       let goalDoneCaptured: { data: unknown; iter: number } | null = null;

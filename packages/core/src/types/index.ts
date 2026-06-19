@@ -1,6 +1,7 @@
 export type {
   ActionStep,
   AgentEvent,
+  AgentRunConfig,
   FinalAnswerStep,
   ParallelToolUseCall,
   ParallelToolUseStep,

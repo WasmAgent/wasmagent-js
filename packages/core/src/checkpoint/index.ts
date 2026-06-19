@@ -16,7 +16,7 @@
  *   4. Agent loop detects pending response and continues.
  */
 
-import type { Step } from "../types/events.js";
+import type { AgentRunConfig, Step } from "../types/events.js";
 
 // ── Snapshot ──────────────────────────────────────────────────────────────────
 
@@ -35,6 +35,12 @@ export interface AgentSnapshot {
   pendingHumanInput?: { promptId: string; prompt: string };
   /** Human response, if provided. */
   humanResponse?: { promptId: string; response: string };
+  /**
+   * SI-8 — Agent configuration at checkpoint time.
+   * Allows callers to reconstruct the same agent on resume without
+   * re-specifying options from external storage.
+   */
+  agentConfig?: AgentRunConfig;
 }
 
 // ── Checkpointer interface ────────────────────────────────────────────────────
@@ -267,8 +273,14 @@ export class CheckpointableRun {
 /**
  * Restore a MessageAssembler from a snapshot's history.
  * Call this before passing the agent to CheckpointableRun.resume().
+ *
+ * Returns the stored `agentConfig` (if any) so callers can reconstruct
+ * the agent with the same options without separate storage.
  */
-export function restoreFromSnapshot(snapshot: AgentSnapshot, assembler: MessageAssembler): void {
+export function restoreFromSnapshot(
+  snapshot: AgentSnapshot,
+  assembler: MessageAssembler
+): AgentRunConfig | undefined {
   assembler.reset();
   // Re-add seed user message first, then all subsequent history steps (including
   // any follow-up user_message steps from multi-turn human-in-the-loop runs).
@@ -279,6 +291,7 @@ export function restoreFromSnapshot(snapshot: AgentSnapshot, assembler: MessageA
     if (step.type === "user_message" && step.content === snapshot.task) continue;
     assembler.addStep(step);
   }
+  return snapshot.agentConfig;
 }
 
 /**

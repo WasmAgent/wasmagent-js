@@ -17,7 +17,7 @@ import type { EnhancementPolicy, Model } from "../models/types.js";
 import { TokenBudget } from "../models/types.js";
 import { ToolRegistry } from "../tools/ToolRegistry.js";
 import type { ToolDefinition } from "../tools/types.js";
-import type { ActionStep, AgentEvent, FinalAnswerStep } from "../types/events.js";
+import type { ActionStep, AgentEvent, AgentRunConfig, FinalAnswerStep } from "../types/events.js";
 import { randomUUID } from "../util/runtime.js";
 import { extractTagContent, runPlanningStep } from "./prompts.js";
 
@@ -61,6 +61,8 @@ export interface CodeAgentOptions {
    * Use codeGuardrail() here to block dangerous patterns.
    */
   codeGuardrails?: InputGuardrail[];
+  /** SI-7 — Pre-bound AbortSignal; terminates the run at the next step boundary. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -87,6 +89,10 @@ export class CodeAgent {
   readonly #inputGuardrails: InputGuardrail[];
   readonly #outputGuardrails: OutputGuardrail[];
   readonly #codeGuardrails: InputGuardrail[];
+  /** SI-7 — pre-bound AbortSignal (optional). */
+  readonly #signal: AbortSignal | undefined;
+  /** SI-6 — config snapshot for run_start event. */
+  readonly #runConfig: Omit<AgentRunConfig, "signal">;
 
   constructor(opts: CodeAgentOptions) {
     this.#tools = new ToolRegistry();
@@ -110,6 +116,12 @@ export class CodeAgent {
         systemPrompt: opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
         toolsSchema: this.#tools.toJsonSchema(),
       });
+    this.#signal = opts.signal;
+    this.#runConfig = {
+      model: this.#model.providerId,
+      tools: this.#tools.names().sort(),
+      maxSteps: this.#maxSteps,
+    };
   }
 
   /** Read-only access to the underlying MessageAssembler for compaction. */
@@ -123,16 +135,22 @@ export class CodeAgent {
    * Equivalent to smolagents' MultiStepAgent._run_stream (agents.py:540)
    * but async, streaming, and with per-event tracing metadata.
    */
-  async *run(task: string, parentTraceId: string | null = null): AsyncGenerator<AgentEvent> {
+  async *run(
+    task: string,
+    parentTraceId: string | null = null,
+    opts: { signal?: AbortSignal } = {}
+  ): AsyncGenerator<AgentEvent> {
+    const signal = opts.signal ?? this.#signal;
     const traceId = `agent-${randomUUID()}`;
     const kernel = await this.#kernelPromise;
+    const agentConfig: AgentRunConfig = { ...this.#runConfig, signal: !!signal };
 
     yield {
       traceId,
       parentTraceId,
       channel: "text",
       event: "run_start",
-      data: { task },
+      data: { task, agentConfig },
       timestampMs: Date.now(),
     };
 
@@ -179,6 +197,18 @@ export class CodeAgent {
     const budgetMaxDurationMs = this.#policy?.budget?.maxDurationMs;
 
     for (let step = 1; step <= this.#maxSteps; step++) {
+      // SI-7: external kill-switch — check before every step.
+      if (signal?.aborted) {
+        yield {
+          traceId,
+          parentTraceId,
+          channel: "text",
+          event: "error",
+          data: { error: "Agent aborted by external signal", step },
+          timestampMs: Date.now(),
+        };
+        return;
+      }
       // P1: enforce ResourceBudget limits before each step.
       // Note: budget.total is updated only when a usage event arrives (after the full
       // model response). A streaming response that exceeds the limit mid-stream will

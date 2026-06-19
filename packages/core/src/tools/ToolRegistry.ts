@@ -190,9 +190,19 @@ export class ToolRegistry {
     return [...this.#tools.values()];
   }
 
+  /** Returns registered tool names in insertion order. */
+  names(): string[] {
+    return [...this.#tools.keys()];
+  }
+
   /**
-   * 2026-06-18 (axis 9, L1 — adaptive execution).
-   *
+   * Returns the number of registered tools.
+   */
+  size(): number {
+    return this.#tools.size;
+  }
+
+  /**
    * Resolve the alternative tools the framework should suggest when
    * `name`'s `forward()` failed. Reads `tool.alternatives` (a list of
    * tool names declared on the failed tool itself), drops dangling

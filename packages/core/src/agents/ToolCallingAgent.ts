@@ -20,6 +20,7 @@ import { ToolRegistry, toStrictJsonSchema, zodToJsonSchema } from "../tools/Tool
 import type { ToolDefinition } from "../tools/types.js";
 import type {
   AgentEvent,
+  AgentRunConfig,
   ParallelToolUseCall,
   ParallelToolUseStep,
   ToolUseStep,
@@ -151,6 +152,14 @@ export interface ToolCallingAgentOptions {
    * `docs/rfcs/adaptive-execution.md`.
    */
   enableToolSynthesis?: boolean | { codeToolName: string };
+  /**
+   * SI-7 — Pre-bound AbortSignal. When this signal fires, the agent
+   * terminates at the start of the next step and emits an `error` event.
+   * Useful when the signal is known at construction time (e.g. an HTTP
+   * request's AbortSignal). A signal passed to `run()` opts takes
+   * precedence; this acts as the fallback.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -184,6 +193,10 @@ export class ToolCallingAgent {
   readonly #maxTokensPerStep: number;
   /** 2026-06-18 (axis 9, L2) — name of the code tool to frame as synthesis substrate, or null when disabled. */
   readonly #synthesisCodeTool: string | null;
+  /** SI-7 — pre-bound AbortSignal (optional; run() opts take precedence). */
+  readonly #signal: AbortSignal | undefined;
+  /** SI-6+8 — active config snapshot, built at construction and emitted at run_start. */
+  readonly #runConfig: Omit<AgentRunConfig, "signal">;
 
   constructor(opts: ToolCallingAgentOptions) {
     this.#tools = new ToolRegistry();
@@ -220,6 +233,15 @@ export class ToolCallingAgent {
         systemPrompt,
         toolsSchema: this.#toolsSchema,
       });
+    this.#signal = opts.signal;
+    // SI-6+8: build config snapshot once; reused at run_start and each checkpoint.
+    this.#runConfig = {
+      model: this.#model.providerId,
+      tools: this.#tools.names().sort(),
+      maxSteps: this.#maxSteps,
+      ...(opts.stopPolicies?.length ? { stopPolicies: opts.stopPolicies } : {}),
+      toolSynthesis: this.#synthesisCodeTool,
+    };
   }
 
   /** Read-only access to the underlying MessageAssembler for compaction. */
@@ -232,15 +254,18 @@ export class ToolCallingAgent {
     parentTraceId: string | null = null,
     opts: { signal?: AbortSignal } = {}
   ): AsyncGenerator<AgentEvent> {
-    const { signal } = opts;
+    // SI-7: run() opts take precedence over the constructor-bound signal.
+    const signal = opts.signal ?? this.#signal;
     const traceId = `agent-${randomUUID()}`;
+    // SI-6: full config snapshot (signal flag resolved per-run).
+    const agentConfig: AgentRunConfig = { ...this.#runConfig, signal: !!signal };
 
     yield {
       traceId,
       parentTraceId,
       channel: "text",
       event: "run_start",
-      data: { task },
+      data: { task, agentConfig },
       timestampMs: Date.now(),
     };
 
@@ -291,6 +316,7 @@ export class ToolCallingAgent {
             history: [],
             stepIndex: step,
             savedAtMs: Date.now(),
+            agentConfig,
           });
         }
         yield {
@@ -787,6 +813,7 @@ export class ToolCallingAgent {
             stepIndex: step,
             savedAtMs: Date.now(),
             pendingHumanInput: { promptId, prompt },
+            agentConfig,
           });
 
           yield {

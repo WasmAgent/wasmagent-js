@@ -16,8 +16,34 @@ interface AgentEventBase {
   timestampMs: number;
 }
 
+/**
+ * SI-6 — Agent configuration snapshot emitted at run_start.
+ *
+ * Lets monitoring, UI, and evals observe the agent's active configuration
+ * without inspecting internal state. All fields are additive — consumers
+ * that only read `data.task` continue to work unchanged.
+ */
+export interface AgentRunConfig {
+  /** model.providerId — identifies the LLM in use. */
+  model: string;
+  /** Registered tool names (sorted). */
+  tools: string[];
+  /** Maximum steps before the run is terminated. */
+  maxSteps: number;
+  /** Raw stop-policy descriptors passed to the agent ("steps:N", "cost:N", etc.). */
+  stopPolicies?: string[];
+  /** Code-tool name used as synthesis substrate, or null when synthesis is off. */
+  toolSynthesis?: string | null;
+  /** True when an AbortSignal is bound at construction time. */
+  signal?: boolean;
+}
+
 export type AgentEvent =
-  | (AgentEventBase & { channel: "text"; event: "run_start"; data: { task: string } })
+  | (AgentEventBase & {
+      channel: "text";
+      event: "run_start";
+      data: { task: string; agentConfig: AgentRunConfig };
+    })
   | (AgentEventBase & { channel: "thinking"; event: "step_start"; data: { step: number } })
   | (AgentEventBase & {
       channel: "thinking";

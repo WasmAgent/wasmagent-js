@@ -641,3 +641,45 @@ describe("GoalDirectedAgent: L3 goal adaptation negotiation", () => {
     expect(["exhausted", "negotiation-proposed"]).toContain(data.outcome);
   });
 });
+
+// ── SI-6+7: run_start agentConfig + constructor signal ──────────────────────
+describe("GoalDirectedAgent — SI-6 agentConfig + SI-7 constructor signal", () => {
+  it("run_start carries agentConfig with model and maxSteps", async () => {
+    const ws = fakeWs();
+    const synth = scriptedModel([{ text: "{}" }]);
+    const exec = scriptedModel([{ text: "done" }]);
+    const agent = new GoalDirectedAgent({
+      model: exec.model,
+      synthModel: synth.model,
+      tools: noTools,
+      workspaceReader: ws,
+      maxIterations: 3,
+    });
+    const events: import("../types/events.js").AgentEvent[] = [];
+    for await (const e of agent.run("task")) events.push(e);
+    const start = events.find((e) => e.event === "run_start");
+    expect(start).toBeDefined();
+    const data = start?.data as { agentConfig: { maxSteps: number; signal: boolean } };
+    expect(data.agentConfig.maxSteps).toBe(3);
+    expect(data.agentConfig.signal).toBe(false);
+  });
+
+  it("terminates between iterations when constructor signal is pre-aborted", async () => {
+    const ws = fakeWs();
+    const synth = scriptedModel([{ text: "{}" }]);
+    const exec = scriptedModel([{ text: "done" }]);
+    const ac = new AbortController();
+    ac.abort();
+    const agent = new GoalDirectedAgent({
+      model: exec.model,
+      synthModel: synth.model,
+      tools: noTools,
+      workspaceReader: ws,
+      maxIterations: 5,
+      signal: ac.signal,
+    });
+    const events: import("../types/events.js").AgentEvent[] = [];
+    for await (const e of agent.run("task")) events.push(e);
+    expect(events.some((e) => e.event === "error")).toBe(true);
+  });
+});

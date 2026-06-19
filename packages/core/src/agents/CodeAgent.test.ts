@@ -160,3 +160,37 @@ describe("CodeAgent", () => {
     expect(events[0]?.event).toBe("run_start");
   });
 });
+
+// ── SI-6: agentConfig in run_start ─────────────────────────────────────────
+describe("CodeAgent — SI-6 agentConfig in run_start", () => {
+  it("run_start carries agentConfig with model, tools, maxSteps", async () => {
+    const agent = new CodeAgent({ tools: [], model: mockModel("done"), maxSteps: 7 });
+    const events = [];
+    for await (const e of agent.run("task")) events.push(e);
+    const start = events.find((e) => e.event === "run_start");
+    const data = start?.data as {
+      task: string;
+      agentConfig: import("../types/events.js").AgentRunConfig;
+    };
+    expect(data.agentConfig.maxSteps).toBe(7);
+    expect(Array.isArray(data.agentConfig.tools)).toBe(true);
+    expect(typeof data.agentConfig.model).toBe("string");
+  });
+});
+
+// ── SI-7: constructor-level signal ─────────────────────────────────────────
+describe("CodeAgent — SI-7 constructor-level AbortSignal", () => {
+  it("terminates immediately when signal is pre-aborted", async () => {
+    const ac = new AbortController();
+    ac.abort();
+    const agent = new CodeAgent({
+      tools: [],
+      model: mockModel("should not reach"),
+      maxSteps: 10,
+      signal: ac.signal,
+    });
+    const events = [];
+    for await (const e of agent.run("task")) events.push(e);
+    expect(events.some((e) => e.event === "error")).toBe(true);
+  });
+});
