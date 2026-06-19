@@ -100,6 +100,12 @@ export class A2ARemoteAgent {
             );
           }
 
+          if (result.status !== "completed") {
+            throw new Error(
+              `Remote agent "${opts.name}" returned non-final status: ${result.status}`
+            );
+          }
+
           return result.result;
         } finally {
           clearTimeout(timeout);

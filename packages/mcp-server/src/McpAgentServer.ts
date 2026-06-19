@@ -266,11 +266,6 @@ export class McpAgentServer {
   }
 
   async #tasksRespond(req: McpJsonRpcRequest): Promise<McpHandleResult> {
-    // The MCP elicitation flow: server emitted `pendingElicitation`; the host
-    // calls tasks/respond with { id, response }. We currently only record the
-    // response — the agent's await_human_input integration is performed by
-    // the consumer who plugs this into a CheckpointableRun. That keeps the
-    // boundary clean: F1 surfaces elicitation; resume mechanics live in core.
     const id = stringParam(req, "id");
     const response = (req.params?.response as string | undefined) ?? "";
     const rec = await this.#taskStore.get(id);
@@ -293,6 +288,12 @@ export class McpAgentServer {
     delete rec.pendingElicitation;
     rec.state = "running";
     await this.#persist(rec);
+    // Re-drive the agent so it picks up the human response and continues.
+    void this.#runOnce(rec, undefined).catch(async (err) => {
+      rec.state = "failed";
+      rec.error = err instanceof Error ? err.message : String(err);
+      await this.#persist(rec).catch(() => undefined);
+    });
     return { response: jsonResponse(req.id ?? null, { id, state: rec.state }) };
   }
 

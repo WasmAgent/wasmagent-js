@@ -25,6 +25,8 @@ export interface AgentMessage {
   content: string;
   /** Tool name, if role is "tool". */
   toolName?: string;
+  /** Call ID from the tool_call event, used to match tool_result to the right message. */
+  callId?: string;
   /** True when the tool returned an error. */
   isError?: boolean;
 }
@@ -260,6 +262,7 @@ export function useAgentRun(
                     role: "tool" as const,
                     content: `Calling ${d.toolName}…`,
                     toolName: d.toolName,
+                    callId: d.callId,
                   },
                 ]);
               } else if (ev.event === "tool_result" && ev.channel === "tool") {
@@ -278,7 +281,7 @@ export function useAgentRun(
                     : `${d.toolName} done`;
                 setMessages((prev) =>
                   prev.map((m) =>
-                    m.toolName === d.toolName && m.content.startsWith("Calling")
+                    m.callId === d.callId
                       ? { ...m, content: label, isError }
                       : m
                   )

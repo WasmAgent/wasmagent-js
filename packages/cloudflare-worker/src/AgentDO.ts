@@ -125,7 +125,15 @@ export class AgentDurableObject {
           headers: { "Content-Type": "application/json" },
         });
       }
-      const body = (await request.json()) as AgentRunRequest;
+      let body: AgentRunRequest;
+      try {
+        body = (await request.json()) as AgentRunRequest;
+      } catch {
+        return new Response(JSON.stringify({ error: "invalid JSON body" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
       s.request = body;
       s.status = "running";
       s.startedAt = Date.now();
@@ -145,10 +153,16 @@ export class AgentDurableObject {
     });
   }
 
+  /** Maximum events kept in memory and persisted per run. */
+  static readonly MAX_EVENTS = 500;
+
   async #runAgentInBackground(s: AgentDurableState): Promise<void> {
     if (!s.request) return;
     try {
       for await (const ev of this.#runner(s.request)) {
+        if (s.events.length >= AgentDurableObject.MAX_EVENTS) {
+          s.events.shift();
+        }
         s.events.push(ev);
         this.#broadcast(ev);
         if (ev.event === "final_answer" && ev.channel === "text") {

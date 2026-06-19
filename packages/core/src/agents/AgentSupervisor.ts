@@ -111,7 +111,7 @@ export class AgentSupervisor {
       let restartTask: string | undefined;
       let restartPatch: Partial<ToolCallingAgentOptions> | undefined;
 
-      for await (const event of agent.run(currentTask)) {
+      for await (const event of agent.run(currentTask, null, { signal: this.#signal })) {
         // External abort check before each event is processed.
         if (this.#signal?.aborted) return;
 
@@ -186,14 +186,12 @@ export class AgentSupervisor {
  * Stops after `maxRetries` restarts to prevent infinite loops.
  */
 export function retryOnErrorPolicy(maxRetries = 2): SupervisorPolicy {
-  let errorCount = 0;
   return {
     maxRuns: maxRetries + 1,
-    evaluate(event) {
+    evaluate(event, _history, runCount) {
       if (event.event === "error") {
-        errorCount++;
-        if (errorCount <= maxRetries) {
-          return { action: "restart", reason: `error retry ${errorCount}/${maxRetries}` };
+        if (runCount < maxRetries) {
+          return { action: "restart", reason: `error retry ${runCount + 1}/${maxRetries}` };
         }
         return { action: "abort", reason: "max retries exceeded" };
       }
@@ -254,7 +252,7 @@ export function noProgressPolicy(k = 2): SupervisorPolicy {
  */
 export function composePolicies(policies: SupervisorPolicy[]): SupervisorPolicy {
   return {
-    maxRuns: Math.max(...policies.map((p) => p.maxRuns ?? 3)),
+    maxRuns: policies.length === 0 ? 3 : Math.max(...policies.map((p) => p.maxRuns ?? 3)),
     async evaluate(event, history, runCount) {
       for (const policy of policies) {
         const decision = await policy.evaluate(event, history, runCount);

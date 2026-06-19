@@ -203,15 +203,6 @@ export class LLMJudgeVerifier implements Verifier {
         // failed." Hint reports the raw error for the next iteration's
         // debugging.
         votes.push(null);
-        if (i === 0) {
-          // Bail early only when the first call already errored — odds
-          // are subsequent calls hit the same error.
-          return {
-            ok: false,
-            criterionId: criterion.id,
-            hint: `judge call threw: ${e instanceof Error ? e.message : String(e)}`,
-          };
-        }
       }
     }
 

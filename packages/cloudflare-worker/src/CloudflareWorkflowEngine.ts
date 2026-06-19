@@ -416,30 +416,39 @@ export class CloudflareWorkflowEngine<Params = unknown> {
     const seenSteps = new Set<string>();
     yield { type: "run_start", runId };
     for (;;) {
-      const records = await this.#store.listSteps(runId);
-      for (const r of records) {
-        if (seenSteps.has(r.stepId)) continue;
-        if (r.status === "completed") {
-          seenSteps.add(r.stepId);
-          yield { type: "step_complete", runId, stepId: r.stepId, result: r.result };
-        } else if (r.status === "failed") {
-          seenSteps.add(r.stepId);
-          yield {
-            type: "step_failed",
-            runId,
-            stepId: r.stepId,
-            error: r.error,
-            willRetry: false,
-          };
+      try {
+        const records = await this.#store.listSteps(runId);
+        for (const r of records) {
+          if (seenSteps.has(r.stepId)) continue;
+          if (r.status === "completed") {
+            seenSteps.add(r.stepId);
+            yield { type: "step_complete", runId, stepId: r.stepId, result: r.result };
+          } else if (r.status === "failed") {
+            seenSteps.add(r.stepId);
+            yield {
+              type: "step_failed",
+              runId,
+              stepId: r.stepId,
+              error: r.error,
+              willRetry: false,
+            };
+          }
         }
-      }
-      const top = await this.#store.loadRun(runId);
-      if (
-        top &&
-        (top.status === "completed" || top.status === "failed" || top.status === "cancelled")
-      ) {
-        if (top.status === "completed") yield { type: "run_complete", runId, output: top.output };
-        else yield { type: "run_failed", runId, error: top.error };
+        const top = await this.#store.loadRun(runId);
+        if (
+          top &&
+          (top.status === "completed" || top.status === "failed" || top.status === "cancelled")
+        ) {
+          if (top.status === "completed") yield { type: "run_complete", runId, output: top.output };
+          else yield { type: "run_failed", runId, error: top.error };
+          return;
+        }
+      } catch (err) {
+        yield {
+          type: "run_failed",
+          runId,
+          error: err instanceof Error ? err.message : String(err),
+        };
         return;
       }
       await new Promise((r) => setTimeout(r, 500));
