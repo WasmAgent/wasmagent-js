@@ -7,7 +7,7 @@
 ```bash
 # Run all tests from repo root
 bun test packages/core/src/
-bun test packages/cloudflare-worker/src/ --isolate   # --isolate prevents cross-file async leakage
+bun test packages/cloudflare-worker/src/   # --isolate is baked into bunfig.toml, no flag needed
 bun test packages/cli/
 bun test packages/model-anthropic/src/
 # etc.
@@ -23,13 +23,12 @@ bun test packages/core/src/agents/ToolCallingAgent.test.ts
 `packages/devtools/` configures this via a preload script (`src/setup-dom.ts`), but Bun only
 reads `bunfig.toml` from the CWD where `bun test` is invoked.
 
-**Why `--isolate` for cloudflare-worker**: The SSE resume test leaves a pending async operation
-that pollutes the next file's test run. `--isolate` runs each test file in a fresh global context.
+**cloudflare-worker isolation**: The SSE resume test leaves a pending async operation that would
+hang the process at ~90% CPU forever. `packages/cloudflare-worker/bunfig.toml` sets
+`isolate = true` permanently — `bun test` is safe to call without any extra flags.
 
-**CRITICAL: Never run `bun test packages/cloudflare-worker` (or any cloudflare-worker path)
-without `--isolate`.** Without it, the process hangs indefinitely at ~90% CPU and never exits.
-This applies doubly to background tasks (`run_in_background`): **never run any `bun test` as a
-background task** — a hung background test will silently burn CPU for hours.
+**CRITICAL: Never run any `bun test` as a background task** (`run_in_background`) — a hung test
+will silently burn CPU for hours with no way to detect it.
 
 ## Lint
 

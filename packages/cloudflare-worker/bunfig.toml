@@ -1,0 +1,6 @@
+[test]
+# sseResume.test.ts leaves a pending async operation that pollutes subsequent
+# test files. isolate = true runs each file in a fresh global context, which
+# is equivalent to the --isolate CLI flag. This makes "bun test" safe to run
+# without any extra flags from any caller (IDE, CI, scripts).
+isolate = true
