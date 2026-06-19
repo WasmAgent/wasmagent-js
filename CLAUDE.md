@@ -1,4 +1,4 @@
-# agentkit-js — Development Guide for Claude
+# wasmagent-js — Development Guide for Claude
 
 ## Test Commands
 
