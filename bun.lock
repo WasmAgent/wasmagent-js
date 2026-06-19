@@ -9,6 +9,7 @@
         "@changesets/changelog-github": "^0.7.0",
         "@changesets/cli": "^2.31.0",
         "@types/node": "^22.0.0",
+        "happy-dom": "^14.0.0",
         "node-llama-cpp": "^3.18.1",
         "turbo": "^2.3.0",
         "typescript": "^5.7.0",
@@ -327,6 +328,7 @@
       "name": "@wasmagent/core",
       "version": "0.2.0",
       "dependencies": {
+        "@wasmagent/agent-prompts": "workspace:*",
         "zod": "^3.23.0",
         "zod-to-json-schema": "^3.25.2",
       },
@@ -732,7 +734,9 @@
       "version": "0.2.0",
       "dependencies": {
         "@wasmagent/agent-prompts": "workspace:*",
+        "@wasmagent/core": "workspace:*",
         "@wasmagent/ui-cards": "workspace:*",
+        "zod": "^3.0.0",
       },
     },
   },

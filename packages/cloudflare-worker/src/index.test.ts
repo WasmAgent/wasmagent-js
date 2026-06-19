@@ -8,6 +8,10 @@
 
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { AgentEvent } from "@wasmagent/core";
+import {
+  KvWorkflowStateStore,
+  MemoryKvBackend,
+} from "../../core/src/workflow/store.js";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
@@ -104,7 +108,8 @@ mock.module("@wasmagent/core", () => {
         return source;
       }
     },
-    KvWorkflowStateStore: class {},
+    KvWorkflowStateStore,
+    MemoryKvBackend,
     GoalDirectedAgent: class {
       run(_task: string) {
         return (async function* () {

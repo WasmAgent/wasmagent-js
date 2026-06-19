@@ -110,3 +110,22 @@ export const SANDBOX_NODE = `## Sandbox
 - Full Node.js runtime: filesystem, network, npm packages on demand
 - ESM \`import\` syntax preferred; CommonJS \`require\` also works
 - For multi-step problems: build the result incrementally with intermediate variables`;
+
+// ── Tool synthesis substrate ─────────────────────────────────────────────────
+
+/**
+ * Instructs the model to treat a code-execution tool as the synthesis
+ * substrate: a fallback for building one-off tools inline when no
+ * registered tool fits the task. Injected into the system prompt when
+ * `enableToolSynthesis` is set on `ToolCallingAgent`.
+ */
+export function TOOL_SYNTHESIS_FRAGMENT(codeToolName: string): string {
+  return (
+    `\n\n# Tool synthesis (when no registered tool fits)\n` +
+    `If a task needs an operation no registered tool offers, you may use \`${codeToolName}\` ` +
+    `to *synthesise* a one-off tool inline. Treat \`${codeToolName}\` as the substrate for ` +
+    `building what you need, not just for running pre-known scripts. Prefer this over giving up ` +
+    `or repeatedly retrying a registered tool that doesn't apply. The synthesised code runs ` +
+    `under the same capability manifest as the rest of the run.`
+  );
+}

@@ -62,4 +62,5 @@ export {
   SANDBOX_PYODIDE,
   SANDBOX_QUICKJS,
   STRUCTURED_PLAN,
+  TOOL_SYNTHESIS_FRAGMENT,
 } from "./fragments.js";

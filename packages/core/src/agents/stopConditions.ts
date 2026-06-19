@@ -51,3 +51,36 @@ export function costBudget(maxTokens: number): StopCondition {
 export function callFingerprint(name: string, args: Record<string, unknown>): string {
   return `${name}:${JSON.stringify(args, Object.keys(args).sort())}`;
 }
+
+// ── Super-instruction: string descriptor → StopCondition ────────────────────
+
+/**
+ * A string descriptor that encodes a stop condition.
+ *
+ * Accepted formats:
+ *   "steps:N"       — stop after N steps  (alias: "stepCount:N")
+ *   "cost:N"        — stop when tokens ≥ N (alias: "costBudget:N")
+ *   "noProgress"    — stop after 3 consecutive identical steps (default k)
+ *   "noProgress:K"  — stop after K consecutive identical steps
+ */
+export type StopPolicyDescriptor = string;
+
+/** Parse a single descriptor into a StopCondition, or null if unrecognised. */
+export function parseStopPolicy(desc: StopPolicyDescriptor): StopCondition | null {
+  const d = desc.trim();
+  if (d === "noProgress") return noProgress(3);
+  const colonIdx = d.indexOf(":");
+  if (colonIdx === -1) return null;
+  const key = d.slice(0, colonIdx);
+  const val = Number(d.slice(colonIdx + 1));
+  if (Number.isNaN(val)) return null;
+  if (key === "steps" || key === "stepCount") return stepCountIs(val);
+  if (key === "cost" || key === "costBudget") return costBudget(val);
+  if (key === "noProgress") return noProgress(val);
+  return null;
+}
+
+/** Parse an array of descriptors, silently dropping any unrecognised entries. */
+export function parseStopPolicies(descs: string[]): StopCondition[] {
+  return descs.map(parseStopPolicy).filter((c): c is StopCondition => c !== null);
+}

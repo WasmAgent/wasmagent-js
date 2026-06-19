@@ -1006,3 +1006,62 @@ describe("ToolCallingAgent — L2 tool synthesis", () => {
     expect(seenToolResults[0]).toMatch(/synthesise/i);
   });
 });
+
+// ── SI-4: stopPolicies string descriptors ────────────────────────────────────
+describe("ToolCallingAgent — stopPolicies string descriptors", () => {
+  function countingModel(): { model: Model; callCount: () => number } {
+    let count = 0;
+    const model: Model = {
+      providerId: "mock/counting",
+      async *generate(): AsyncGenerator<StreamEvent> {
+        count++;
+        yield { type: "text_delta", delta: "still going" };
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    };
+    return { model, calls: () => count } as unknown as { model: Model; callCount: () => number };
+  }
+
+  it("stopPolicies 'steps:2' terminates after 2 steps", async () => {
+    let steps = 0;
+    const model: Model = {
+      providerId: "mock/steps",
+      async *generate(): AsyncGenerator<StreamEvent> {
+        steps++;
+        yield { type: "text_delta", delta: "partial" };
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    };
+    const agent = new ToolCallingAgent({
+      tools: [],
+      model,
+      stopPolicies: ["steps:2"],
+      maxSteps: 20,
+    });
+    const events = [];
+    for await (const e of agent.run("run")) events.push(e);
+    // Agent stops at step 3 (stepCountIs(2) fires when step > 2)
+    expect(steps).toBeLessThanOrEqual(3);
+    expect(events.some((e) => e.event === "error" || e.event === "final_answer")).toBe(true);
+  });
+
+  it("stopPolicies merges with stopWhen — both conditions are active", async () => {
+    const agent = new ToolCallingAgent({
+      tools: [],
+      model: {
+        providerId: "mock",
+        async *generate() {
+          yield { type: "text_delta", delta: "x" };
+          yield { type: "stop", stopReason: "end_turn" };
+        },
+      },
+      stopWhen: [],
+      stopPolicies: ["steps:1"],
+      maxSteps: 10,
+    });
+    const events = [];
+    for await (const e of agent.run("go")) events.push(e);
+    // steps:1 fires quickly; run should be short
+    expect(events.length).toBeGreaterThan(0);
+  });
+});

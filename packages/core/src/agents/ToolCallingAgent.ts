@@ -1,3 +1,4 @@
+import { TOOL_SYNTHESIS_FRAGMENT } from "@wasmagent/agent-prompts";
 import type { ZodSchema } from "zod";
 import type { Checkpointer } from "../checkpoint/index.js";
 import { BudgetForcingRunner } from "../enhancement/BudgetForcingRunner.js";
@@ -27,7 +28,7 @@ import type {
 import { randomUUID } from "../util/runtime.js";
 import { runPlanningStep, TOOL_DEP_INSTRUCTIONS } from "./prompts.js";
 import type { StopCondition } from "./stopConditions.js";
-import { callFingerprint } from "./stopConditions.js";
+import { callFingerprint, parseStopPolicies } from "./stopConditions.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant. Use the provided tools to answer questions.
 When you have a final answer, respond with plain text (no tool call).
@@ -51,14 +52,7 @@ function resolveSynthesisCodeTool(
 /** Wrap the user's system prompt with a synthesis-substrate paragraph when enabled. */
 function withSynthesisPreamble(systemPrompt: string, codeToolName: string | null): string {
   if (!codeToolName) return systemPrompt;
-  const synthesis =
-    `\n\n# Tool synthesis (when no registered tool fits)\n` +
-    `If a task needs an operation no registered tool offers, you may use \`${codeToolName}\` ` +
-    `to *synthesise* a one-off tool inline. Treat \`${codeToolName}\` as the substrate for ` +
-    `building what you need, not just for running pre-known scripts. Prefer this over giving up ` +
-    `or repeatedly retrying a registered tool that doesn't apply. The synthesised code runs ` +
-    `under the same capability manifest as the rest of the run.`;
-  return systemPrompt + synthesis;
+  return systemPrompt + TOOL_SYNTHESIS_FRAGMENT(codeToolName);
 }
 
 export interface ToolCallingAgentOptions {
@@ -86,6 +80,12 @@ export interface ToolCallingAgentOptions {
    * See stopConditions.ts for built-ins: stepCountIs, noProgress, costBudget.
    */
   stopWhen?: StopCondition[];
+  /**
+   * String descriptors resolved via parseStopPolicy and merged with stopWhen.
+   * Accepted formats: "steps:N", "cost:N", "noProgress", "noProgress:K".
+   * Unrecognised descriptors are silently dropped.
+   */
+  stopPolicies?: string[];
   /**
    * Optional checkpointer used for per-tool human approval (needsApproval).
    * Required when any tool has needsApproval set; the agent emits an
@@ -196,7 +196,7 @@ export class ToolCallingAgent {
     this.#policy = opts.enhancementPolicy;
     this.#toolTimeoutMs = opts.toolTimeoutMs;
     this.#schedulerMode = opts.scheduler ?? "dag";
-    this.#stopWhen = opts.stopWhen ?? [];
+    this.#stopWhen = [...(opts.stopWhen ?? []), ...parseStopPolicies(opts.stopPolicies ?? [])];
     this.#checkpointer = opts.checkpointer;
     this.#inputGuardrails = opts.inputGuardrails ?? [];
     this.#outputGuardrails = opts.outputGuardrails ?? [];

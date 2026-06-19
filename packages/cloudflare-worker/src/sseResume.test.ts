@@ -11,6 +11,10 @@ import type { AgentEvent } from "@wasmagent/core";
 import { KvCheckpointer, resumeFromHuman } from "../../core/src/checkpoint/index.js";
 import { EventLog, formatSseFrame } from "../../core/src/streaming/EventLog.js";
 import { type CloudflareKVNamespace, CloudflareKvBackend } from "./kvAdapters.js";
+import {
+  KvWorkflowStateStore,
+  MemoryKvBackend,
+} from "../../core/src/workflow/store.js";
 
 // ── Agent + kernel mocks (model-free) ─────────────────────────────────────────
 let mockAgentEvents: AgentEvent[] = [];
@@ -31,7 +35,8 @@ mock.module("@wasmagent/core", () => {
         return source;
       }
     },
-    KvWorkflowStateStore: class {},
+    KvWorkflowStateStore,
+    MemoryKvBackend,
     GoalDirectedAgent: class {
       run() {
         return (async function* () {

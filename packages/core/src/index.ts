@@ -30,6 +30,7 @@ export type {
   ScoutSnapshot,
   StopCondition,
   StopConditionContext,
+  StopPolicyDescriptor,
   SubagentRunnable,
   ToolCallingAgentOptions,
   VerificationResult,
@@ -53,6 +54,8 @@ export {
   longestAnswerScorer,
   noProgress,
   parseCriteriaReply,
+  parseStopPolicies,
+  parseStopPolicy,
   stepCountIs,
   ToolCallingAgent,
   VerificationPipeline,
@@ -90,6 +93,7 @@ export { RedisKvBackend, RedisRestKvBackend } from "./checkpoint/redis.js";
 export type {
   BudgetForcingOptions,
   BudgetForcingResult,
+  EnhancementPreset,
   ParallelForkJoinOptions,
   ParallelForkJoinResult,
   ReflectRefineOptions,
@@ -102,6 +106,7 @@ export {
   BudgetForcingRunner,
   ParallelForkJoinRunner,
   ReflectRefineRunner,
+  resolveEnhancement,
   SelfConsistencyRunner,
 } from "./enhancement/index.js";
 export type {
@@ -292,6 +297,13 @@ export type {
 } from "./observability/index.js";
 // Observability
 export { InMemorySpanExporter, OtelBridge, withOtel } from "./observability/index.js";
+// Policies — approval gates for write-class tools
+export type {
+  ApprovalPolicyOptions,
+  ApprovalRule,
+  WriteOpKind,
+} from "./policies/approvalPolicy.js";
+export { ApprovalPolicy, applyApprovalPolicy, PolicyPresets } from "./policies/approvalPolicy.js";
 export type { ActionIR, CallDescriptor, IRNode, SchedulerEvent } from "./scheduler/index.js";
 // Scheduler
 export { deriveDependencies, Scheduler, SimpleIR } from "./scheduler/index.js";

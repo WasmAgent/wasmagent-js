@@ -30,6 +30,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
+    "@wasmagent/agent-prompts": "workspace:*",
     "zod": "^3.23.0",
     "zod-to-json-schema": "^3.25.2"
   },
