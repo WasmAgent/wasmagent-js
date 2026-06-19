@@ -34,25 +34,31 @@ export class PyodideKernel implements WasmKernel {
     if (this.#initPromise) return this.#initPromise;
 
     this.#initPromise = (async () => {
-      const { loadPyodide } = await import("pyodide");
-      // Resolve the pyodide package directory so its WASM assets can be found
-      // regardless of the module resolution root (monorepo, pnpm hoisting, etc.).
-      // Use a plain POSIX path (no file:// prefix) — Pyodide handles both forms
-      // but the file:// form breaks under vitest's module resolver.
-      const { createRequire } = await import("node:module");
-      const { dirname } = await import("node:path");
-      const pkgRequire = createRequire(import.meta.url);
-      const pkgJsonPath = pkgRequire.resolve("pyodide/package.json");
-      const indexURL = `${dirname(pkgJsonPath)}/`;
+      try {
+        const { loadPyodide } = await import("pyodide");
+        // Resolve the pyodide package directory so its WASM assets can be found
+        // regardless of the module resolution root (monorepo, pnpm hoisting, etc.).
+        // Use a plain POSIX path (no file:// prefix) — Pyodide handles both forms
+        // but the file:// form breaks under vitest's module resolver.
+        const { createRequire } = await import("node:module");
+        const { dirname } = await import("node:path");
+        const pkgRequire = createRequire(import.meta.url);
+        const pkgJsonPath = pkgRequire.resolve("pyodide/package.json");
+        const indexURL = `${dirname(pkgJsonPath)}/`;
 
-      const py = (await loadPyodide({ indexURL })) as unknown as PyodideInterface;
-      // Initialise both sentinel spellings (Q5: dual alias for cross-kernel compatibility).
-      py.runPython("__final_answer__ = None; __finalAnswer__ = None");
-      // Q9: install capability infrastructure (urllib patch, check helpers) once.
-      // Per-call capability data is updated cheaply by #applyCapabilities.
-      this.#installCapabilityInfrastructure(py);
-      this.#py = py;
-      return py;
+        const py = (await loadPyodide({ indexURL })) as unknown as PyodideInterface;
+        // Initialise both sentinel spellings (Q5: dual alias for cross-kernel compatibility).
+        py.runPython("__final_answer__ = None; __finalAnswer__ = None");
+        // Q9: install capability infrastructure (urllib patch, check helpers) once.
+        // Per-call capability data is updated cheaply by #applyCapabilities.
+        this.#installCapabilityInfrastructure(py);
+        this.#py = py;
+        return py;
+      } catch (err) {
+        // Clear so the next call can retry rather than permanently failing.
+        this.#initPromise = null;
+        throw err;
+      }
     })();
     return this.#initPromise;
   }

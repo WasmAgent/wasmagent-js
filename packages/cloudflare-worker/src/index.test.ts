@@ -134,9 +134,12 @@ mock.module("@jitl/quickjs-wasmfile-release-sync", () => ({
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
+const TEST_TOKEN = "test-secret-token";
+
 function makeEnv(overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
   return {
     ANTHROPIC_API_KEY: "sk-test",
+    AGENTKIT_CLIENT_TOKEN: TEST_TOKEN,
     ...overrides,
   };
 }
@@ -161,7 +164,7 @@ function runPost(
     worker.fetch(
       new Request("http://localhost/run", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...headers },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${TEST_TOKEN}`, ...headers },
         body: JSON.stringify(body),
       }),
       env as never,
@@ -228,7 +231,7 @@ describe("POST /run — input validation", () => {
     const res = await worker.fetch(
       new Request("http://localhost/run", {
         method: "POST",
-        headers: { "Content-Type": "text/plain" },
+        headers: { "Content-Type": "text/plain", Authorization: `Bearer ${TEST_TOKEN}` },
         body: "not json",
       }),
       makeEnv() as never,
@@ -441,12 +444,12 @@ describe("POST /resume — HITL persisted resume (A3)", () => {
     };
   }
 
-  async function postResume(body: unknown, env: Record<string, unknown>) {
+  async function postResume(body: unknown, env: Record<string, unknown>, headers: Record<string, string> = {}) {
     return import("./index.js").then(({ default: worker }) =>
       worker.fetch(
         new Request("http://localhost/resume", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${TEST_TOKEN}`, ...headers },
           body: JSON.stringify(body),
         }),
         env as never,

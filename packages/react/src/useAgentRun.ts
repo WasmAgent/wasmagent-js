@@ -15,7 +15,7 @@
  */
 
 import type { AgentEvent } from "@wasmagent/core";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type MessageRole = "assistant" | "tool" | "error";
 
@@ -88,6 +88,13 @@ export function useAgentRun(
   const [status, setStatus] = useState<AgentRunStatus>("idle");
   const [finalAnswer, setFinalAnswer] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Abort any in-flight run when the component unmounts to prevent setState
+  // calls on an unmounted component and to close the network connection.
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
   // Buffer for ongoing text_delta accumulation — flushed on tool_call or final_answer.
   const textBufRef = useRef<string>("");
   const textMsgIdRef = useRef<string | null>(null);

@@ -29,6 +29,13 @@ export interface AsToolOptions {
    * Called with each AgentEvent emitted by the sub-agent.
    */
   onEvent?: (event: AgentEvent) => void;
+  /**
+   * Optional mutable ref whose `.current` value is read at call time and
+   * forwarded to the sub-agent as its parentTraceId.  Set this to the
+   * parent agent's own traceId ref so that sub-agent events are linked
+   * to the correct parent trace in observability consumers.
+   */
+  parentTraceIdRef?: { current: string | null };
 }
 
 export interface SubagentRunnable {
@@ -60,7 +67,7 @@ export function asTool(
       let finalAnswer: unknown = null;
       let errorMessage: string | null = null;
 
-      for await (const event of agent.run(input.task, null)) {
+      for await (const event of agent.run(input.task, opts.parentTraceIdRef?.current ?? null)) {
         opts.onEvent?.(event);
         if (event.event === "final_answer") {
           finalAnswer = event.data.answer;

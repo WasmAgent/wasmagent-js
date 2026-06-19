@@ -119,8 +119,10 @@ const mockCtx = {
   },
 };
 
+const TEST_TOKEN = "test-secret-token";
+
 function makeEnv(overrides: Record<string, unknown> = {}) {
-  return { ANTHROPIC_API_KEY: "sk-test", ...overrides };
+  return { ANTHROPIC_API_KEY: "sk-test", AGENTKIT_CLIENT_TOKEN: TEST_TOKEN, ...overrides };
 }
 
 async function readBody(res: Response): Promise<string> {
@@ -132,7 +134,7 @@ function runPost(env: Record<string, unknown>, headers: Record<string, string> =
     worker.fetch(
       new Request("http://localhost/run", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...headers },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${TEST_TOKEN}`, ...headers },
         body: JSON.stringify({ task: "trace-it" }),
       }),
       env as never,

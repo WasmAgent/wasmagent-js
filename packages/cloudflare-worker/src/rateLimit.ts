@@ -66,6 +66,7 @@ export async function checkRateLimit(
         };
       }
       timestamps = parsed.filter((t) => typeof t === "number" && t > cutoff);
+      timestamps.sort((a, b) => a - b);
     } catch {
       // Parse failure → fail closed for one window. The alternative
       // (silently resetting to 0) lets a malicious or buggy writer

@@ -103,10 +103,10 @@ export interface Env {
    */
   AGENTKIT_CHECKPOINTS?: KVNamespace;
   /**
-   * Optional Bearer token that POST /run callers must supply in the
-   * Authorization header. When absent the endpoint is effectively public —
-   * suitable only for local dev or deployments that enforce auth at the
-   * edge/gateway layer.
+   * Required Bearer token that POST /run and POST /resume callers must supply
+   * in the Authorization header. When absent ALL requests are rejected with 401.
+   * Set to a strong random secret in production; never leave unset on a public
+   * deployment.
    */
   AGENTKIT_CLIENT_TOKEN?: string;
   /**
@@ -232,11 +232,12 @@ async function handleResume(
   env: Env,
   corsHeaders: Record<string, string>
 ): Promise<Response> {
-  if (env.AGENTKIT_CLIENT_TOKEN) {
-    const auth = request.headers.get("Authorization") ?? "";
-    if (!timingSafeEqual(auth, `Bearer ${env.AGENTKIT_CLIENT_TOKEN}`)) {
-      return jsonError("Unauthorized", 401, corsHeaders);
-    }
+  if (!env.AGENTKIT_CLIENT_TOKEN) {
+    return jsonError("Unauthorized: AGENTKIT_CLIENT_TOKEN is not configured", 401, corsHeaders);
+  }
+  const auth = request.headers.get("Authorization") ?? "";
+  if (!timingSafeEqual(auth, `Bearer ${env.AGENTKIT_CLIENT_TOKEN}`)) {
+    return jsonError("Unauthorized", 401, corsHeaders);
   }
   if (!env.AGENTKIT_CHECKPOINTS) {
     return jsonError("AGENTKIT_CHECKPOINTS KV namespace is not bound", 503, corsHeaders);
@@ -276,12 +277,15 @@ async function handleRun(
   ctx: ExecutionContext,
   corsHeaders: Record<string, string>
 ): Promise<Response> {
-  // Auth check: require Bearer token when AGENTKIT_CLIENT_TOKEN is configured.
-  if (env.AGENTKIT_CLIENT_TOKEN) {
-    const auth = request.headers.get("Authorization") ?? "";
-    if (!timingSafeEqual(auth, `Bearer ${env.AGENTKIT_CLIENT_TOKEN}`)) {
-      return jsonError("Unauthorized", 401, corsHeaders);
-    }
+  // Auth check: always require Bearer token. The endpoint is closed by default;
+  // set AGENTKIT_CLIENT_TOKEN to enable access (suitable for dev when set to a
+  // known secret, or protected at the gateway layer when intentionally absent).
+  if (!env.AGENTKIT_CLIENT_TOKEN) {
+    return jsonError("Unauthorized: AGENTKIT_CLIENT_TOKEN is not configured", 401, corsHeaders);
+  }
+  const auth = request.headers.get("Authorization") ?? "";
+  if (!timingSafeEqual(auth, `Bearer ${env.AGENTKIT_CLIENT_TOKEN}`)) {
+    return jsonError("Unauthorized", 401, corsHeaders);
   }
 
   let body: unknown;
@@ -334,10 +338,13 @@ async function handleRun(
   // Clamp maxSteps to prevent runaway cost.
   const clampedMaxSteps = Math.min(maxSteps, MAX_STEPS_CAP);
 
-  // C4: content-addressed cache key = SHA-256(task + agentType + maxSteps + model).
+  // C4: content-addressed cache key = SHA-256(authHeader + task + agentType + maxSteps + model).
+  // The Authorization header is included so that different callers (different tokens)
+  // cannot read each other's cached results even when submitting identical tasks.
   const MODEL_ID = AnthropicModels.SONNET_LATEST;
+  const authHeader = request.headers.get("Authorization") ?? "";
   const kvKey = env.AGENTKIT_SESSIONS
-    ? await contentHash({ task, agentType, maxSteps: clampedMaxSteps, model: MODEL_ID })
+    ? await contentHash({ auth: authHeader, task, agentType, maxSteps: clampedMaxSteps, model: MODEL_ID })
     : null;
 
   if (kvKey && env.AGENTKIT_SESSIONS) {
@@ -366,7 +373,7 @@ async function handleRun(
           },
         });
       }
-      return replayCachedSession(cached, corsHeaders);
+      return replayCachedSession(cached, corsHeaders, ctx);
     }
   }
 
@@ -595,7 +602,11 @@ async function handleRun(
  * Replay a cached session from KV as a streaming SSE response (C4).
  * The cached value is a JSON array of AgentEvent objects.
  */
-function replayCachedSession(cachedJson: string, corsHeaders: Record<string, string>): Response {
+function replayCachedSession(
+  cachedJson: string,
+  corsHeaders: Record<string, string>,
+  ctx: ExecutionContext
+): Response {
   let events: AgentEvent[];
   try {
     events = JSON.parse(cachedJson) as AgentEvent[];
@@ -608,18 +619,20 @@ function replayCachedSession(cachedJson: string, corsHeaders: Record<string, str
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
 
-  (async () => {
-    try {
-      for (const event of events) {
-        await writer.write(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+  ctx.waitUntil(
+    (async () => {
+      try {
+        for (const event of events) {
+          await writer.write(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        }
+        await writer.write(encoder.encode("data: [DONE]\n\n"));
+      } catch {
+        /* consumer disconnected */
+      } finally {
+        await writer.close().catch(() => {});
       }
-      await writer.write(encoder.encode("data: [DONE]\n\n"));
-    } catch {
-      /* consumer disconnected */
-    } finally {
-      await writer.close().catch(() => {});
-    }
-  })();
+    })()
+  );
 
   return new Response(readable, {
     headers: {
@@ -639,6 +652,7 @@ function replayCachedSession(cachedJson: string, corsHeaders: Record<string, str
  * `crypto.subtle` is available in the Workers global scope.
  */
 async function contentHash(inputs: {
+  auth: string;
   task: string;
   agentType: string;
   maxSteps: number;

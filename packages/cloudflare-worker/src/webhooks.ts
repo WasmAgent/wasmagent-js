@@ -53,6 +53,40 @@ export interface SendWebhookOpts {
 
 const HMAC_HEADER = "X-Agentkit-Signature";
 
+/**
+ * Reject URLs that point at private/internal network ranges or non-HTTPS schemes.
+ * Throws if the URL is invalid or disallowed.
+ */
+function validateWebhookUrl(rawUrl: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error(`Invalid webhook URL: ${rawUrl}`);
+  }
+  if (parsed.protocol !== "https:") {
+    throw new Error(`Webhook URL must use https:// — got: ${rawUrl}`);
+  }
+  const host = parsed.hostname;
+  // Block RFC-1918, loopback, link-local, and cloud metadata addresses.
+  const blocked = [
+    /^localhost$/i,
+    /^127\./,
+    /^10\./,
+    /^192\.168\./,
+    /^172\.(1[6-9]|2\d|3[01])\./,
+    /^169\.254\./,
+    /^::1$/,
+    /^fc00:/i,
+    /^fe80:/i,
+  ];
+  for (const pattern of blocked) {
+    if (pattern.test(host)) {
+      throw new Error(`Webhook URL points to a private/internal address — blocked: ${rawUrl}`);
+    }
+  }
+}
+
 async function sign(secret: string, body: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
@@ -104,6 +138,15 @@ export async function sendWebhook(
   const results: DeliveryResult[] = [];
 
   for (const url of opts.config.urls) {
+    // Validate each URL before any network access to prevent SSRF.
+    try {
+      validateWebhookUrl(url);
+    } catch (validationErr) {
+      const errMsg = validationErr instanceof Error ? validationErr.message : String(validationErr);
+      results.push({ url, ok: false, attempts: 0, error: errMsg });
+      continue;
+    }
+
     let attempts = 0;
     let lastError: string | undefined;
     let lastStatus: number | undefined;

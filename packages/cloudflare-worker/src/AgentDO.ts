@@ -74,6 +74,8 @@ export class AgentDurableObject {
   // Active SSE subscribers
   readonly #subscribers = new Set<WritableStreamDefaultWriter<Uint8Array>>();
   #cached: AgentDurableState | null = null;
+  // AbortController for the currently-running agent loop.
+  #runAbort: AbortController | null = null;
 
   constructor(state: DurableObjectState, runner: AgentRunner) {
     this.#state = state;
@@ -158,8 +160,12 @@ export class AgentDurableObject {
 
   async #runAgentInBackground(s: AgentDurableState): Promise<void> {
     if (!s.request) return;
+    const ac = new AbortController();
+    this.#runAbort = ac;
     try {
       for await (const ev of this.#runner(s.request)) {
+        // Stop iterating if cancelled externally.
+        if (ac.signal.aborted) break;
         if (s.events.length >= AgentDurableObject.MAX_EVENTS) {
           s.events.shift();
         }
@@ -171,11 +177,17 @@ export class AgentDurableObject {
         // Persist every N events to bound storage I/O.
         if (s.events.length % 10 === 0) await this.#saveState();
       }
-      s.status = "completed";
+      // Only mark completed when not cancelled.
+      if (!ac.signal.aborted) {
+        s.status = "completed";
+      }
     } catch (e) {
-      s.status = "failed";
-      s.error = e instanceof Error ? e.message : String(e);
+      if (!ac.signal.aborted) {
+        s.status = "failed";
+        s.error = e instanceof Error ? e.message : String(e);
+      }
     } finally {
+      this.#runAbort = null;
       s.completedAt = Date.now();
       await this.#saveState();
       this.#closeAllSubscribers();
@@ -187,16 +199,20 @@ export class AgentDurableObject {
     const writer = writable.getWriter();
     const encoder = new TextEncoder();
 
-    // Replay any events already collected.
-    const s = await this.#loadState();
-    for (const ev of s.events) {
-      writer.write(encoder.encode(`data: ${JSON.stringify(ev)}\n\n`)).catch(() => {});
-    }
-    if (s.status === "running") {
-      this.#subscribers.add(writer);
-    } else {
-      writer.close().catch(() => {});
-    }
+    // Use blockConcurrencyWhile to atomically check status and register the
+    // subscriber, preventing a TOCTOU race where the run completes (clearing
+    // #subscribers) between the status check and the add() call.
+    await this.#state.blockConcurrencyWhile(async () => {
+      const s = await this.#loadState();
+      for (const ev of s.events) {
+        writer.write(encoder.encode(`data: ${JSON.stringify(ev)}\n\n`)).catch(() => {});
+      }
+      if (s.status === "running") {
+        this.#subscribers.add(writer);
+      } else {
+        writer.close().catch(() => {});
+      }
+    });
 
     return new Response(readable, {
       headers: {
@@ -246,6 +262,8 @@ export class AgentDurableObject {
       s.status = "cancelled";
       s.completedAt = Date.now();
       await this.#saveState();
+      // Interrupt the running agent loop so it stops on the next iteration.
+      this.#runAbort?.abort();
       this.#closeAllSubscribers();
     }
     return new Response(JSON.stringify({ runId: s.runId, status: s.status }), {
