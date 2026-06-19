@@ -286,6 +286,20 @@ export type AgentEvent =
         maxAttempts: number;
         fixHint?: string;
       };
+    })
+  /**
+   * SI-9 — AgentSupervisor decision event.
+   * Emitted when the supervisor policy returns a non-continue action.
+   * Transparent to callers that don't know about the supervisor.
+   */
+  | (AgentEventBase & {
+      channel: "status";
+      event: "supervisor_decision";
+      data: {
+        action: "abort" | "restart";
+        reason?: string;
+        runCount: number;
+      };
     });
 
 /** Structured step types mirroring smolagents' ActionStep / PlanningStep / FinalAnswerStep. */
