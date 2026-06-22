@@ -14,6 +14,13 @@ export interface RemoteSandboxOptions extends KernelOptions {
   timeoutMs?: number;
 }
 
+/** Result of a shell command execution via runCommand(). */
+export interface CommandResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+}
+
 /**
  * RemoteSandboxKernel — microVM third isolation tier via E2B.
  *
@@ -93,6 +100,30 @@ export class RemoteSandboxKernel implements WasmKernel {
     }
   }
 
+  /**
+   * Run a shell command inside the sandbox and return structured output.
+   *
+   * Unlike run() (which evaluates a JS/Python code snippet via runCode()),
+   * this method executes a real shell command — e.g. `npm install`, `vite build`.
+   * Use this for build/install steps where you need the real stdout/stderr/exitCode
+   * rather than a structured code-execution result.
+   *
+   * @example
+   * ```ts
+   * const { stdout, stderr, exitCode } = await kernel.runCommand("npm install");
+   * ```
+   */
+  async runCommand(cmd: string): Promise<CommandResult> {
+    const sandbox = await this.#getSandbox();
+    const timeoutMs = this.#opts.timeoutMs ?? 30_000;
+    const result = await sandbox.commands.run(cmd, { timeoutMs });
+    return {
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.exitCode,
+    };
+  }
+
   async [Symbol.asyncDispose](): Promise<void> {
     await this.reset();
   }
@@ -156,6 +187,12 @@ interface E2BSandbox {
   ): Promise<{
     logs: { stdout: string[]; stderr: string[] };
   }>;
+  commands: {
+    run(
+      cmd: string,
+      opts?: { timeoutMs?: number }
+    ): Promise<{ stdout: string; stderr: string; exitCode: number }>;
+  };
   kill(): Promise<void>;
 }
 

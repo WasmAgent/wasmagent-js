@@ -329,6 +329,7 @@
       "version": "0.2.0",
       "dependencies": {
         "@wasmagent/agent-prompts": "workspace:*",
+        "@wasmagent/evals-runner": "workspace:*",
         "zod": "^3.23.0",
         "zod-to-json-schema": "^3.25.2",
       },

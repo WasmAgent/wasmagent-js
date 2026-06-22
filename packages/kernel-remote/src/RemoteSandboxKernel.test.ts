@@ -26,6 +26,30 @@ describe("RemoteSandboxKernel", () => {
     await expect(kernel.reset()).resolves.toBeUndefined();
   });
 
+  it("runCommand() is exposed on the kernel instance", () => {
+    const kernel = new RemoteSandboxKernel();
+    expect(typeof kernel.runCommand).toBe("function");
+  });
+
+  it("runCommand() calls sandbox.commands.run() and returns {stdout,stderr,exitCode}", async () => {
+    const fakeResult = { stdout: "hello\n", stderr: "", exitCode: 0 };
+    const fakeCommands = { run: mock().mockResolvedValue(fakeResult) };
+    const fakeSandbox = {
+      runCode: mock().mockResolvedValue({ logs: { stdout: [], stderr: [] } }),
+      commands: fakeCommands,
+      kill: mock().mockResolvedValue(undefined),
+    };
+
+    mock.module("e2b", () => ({
+      Sandbox: { create: mock().mockResolvedValue(fakeSandbox) },
+    }));
+
+    const kernel = new RemoteSandboxKernel({ apiKey: "test" });
+    const result = await kernel.runCommand("npm install");
+    expect(fakeCommands.run).toHaveBeenCalledWith("npm install", expect.objectContaining({ timeoutMs: 30_000 }));
+    expect(result).toEqual({ stdout: "hello\n", stderr: "", exitCode: 0 });
+  });
+
   it("run() with mocked E2B sandbox succeeds", async () => {
     // Inject a fake e2b module via mock.module.
     const fakeSandbox = {
