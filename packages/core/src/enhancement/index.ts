@@ -6,6 +6,13 @@ export type { ReflectRefineOptions, ReflectRefineResult } from "./ReflectRefineR
 export { ReflectRefineRunner } from "./ReflectRefineRunner.js";
 export type { SelfConsistencyOptions, SelfConsistencyResult } from "./SelfConsistencyRunner.js";
 export { SelfConsistencyRunner } from "./SelfConsistencyRunner.js";
+export type {
+  RolloutBranchResult,
+  RolloutForkRunnerOptions,
+} from "./RolloutForkRunner.js";
+export { RolloutForkRunner } from "./RolloutForkRunner.js";
+export type { RolloutMemoryRecord, RolloutMemory, RolloutMemoryStoreOptions } from "./RolloutMemoryStore.js";
+export { RolloutMemoryStore } from "./RolloutMemoryStore.js";
 
 // ── Super-instruction: EnhancementPreset string shortcuts ────────────────────
 

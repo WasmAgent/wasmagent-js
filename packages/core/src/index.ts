@@ -106,6 +106,11 @@ export type {
   ParallelForkJoinResult,
   ReflectRefineOptions,
   ReflectRefineResult,
+  RolloutBranchResult,
+  RolloutForkRunnerOptions,
+  RolloutMemory,
+  RolloutMemoryRecord,
+  RolloutMemoryStoreOptions,
   SelfConsistencyOptions,
   SelfConsistencyResult,
 } from "./enhancement/index.js";
@@ -115,6 +120,8 @@ export {
   ParallelForkJoinRunner,
   ReflectRefineRunner,
   resolveEnhancement,
+  RolloutForkRunner,
+  RolloutMemoryStore,
   SelfConsistencyRunner,
 } from "./enhancement/index.js";
 export type {
@@ -173,7 +180,9 @@ export {
 export type {
   ActionLanguage,
   CapabilityManifest,
+  KernelEngine,
   KernelOptions,
+  KernelPoolOptions,
   KernelResult,
   ProgrammaticResult,
   WasmKernel,
@@ -185,6 +194,7 @@ export {
   buildSandboxFetch,
   createKernel,
   JsKernel,
+  KernelPool,
   matchGlob,
   ProgrammaticOrchestrator,
   VmKernel,
@@ -432,3 +442,36 @@ export {
   FileTreeManager,
   globalFileTree,
 } from "./workspace/FileTreeManager.js";
+// RLAIF ranking
+export type {
+  RankedBranch,
+  RankingResult,
+  RewardFunction,
+  RolloutRankerOptions,
+  RolloutRecord,
+  StatReport,
+} from "./ranking/index.js";
+export { DEFAULT_REWARD_FUNCTIONS, mcnemarExact, RolloutRanker, wilsonCI } from "./ranking/index.js";
+// RLAIF agents (new exports from agents/index.js that aren't in the top-level agents block)
+export type {
+  BuildPassesVerifierOptions,
+  BuildResult,
+  BuildResultReader,
+  BuildStatus,
+  PairwiseVerdict,
+  ScalarLLMJudgeVerifierOptions,
+  ScalarVerdict,
+  SummarizeOptions,
+  VisualAssertVerifierOptions,
+  VisualResult,
+  VisualResultReader,
+  VisualVerdict,
+} from "./agents/index.js";
+export {
+  BuildPassesVerifier,
+  PAIRWISE_JUDGE_SYSTEM_PROMPT,
+  SCORE_JUDGE_SYSTEM_PROMPT,
+  ScalarLLMJudgeVerifier,
+  summarizeToolOutput,
+  VisualAssertVerifier,
+} from "./agents/index.js";

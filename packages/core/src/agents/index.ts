@@ -58,16 +58,34 @@ export {
 export type { ToolCallingAgentOptions } from "./ToolCallingAgent.js";
 export { ToolCallingAgent } from "./ToolCallingAgent.js";
 export type {
+  BuildPassesVerifierOptions,
+  BuildResult,
+  BuildResultReader,
+  BuildStatus,
   Criterion,
   CriterionVerdict,
   LLMJudgeVerifierOptions,
+  PairwiseVerdict,
+  ScalarLLMJudgeVerifierOptions,
+  ScalarVerdict,
   VerificationResult,
   Verifier,
+  VisualAssertVerifierOptions,
+  VisualResult,
+  VisualResultReader,
+  VisualVerdict,
   WorkspaceReader,
 } from "./verifiers/index.js";
 export {
+  BuildPassesVerifier,
   DeterministicVerifier,
   LLM_JUDGE_SYSTEM_PROMPT,
   LLMJudgeVerifier,
+  PAIRWISE_JUDGE_SYSTEM_PROMPT,
+  SCORE_JUDGE_SYSTEM_PROMPT,
+  ScalarLLMJudgeVerifier,
   VerificationPipeline,
+  VisualAssertVerifier,
 } from "./verifiers/index.js";
+export type { SummarizeOptions } from "./ToolOutputSummarizer.js";
+export { summarizeToolOutput } from "./ToolOutputSummarizer.js";

@@ -6,6 +6,8 @@ export {
 } from "./capabilities.js";
 export { createKernel } from "./factory.js";
 export { JsKernel } from "./JsKernel.js";
+export type { KernelPoolOptions } from "./KernelPool.js";
+export { KernelPool } from "./KernelPool.js";
 export type { ProgrammaticResult } from "./ProgrammaticOrchestrator.js";
 export { ProgrammaticOrchestrator } from "./ProgrammaticOrchestrator.js";
 export type {
