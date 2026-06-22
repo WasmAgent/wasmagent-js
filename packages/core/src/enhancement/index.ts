@@ -4,15 +4,19 @@ export type { ParallelForkJoinOptions, ParallelForkJoinResult } from "./Parallel
 export { ParallelForkJoinRunner } from "./ParallelForkJoinRunner.js";
 export type { ReflectRefineOptions, ReflectRefineResult } from "./ReflectRefineRunner.js";
 export { ReflectRefineRunner } from "./ReflectRefineRunner.js";
-export type { SelfConsistencyOptions, SelfConsistencyResult } from "./SelfConsistencyRunner.js";
-export { SelfConsistencyRunner } from "./SelfConsistencyRunner.js";
 export type {
   RolloutBranchResult,
   RolloutForkRunnerOptions,
 } from "./RolloutForkRunner.js";
 export { RolloutForkRunner } from "./RolloutForkRunner.js";
-export type { RolloutMemoryRecord, RolloutMemory, RolloutMemoryStoreOptions } from "./RolloutMemoryStore.js";
+export type {
+  RolloutMemory,
+  RolloutMemoryRecord,
+  RolloutMemoryStoreOptions,
+} from "./RolloutMemoryStore.js";
 export { RolloutMemoryStore } from "./RolloutMemoryStore.js";
+export type { SelfConsistencyOptions, SelfConsistencyResult } from "./SelfConsistencyRunner.js";
+export { SelfConsistencyRunner } from "./SelfConsistencyRunner.js";
 
 // ── Super-instruction: EnhancementPreset string shortcuts ────────────────────
 

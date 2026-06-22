@@ -57,6 +57,8 @@ export {
 } from "./stopConditions.js";
 export type { ToolCallingAgentOptions } from "./ToolCallingAgent.js";
 export { ToolCallingAgent } from "./ToolCallingAgent.js";
+export type { SummarizeOptions } from "./ToolOutputSummarizer.js";
+export { summarizeToolOutput } from "./ToolOutputSummarizer.js";
 export type {
   BuildPassesVerifierOptions,
   BuildResult,
@@ -87,5 +89,3 @@ export {
   VerificationPipeline,
   VisualAssertVerifier,
 } from "./verifiers/index.js";
-export type { SummarizeOptions } from "./ToolOutputSummarizer.js";
-export { summarizeToolOutput } from "./ToolOutputSummarizer.js";
