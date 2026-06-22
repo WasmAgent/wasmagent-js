@@ -316,4 +316,131 @@ describe("RLAIF end-to-end pipeline", () => {
     const ppo = toPpoRecords(branchResults, ranked, 0);
     expect(ppo).toHaveLength(N);
   });
+
+  it("N=1 single branch: toDpoRecord returns null (no pair possible)", async () => {
+    const factory = makeBranchModelFactory();
+    const runner = new RolloutForkRunner({ branches: 1, modelFactory: factory });
+    const branchResults = [];
+    for await (const r of runner.run(
+      { model: factory(), tools: [makeCheckBuildTool()], maxSteps: 5 },
+      "single branch task"
+    )) {
+      branchResults.push(r);
+    }
+
+    const ranked = [{ branchIndex: 0, rank: 1, objectiveScore: 1 as const, judgeScore: 5, totalScore: 1.15 }];
+    const dpo = toDpoRecord(branchResults, ranked, 0);
+    expect(dpo).toBeNull();
+
+    const ppo = toPpoRecords(branchResults, ranked, 0);
+    expect(ppo).toHaveLength(1);
+  });
+
+  it("identical finalAnswer on all branches: toDpoRecord returns null", async () => {
+    // Make a model factory where every branch returns the exact same answer
+    const sameAnswerFactory = (): Model => ({
+      providerId: "mock/same",
+      async *generate(_msgs, _opts): AsyncGenerator<StreamEvent> {
+        yield { type: "text_delta", delta: "identical answer" };
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    });
+
+    const runner = new RolloutForkRunner({
+      branches: 2,
+      concurrency: 2,
+      modelFactory: sameAnswerFactory,
+    });
+
+    const branchResults = [];
+    for await (const r of runner.run(
+      { model: sameAnswerFactory(), tools: [], maxSteps: 3 },
+      "task that always gets the same answer"
+    )) {
+      branchResults.push(r);
+    }
+
+    const rolloutRecords: RolloutRecord[] = branchResults.map((r, i) => ({
+      rolloutId: r.rolloutId,
+      branchIndex: r.branchIndex,
+      finalAnswer: r.finalAnswer,
+      objectiveScore: i === 0 ? 1 : (0 as 0 | 1),
+      task: r.task,
+    }));
+    const ranker = new RolloutRanker();
+    const { ranked } = await ranker.rank(rolloutRecords);
+    const dpo = toDpoRecord(branchResults, ranked, 0);
+    // chosen === rejected → must return null
+    expect(dpo).toBeNull();
+  });
+
+  it("task with special characters produces valid JSONL", async () => {
+    const factory = makeBranchModelFactory();
+    const runner = new RolloutForkRunner({
+      branches: 2,
+      concurrency: 2,
+      modelFactory: factory,
+      temperaturePerBranch: [0.2, 0.8],
+    });
+
+    const specialTask = 'Compute "17 + 25"\nResult: use add(a=17, b=25)\t→ answer: 42';
+    const branchResults = [];
+    for await (const r of runner.run(
+      { model: factory(), tools: [makeCheckBuildTool()], maxSteps: 5 },
+      specialTask
+    )) {
+      branchResults.push(r);
+    }
+
+    const rolloutRecords: RolloutRecord[] = branchResults.map((r) => ({
+      rolloutId: r.rolloutId,
+      branchIndex: r.branchIndex,
+      finalAnswer: r.finalAnswer,
+      objectiveScore: 0 as 0 | 1,
+      task: r.task,
+    }));
+    const ranker = new RolloutRanker();
+    const { ranked } = await ranker.rank(rolloutRecords);
+    const ppo = toPpoRecords(branchResults, ranked, 0);
+    const jsonl = toJsonl(ppo);
+
+    // 每行必须是合法 JSON，且 prompt 包含原始 task（含特殊字符）
+    for (const line of jsonl.split("\n").filter(Boolean)) {
+      const parsed = JSON.parse(line) as { prompt: string };
+      expect(parsed.prompt).toBe(specialTask);
+    }
+  });
+
+  it("temperaturePerBranch=[0] boundary: all branches get temperature 0", async () => {
+    const capturedTemps: number[] = [];
+    const tempCapture = (): Model => ({
+      providerId: "mock/temp",
+      async *generate(_msgs, opts): AsyncGenerator<StreamEvent> {
+        capturedTemps.push(opts?.temperature ?? -1);
+        yield { type: "text_delta", delta: "done" };
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    });
+
+    const runner = new RolloutForkRunner({
+      branches: 3,
+      concurrency: 3,
+      modelFactory: tempCapture,
+      temperaturePerBranch: [0],
+    });
+
+    const results = [];
+    for await (const r of runner.run(
+      { model: tempCapture(), tools: [], maxSteps: 3 },
+      "boundary test"
+    )) {
+      results.push(r);
+    }
+
+    // 所有分支都应该用 temperature=0（最后一个值重复）
+    expect(results).toHaveLength(3);
+    for (const t of capturedTemps) {
+      expect(t).toBe(0);
+    }
+  });
 });
