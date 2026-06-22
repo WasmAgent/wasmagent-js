@@ -21,6 +21,60 @@
  * Any single failure surfaces as `ok: false` with a hint that lists the
  * failing criteria's ids + their individual hints. This keeps GoalAgent
  * able to feed actionable guidance into the next iteration.
+ *
+ * # Wiring B2/C3 objective signals (bscode adapter pattern)
+ *
+ * `BuildPassesVerifier` and `VisualAssertVerifier` integrate with the pipeline
+ * via dependency-injected callbacks — the pipeline stays decoupled from
+ * bscode's concrete implementation.
+ *
+ * ```ts
+ * import { BuildPassesVerifier, VisualAssertVerifier, VerificationPipeline } from "@wasmagent/core";
+ *
+ * // Adapter: reads build result from bscode's runCommand() return value.
+ * // Call this after RemoteSandboxKernel.runCommand("npm run build") completes.
+ * function makeBscodeAdapter(sessionId: string, exitCode: number, stderr: string) {
+ *   return {
+ *     getBuildResult: async (_sid: string) => ({
+ *       status: exitCode === 0 ? "success" as const : "failure" as const,
+ *       exitCode,
+ *       stdout: "",
+ *       stderr,
+ *     }),
+ *   };
+ * }
+ *
+ * // Adapter: reads visual assertion result from bscode's visual verifier.
+ * function makeVisualAdapter(verdict: "pass" | "fail", reason?: string) {
+ *   return {
+ *     getVisualResult: async (_sid: string) => ({ verdict, reason }),
+ *   };
+ * }
+ *
+ * const sessionId = "job-abc-b0";
+ * const ws = { readFile: ..., fileExists: ..., fileSize: ... };
+ *
+ * const pipeline = new VerificationPipeline({
+ *   ws,
+ *   verifiers: [
+ *     new BuildPassesVerifier(makeBscodeAdapter(sessionId, 0, "")),
+ *     new VisualAssertVerifier(makeVisualAdapter("pass")),
+ *   ],
+ * });
+ *
+ * // Criteria reference the session ID via criterion.arg so each rollout
+ * // branch has its own isolated result — no cross-branch state leakage.
+ * const criteria = [
+ *   { id: "build", description: "npm build exits 0", verify_method: "build_passes", arg: sessionId },
+ *   { id: "ui",    description: "UI matches baseline", verify_method: "visual_assert", arg: sessionId },
+ * ];
+ *
+ * const result = await pipeline.run(criteria);
+ * // result.ok === true only when build AND visual assertion both pass.
+ *
+ * // Drop directly into GoalAgent:
+ * const goalVerify = pipeline.asGoalVerify(criteria);
+ * ```
  */
 
 import type { Criterion, CriterionVerdict, Verifier, WorkspaceReader } from "./types.js";
