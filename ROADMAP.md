@@ -1,6 +1,6 @@
 # wasmagent — Roadmap
 
-> Last refreshed: 2026-06-18. Refresh quarterly; keep stamped with the
+> Last refreshed: 2026-06-22. Refresh quarterly; keep stamped with the
 > last review date so consumers can spot rot.
 
 This roadmap is the public version of the strategic plan that drives the
@@ -81,6 +81,16 @@ the same A6 commit; see also the embedded "Why" lines below).
   coding agent" — see S1' above.
 
 ## Shipped (2026-06)
+
+- **RLAIF training data pipeline (2026-06-22).** End-to-end infrastructure for
+  generating DPO/PPO training data from live coding agent trajectories:
+  `RolloutForkRunner` (N-branch `ToolCallingAgent` trajectory collection),
+  `KernelPool` (bounded concurrency), `BuildPassesVerifier` + `VisualAssertVerifier`
+  (objective B2/C3 signal), `ScalarLLMJudgeVerifier` (0–10 score + pairwise),
+  `RolloutRanker` (Bradley-Terry + McNemar/Wilson stats), `RolloutMemoryStore`
+  (experience replay), `ToolOutputSummarizer` (deterministic truncation). All
+  shipped in `@wasmagent/core`. `RemoteSandboxKernel.runCommand()` adds E2B
+  shell-command execution (`@wasmagent/kernel-remote`).
 
 - **Axis 8 — Goal-directed loop** (`GoalDirectedAgent`, shipped 2026-06-18).
   Agent synthesises its own success criteria, executes, verifies (deterministic +

@@ -17,6 +17,12 @@ cd packages/devtools && bun test
 
 # Run a specific test file
 bun test packages/core/src/agents/ToolCallingAgent.test.ts
+
+# RLAIF-specific test suites
+bun test packages/core/src/enhancement/RolloutForkRunner.test.ts
+bun test packages/core/src/ranking/RolloutRanker.test.ts
+bun test packages/core/src/executor/KernelPool.test.ts
+bun test packages/core/src/agents/verifiers/BuildPassesVerifier.test.ts
 ```
 
 **Why devtools is different**: It needs DOM environment (happy-dom). The `bunfig.toml` in
@@ -54,4 +60,18 @@ npm run typecheck      # turbo run typecheck across all packages
 ```bash
 bun test tests/integration/
 ```
+
+## Key new packages (2026-06-22 RLAIF)
+
+| Module | Location |
+|---|---|
+| `RolloutForkRunner` | `packages/core/src/enhancement/RolloutForkRunner.ts` |
+| `RolloutMemoryStore` | `packages/core/src/enhancement/RolloutMemoryStore.ts` |
+| `KernelPool` | `packages/core/src/executor/KernelPool.ts` |
+| `BuildPassesVerifier` | `packages/core/src/agents/verifiers/BuildPassesVerifier.ts` |
+| `VisualAssertVerifier` | `packages/core/src/agents/verifiers/VisualAssertVerifier.ts` |
+| `ScalarLLMJudgeVerifier` | `packages/core/src/agents/verifiers/ScalarLLMJudgeVerifier.ts` |
+| `RolloutRanker` | `packages/core/src/ranking/RolloutRanker.ts` |
+| `summarizeToolOutput` | `packages/core/src/agents/ToolOutputSummarizer.ts` |
+| `RemoteSandboxKernel.runCommand` | `packages/kernel-remote/src/RemoteSandboxKernel.ts` |
 

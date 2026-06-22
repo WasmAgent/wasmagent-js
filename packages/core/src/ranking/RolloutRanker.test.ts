@@ -1,5 +1,8 @@
-import { RolloutRanker, DEFAULT_REWARD_FUNCTIONS, type RolloutRecord } from "./RolloutRanker.js";
-import type { ScalarLLMJudgeVerifier, PairwiseVerdict } from "../agents/verifiers/ScalarLLMJudgeVerifier.js";
+import type {
+  PairwiseVerdict,
+  ScalarLLMJudgeVerifier,
+} from "../agents/verifiers/ScalarLLMJudgeVerifier.js";
+import { DEFAULT_REWARD_FUNCTIONS, RolloutRanker, type RolloutRecord } from "./RolloutRanker.js";
 
 // ── Mock judge ────────────────────────────────────────────────────────────────
 
@@ -14,7 +17,9 @@ function makeJudge(preferred: "a" | "b" | "tie" = "tie"): ScalarLLMJudgeVerifier
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
-function makeRecords(specs: Array<{ branch: number; obj: 0 | 1; answer?: string }>): RolloutRecord[] {
+function makeRecords(
+  specs: Array<{ branch: number; obj: 0 | 1; answer?: string }>
+): RolloutRecord[] {
   return specs.map(({ branch, obj, answer }) => ({
     rolloutId: "r1",
     branchIndex: branch,

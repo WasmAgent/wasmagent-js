@@ -1,8 +1,5 @@
-import {
-  ScalarLLMJudgeVerifier,
-  type ScalarVerdict,
-} from "./ScalarLLMJudgeVerifier.js";
 import type { Model, ModelEvent } from "../../models/types.js";
+import { ScalarLLMJudgeVerifier, type ScalarVerdict } from "./ScalarLLMJudgeVerifier.js";
 import type { WorkspaceReader } from "./types.js";
 
 // ── Test double: configurable mock model ─────────────────────────────────────
@@ -19,9 +16,15 @@ function makeModel(responses: string[]): Model {
 }
 
 const nullWs: WorkspaceReader = {
-  async readFile() { return ""; },
-  async fileExists() { return false; },
-  async fileSize() { return 0; },
+  async readFile() {
+    return "";
+  },
+  async fileExists() {
+    return false;
+  },
+  async fileSize() {
+    return 0;
+  },
 };
 
 const criterion = {
@@ -40,7 +43,7 @@ describe("ScalarLLMJudgeVerifier — score mode", () => {
       '{"score": 9, "reasoning": "excellent"}',
     ]);
     const v = new ScalarLLMJudgeVerifier({ model, samples: 3 });
-    const verdict = await v.verify(criterion, nullWs) as ScalarVerdict & { ok: true };
+    const verdict = (await v.verify(criterion, nullWs)) as ScalarVerdict & { ok: true };
     expect(verdict.ok).toBe(true);
     expect(verdict.score).toBe(8); // mean(8,7,9)=8
     expect(typeof verdict.reasoning).toBe("string");
@@ -61,7 +64,7 @@ describe("ScalarLLMJudgeVerifier — score mode", () => {
       '{"score": 6, "reasoning": "ok2"}',
     ]);
     const v = new ScalarLLMJudgeVerifier({ model, samples: 3 });
-    const verdict = await v.verify(criterion, nullWs) as ScalarVerdict & { ok: true };
+    const verdict = (await v.verify(criterion, nullWs)) as ScalarVerdict & { ok: true };
     expect(verdict.ok).toBe(true);
     expect(verdict.score).toBe(6); // only two valid votes, mean(6,6)=6
   });
@@ -70,7 +73,7 @@ describe("ScalarLLMJudgeVerifier — score mode", () => {
     const model = makeModel(['{"score": 10, "reasoning": "great"}']);
     const v = new ScalarLLMJudgeVerifier({ model, samples: 3, maxJudgeCallsPerBatch: 2 });
     // First criterion uses 0 calls so far, 0+3 > 2 → skip immediately
-    const verdict = await v.verify(criterion, nullWs) as ScalarVerdict & { ok: true };
+    const verdict = (await v.verify(criterion, nullWs)) as ScalarVerdict & { ok: true };
     expect(verdict.ok).toBe(true);
     expect(verdict.score).toBe(5);
     expect(verdict.reasoning).toContain("skipped");
@@ -83,7 +86,7 @@ describe("ScalarLLMJudgeVerifier — score mode", () => {
     await v.verify(criterion, nullWs);
     // Next would be skipped — reset first
     v.resetBatch();
-    const verdict = await v.verify(criterion, nullWs) as ScalarVerdict & { ok: true };
+    const verdict = (await v.verify(criterion, nullWs)) as ScalarVerdict & { ok: true };
     expect(verdict.ok).toBe(true);
     expect(verdict.score).toBe(9);
   });

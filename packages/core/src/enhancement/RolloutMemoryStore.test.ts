@@ -1,5 +1,5 @@
-import { RolloutMemoryStore, type RolloutMemoryRecord } from "./RolloutMemoryStore.js";
 import type { Retriever, SearchResult } from "../memory/Retriever.js";
+import { type RolloutMemoryRecord, RolloutMemoryStore } from "./RolloutMemoryStore.js";
 
 // ── Mock Retriever ────────────────────────────────────────────────────────────
 
@@ -101,7 +101,9 @@ describe("RolloutMemoryStore", () => {
   test("store returns error-safe empty array when retriever throws", async () => {
     const badRetriever: Retriever = {
       async add() {},
-      async search() { throw new Error("connection failed"); },
+      async search() {
+        throw new Error("connection failed");
+      },
     };
     const mem = new RolloutMemoryStore({ store: badRetriever });
     const results = await mem.retrieve("anything");

@@ -5,9 +5,13 @@ function makeKernel(id = "k"): WasmKernel & { id: string; disposed: boolean } {
   return {
     id,
     disposed: false,
-    async run() { return { output: undefined, logs: [], isFinalAnswer: false }; },
+    async run() {
+      return { output: undefined, logs: [], isFinalAnswer: false };
+    },
     async reset() {},
-    async [Symbol.asyncDispose]() { this.disposed = true; },
+    async [Symbol.asyncDispose]() {
+      this.disposed = true;
+    },
   };
 }
 
@@ -61,7 +65,10 @@ describe("KernelPool", () => {
     const k1 = await pool.acquire("r1");
 
     let r2Resolved = false;
-    const r2Promise = pool.acquire("r2").then((k) => { r2Resolved = true; return k; });
+    const r2Promise = pool.acquire("r2").then((k) => {
+      r2Resolved = true;
+      return k;
+    });
 
     // r2 should not have resolved yet
     await Promise.resolve();
@@ -75,9 +82,7 @@ describe("KernelPool", () => {
 
   test("concurrent acquires up to maxConcurrent all succeed immediately", async () => {
     const { pool } = makePool(5);
-    const kernels = await Promise.all(
-      Array.from({ length: 5 }, (_, i) => pool.acquire(`r${i}`))
-    );
+    const kernels = await Promise.all(Array.from({ length: 5 }, (_, i) => pool.acquire(`r${i}`)));
     expect(pool.activeCount).toBe(5);
     expect(new Set(kernels).size).toBe(5); // all distinct
   });
@@ -100,14 +105,17 @@ describe("KernelPool", () => {
 
   test("factory throws → acquire rejects", async () => {
     const pool = new KernelPool({
-      factory: async () => { throw new Error("factory boom"); },
+      factory: async () => {
+        throw new Error("factory boom");
+      },
       maxConcurrent: 2,
     });
     await expect(pool.acquire("r1")).rejects.toThrow("factory boom");
   });
 
   test("constructor rejects maxConcurrent < 1", () => {
-    expect(() => new KernelPool({ factory: async () => makeKernel(), maxConcurrent: 0 }))
-      .toThrow("≥ 1");
+    expect(() => new KernelPool({ factory: async () => makeKernel(), maxConcurrent: 0 })).toThrow(
+      "≥ 1"
+    );
   });
 });

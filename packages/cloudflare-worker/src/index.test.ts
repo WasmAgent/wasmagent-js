@@ -8,10 +8,7 @@
 
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { AgentEvent } from "@wasmagent/core";
-import {
-  KvWorkflowStateStore,
-  MemoryKvBackend,
-} from "../../core/src/workflow/store.js";
+import { KvWorkflowStateStore, MemoryKvBackend } from "../../core/src/workflow/store.js";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
@@ -164,7 +161,11 @@ function runPost(
     worker.fetch(
       new Request("http://localhost/run", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${TEST_TOKEN}`, ...headers },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${TEST_TOKEN}`,
+          ...headers,
+        },
         body: JSON.stringify(body),
       }),
       env as never,
@@ -444,12 +445,20 @@ describe("POST /resume — HITL persisted resume (A3)", () => {
     };
   }
 
-  async function postResume(body: unknown, env: Record<string, unknown>, headers: Record<string, string> = {}) {
+  async function postResume(
+    body: unknown,
+    env: Record<string, unknown>,
+    headers: Record<string, string> = {}
+  ) {
     return import("./index.js").then(({ default: worker }) =>
       worker.fetch(
         new Request("http://localhost/resume", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${TEST_TOKEN}`, ...headers },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${TEST_TOKEN}`,
+            ...headers,
+          },
           body: JSON.stringify(body),
         }),
         env as never,

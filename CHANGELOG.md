@@ -50,8 +50,75 @@ and completes the go-to-market hardening pass.
 ## [Unreleased]
 
 ### Added
-- **Kernel `env` capability — full honouring across all WASM tiers
-  (2026-06-16).** The `CapabilityManifest.env` field is now actually
+
+- **RLAIF infrastructure — batch rollout sampling + ranking (2026-06-22).**
+  Full pipeline for generating RLAIF training data from `@wasmagent/core`:
+
+  - **`RemoteSandboxKernel.runCommand(cmd)`** (`@wasmagent/kernel-remote`) —
+    executes real shell commands (e.g. `npm install`, `vite build`) inside an
+    E2B microVM and returns `{ stdout, stderr, exitCode }`. Distinct from
+    `run()` (code-snippet execution); lets bscode use E2B as a real CI
+    sandbox. Exported via `CommandResult` type.
+
+  - **`BuildPassesVerifier` / `VisualAssertVerifier`** — new `Verifier`
+    implementations for `VerificationPipeline`. `build_passes` maps to
+    `exitCode === 0`; `visual_assert` maps to `BuildResultSnapshot.visual.verdict`.
+    Both accept an injected callback so `@wasmagent/core` stays decoupled from
+    bscode's KV channel. State `running` / `unknown` always fails — never
+    defaults to pass.
+
+  - **`ToolOutputSummarizer`** (`summarizeToolOutput(raw, opts?)`) — deterministic
+    head+tail truncation for tool outputs. Training data and LLM inference use
+    the same compressed form. Zero LLM calls. Configurable `maxBytes` / `keepFirstLines`
+    / `keepLastLines`.
+
+  - **`RolloutForkRunner`** — forks a complete `ToolCallingAgent` run across N
+    independent branches, yields `RolloutBranchResult` as each branch completes.
+    Unlike `ParallelForkJoinRunner` (which forks a single `model.generate` call),
+    this runs the full tool-call loop per branch and persists the complete
+    `AgentEvent[]` trajectory. Per-branch temperature, concurrency cap, optional
+    `modelFactory` for stateful test mocks. `tool_result` outputs are summarized
+    via `summarizeToolOutput` before JSONL persistence.
+
+  - **`KernelPool`** — bounded concurrency pool for `WasmKernel` instances.
+    Acquire by rollout ID, release on completion, `[Symbol.asyncDispose]` cleanup.
+    Uses a factory function (`() => Promise<WasmKernel>`) rather than a
+    `KernelEngine` string so any kernel tier works.
+
+  - **`ScalarLLMJudgeVerifier`** — extends the `LLMJudgeVerifier` reward-hacking
+    defences (default-fail, k-of-N, temperature=0.1, strict JSON, independent
+    judge model) with two new output modes: **score** (0–10 mean across samples)
+    and **pairwise** (`"a" | "b" | "tie"` majority vote). Unparseable responses
+    are neutral (`tie` or excluded from mean), never throw. `maxJudgeCallsPerBatch`
+    cap skips expensive calls and returns a neutral score of 5.
+
+  - **`RolloutRanker`** — ranks N rollout branches. Pipeline: group by
+    `objective_score` (build pass = 1, else = 0) → round-robin pairwise judge
+    calls within groups → Bradley-Terry win counts → configurable `RewardFunction[]`
+    weighted sum. Reports `powered: boolean` and `minDetectableDeltaPp` via
+    Wilson CI; McNemar p-value on top/bottom split. Stats reuse `mcnemarExact`
+    and `wilsonCI` from `packages/core/src/ranking/stats.ts`.
+
+  - **`RolloutMemoryStore`** — persists high-quality rollout experiences
+    (`objectiveScore === 1` only) to any `Retriever` backend (in-memory, Pinecone,
+    Qdrant). `retrieve(task, topK)` returns similar past approaches for system
+    prompt injection before the next fork batch. `formatAsSystemPrompt(memories)`
+    produces a ready-to-inject block.
+
+  All new types are exported from `@wasmagent/core`'s public barrel.
+
+- **`AgentSupervisor` signal fix** — resolved a pre-existing
+  `exactOptionalPropertyTypes` TypeScript error when passing an
+  `AbortSignal | undefined` to `agent.run()`. No behaviour change.
+
+### Added (kernel-remote)
+
+- **`CommandResult` type and `runCommand(cmd, opts?)` method** on
+  `RemoteSandboxKernel`. Wraps E2B `sandbox.commands.run()` — returns structured
+  `{ stdout, stderr, exitCode }` without the code-harness wrapping that `run()`
+  applies to JS/Python snippets. Exported from `@wasmagent/kernel-remote`.
+
+ The `CapabilityManifest.env` field is now actually
   consumed by `PyodideKernel`, `WasmtimeKernel`, and `RemoteSandboxKernel`
   in addition to the long-standing `JsKernel` / `QuickJSKernel` paths.
   Each kernel now exposes the per-call frozen env map as a `__env__`

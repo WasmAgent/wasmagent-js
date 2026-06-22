@@ -1,9 +1,15 @@
 import { VisualAssertVerifier, type VisualResult } from "./VisualAssertVerifier.js";
 
 const nullWs = {
-  async readFile() { return ""; },
-  async fileExists() { return false; },
-  async fileSize() { return 0; },
+  async readFile() {
+    return "";
+  },
+  async fileExists() {
+    return false;
+  },
+  async fileSize() {
+    return 0;
+  },
 };
 
 function makeCriterion(sessionId?: string) {
@@ -63,7 +69,9 @@ describe("VisualAssertVerifier", () => {
 
   test("getVisualResult throws → ok:false with error hint", async () => {
     const v = new VisualAssertVerifier({
-      getVisualResult: async () => { throw new Error("network timeout"); },
+      getVisualResult: async () => {
+        throw new Error("network timeout");
+      },
     });
     const verdict = await v.verify(makeCriterion("sess-1"), nullWs);
     expect(verdict.ok).toBe(false);

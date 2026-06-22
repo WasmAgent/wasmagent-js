@@ -1,5 +1,6 @@
 // Agents
 
+// RLAIF agents (new exports from agents/index.js that aren't in the top-level agents block)
 export type {
   AdaptationDecision,
   // 2026-06-18 (axis 9, L3) — adaptation negotiation types.
@@ -14,6 +15,10 @@ export type {
   AgentTeamScorerInput,
   AgentTeamSpawnContext,
   AsToolOptions,
+  BuildPassesVerifierOptions,
+  BuildResult,
+  BuildResultReader,
+  BuildStatus,
   CodeAgentOptions,
   Criterion,
   CriterionVerdict,
@@ -28,22 +33,31 @@ export type {
   HandoffOptions,
   HandoffResult,
   LLMJudgeVerifierOptions,
+  PairwiseVerdict,
+  ScalarLLMJudgeVerifierOptions,
+  ScalarVerdict,
   ScoutSnapshot,
   StopCondition,
   StopConditionContext,
   StopPolicyDescriptor,
   SubagentRunnable,
+  SummarizeOptions,
   SupervisorAction,
   SupervisorPolicy,
   ToolCallingAgentOptions,
   VerificationResult,
   Verifier,
+  VisualAssertVerifierOptions,
+  VisualResult,
+  VisualResultReader,
+  VisualVerdict,
   WorkspaceReader,
 } from "./agents/index.js";
 export {
   AgentSupervisor,
   AgentTeam,
   asTool,
+  BuildPassesVerifier,
   budgetGuardPolicy,
   CodeAgent,
   callFingerprint,
@@ -60,13 +74,18 @@ export {
   longestAnswerScorer,
   noProgress,
   noProgressPolicy,
+  PAIRWISE_JUDGE_SYSTEM_PROMPT,
   parseCriteriaReply,
   parseStopPolicies,
   parseStopPolicy,
   retryOnErrorPolicy,
+  SCORE_JUDGE_SYSTEM_PROMPT,
+  ScalarLLMJudgeVerifier,
   stepCountIs,
+  summarizeToolOutput,
   ToolCallingAgent,
   VerificationPipeline,
+  VisualAssertVerifier,
 } from "./agents/index.js";
 // F5 — AG-UI inbound channel: frontend tools + JSON-Patch state deltas
 export type {
@@ -119,9 +138,9 @@ export {
   BudgetForcingRunner,
   ParallelForkJoinRunner,
   ReflectRefineRunner,
-  resolveEnhancement,
   RolloutForkRunner,
   RolloutMemoryStore,
+  resolveEnhancement,
   SelfConsistencyRunner,
 } from "./enhancement/index.js";
 export type {
@@ -322,6 +341,21 @@ export type {
   WriteOpKind,
 } from "./policies/approvalPolicy.js";
 export { ApprovalPolicy, applyApprovalPolicy, PolicyPresets } from "./policies/approvalPolicy.js";
+// RLAIF ranking
+export type {
+  RankedBranch,
+  RankingResult,
+  RewardFunction,
+  RolloutRankerOptions,
+  RolloutRecord,
+  StatReport,
+} from "./ranking/index.js";
+export {
+  DEFAULT_REWARD_FUNCTIONS,
+  mcnemarExact,
+  RolloutRanker,
+  wilsonCI,
+} from "./ranking/index.js";
 export type { ActionIR, CallDescriptor, IRNode, SchedulerEvent } from "./scheduler/index.js";
 // Scheduler
 export { deriveDependencies, Scheduler, SimpleIR } from "./scheduler/index.js";
@@ -442,36 +476,3 @@ export {
   FileTreeManager,
   globalFileTree,
 } from "./workspace/FileTreeManager.js";
-// RLAIF ranking
-export type {
-  RankedBranch,
-  RankingResult,
-  RewardFunction,
-  RolloutRankerOptions,
-  RolloutRecord,
-  StatReport,
-} from "./ranking/index.js";
-export { DEFAULT_REWARD_FUNCTIONS, mcnemarExact, RolloutRanker, wilsonCI } from "./ranking/index.js";
-// RLAIF agents (new exports from agents/index.js that aren't in the top-level agents block)
-export type {
-  BuildPassesVerifierOptions,
-  BuildResult,
-  BuildResultReader,
-  BuildStatus,
-  PairwiseVerdict,
-  ScalarLLMJudgeVerifierOptions,
-  ScalarVerdict,
-  SummarizeOptions,
-  VisualAssertVerifierOptions,
-  VisualResult,
-  VisualResultReader,
-  VisualVerdict,
-} from "./agents/index.js";
-export {
-  BuildPassesVerifier,
-  PAIRWISE_JUDGE_SYSTEM_PROMPT,
-  SCORE_JUDGE_SYSTEM_PROMPT,
-  ScalarLLMJudgeVerifier,
-  summarizeToolOutput,
-  VisualAssertVerifier,
-} from "./agents/index.js";

@@ -10,11 +10,8 @@ import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { AgentEvent } from "@wasmagent/core";
 import { KvCheckpointer, resumeFromHuman } from "../../core/src/checkpoint/index.js";
 import { EventLog, formatSseFrame } from "../../core/src/streaming/EventLog.js";
+import { KvWorkflowStateStore, MemoryKvBackend } from "../../core/src/workflow/store.js";
 import { type CloudflareKVNamespace, CloudflareKvBackend } from "./kvAdapters.js";
-import {
-  KvWorkflowStateStore,
-  MemoryKvBackend,
-} from "../../core/src/workflow/store.js";
 
 // ── Agent + kernel mocks (model-free) ─────────────────────────────────────────
 let mockAgentEvents: AgentEvent[] = [];
@@ -134,7 +131,11 @@ function runPost(env: Record<string, unknown>, headers: Record<string, string> =
     worker.fetch(
       new Request("http://localhost/run", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${TEST_TOKEN}`, ...headers },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${TEST_TOKEN}`,
+          ...headers,
+        },
         body: JSON.stringify({ task: "trace-it" }),
       }),
       env as never,

@@ -111,7 +111,11 @@ export class AgentSupervisor {
       let restartTask: string | undefined;
       let restartPatch: Partial<ToolCallingAgentOptions> | undefined;
 
-      for await (const event of agent.run(currentTask, null, ...(this.#signal ? [{ signal: this.#signal }] : []))) {
+      for await (const event of agent.run(
+        currentTask,
+        null,
+        ...(this.#signal ? [{ signal: this.#signal }] : [])
+      )) {
         // External abort check before each event is processed.
         if (this.#signal?.aborted) return;
 

@@ -1,2 +1,2 @@
-export type { RemoteSandboxOptions, CommandResult } from "./RemoteSandboxKernel.js";
+export type { CommandResult, RemoteSandboxOptions } from "./RemoteSandboxKernel.js";
 export { RemoteSandboxKernel } from "./RemoteSandboxKernel.js";

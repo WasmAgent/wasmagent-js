@@ -46,7 +46,10 @@ describe("RemoteSandboxKernel", () => {
 
     const kernel = new RemoteSandboxKernel({ apiKey: "test" });
     const result = await kernel.runCommand("npm install");
-    expect(fakeCommands.run).toHaveBeenCalledWith("npm install", expect.objectContaining({ timeoutMs: 30_000 }));
+    expect(fakeCommands.run).toHaveBeenCalledWith(
+      "npm install",
+      expect.objectContaining({ timeoutMs: 30_000 })
+    );
     expect(result).toEqual({ stdout: "hello\n", stderr: "", exitCode: 0 });
   });
 

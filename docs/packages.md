@@ -6,7 +6,7 @@ agentkit-js is a 33-package monorepo published under the `@wasmagent/*` scope on
 
 | Package | What it is |
 |---|---|
-| [`@wasmagent/core`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/core) | Agents, kernels, models, tools, runners, evals, checkpoints, observability |
+| [`@wasmagent/core`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/core) | Agents, kernels, models, tools, runners, evals, checkpoints, observability, RLAIF rollout infrastructure |
 | [`@wasmagent/cli`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/cli) | `agentkit` CLI: `run`, `init-tool`, `devtools`, `evals` |
 | [`@wasmagent/devtools`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/devtools) | Time-travel debugger + opt-in React UI + `RunsAggregator` for the local Studio |
 | [`@wasmagent/evals-runner`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/evals-runner) | Multi-model multi-suite Pareto evaluation harness; six reference suites; paired statistics (McNemar / Wilson / bootstrap / G1) |

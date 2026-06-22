@@ -287,11 +287,7 @@ export function useAgentRun(
                     ? `${d.toolName}: ${outputStr.slice(0, 120)}`
                     : `${d.toolName} done`;
                 setMessages((prev) =>
-                  prev.map((m) =>
-                    m.callId === d.callId
-                      ? { ...m, content: label, isError }
-                      : m
-                  )
+                  prev.map((m) => (m.callId === d.callId ? { ...m, content: label, isError } : m))
                 );
               } else if (ev.event === "final_answer" && ev.channel === "text") {
                 flushText(setMessages);

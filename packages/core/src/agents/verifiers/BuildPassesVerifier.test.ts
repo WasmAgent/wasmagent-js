@@ -1,9 +1,15 @@
 import { BuildPassesVerifier, type BuildResult } from "./BuildPassesVerifier.js";
 
 const nullWs = {
-  async readFile() { return ""; },
-  async fileExists() { return false; },
-  async fileSize() { return 0; },
+  async readFile() {
+    return "";
+  },
+  async fileExists() {
+    return false;
+  },
+  async fileSize() {
+    return 0;
+  },
 };
 
 function makeCriterion(sessionId?: string) {
@@ -74,7 +80,9 @@ describe("BuildPassesVerifier", () => {
 
   test("getBuildResult throws → ok:false with error hint", async () => {
     const v = new BuildPassesVerifier({
-      getBuildResult: async () => { throw new Error("KV timeout"); },
+      getBuildResult: async () => {
+        throw new Error("KV timeout");
+      },
     });
     const verdict = await v.verify(makeCriterion("sess-1"), nullWs);
     expect(verdict.ok).toBe(false);

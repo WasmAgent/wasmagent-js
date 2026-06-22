@@ -344,7 +344,13 @@ async function handleRun(
   const MODEL_ID = AnthropicModels.SONNET_LATEST;
   const authHeader = request.headers.get("Authorization") ?? "";
   const kvKey = env.AGENTKIT_SESSIONS
-    ? await contentHash({ auth: authHeader, task, agentType, maxSteps: clampedMaxSteps, model: MODEL_ID })
+    ? await contentHash({
+        auth: authHeader,
+        task,
+        agentType,
+        maxSteps: clampedMaxSteps,
+        model: MODEL_ID,
+      })
     : null;
 
   if (kvKey && env.AGENTKIT_SESSIONS) {
