@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { Model, StreamEvent } from "../models/types.js";
 import type { ToolDefinition } from "../tools/types.js";
+import type { Retriever, SearchResult } from "../memory/Retriever.js";
+import { RolloutMemoryStore } from "./RolloutMemoryStore.js";
 import { RolloutForkRunner } from "./RolloutForkRunner.js";
 
 // ── Test doubles ─────────────────────────────────────────────────────────────
@@ -172,6 +174,111 @@ describe("RolloutForkRunner", () => {
     expect(results).toHaveLength(5);
     for (const r of results) {
       expect(r.toolCallSequence.length).toBeGreaterThan(0);
+    }
+  });
+
+  test("seed is null when seedPerBranch is not provided", async () => {
+    const factory = branchModelFactory("seed-none");
+    const runner = new RolloutForkRunner({ branches: 2, concurrency: 2, modelFactory: factory });
+    for await (const r of runner.run(baseAgentOpts(factory), "task")) {
+      expect(r.seed).toBeNull();
+    }
+  });
+
+  test("seedPerBranch is stored in each branch result", async () => {
+    const factory = branchModelFactory("seed-set");
+    const runner = new RolloutForkRunner({
+      branches: 3,
+      concurrency: 3,
+      modelFactory: factory,
+      seedPerBranch: [100, 200, 300],
+    });
+    const results = [];
+    for await (const r of runner.run(baseAgentOpts(factory), "task")) {
+      results.push(r);
+    }
+    const seeds = results.sort((a, b) => a.branchIndex - b.branchIndex).map((r) => r.seed);
+    expect(seeds).toEqual([100, 200, 300]);
+  });
+
+  test("memoryStore injection prepends successful past approaches to system prompt", async () => {
+    const capturedPrompts: (string | undefined)[] = [];
+    const memCapture = (): Model => ({
+      providerId: "mock/mem",
+      async *generate(msgs, opts): AsyncGenerator<StreamEvent> {
+        const sys = msgs.find((m) => m.role === "system");
+        capturedPrompts.push(typeof sys?.content === "string" ? sys.content : undefined);
+        yield { type: "text_delta", delta: `done-t${opts?.temperature ?? "?"}` };
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    });
+
+    // Build a memory store with one stored approach
+    const stored = new Map<string, { text: string; metadata?: Record<string, unknown> }>();
+    const retriever: Retriever = {
+      async add(id, text, metadata) {
+        stored.set(id, { text, metadata });
+      },
+      async search(_query, topK = 3): Promise<SearchResult[]> {
+        return [...stored.entries()].slice(0, topK).map(([id, { text, metadata }]) => ({
+          id,
+          text,
+          score: 0.9,
+          metadata,
+        }));
+      },
+    };
+    const mem = new RolloutMemoryStore({ store: retriever });
+    await mem.upsert({
+      rolloutId: "past-r1",
+      branchIndex: 0,
+      task: "build REST API",
+      keySteps: "create_file → run_tests",
+      objectiveScore: 1,
+      finalAnswer: "done",
+    });
+
+    const runner = new RolloutForkRunner({
+      branches: 1,
+      modelFactory: memCapture,
+      memoryStore: mem,
+      memoryTopK: 1,
+    });
+
+    for await (const _ of runner.run(baseAgentOpts(memCapture), "build REST API")) {
+      // drain
+    }
+
+    // The system prompt for each branch should contain the memory injection header
+    expect(capturedPrompts.length).toBeGreaterThan(0);
+    const firstPrompt = capturedPrompts[0];
+    expect(firstPrompt).toBeDefined();
+    expect(firstPrompt).toContain("# Relevant past successful approaches:");
+    expect(firstPrompt).toContain("REST API");
+  });
+
+  test("no memory injection when memoryStore is not provided", async () => {
+    const capturedPrompts: (string | undefined)[] = [];
+    const capture = (): Model => ({
+      providerId: "mock/nomem",
+      async *generate(msgs, opts): AsyncGenerator<StreamEvent> {
+        const sys = msgs.find((m) => m.role === "system");
+        capturedPrompts.push(typeof sys?.content === "string" ? sys.content : undefined);
+        yield { type: "text_delta", delta: `done-t${opts?.temperature ?? "?"}` };
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    });
+
+    const runner = new RolloutForkRunner({ branches: 1, modelFactory: capture });
+    for await (const _ of runner.run(baseAgentOpts(capture), "task")) {
+      // drain
+    }
+
+    // No memory header injected
+    for (const p of capturedPrompts) {
+      if (p !== undefined) {
+        expect(p).not.toContain("# Relevant past successful approaches:");
+      }
     }
   });
 });

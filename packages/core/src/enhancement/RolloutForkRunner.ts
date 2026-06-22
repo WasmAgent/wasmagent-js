@@ -12,11 +12,16 @@
  *
  * tool_result outputs in the JSONL record are passed through summarizeToolOutput()
  * before persistence so that training data and inference context are identical.
+ *
+ * Optional memory injection: pass a memoryStore to inject top-K past successful
+ * approaches into each branch's system prompt before the run starts.
  */
 
 import type { ToolCallingAgentOptions } from "../agents/ToolCallingAgent.js";
 import { ToolCallingAgent } from "../agents/ToolCallingAgent.js";
 import { summarizeToolOutput } from "../agents/ToolOutputSummarizer.js";
+import type { RolloutMemory } from "./RolloutMemoryStore.js";
+import { RolloutMemoryStore } from "./RolloutMemoryStore.js";
 import type { AgentEvent } from "../types/events.js";
 import { randomUUID } from "../util/runtime.js";
 
@@ -27,6 +32,12 @@ export interface RolloutBranchResult {
   task: string;
   branchIndex: number;
   temperature: number;
+  /**
+   * Optional seed for reproducibility tracking. Null when not provided —
+   * most model APIs do not expose or honour a seed parameter, so this field
+   * is a placeholder for environments that do (e.g. local vLLM with --seed).
+   */
+  seed: number | null;
   sessionId: string;
   /** Full event stream from run_start to final_answer (or error). */
   trajectory: AgentEvent[];
@@ -49,6 +60,13 @@ export interface RolloutForkRunnerOptions {
    */
   temperaturePerBranch?: number[];
   /**
+   * Optional seed per branch for reproducibility tracking.
+   * Stored as-is in RolloutBranchResult.seed; not passed to the model
+   * (most APIs don't accept a seed param). Useful when the caller controls
+   * a deterministic environment (e.g. vLLM --seed or test doubles).
+   */
+  seedPerBranch?: number[];
+  /**
    * Session ID prefix. Each branch gets `<prefix>-b<index>-<uuid>`.
    * Default: "rollout".
    */
@@ -60,6 +78,18 @@ export interface RolloutForkRunnerOptions {
    * In production, stateless model adapters don't need this.
    */
   modelFactory?: () => ToolCallingAgentOptions["model"];
+  /**
+   * Optional memory store. When provided, top-K past successful approaches are
+   * retrieved for the task and prepended to each branch's system prompt as:
+   *   "# Relevant past successful approaches:\n1. …\n2. …"
+   * This injects high-quality examples without modifying model weights.
+   */
+  memoryStore?: RolloutMemoryStore;
+  /**
+   * Number of memories to inject per branch. Default 3.
+   * Only used when memoryStore is provided.
+   */
+  memoryTopK?: number;
 }
 
 // ── Runner ────────────────────────────────────────────────────────────────────
@@ -68,15 +98,21 @@ export class RolloutForkRunner {
   readonly #branches: number;
   readonly #concurrency: number;
   readonly #temperaturePerBranch: number[];
+  readonly #seedPerBranch: number[];
   readonly #sessionIdPrefix: string;
   readonly #modelFactory: (() => ToolCallingAgentOptions["model"]) | null;
+  readonly #memoryStore: RolloutMemoryStore | null;
+  readonly #memoryTopK: number;
 
   constructor(opts: RolloutForkRunnerOptions = {}) {
     this.#branches = Math.max(1, opts.branches ?? 5);
     this.#concurrency = Math.max(1, opts.concurrency ?? this.#branches);
     this.#temperaturePerBranch = opts.temperaturePerBranch ?? [];
+    this.#seedPerBranch = opts.seedPerBranch ?? [];
     this.#sessionIdPrefix = opts.sessionIdPrefix ?? "rollout";
     this.#modelFactory = opts.modelFactory ?? null;
+    this.#memoryStore = opts.memoryStore ?? null;
+    this.#memoryTopK = opts.memoryTopK ?? 3;
   }
 
   /**
@@ -86,6 +122,7 @@ export class RolloutForkRunner {
    *
    * @param agentOpts  Base ToolCallingAgent options shared by all branches.
    *                   Temperature is overridden per-branch from temperaturePerBranch.
+   *                   systemPrompt is prepended with retrieved memories when memoryStore is set.
    * @param task       The user task string passed to each agent run.
    * @param rolloutId  Optional stable ID for the whole rollout. Auto-generated if omitted.
    */
@@ -97,6 +134,19 @@ export class RolloutForkRunner {
     const rid = rolloutId ?? randomUUID();
     const n = this.#branches;
     const limit = Math.min(this.#concurrency, n);
+
+    // Fetch memories once before forking — all branches share the same injected context.
+    let memoryPrefix = "";
+    if (this.#memoryStore) {
+      const memories: RolloutMemory[] = await this.#memoryStore.retrieve(task, this.#memoryTopK);
+      memoryPrefix = RolloutMemoryStore.formatAsSystemPrompt(memories);
+    }
+
+    // Build an augmented system prompt if we have memories to inject.
+    const baseSystemPrompt = agentOpts.systemPrompt ?? "";
+    const augmentedSystemPrompt = memoryPrefix
+      ? `${memoryPrefix}\n\n${baseSystemPrompt}`.trim()
+      : baseSystemPrompt || undefined;
 
     // Completed results queue + signalling
     const results: RolloutBranchResult[] = [];
@@ -115,12 +165,21 @@ export class RolloutForkRunner {
         this.#temperaturePerBranch[this.#temperaturePerBranch.length - 1] ??
         0.7;
 
+      const seed =
+        this.#seedPerBranch[branchIndex] ??
+        this.#seedPerBranch[this.#seedPerBranch.length - 1] ??
+        null;
+
       const sessionId = `${this.#sessionIdPrefix}-b${branchIndex}-${randomUUID()}`;
 
       // Per-branch model: use factory if provided, else wrap shared model with temperature.
       const baseModel = this.#modelFactory ? this.#modelFactory() : agentOpts.model;
       const model = wrapTemperature(baseModel, temperature);
-      const agent = new ToolCallingAgent({ ...agentOpts, model });
+      const agent = new ToolCallingAgent({
+        ...agentOpts,
+        model,
+        ...(augmentedSystemPrompt !== undefined ? { systemPrompt: augmentedSystemPrompt } : {}),
+      });
 
       const trajectory: AgentEvent[] = [];
       let finalAnswer = "";
@@ -145,6 +204,7 @@ export class RolloutForkRunner {
         task,
         branchIndex,
         temperature,
+        seed,
         sessionId,
         trajectory,
         toolCallSequence,
