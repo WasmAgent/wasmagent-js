@@ -202,8 +202,11 @@ export type {
   KernelEngine,
   KernelOptions,
   KernelPoolOptions,
+  KernelPoolValidatorOptions,
   KernelResult,
+  KernelValidationResult,
   ProgrammaticResult,
+  ValidationTask,
   WasmKernel,
 } from "./executor/index.js";
 // Executor
@@ -214,6 +217,7 @@ export {
   createKernel,
   JsKernel,
   KernelPool,
+  KernelPoolValidator,
   matchGlob,
   ProgrammaticOrchestrator,
   VmKernel,
@@ -343,6 +347,8 @@ export type {
 export { ApprovalPolicy, applyApprovalPolicy, PolicyPresets } from "./policies/approvalPolicy.js";
 // RLAIF ranking
 export type {
+  DpoRecord,
+  PpoRecord,
   RankedBranch,
   RankingResult,
   RewardFunction,
@@ -354,6 +360,9 @@ export {
   DEFAULT_REWARD_FUNCTIONS,
   mcnemarExact,
   RolloutRanker,
+  toDpoRecord,
+  toPpoRecords,
+  toJsonl,
   wilsonCI,
 } from "./ranking/index.js";
 export type { ActionIR, CallDescriptor, IRNode, SchedulerEvent } from "./scheduler/index.js";
