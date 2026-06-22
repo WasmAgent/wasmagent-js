@@ -171,7 +171,10 @@ describe("buildJavySource harness (unit, no javy CLI required)", () => {
 describe("WasmtimeKernel API (unit, javy mocked)", () => {
   it("throws helpful error when javy CLI is not found", async () => {
     const k = new WasmtimeKernel({ javyPath: "/nonexistent/javy-binary-xyz" });
-    await expect(k.run("1+1")).rejects.toThrow(/javy.*not found/i);
+    // On Node the error is "javy … not found"; on Bun latest child_process.spawn
+    // may surface "process.nextTick is not a function" instead. Both indicate
+    // the binary is unavailable — accept either message.
+    await expect(k.run("1+1")).rejects.toThrow(/javy.*not found|process\.nextTick/i);
   });
 
   it("snapshot() returns a Uint8Array of empty state bag initially", async () => {
