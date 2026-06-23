@@ -37,7 +37,7 @@ toDpoRecord() / toPpoRecords()    Layer 2 (optional — direct TypeScript consum
 
 Written by `RolloutForkRunner`, read by `evomerge load_rollouts()`.
 
-Schema: [`packages/core/src/ranking/schemas/rollout-wire.schema.json`](../schemas/GOVERNANCE.md)
+Schema: [`packages/core/src/ranking/schemas/rollout-wire.schema.json`](./schemas/GOVERNANCE.md)
 
 Required fields:
 
@@ -144,4 +144,4 @@ The canonical schema owner is `wasmagent-js`. When fields change:
 4. Update `evomerge/src/datafactory/exporter.py` to match
 5. Run `python3 tests/test_three_repo_smoke.py` — the cross-repo diff step will catch any drift
 
-See [Schema Governance](../schemas/GOVERNANCE.md) for the full change process.
+See [Schema Governance](./schemas/GOVERNANCE.md) for the full change process.

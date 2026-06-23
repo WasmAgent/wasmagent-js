@@ -54,10 +54,10 @@ This loop is what separates wasmagent from a generic agent framework — it prod
 
 ## Where to start
 
-- **Using the runtime** → [Getting started with wasmagent-js](../guides/getting-started.md)
+- **Using the runtime** → [Getting started with wasmagent-js](./guides/getting-started.md)
 - **Deploying bscode** → [bscode README](https://github.com/WasmAgent/bscode)
 - **Running the data pipeline** → [Data Pipeline guide](./data-pipeline.md)
-- **Schema contract between repos** → [Schema Governance](../schemas/GOVERNANCE.md)
+- **Schema contract between repos** → [Schema Governance](./schemas/GOVERNANCE.md)
 - **Integration smoke test** → `evomerge/tests/test_three_repo_smoke.py`
 
 ## Repository links
