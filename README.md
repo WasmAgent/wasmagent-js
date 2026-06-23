@@ -256,7 +256,15 @@ agentkit run "Summarise recent AI news" --stream | jq .
 
 # Use a specific model
 agentkit run "Write a haiku" --model claude-opus-4-8 --max-steps 5
+
+# Validate rollout branch records (RLAIF pipeline)
+agentkit validate-rollouts <path.jsonl>
+
+# Convert rollout JSONL to DPO or PPO training records
+agentkit export-rollouts --in <path> --format dpo|ppo [--out <path>]
 ```
+
+Golden fixtures for the wasmagent → evomerge pipeline live in `test-fixtures/rollouts/`.
 
 ---
 

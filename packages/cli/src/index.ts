@@ -21,6 +21,7 @@ import type {
   AnthropicModelId,
   AnthropicModelOptions,
   Criterion,
+  RankedBranch,
   ToolDefinition,
   WorkspaceReader,
 } from "@wasmagent/core";
@@ -30,6 +31,9 @@ import {
   CodeAgent,
   DeterministicVerifier,
   GoalDirectedAgent,
+  toDpoRecord,
+  toJsonl,
+  toPpoRecords,
   VerificationPipeline,
 } from "@wasmagent/core";
 
@@ -70,6 +74,16 @@ export function buildAnthropicModel(
 // works, but with a different relative depth). A literal avoids both
 // surprises.
 const CLI_VERSION = "0.2.0";
+
+const ROLLOUT_BRANCH_REQUIRED_FIELDS = [
+  "rollout_id",
+  "task",
+  "branch_index",
+  "temperature",
+  "session_id",
+  "tool_call_sequence",
+  "final_answer",
+] as const;
 
 // Only run CLI dispatch when executed as the entry point, not when imported by tests.
 const isMain =
@@ -134,6 +148,11 @@ if (isMain) {
       // (it falls back to http://localhost:11434/v1 there). buildAnthropicModel
       // reuses the same flag for `agentkit run` / `agentkit goal`, falling back
       // to ANTHROPIC_BASE_URL env var instead of a hardcoded ollama URL.
+      // 2026-06-23: `agentkit validate-rollouts` / `agentkit export-rollouts`
+      // flags. --in is the input JSONL path; --format selects DPO vs PPO;
+      // --out is the output path (stdout if absent).
+      in: { type: "string" },
+      format: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
       version: { type: "boolean", short: "v", default: false },
     },
@@ -186,6 +205,12 @@ if (isMain) {
       break;
     case "verify":
       await verifyCommand(values);
+      break;
+    case "validate-rollouts":
+      await validateRolloutsCommand(positionals[1] as string | undefined, values);
+      break;
+    case "export-rollouts":
+      await exportRolloutsCommand(values);
       break;
     case "version":
     case "--version":
@@ -430,16 +455,16 @@ export const ${camelCase(pascalName)}Tool: ToolDefinition<
   z.infer<typeof outputSchema>
 > = {
   name: "${kebabName}",
-  description: "TODO: describe what this tool does",
+  description: "FILL IN: describe what this tool does",
   inputSchema: z.object({
-    // TODO: define input fields
+    // FILL IN: define input fields
     query: z.string().describe("The input query"),
   }),
   outputSchema: z.string(),
-  readOnly: true,    // TODO: set to false if this tool has side effects
-  idempotent: true,  // TODO: set to false if repeated calls produce different results
+  readOnly: true,    // FILL IN: set to false if this tool has side effects
+  idempotent: true,  // FILL IN: set to false if repeated calls produce different results
   async forward(input) {
-    // TODO: implement the tool logic
+    // FILL IN: implement the tool logic
     throw new Error(\`${pascalName}: not yet implemented (input: \${JSON.stringify(input)})\`);
   },
 };
@@ -468,7 +493,7 @@ describe("${pascalName} tool", () => {
   });
 
   it("forward() returns a string", async () => {
-    // TODO: replace this with a real test once forward() is implemented
+    // FILL IN: replace this with a real test once forward() is implemented
     await expect(
       ${camelCase(pascalName)}Tool.forward({ query: "test" } as never)
     ).rejects.toThrow("not yet implemented");
@@ -503,7 +528,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
 pub struct ${pascalName}Input {
-    // TODO: define input fields
+    // FILL IN: define input fields
     pub query: String,
 }
 
@@ -518,7 +543,7 @@ pub fn ${snakeName}(input_json: &str) -> Result<String, JsValue> {
     let input: ${pascalName}Input = serde_json::from_str(input_json)
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-    // TODO: implement tool logic
+    // FILL IN: implement tool logic
     let output = ${pascalName}Output {
         result: format!("${pascalName} received: {}", input.query),
     };
@@ -560,7 +585,7 @@ export const ${camelCase(pascalName)}Tool: ToolDefinition<
   string
 > = {
   name: "${kebabName}",
-  description: "TODO: describe what this tool does",
+  description: "FILL IN: describe what this tool does",
   inputSchema: z.object({
     query: z.string().describe("The input query"),
   }),
@@ -628,6 +653,8 @@ Usage:
   agentkit model pull <alias> [--mirror=<huggingface|hf-mirror|modelscope|<url>>] [--cache-dir=<path>]
   agentkit model verify <alias> [--cache-dir=<path>]
   agentkit model rm <alias> [--cache-dir=<path>]
+  agentkit validate-rollouts <path.jsonl>
+  agentkit export-rollouts --in <path.jsonl> --format dpo|ppo [--out <output.jsonl>]
 
 Commands:
   run "<task>"              Run a single-shot CodeAgent loop on a task
@@ -643,6 +670,9 @@ Commands:
   model pull <alias>        Download a registered local model with sha256 verification
   model verify <alias>      Recompute sha256 of the cached file and compare
   model rm <alias>          Delete the cached model file
+  validate-rollouts         Validate a JSONL file of rollout branch records against
+                            the rollout wire schema (field presence checks)
+  export-rollouts           Convert rollout branch records to DPO or PPO training records
 
 run options:
   --model <id>             Model ID (default: claude-sonnet-4-6)
@@ -694,6 +724,14 @@ evals options:
   --seeds <list>           Comma-separated seeds (default: 0,1,2 — matches the ≥3-seed paired-stats discipline)
   --report-file <path>     Write the markdown report to this file instead of stdout
 
+validate-rollouts options:
+  <path.jsonl>             JSONL file of RolloutBranchRecord objects to validate
+
+export-rollouts options:
+  --in <path.jsonl>        Input JSONL file of RolloutBranchRecord objects (required)
+  --format dpo|ppo         Output training record format (required)
+  --out <output.jsonl>     Output file path (default: stdout)
+
 Examples:
   agentkit run "What is 2+2?"
   agentkit run "Analyse data" --stream | jq .
@@ -705,6 +743,9 @@ Examples:
   agentkit devtools --events-file ./events.ndjson
   agentkit evals list
   agentkit evals run --suite=multi-turn-memory --models=qwen2.5:0.5b@http://localhost:11434/v1
+  agentkit validate-rollouts ./rollouts.jsonl
+  agentkit export-rollouts --in rollouts.jsonl --format dpo --out dpo.jsonl
+  agentkit export-rollouts --in rollouts.jsonl --format ppo
 `);
 }
 
@@ -1576,4 +1617,180 @@ export async function modelCommand(
 
   console.error(`Unknown model subcommand: ${sub}. Use list | pull | verify | rm.`);
   process.exit(1);
+}
+
+// ── validate-rollouts command ─────────────────────────────────────────────────
+
+export async function validateRolloutsCommand(
+  filePath: string | undefined,
+  _opts: Record<string, string | boolean | undefined>
+): Promise<void> {
+  if (!filePath) {
+    console.error("Error: path to JSONL file is required");
+    console.error("  Usage: agentkit validate-rollouts <path.jsonl>");
+    process.exit(1);
+  }
+
+  let raw: string;
+  try {
+    raw = await fsReadFile(filePath, "utf8");
+  } catch (e) {
+    console.error(`Error: cannot read ${filePath}: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+    return;
+  }
+
+  const lines = raw.split("\n");
+  let total = 0;
+  let passed = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]?.trim();
+    if (!line) continue;
+    total++;
+    const lineNum = i + 1;
+
+    let record: unknown;
+    try {
+      record = JSON.parse(line);
+    } catch (e) {
+      console.log(
+        `line ${lineNum}: FAIL — invalid JSON: ${e instanceof Error ? e.message : String(e)}`
+      );
+      continue;
+    }
+
+    if (typeof record !== "object" || record === null || Array.isArray(record)) {
+      console.log(`line ${lineNum}: FAIL — expected a JSON object`);
+      continue;
+    }
+
+    const obj = record as Record<string, unknown>;
+    const missing = ROLLOUT_BRANCH_REQUIRED_FIELDS.filter((f) => !(f in obj));
+
+    if (missing.length > 0) {
+      console.log(`line ${lineNum}: FAIL — missing fields: ${missing.join(", ")}`);
+    } else {
+      console.log(`line ${lineNum}: PASS`);
+      passed++;
+    }
+  }
+
+  console.log(`\n${passed}/${total} records valid`);
+  if (passed < total) process.exit(1);
+}
+
+// ── export-rollouts command ───────────────────────────────────────────────────
+
+export async function exportRolloutsCommand(
+  opts: Record<string, string | boolean | undefined>
+): Promise<void> {
+  const inPath = typeof opts.in === "string" ? opts.in : "";
+  if (!inPath) {
+    console.error("Error: --in <path.jsonl> is required");
+    process.exit(1);
+  }
+
+  const format = typeof opts.format === "string" ? opts.format : "";
+  if (format !== "dpo" && format !== "ppo") {
+    console.error(`Error: --format must be "dpo" or "ppo", got "${format}"`);
+    process.exit(1);
+  }
+
+  let raw: string;
+  try {
+    raw = await fsReadFile(inPath, "utf8");
+  } catch (e) {
+    console.error(`Error: cannot read ${inPath}: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+    return;
+  }
+
+  // Parse JSONL and group by rollout_id.
+  const byRollout = new Map<
+    string,
+    Array<{
+      rolloutId: string;
+      task: string;
+      branchIndex: number;
+      temperature: number;
+      seed: null;
+      sessionId: string;
+      trajectory: AgentEvent[];
+      toolCallSequence: AgentEvent[];
+      finalAnswer: string;
+      buildResult: null;
+      objectiveScore: 0 | 1;
+      totalScore: number;
+    }>
+  >();
+
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    let obj: Record<string, unknown>;
+    try {
+      obj = JSON.parse(trimmed) as Record<string, unknown>;
+    } catch {
+      process.stderr.write(`Warning: skipping malformed JSONL line\n`);
+      continue;
+    }
+    const rid = String(obj.rollout_id ?? "");
+    if (!rid) continue;
+    if (!byRollout.has(rid)) byRollout.set(rid, []);
+    const bucket = byRollout.get(rid);
+    if (!bucket) continue;
+    bucket.push({
+      rolloutId: rid,
+      task: String(obj.task ?? ""),
+      branchIndex: Number(obj.branch_index ?? 0),
+      temperature: Number(obj.temperature ?? 0),
+      seed: null,
+      sessionId: String(obj.session_id ?? ""),
+      trajectory: [],
+      toolCallSequence: Array.isArray(obj.tool_call_sequence)
+        ? (obj.tool_call_sequence as AgentEvent[])
+        : [],
+      finalAnswer: String(obj.final_answer ?? ""),
+      buildResult: null,
+      objectiveScore: (obj.objective_score === 1 ? 1 : 0) as 0 | 1,
+      totalScore: typeof obj.total_score === "number" ? obj.total_score : 0,
+    });
+  }
+
+  const exportedAtMs = Date.now();
+  const outputRecords: unknown[] = [];
+
+  for (const branches of byRollout.values()) {
+    // Sort by objectiveScore desc then totalScore desc to rank branches.
+    const sorted = [...branches].sort(
+      (a, b) => b.objectiveScore - a.objectiveScore || b.totalScore - a.totalScore
+    );
+    const ranked: RankedBranch[] = sorted.map((b, i) => ({
+      branchIndex: b.branchIndex,
+      rank: i + 1,
+      objectiveScore: b.objectiveScore,
+      judgeScore: 0,
+      totalScore: b.totalScore,
+    }));
+
+    if (format === "dpo") {
+      const rec = toDpoRecord(branches, ranked, exportedAtMs);
+      if (rec !== null) outputRecords.push(rec);
+    } else {
+      const recs = toPpoRecords(branches, ranked, exportedAtMs);
+      for (const r of recs) outputRecords.push(r);
+    }
+  }
+
+  const jsonl = toJsonl(outputRecords);
+  const outPath = typeof opts.out === "string" ? opts.out : "";
+
+  if (outPath) {
+    await writeFile(outPath, jsonl ? `${jsonl}\n` : "", "utf8");
+    process.stderr.write(`Exported ${outputRecords.length} records to ${outPath}\n`);
+  } else {
+    if (jsonl) process.stdout.write(`${jsonl}\n`);
+    process.stderr.write(`Exported ${outputRecords.length} records to stdout\n`);
+  }
 }
