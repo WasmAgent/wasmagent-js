@@ -9,6 +9,7 @@
   "dependencies": {
     "@wasmagent/agent-prompts": "workspace:*",
     "@wasmagent/core": "workspace:*",
+    "@wasmagent/kernel-quickjs": "workspace:*",
     "@wasmagent/ui-cards": "workspace:*",
     "zod": "^3.0.0"
   },
