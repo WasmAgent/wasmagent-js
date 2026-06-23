@@ -18,7 +18,7 @@
  * ToolCallingAgent for sites that want full-fidelity scoring.
  */
 
-import { finalAnswerLength, trajectoryValidity } from "@wasmagent/core";
+import { finalAnswerLength, trajectoryValidity } from "@wasmagent/core/beta";
 import type { BenchmarkItem, BenchmarkSuite } from "../types.js";
 
 const ITEMS: BenchmarkItem[] = [

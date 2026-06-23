@@ -15,7 +15,7 @@
  *     knowledge-update, temporal-reasoning, long-context, preference-update.
  */
 
-import { exactMatch, finalAnswerLength } from "@wasmagent/core";
+import { exactMatch, finalAnswerLength } from "@wasmagent/core/beta";
 import type { BenchmarkItem, BenchmarkSuite } from "../types.js";
 
 // ── Noise padding ────────────────────────────────────────────────────────────

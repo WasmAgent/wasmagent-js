@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/mastra-sandbox",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Mastra sandbox provider backed by wasmagent kernels — WASM isolation with no external infrastructure (alternative to Blaxel/E2B providers)",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "^1.0.0"
+    "@wasmagent/core": "^1.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

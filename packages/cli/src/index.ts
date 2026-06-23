@@ -1842,7 +1842,9 @@ export async function rankRolloutCommand(
     try {
       records.push(JSON.parse(lines[i] as string) as Record<string, unknown>);
     } catch (e) {
-      console.error(`Error: invalid JSON on line ${i + 1}: ${e instanceof Error ? e.message : String(e)}`);
+      console.error(
+        `Error: invalid JSON on line ${i + 1}: ${e instanceof Error ? e.message : String(e)}`
+      );
       process.exit(1);
       return;
     }
@@ -1868,19 +1870,23 @@ export async function rankRolloutCommand(
   }
 
   // Rank each group: sort by objective_score desc, assign rank
+  const objectiveWeight = weights.objective ?? 1.0;
   const ranked: Array<Record<string, unknown>> = [];
   for (const [rolloutId, group] of byRollout) {
     const sorted = [...group].sort((a, b) => {
-      const aScore = (typeof a.objective_score === "number" ? a.objective_score : 0) * weights.objective;
-      const bScore = (typeof b.objective_score === "number" ? b.objective_score : 0) * weights.objective;
+      const aScore =
+        (typeof a.objective_score === "number" ? a.objective_score : 0) * objectiveWeight;
+      const bScore =
+        (typeof b.objective_score === "number" ? b.objective_score : 0) * objectiveWeight;
       return bScore - aScore;
     });
     for (let i = 0; i < sorted.length; i++) {
-      const objScore = typeof sorted[i]?.objective_score === "number" ? (sorted[i]?.objective_score as number) : 0;
+      const objScore =
+        typeof sorted[i]?.objective_score === "number" ? (sorted[i]?.objective_score as number) : 0;
       ranked.push({
         ...sorted[i],
         rank: i + 1,
-        total_score: objScore * weights.objective,
+        total_score: objScore * objectiveWeight,
       });
     }
     void rolloutId;
@@ -1898,7 +1904,9 @@ export async function rankRolloutCommand(
   }
 
   // Summary table to stderr
-  const summary: string[] = [`\nRanked ${records.length} records across ${byRollout.size} rollout(s):\n`];
+  const summary: string[] = [
+    `\nRanked ${records.length} records across ${byRollout.size} rollout(s):\n`,
+  ];
   for (const [rolloutId, group] of byRollout) {
     summary.push(`  ${rolloutId}: ${group.length} branch(es)`);
     const sortedGroup = ranked
@@ -1906,7 +1914,9 @@ export async function rankRolloutCommand(
       .sort((a, b) => (a.rank as number) - (b.rank as number));
     for (const r of sortedGroup) {
       const pass = r.objective_score === 1 ? "✓" : "✗";
-      summary.push(`    rank ${r.rank}  branch ${r.branch_index}  obj=${r.objective_score}  total=${(r.total_score as number).toFixed(3)}  ${pass}`);
+      summary.push(
+        `    rank ${r.rank}  branch ${r.branch_index}  obj=${r.objective_score}  total=${(r.total_score as number).toFixed(3)}  ${pass}`
+      );
     }
   }
   console.error(summary.join("\n"));

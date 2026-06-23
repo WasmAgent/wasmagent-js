@@ -158,12 +158,12 @@ export function codeModeTool(
 // approval lifecycle through WasmAgent's tool registry. Upstream PR draft
 // at `docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md`.
 export {
-  type CodemodeExecutorOptions,
-  createCodemodeExecutor,
   type CodemodeExecuteResult,
   type CodemodeExecutor,
+  type CodemodeExecutorOptions,
   type CodemodeProvidersOrFns,
   type CodemodeResolvedProvider,
+  createCodemodeExecutor,
 } from "./codemodeExecutor.js";
 export type { MemoryToolOptions } from "./memory.js";
 // ── D3 (2026-06-13): cross-framework memory product surface ─────────────────

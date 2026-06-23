@@ -74,7 +74,9 @@ export class ProgrammaticOrchestrator {
   async run(script: string, signal?: AbortSignal): Promise<ProgrammaticResult> {
     const scriptBytes = new TextEncoder().encode(script).byteLength;
     if (scriptBytes > this.#options.maxScriptBytes) {
-      throw new Error(`ProgrammaticOrchestrator: script size ${scriptBytes} bytes exceeds limit of ${this.#options.maxScriptBytes} bytes`);
+      throw new Error(
+        `ProgrammaticOrchestrator: script size ${scriptBytes} bytes exceeds limit of ${this.#options.maxScriptBytes} bytes`
+      );
     }
 
     const toolCalls: ToolCallRecord[] = [];
@@ -85,17 +87,22 @@ export class ProgrammaticOrchestrator {
     const callToolShim = async (name: string, args: Record<string, unknown>): Promise<string> => {
       if (signal?.aborted) throw new Error("ProgrammaticOrchestrator: aborted");
       if (toolCalls.length >= this.#options.maxToolCalls) {
-        throw new Error(`ProgrammaticOrchestrator: exceeded maxToolCalls=${this.#options.maxToolCalls}`);
+        throw new Error(
+          `ProgrammaticOrchestrator: exceeded maxToolCalls=${this.#options.maxToolCalls}`
+        );
       }
       const callId = `ptc-${toolCalls.length}-${name}`;
       const result = await this.#tools.call(
         { toolName: name, args, callId, ...(signal ? { signal } : {}) },
         this.#capabilities.extraCapabilities
       );
-      const resultText = typeof result.output === "string" ? result.output : JSON.stringify(result.output ?? "");
+      const resultText =
+        typeof result.output === "string" ? result.output : JSON.stringify(result.output ?? "");
       const resultBytes = new TextEncoder().encode(resultText).byteLength;
       if (resultBytes > this.#options.maxToolResultBytes) {
-        throw new Error(`ProgrammaticOrchestrator: tool "${name}" result size ${resultBytes} bytes exceeds limit of ${this.#options.maxToolResultBytes} bytes`);
+        throw new Error(
+          `ProgrammaticOrchestrator: tool "${name}" result size ${resultBytes} bytes exceeds limit of ${this.#options.maxToolResultBytes} bytes`
+        );
       }
       toolCalls.push({ name, args, callId, result: result.output, isError: !!result.error });
       if (result.error) {
@@ -309,7 +316,9 @@ export class ProgrammaticOrchestrator {
     }
 
     if (!completed) {
-      throw new Error(`ProgrammaticOrchestrator: exceeded maxIterations=${this.#options.maxIterations} without completing`);
+      throw new Error(
+        `ProgrammaticOrchestrator: exceeded maxIterations=${this.#options.maxIterations} without completing`
+      );
     }
 
     return output;

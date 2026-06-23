@@ -14,7 +14,7 @@
  * calls. For full agent-loop scoring use the agent-trajectory suite.
  */
 
-import { toolCallAccuracy } from "@wasmagent/core";
+import { toolCallAccuracy } from "@wasmagent/core/beta";
 import type { BenchmarkItem, BenchmarkSuite } from "../types.js";
 
 const ITEMS: BenchmarkItem[] = [

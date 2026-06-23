@@ -925,10 +925,35 @@ describe("rankRolloutCommand", () => {
   it("ranks two branches and assigns rank 1 to the higher-scoring one", async () => {
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
-    const fixture = [
-      JSON.stringify({ schema_version: "rollout-wire/v1", rollout_id: "r1", task: "t", branch_index: 0, temperature: 0.2, session_id: "s1", tool_call_sequence: [], final_answer: "good", objective_score: 1, rank: 0, total_score: 0 }),
-      JSON.stringify({ schema_version: "rollout-wire/v1", rollout_id: "r1", task: "t", branch_index: 1, temperature: 0.8, session_id: "s1", tool_call_sequence: [], final_answer: "bad", objective_score: 0, rank: 0, total_score: 0 }),
-    ].join("\n") + "\n";
+    const fixture =
+      [
+        JSON.stringify({
+          schema_version: "rollout-wire/v1",
+          rollout_id: "r1",
+          task: "t",
+          branch_index: 0,
+          temperature: 0.2,
+          session_id: "s1",
+          tool_call_sequence: [],
+          final_answer: "good",
+          objective_score: 1,
+          rank: 0,
+          total_score: 0,
+        }),
+        JSON.stringify({
+          schema_version: "rollout-wire/v1",
+          rollout_id: "r1",
+          task: "t",
+          branch_index: 1,
+          temperature: 0.8,
+          session_id: "s1",
+          tool_call_sequence: [],
+          final_answer: "bad",
+          objective_score: 0,
+          rank: 0,
+          total_score: 0,
+        }),
+      ].join("\n") + "\n";
     const inFile = path.join(tmpDir, "branches.jsonl");
     const outFile = path.join(tmpDir, "ranked.jsonl");
     await fs.writeFile(inFile, fixture);
@@ -936,7 +961,10 @@ describe("rankRolloutCommand", () => {
     await rankRolloutCommand(inFile, { out: outFile });
 
     const output = await fs.readFile(outFile, "utf8");
-    const records = output.trim().split("\n").map((l) => JSON.parse(l));
+    const records = output
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l));
     expect(records).toHaveLength(2);
     const rank1 = records.find((r: { rank: number }) => r.rank === 1);
     expect(rank1.branch_index).toBe(0);

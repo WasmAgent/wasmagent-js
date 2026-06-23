@@ -1,5 +1,18 @@
 # @agentkit-js/core
 
+## 1.0.1
+
+### Patch Changes
+
+- Post-session patch: API tier split, security hardening, and brand unification
+
+  - core: beta.ts adds FileTreeManager/globalFileTree/globalFileLock exports; ProgrammaticOrchestrator gains safety options; stable API check improved
+  - aisdk: agentkitCodemodeExecutor renamed to createCodemodeExecutor; AgentkitCodemodeExecutorOptions renamed to CodemodeExecutorOptions
+  - mastra-sandbox: agentkitMastraSandbox renamed to createMastraSandbox
+  - mcp-server: fetchHandler gains auth hook, maxBodyBytes, maxBatchSize; binary renamed wasmagent-mcp-server
+  - cli: rank-rollout command added; agentkit-evals binary renamed wasmagent-evals; fix import from core/beta
+  - otel-exporter: import types from @wasmagent/core/experimental (correct sub-path)
+
 ## 1.0.0
 
 ### Minor Changes

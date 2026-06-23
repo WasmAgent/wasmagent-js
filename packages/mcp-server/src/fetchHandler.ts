@@ -105,7 +105,7 @@ function corsHeaders(allowOrigin: string): Record<string, string> {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id",
   };
-  if (allowOrigin !== "*") headers["Vary"] = "Origin";
+  if (allowOrigin !== "*") headers.Vary = "Origin";
   return headers;
 }
 

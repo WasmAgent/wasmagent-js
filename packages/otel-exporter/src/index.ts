@@ -7,7 +7,7 @@
  *
  * Usage:
  *   import { OtlpHttpExporter } from "@wasmagent/otel-exporter";
- *   import { OtelBridge, withOtel } from "@wasmagent/core";
+ *   import { OtelBridge, withOtel } from "@wasmagent/core/experimental";
  *
  *   const exporter = new OtlpHttpExporter({ endpoint: "http://localhost:4318" });
  *   const bridge = new OtelBridge({ exporter });
@@ -30,7 +30,7 @@ import type {
   ReadableSpan,
   SpanAttributes,
   SpanExporter,
-} from "@wasmagent/core";
+} from "@wasmagent/core/experimental";
 
 export interface OtlpHttpExporterOptions {
   /**
@@ -234,10 +234,10 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
       endTimeUnixNano: endNs,
       attributes: attrs,
       status: { code: statusCode },
-      events: s.events.map((e) => ({
+      events: s.events.map((e: { name: string; timestampMs: number; attributes?: Record<string, unknown> }) => ({
         name: e.name,
         timeUnixNano: msToNs(e.timestampMs),
-        attributes: e.attributes ? attributesToOtlp(e.attributes) : [],
+        attributes: e.attributes ? attributesToOtlp(e.attributes as SpanAttributes) : [],
       })),
     };
   }
