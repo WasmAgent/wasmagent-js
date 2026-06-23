@@ -1,20 +1,20 @@
 # packages/mcp-server/Dockerfile.glama
 #
 # Used only for Glama's MCP-server health check at glama.ai/mcp/servers.
-# Boots the agentkit-mcp-server stdio binary so Glama can verify that
+# Boots the wasmagent-mcp-server stdio binary so Glama can verify that
 # the server starts, answers `initialize` and `tools/list`, and shuts
 # down cleanly. NOT a production deployment image — for production,
-# install `@agentkit-js/mcp-server` from npm and write a small
+# install `@wasmagent/mcp-server` from npm and write a small
 # `server.ts` that calls `runStdio()` with a real tool registry.
 #
 # Build (locally, to verify the image works before submitting to
 # Glama):
 #
-#   docker build -f packages/mcp-server/Dockerfile.glama -t agentkit-mcp .
-#   echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"glama-test","version":"0"}}}' | docker run --rm -i agentkit-mcp
+#   docker build -f packages/mcp-server/Dockerfile.glama -t wasmagent-mcp .
+#   echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"glama-test","version":"0"}}}' | docker run --rm -i wasmagent-mcp
 #
 # Expected: a single JSON-RPC response on stdout advertising
-# protocolVersion 2025-11-25 and the agentkit-mcp-server serverInfo.
+# protocolVersion 2025-11-25 and the wasmagent-mcp-server serverInfo.
 
 FROM node:20-slim
 
@@ -32,9 +32,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends git ca-certific
 # updated for a new release, bump this SHA so the listing image is
 # reproducible.
 ARG GIT_REF=main
-RUN git clone --depth 1 --branch ${GIT_REF} https://github.com/telleroutlook/agentkit-js.git . \
- && bun install --frozen-lockfile || bun install \
- && bun run build
+RUN git clone --depth 1 --branch ${GIT_REF} https://github.com/WasmAgent/wasmagent-js.git . \
+ && bun install --no-frozen-lockfile \
+ && bun run --filter @wasmagent/agent-prompts build \
+ && bun run --filter @wasmagent/core build \
+ && bun run --filter @wasmagent/mcp-server build
 
 # Glama exec's the container with no args; the bin entry is responsible
 # for starting the stdio server. The bin path resolves to
