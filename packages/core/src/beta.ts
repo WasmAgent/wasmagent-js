@@ -142,3 +142,7 @@ export type {
   FileVersion,
   ScoredFile,
 } from "./workspace/FileTreeManager.js";
+export {
+  FileTreeManager,
+  globalFileTree,
+} from "./workspace/FileTreeManager.js";
