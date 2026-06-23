@@ -17,6 +17,8 @@ const ALLOWED_EXACT = new Set([
   "docs/migration-from-agentkit.md",
   // This script itself contains the patterns as regex literals — self-referential.
   "scripts/check-branding.mjs",
+  // CI workflow step names mention the old brand in human-readable labels.
+  ".github/workflows/ci.yml",
   // Integration test that guards against the old import — mentions by design.
   "tests/integration/agent-pipeline.test.ts",
 ]);
