@@ -1,5 +1,11 @@
 # @agentkit-js/react
 
+## 1.0.2
+
+### Patch Changes
+
+- useAgentRun: headers option now accepts `() => Record<string, string>` factory so session IDs can be injected on every reconnect
+
 ## 1.0.0
 
 ### Minor Changes
