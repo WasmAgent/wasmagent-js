@@ -1,19 +1,64 @@
-# Upstream PR drafts (D1 follow-up + 2026-06-12 Direction 1)
+# Upstream PR drafts
 
-> Last refreshed: **2026-06-12** (post-maintainer-response update).
+> Last refreshed: **2026-06-23**.
 
-This directory holds **drafts**, three of which have been filed
-(one PR — open with maintainer-bot conditions; one issue — closed
-by Mastra maintainer with explicit "no third-party additions";
-one issue — open, no response yet) and one new high-priority
-draft awaiting a pre-submission shim.
+This directory holds drafts and filed records for upstream contributions.
 
 The strategic context lives in
 [`../2026-06-competitiveness.md`](../2026-06-competitiveness.md) (L1
-"Become the embedded runtime"). The 2026-06-12 optimization brief's
-Direction 1 explicitly raises this from "appendix" to "highest
-leverage" — a single landed entry in an upstream's official docs is
-worth more than an in-repo adapter.
+"Become the embedded runtime"). A single landed entry in an upstream's official
+docs is worth more than an in-repo adapter.
+
+## Submission record
+
+| Draft | Target repo | Status |
+|-------|-------------|--------|
+| [`awesome-mcp-servers-frameworks-entry.md`](awesome-mcp-servers-frameworks-entry.md) | `punkpeye/awesome-mcp-servers` | ✅ **MERGED** PR [#7910](https://github.com/punkpeye/awesome-mcp-servers/pull/7910) |
+| [`vercel-ai-sdk-mcp-example.md`](vercel-ai-sdk-mcp-example.md) | `vercel/ai` | 🟡 **OPEN** PR [#16318](https://github.com/vercel/ai/pull/16318) — filed 2026-06-23, bot review passed, awaiting maintainer |
+| [`cloudflare-codemode-byo-executor.md`](cloudflare-codemode-byo-executor.md) | `cloudflare/agents` | 🔴 **CLOSED** issue [#1771](https://github.com/cloudflare/agents/issues/1771) — no maintainer action; re-pitch after vercel/ai lands |
+| [`mastra-mcp-overview-link.md`](mastra-mcp-overview-link.md) | `mastra-ai/mastra` | 🔴 **CLOSED** issue [#17884](https://github.com/mastra-ai/mastra/issues/17884) — "no third-party additions at the moment"; re-pitch after benchmark lands |
+| [`elizaos-sandboxed-action.md`](elizaos-sandboxed-action.md) | `elizaOS/eliza` | 🟡 **OPEN** issue filed 2026-06-23 |
+| [`langchainjs-sandboxed-tool-example.md`](langchainjs-sandboxed-tool-example.md) | `langchain-ai/langchainjs` | 🟡 **OPEN** issue filed 2026-06-23 |
+
+## What we learned from researching target repos (2026-06-23)
+
+### elizaOS — patterns worth adopting
+
+- **`descriptionCompressed`** on Action: a brevity-optimized description used
+  in token-constrained contexts (e.g. deferred tool search). Adopted into
+  `ToolDefinition.descriptionCompressed` + `ToolRegistry.toJsonSchema({ compact })`.
+- **`ActionResult.userFacingText` + `verifiedUserFacing`**: separates diagnostic
+  text from the user-facing reply; "verified" marks canonical replies the model
+  must not paraphrase. Good pattern for `ToolResult` if we ever add a UI layer.
+- **`cleanup?: () => void`** on ActionResult: deterministic resource cleanup
+  without requiring try/finally in every handler. Similar to our `[Symbol.asyncDispose]`
+  on kernels but at the tool-result level.
+- **`suppressEarlyReply`** on Action: suppresses a draft reply for async actions
+  (e.g. sub-agent spawn). Maps to our multi-step agent flow.
+
+### LangChain.js — patterns worth adopting
+
+- **`responseFormat: "content_and_artifact"`** on Tool: lets a tool return both
+  a string (for the model context) and a structured artifact (for the caller).
+  This is exactly what `toModelOutput` + `ToolResult.output` achieve in our
+  codebase, but LangChain names it more explicitly.
+- **`returnDirect`** on Tool: stops the agent loop immediately after one tool
+  call. Maps to our `StopCondition` but at the per-tool level — simpler for
+  simple use cases.
+
+### AutoGen — not applicable
+
+AutoGen is Python-only (TypeScript is only the Studio UI). Our kernels
+already support Python via PyodideKernel; a Python binding is the right
+integration shape, not a JS executor. Skip.
+
+## How a contributor picks an upstream to push on
+
+1. Pick the upstream community you're already embedded in.
+2. Read the corresponding draft below.
+3. Open an issue in the target repo first to get the maintainers'
+   content-shape preference.
+4. Follow up with the PR they ask for.
 
 ## Submission record
 

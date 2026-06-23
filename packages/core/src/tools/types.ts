@@ -29,6 +29,16 @@ export interface AgentPrincipal {
 export interface ToolDefinition<TInput = unknown, TOutput = unknown> {
   name: string;
   description: string;
+  /**
+   * Brevity-optimized description for token-constrained contexts.
+   * When set, `toJsonSchema()` emits this instead of `description` when
+   * the registry is in compact mode (ToolRegistry.toJsonSchema({ compact: true })).
+   * Useful when the same tool serves both a detailed system-prompt view and
+   * a deferred/search-result view where every token counts.
+   *
+   * Inspired by elizaOS Action.descriptionCompressed.
+   */
+  descriptionCompressed?: string;
   /** Zod schema — compile-time + call-time validation. */
   inputSchema: ZodSchema<TInput>;
   outputSchema: ZodSchema<TOutput>;

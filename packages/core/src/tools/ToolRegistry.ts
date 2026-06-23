@@ -233,15 +233,21 @@ export class ToolRegistry {
    * JSON schema for all non-deferred tools — passed to model as tool definitions.
    * Deferred tools (deferLoading: true) are excluded; they are loaded on-demand.
    * Sorted by name for deterministic cache keys across registrations.
+   *
+   * @param opts.compact — when true, use `descriptionCompressed` instead of
+   *   `description` when available. Useful for deferred/search contexts where
+   *   token budget is tight.
    */
-  toJsonSchema(): object[] {
+  toJsonSchema(opts?: { compact?: boolean }): object[] {
+    const compact = opts?.compact ?? false;
     return [...this.#tools.values()]
       .filter((t) => !t.deferLoading)
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((t) => {
+        const desc = (compact && t.descriptionCompressed) ? t.descriptionCompressed : t.description;
         const schema: Record<string, unknown> = {
           name: t.name,
-          description: t.description,
+          description: desc,
           input_schema:
             t.rawInputJsonSchema ?? (t.inputSchema ? zodToJsonSchema(t.inputSchema) : {}),
         };
@@ -260,6 +266,8 @@ export class ToolRegistry {
   /**
    * L1-1: JSON schema for deferred tools only.
    * Used by AnthropicModel to inject tool_search_tool_regex when deferLoading tools exist.
+   * Always uses compact description when available — deferred tool search results are
+   * the primary token-constrained context.
    */
   toDeferredJsonSchema(): object[] {
     return [...this.#tools.values()]
@@ -267,7 +275,7 @@ export class ToolRegistry {
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((t) => ({
         name: t.name,
-        description: t.description,
+        description: (t.descriptionCompressed ?? t.description),
         input_schema: t.rawInputJsonSchema ?? (t.inputSchema ? zodToJsonSchema(t.inputSchema) : {}),
       }));
   }
