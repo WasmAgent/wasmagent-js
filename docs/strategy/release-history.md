@@ -1,18 +1,30 @@
-# Release history — agentkit-js
+# Release history — wasmagent-js
 
-> A lightweight ledger of what shipped, when, and why. The repository
-> intentionally has not declared 1.0 yet (see [`docs/strategy/api-stability.md`](api-stability.md)
-> for the freeze surface and [`ROADMAP.md`](../../ROADMAP.md) for the
-> 2026-12-15 1.0 calendar). Until then, this file is the public record
-> of what each 0.x release did and which axes from the strategy memo it
-> moved.
->
-> **Format**: latest first. Each entry pins the *npm version line on the
-> day of the entry* (most prominent package on the left), the change
-> headline, the strategy axis (S1 / S1' / S2 / S3 / S4) it serves, and
-> the commit range. We deliberately do not promise SemVer guarantees on
-> 0.x; the freeze surface is documented separately in
-> [`docs/strategy/api-stability.md`](api-stability.md).
+> A lightweight ledger of what shipped, when, and why.
+
+## 2026-06-23 — RLAIF pipeline, security fixes, stable API, 1.0.0
+
+| Package | Version |
+|---------|---------|
+| `@wasmagent/core` | 1.0.0 |
+| All `@wasmagent/*` packages | 1.0.0 |
+
+**What shipped**
+
+- RLAIF pipeline: `RolloutForkRunner`, `RolloutRanker`, `BuildPassesVerifier`, `VisualAssertVerifier`, `ScalarLLMJudgeVerifier`, `KernelPool`, `RolloutMemoryStore`
+- `@wasmagent/core/beta` and `@wasmagent/core/experimental` subpath exports
+- `ApprovalPolicy`, `ApprovalRule`, `WriteOpKind`, `PolicyPresets`, `applyApprovalPolicy`
+- `BuildResult`, `VisualResult` types for bscode adapter
+- Stable API snapshot gate (`scripts/check-stable-api.mjs`) in CI
+- Bundle size gate (`scripts/check-bundle-budget.mjs`) in CI
+- `replace-workspace-deps.mjs`: fixes `workspace:*` leaking into npm tarballs
+- Docs: ecosystem overview, data pipeline guide, getting-started steps 6+7
+- Claims registry (`docs/claims/claims.yaml`)
+
+**Breaking from 0.2.0**: None at the API level. `workspace:*` deps in published
+packages are now correctly replaced with `^1.0.0` version ranges.
+
+---
 
 ## 2026-06-17 — strategy update + Glama 0.2.0 release
 
