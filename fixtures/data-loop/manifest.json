@@ -1,0 +1,17 @@
+{
+  "schema_version": "data-loop-fixture/v1",
+  "created_at": "2026-06-23",
+  "description": "Minimal synthetic fixture for data-loop CI smoke tests",
+  "records": {
+    "rollout-branches.v1.jsonl": {
+      "count": 2,
+      "rollout_ids": ["fixture-rollout-001"],
+      "branches_per_rollout": 2
+    }
+  },
+  "expected": {
+    "dpo_pairs": 1,
+    "ppo_records": 2,
+    "g3_should_skip": true
+  }
+}

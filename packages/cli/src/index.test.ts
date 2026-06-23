@@ -16,6 +16,7 @@ import {
   generateToolTemplate,
   loadCriteriaFromFile,
   parseEventsFilter,
+  rankRolloutCommand,
   runCommand,
 } from "./index.js";
 
@@ -237,9 +238,9 @@ describe("generateTestTemplate", () => {
     expect(ts).toContain("WebSearch");
   });
 
-  it("includes vitest imports", () => {
+  it("includes bun:test imports", () => {
     const ts = generateTestTemplate("my-tool", "MyTool");
-    expect(ts).toContain("vitest");
+    expect(ts).toContain("bun:test");
   });
 
   it("validates name and description", () => {
@@ -891,5 +892,62 @@ describe("loadCriteriaFromFile", () => {
     await fs.writeFile(file, JSON.stringify({ foo: "bar" }), "utf8");
     await expect(loadCriteriaFromFile(file)).rejects.toThrow("__exit__");
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("no Criterion entries"));
+  });
+});
+
+// ── rankRolloutCommand ────────────────────────────────────────────────────────
+
+describe("rankRolloutCommand", () => {
+  let tmpDir: string;
+  let exitSpy: ReturnType<typeof spyOn>;
+  let consoleErrorSpy: ReturnType<typeof spyOn>;
+
+  beforeEach(async () => {
+    const fs = await import("node:fs/promises");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "wasmagent-rank-test-"));
+    exitSpy = spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("__exit__");
+    });
+    consoleErrorSpy = spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  afterEach(async () => {
+    exitSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+    if (tmpDir) {
+      const fs = await import("node:fs/promises");
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("ranks two branches and assigns rank 1 to the higher-scoring one", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const fixture = [
+      JSON.stringify({ schema_version: "rollout-wire/v1", rollout_id: "r1", task: "t", branch_index: 0, temperature: 0.2, session_id: "s1", tool_call_sequence: [], final_answer: "good", objective_score: 1, rank: 0, total_score: 0 }),
+      JSON.stringify({ schema_version: "rollout-wire/v1", rollout_id: "r1", task: "t", branch_index: 1, temperature: 0.8, session_id: "s1", tool_call_sequence: [], final_answer: "bad", objective_score: 0, rank: 0, total_score: 0 }),
+    ].join("\n") + "\n";
+    const inFile = path.join(tmpDir, "branches.jsonl");
+    const outFile = path.join(tmpDir, "ranked.jsonl");
+    await fs.writeFile(inFile, fixture);
+
+    await rankRolloutCommand(inFile, { out: outFile });
+
+    const output = await fs.readFile(outFile, "utf8");
+    const records = output.trim().split("\n").map((l) => JSON.parse(l));
+    expect(records).toHaveLength(2);
+    const rank1 = records.find((r: { rank: number }) => r.rank === 1);
+    expect(rank1.branch_index).toBe(0);
+    expect(rank1.objective_score).toBe(1);
+    const rank2 = records.find((r: { rank: number }) => r.rank === 2);
+    expect(rank2.branch_index).toBe(1);
+    expect(rank2.objective_score).toBe(0);
+  });
+
+  it("errors when no file path is provided", async () => {
+    await expect(rankRolloutCommand(undefined, {})).rejects.toThrow("__exit__");
+    expect(exitSpy).toHaveBeenCalledWith(1);
   });
 });

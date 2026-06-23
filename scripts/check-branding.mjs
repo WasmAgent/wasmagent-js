@@ -15,6 +15,8 @@ import { execSync } from "node:child_process";
 const ALLOWED_EXACT = new Set([
   "bun.lock",
   "docs/migration-from-agentkit.md",
+  // This script itself contains the patterns as regex literals — self-referential.
+  "scripts/check-branding.mjs",
   // Integration test that guards against the old import — mentions by design.
   "tests/integration/agent-pipeline.test.ts",
 ]);

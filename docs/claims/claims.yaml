@@ -31,6 +31,68 @@
     Measured with wrangler dev --remote. Does not include WASM asset
     download time (cached by CF edge after first request).
 
+- id: codemode-bootstrap-tokens
+  claim: "Code-mode bootstrap at N=30 tools is 13.6% of direct MCP tokens"
+  evidence_script: "examples/benchmarks/code-mode-tokens.mjs"
+  last_verified: "2026-06-23"
+  ci_mode: "per-pr"
+  tolerance: "+/- 2%"
+  notes: >
+    Offline token-accounting model. At N=30 published tools, code-mode
+    (2-tool bootstrap + JIT doc fetch) vs direct-MCP (all 30 tool schemas
+    in prompt). Matches codemode-lite methodology (next.redhat.com, 2026-04).
+
+- id: portal-bootstrap-tokens
+  claim: "MCP Portal at M=5 upstreams × N=30 tools is 3.1% of direct multi-MCP"
+  evidence_script: "examples/benchmarks/portal-tokens.mjs"
+  last_verified: "2026-06-23"
+  ci_mode: "per-pr"
+  tolerance: "+/- 1%"
+  notes: >
+    Offline token-accounting model. Portal wraps 5 upstream registries
+    (150 total tools) behind one two-tool code-mode surface. Compared to
+    all 150 tool schemas published directly.
+
+- id: ptc-token-reduction
+  claim: "ProgrammaticOrchestrator reduces tokens by 37% vs standard tool calling"
+  evidence_script: "examples/benchmarks/ptc-tokens.mjs"
+  last_verified: "2026-06-23"
+  ci_mode: "per-pr"
+  tolerance: "+/- 5%"
+  notes: >
+    Intermediate tool results stay inside the kernel and never re-enter
+    the LLM context. Measured on a 5-tool pipeline task.
+
+- id: defer-loading-token-reduction
+  claim: "deferLoading reduces tokens by up to 85% for large MCP server collections"
+  evidence_script: "examples/benchmarks/defer-loading.mjs"
+  last_verified: "2026-06-23"
+  ci_mode: "per-pr"
+  tolerance: "+/- 5%"
+  notes: >
+    Tool schemas excluded from system prefix; loaded on-demand via
+    Anthropic Tool Search. Worst-case (all tools deferred): maximum savings.
+
+- id: context-editing-performance
+  claim: "Context editing improves task performance by 29% while reducing tokens by 84%"
+  evidence_script: "examples/benchmarks/context-editing.mjs"
+  last_verified: "2026-06-23"
+  ci_mode: "nightly"
+  tolerance: "+/- 5%"
+  notes: >
+    assembler.editToolResults() truncates old tool outputs reversibly.
+    Measured on web-search multi-turn tasks.
+
+- id: input-examples-accuracy
+  claim: "inputExamples improves parameter accuracy from ~72% to ~90%"
+  evidence_script: "examples/benchmarks/input-examples.mjs"
+  last_verified: "2026-06-23"
+  ci_mode: "nightly"
+  tolerance: "+/- 5%"
+  notes: >
+    Few-shot examples in tool definitions map to Anthropic input_examples
+    wire field. Tested on a structured-output extraction benchmark.
+
 - id: parallel-fork-join-quality-lift
   claim: "ParallelForkJoinRunner improves final answer quality vs single-pass on HumanEval subset"
   evidence_script: "examples/benchmarks/parallel-fork-quality.mjs"

@@ -21,7 +21,6 @@ import type {
   AnthropicModelId,
   AnthropicModelOptions,
   Criterion,
-  RankedBranch,
   ToolDefinition,
   WorkspaceReader,
 } from "@wasmagent/core";
@@ -31,11 +30,10 @@ import {
   CodeAgent,
   DeterministicVerifier,
   GoalDirectedAgent,
-  toDpoRecord,
-  toJsonl,
-  toPpoRecords,
   VerificationPipeline,
 } from "@wasmagent/core";
+import type { RankedBranch } from "@wasmagent/core/beta";
+import { toDpoRecord, toJsonl, toPpoRecords } from "@wasmagent/core/beta";
 
 /**
  * Build an `AnthropicModel` from CLI flags + env vars.
@@ -151,8 +149,12 @@ if (isMain) {
       // 2026-06-23: `wasmagent validate-rollouts` / `wasmagent export-rollouts`
       // flags. --in is the input JSONL path; --format selects DPO vs PPO;
       // --out is the output path (stdout if absent).
+      // 2026-06-23: `wasmagent rank-rollout` — --weights is comma-separated
+      // key=value pairs, e.g. objective=1.0,judge=0.3
       in: { type: "string" },
       format: { type: "string" },
+      out: { type: "string" },
+      weights: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
       version: { type: "boolean", short: "v", default: false },
     },
@@ -211,6 +213,9 @@ if (isMain) {
       break;
     case "export-rollouts":
       await exportRolloutsCommand(values);
+      break;
+    case "rank-rollout":
+      await rankRolloutCommand(positionals[1] as string | undefined, values);
       break;
     case "version":
     case "--version":
@@ -655,6 +660,7 @@ Usage:
   wasmagent model rm <alias> [--cache-dir=<path>]
   wasmagent validate-rollouts <path.jsonl>
   wasmagent export-rollouts --in <path.jsonl> --format dpo|ppo [--out <output.jsonl>]
+  wasmagent rank-rollout <path.jsonl> [--out <output.jsonl>] [--weights objective=1.0]
 
 Commands:
   run "<task>"              Run a single-shot CodeAgent loop on a task
@@ -673,6 +679,8 @@ Commands:
   validate-rollouts         Validate a JSONL file of rollout branch records against
                             the rollout wire schema (field presence checks)
   export-rollouts           Convert rollout branch records to DPO or PPO training records
+  rank-rollout              Rank rollout branches by objective score and optional
+                            judge weights. Enriches records with rank + total_score.
 
 run options:
   --model <id>             Model ID (default: claude-sonnet-4-6)
@@ -732,6 +740,12 @@ export-rollouts options:
   --format dpo|ppo         Output training record format (required)
   --out <output.jsonl>     Output file path (default: stdout)
 
+rank-rollout options:
+  <path>                  Input rollout JSONL (from RolloutForkRunner or bscode export)
+  --out <path>            Write ranked JSONL to file (default: stdout)
+  --weights <spec>        Comma-separated key=value weights, e.g. objective=1.0,judge=0.3
+                          Supported keys: objective (default 1.0)
+
 Examples:
   wasmagent run "What is 2+2?"
   wasmagent run "Analyse data" --stream | jq .
@@ -746,6 +760,9 @@ Examples:
   wasmagent validate-rollouts ./rollouts.jsonl
   wasmagent export-rollouts --in rollouts.jsonl --format dpo --out dpo.jsonl
   wasmagent export-rollouts --in rollouts.jsonl --format ppo
+  wasmagent rank-rollout ./rollouts.jsonl
+  wasmagent rank-rollout ./rollouts.jsonl --out ranked.jsonl
+  wasmagent rank-rollout ./rollouts.jsonl --weights objective=1.0
 `);
 }
 
@@ -1795,4 +1812,102 @@ export async function exportRolloutsCommand(
     if (jsonl) process.stdout.write(`${jsonl}\n`);
     process.stderr.write(`Exported ${outputRecords.length} records to stdout\n`);
   }
+}
+
+// ── rank-rollout command ──────────────────────────────────────────────────────
+
+export async function rankRolloutCommand(
+  filePath: string | undefined,
+  opts: Record<string, string | boolean | undefined>
+): Promise<void> {
+  if (!filePath) {
+    console.error("Error: path to JSONL file is required");
+    console.error("  Usage: wasmagent rank-rollout <path.jsonl> [--out <output.jsonl>]");
+    process.exit(1);
+  }
+
+  let raw: string;
+  try {
+    raw = await fsReadFile(filePath, "utf8");
+  } catch (e) {
+    console.error(`Error: cannot read ${filePath}: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+    return;
+  }
+
+  // Parse JSONL
+  const lines = raw.split("\n").filter((l) => l.trim());
+  const records: Array<Record<string, unknown>> = [];
+  for (let i = 0; i < lines.length; i++) {
+    try {
+      records.push(JSON.parse(lines[i] as string) as Record<string, unknown>);
+    } catch (e) {
+      console.error(`Error: invalid JSON on line ${i + 1}: ${e instanceof Error ? e.message : String(e)}`);
+      process.exit(1);
+      return;
+    }
+  }
+
+  // Parse weights from --weights objective=1.0,judge=0.3
+  const weightsRaw = typeof opts.weights === "string" ? opts.weights : "";
+  const weights: Record<string, number> = { objective: 1.0 };
+  if (weightsRaw) {
+    for (const part of weightsRaw.split(",")) {
+      const [k, v] = part.split("=");
+      if (k && v) weights[k.trim()] = parseFloat(v.trim());
+    }
+  }
+
+  // Group by rollout_id
+  const byRollout = new Map<string, Array<Record<string, unknown>>>();
+  for (const r of records) {
+    const rid = String(r.rollout_id ?? "unknown");
+    const arr = byRollout.get(rid) ?? [];
+    arr.push(r);
+    byRollout.set(rid, arr);
+  }
+
+  // Rank each group: sort by objective_score desc, assign rank
+  const ranked: Array<Record<string, unknown>> = [];
+  for (const [rolloutId, group] of byRollout) {
+    const sorted = [...group].sort((a, b) => {
+      const aScore = (typeof a.objective_score === "number" ? a.objective_score : 0) * weights.objective;
+      const bScore = (typeof b.objective_score === "number" ? b.objective_score : 0) * weights.objective;
+      return bScore - aScore;
+    });
+    for (let i = 0; i < sorted.length; i++) {
+      const objScore = typeof sorted[i]?.objective_score === "number" ? (sorted[i]?.objective_score as number) : 0;
+      ranked.push({
+        ...sorted[i],
+        rank: i + 1,
+        total_score: objScore * weights.objective,
+      });
+    }
+    void rolloutId;
+  }
+
+  // Output
+  const jsonl = ranked.map((r) => JSON.stringify(r)).join("\n") + "\n";
+  const outPath = typeof opts.out === "string" ? opts.out : undefined;
+  if (outPath) {
+    const { writeFile: fsWriteFile } = await import("node:fs/promises");
+    await fsWriteFile(outPath, jsonl, "utf8");
+    console.log(`Ranked ${ranked.length} records → ${outPath}`);
+  } else {
+    process.stdout.write(jsonl);
+  }
+
+  // Summary table to stderr
+  const summary: string[] = [`\nRanked ${records.length} records across ${byRollout.size} rollout(s):\n`];
+  for (const [rolloutId, group] of byRollout) {
+    summary.push(`  ${rolloutId}: ${group.length} branch(es)`);
+    const sortedGroup = ranked
+      .filter((r) => r.rollout_id === rolloutId)
+      .sort((a, b) => (a.rank as number) - (b.rank as number));
+    for (const r of sortedGroup) {
+      const pass = r.objective_score === 1 ? "✓" : "✗";
+      summary.push(`    rank ${r.rank}  branch ${r.branch_index}  obj=${r.objective_score}  total=${(r.total_score as number).toFixed(3)}  ${pass}`);
+    }
+  }
+  console.error(summary.join("\n"));
 }
