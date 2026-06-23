@@ -52,7 +52,7 @@ cd my-agent && npm install && npm start
 
 ## Nine differentiation axes — at a glance
 
-> **What this table is.** The eight surfaces where wasmagent is doing
+> **What this table is.** The nine surfaces where wasmagent is doing
 > something the other JS agent frameworks (Vercel AI SDK, OpenAI Agents
 > JS, Mastra, LangGraph.js, CF Agents SDK, smolagents-ts) are not — at
 > least not all in one place. Each row links to the guide that explains
@@ -138,7 +138,7 @@ There are several mature TypeScript agent frameworks. Here is an honest assessme
 - **Time-travel debugger (A2)** — `@wasmagent/devtools` exposes the existing `EventLog` + `Checkpointer` data through a navigable step timeline + "fork from any step" UI. LangGraph Studio's headline feature, shipped as a tiny opt-in package (logic core ~250 LOC, React UI optional).
 - **Skills + lifecycle hooks (A3)** — `SkillRegistry` for progressive instruction/tool disclosure (Claude Agent SDK / CrewAI v1.12 convention). `ToolPostHook` chain (redact, truncate, audit) sits beside the existing `ToolGuardrail` — pre/post symmetry without confusing block vs transform semantics.
 - **Multi-criterion LLM judges (A4)** — `judgeScorer` extends `llmJudge` with weighted criterion-level scoring + configurable scale. Two built-in judges (`trajectoryQualityJudge`, `answerCompletenessJudge`) work with any cheap Model adapter so judges run on Haiku/Doubao while the agent stays on Sonnet/Opus.
-- **Reproducible benchmarks** — Every percentage in this README (`−37%`, `72→90%`, `−85%`, `−84%`) is verified by an offline benchmark in [`examples/benchmarks/`](examples/benchmarks/). Run `pnpm bench` to reproduce. CI fails the PR if any number drifts outside its tolerance.
+- **Reproducible benchmarks** — Every percentage in this README (`−37%`, `72→90%`, `−85%`, `−84%`) is verified by an offline benchmark in [`examples/benchmarks/`](examples/benchmarks/). Run `bun run bench` to reproduce. CI fails the PR if any number drifts outside its tolerance.
 
 ### Honest caveats
 
@@ -148,7 +148,7 @@ wasmagent is early-stage. The differentiating features (code execution kernels, 
 
 | | Number | Verified by |
 |---|---|---|
-| Tests passing (all packages) | **1569** | `bun run test` (CI matrix on every push) — `@wasmagent/core` 853 · `@wasmagent/mcp-server` 47 · `@wasmagent/devtools` 34 · `@wasmagent/evals-runner` 92 · `@wasmagent/aisdk` 17 · `@wasmagent/cli` 49 · `@wasmagent/cloudflare-worker` 73 · `@wasmagent/openai-agents` 6 · `@wasmagent/mastra-sandbox` 4 · others 394 |
+| Tests passing (all packages) | **1578** | `bun run test` (CI matrix on every push) — `@wasmagent/core` 1006 · `@wasmagent/mcp-server` 47 · `@wasmagent/devtools` 34 · `@wasmagent/evals-runner` 92 · `@wasmagent/aisdk` 17 · `@wasmagent/cli` 49 · `@wasmagent/cloudflare-worker` 78 · `@wasmagent/openai-agents` 6 · `@wasmagent/mastra-sandbox` 4 · others 245 |
 | README percentages reproducible | **8 / 8** | `bun run bench` — runs in CI; non-zero exit blocks the PR (incl. A1 ≤25% target + S1/A1 code-mode ≤50% target + D1 Portal ≤10% / ≤66.7%) |
 | Cross-process kill-and-resume (A1 DoD ①) | ✓ Redis + ✓ Cloudflare KV + ✓ Durable Object | `redis.test.ts` + `kvAdapters.test.ts` |
 | SSE Last-Event-ID gap-free replay (A2 DoD ①) | ✓ | `EventLog.test.ts` round-trip test |
@@ -792,13 +792,13 @@ console.log(toolCallCount);  // e.g. 2 — intermediate results stayed in the ke
 ## Development
 
 ```bash
-pnpm install
-pnpm build
-pnpm test
-pnpm typecheck
+bun install
+bun run build
+bun test packages/
+bun run typecheck
 
 # Reproduce every percentage in the "Differentiated" section above.
-pnpm bench
+bun run bench
 
 # Cloudflare Worker local dev
 cd packages/cloudflare-worker && wrangler dev
