@@ -234,11 +234,13 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
       endTimeUnixNano: endNs,
       attributes: attrs,
       status: { code: statusCode },
-      events: s.events.map((e: { name: string; timestampMs: number; attributes?: Record<string, unknown> }) => ({
-        name: e.name,
-        timeUnixNano: msToNs(e.timestampMs),
-        attributes: e.attributes ? attributesToOtlp(e.attributes as SpanAttributes) : [],
-      })),
+      events: s.events.map(
+        (e: { name: string; timestampMs: number; attributes?: Record<string, unknown> }) => ({
+          name: e.name,
+          timeUnixNano: msToNs(e.timestampMs),
+          attributes: e.attributes ? attributesToOtlp(e.attributes as SpanAttributes) : [],
+        })
+      ),
     };
   }
 
