@@ -13,6 +13,13 @@ wasmagent stays **independent**: this package is the *referee*, not the
 (McNemar exact / Wilson CI / paired bootstrap / G1 gate) regardless of
 which framework produced the traces.
 
+## Stability: beta
+
+This package is in **beta**. The public interface (`BenchmarkSuite`, `Scorer`, `ModelProvider`,
+`runEvaluation`, `renderReportMarkdown`) is stable for production use. Statistical primitives
+(`mcnemarExact`, `wilsonCI`, `pairedBootstrap`, `buildG1Report`) are stable. Reference suite
+item sets and scoring logic may be refined in minor releases.
+
 ## Why this exists
 
 The accuracy-only benchmarks academic projects ship (GSM8K, IFEval,

@@ -79,4 +79,40 @@ describe("data-loop fixture", () => {
       expect(sorted[0].total_score).toBeGreaterThan(sorted[1].total_score);
     }
   });
+
+  it("ranked-rollouts.v1.jsonl has expected record count", () => {
+    const manifest = JSON.parse(
+      readFileSync(join(FIXTURE_DIR, "manifest.json"), "utf8")
+    ) as { records: Record<string, { count: number }> };
+    const records = readJsonl("ranked-rollouts.v1.jsonl");
+    expect(records.length).toBe(manifest.records["ranked-rollouts.v1.jsonl"].count);
+    expect(records.length).toBe(2);
+  });
+
+  it("dpo-training.v1.jsonl has expected record count", () => {
+    const manifest = JSON.parse(
+      readFileSync(join(FIXTURE_DIR, "manifest.json"), "utf8")
+    ) as { records: Record<string, { count: number }> };
+    const records = readJsonl("dpo-training.v1.jsonl");
+    expect(records.length).toBe(manifest.records["dpo-training.v1.jsonl"].count);
+    expect(records.length).toBe(1);
+  });
+
+  it("ppo-training.v1.jsonl has expected record count", () => {
+    const manifest = JSON.parse(
+      readFileSync(join(FIXTURE_DIR, "manifest.json"), "utf8")
+    ) as { records: Record<string, { count: number }> };
+    const records = readJsonl("ppo-training.v1.jsonl");
+    expect(records.length).toBe(manifest.records["ppo-training.v1.jsonl"].count);
+    expect(records.length).toBe(2);
+  });
+
+  it("eval-items.v1.jsonl has expected record count", () => {
+    const manifest = JSON.parse(
+      readFileSync(join(FIXTURE_DIR, "manifest.json"), "utf8")
+    ) as { records: Record<string, { count: number }> };
+    const records = readJsonl("eval-items.v1.jsonl");
+    expect(records.length).toBe(manifest.records["eval-items.v1.jsonl"].count);
+    expect(records.length).toBe(2);
+  });
 });

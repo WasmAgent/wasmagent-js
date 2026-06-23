@@ -36,8 +36,11 @@ export type AgentRunStatus = "idle" | "running" | "complete" | "error";
 export interface UseAgentRunOptions {
   /** POST /run endpoint URL. Default: "/run". */
   endpoint?: string;
-  /** Extra headers to send with the request. */
-  headers?: Record<string, string>;
+  /** Extra headers to send with the request.
+   * May be a plain object (evaluated once) or a function that is called on
+   * each request / reconnect so that session IDs or auth tokens can be
+   * injected dynamically. */
+  headers?: Record<string, string> | (() => Record<string, string>);
   /** Called whenever a new AgentEvent is received. */
   onEvent?: (event: AgentEvent) => void;
   /**
@@ -162,9 +165,13 @@ export function useAgentRun(
           | { kind: "interrupted" };
         const attemptStream = async (): Promise<AttemptOutcome> => {
           // Build headers, including Last-Event-ID on retries.
+          const resolvedHeaders =
+            typeof resolvedOpts.headers === "function"
+              ? resolvedOpts.headers()
+              : (resolvedOpts.headers ?? {});
           const reqHeaders: Record<string, string> = {
             "Content-Type": "application/json",
-            ...resolvedOpts.headers,
+            ...resolvedHeaders,
           };
           if (lastEventId) reqHeaders["Last-Event-ID"] = lastEventId;
 

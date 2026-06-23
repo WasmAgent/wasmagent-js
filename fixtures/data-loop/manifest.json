@@ -3,15 +3,16 @@
   "created_at": "2026-06-23",
   "description": "Minimal synthetic fixture for data-loop CI smoke tests",
   "records": {
-    "rollout-branches.v1.jsonl": {
-      "count": 2,
-      "rollout_ids": ["fixture-rollout-001"],
-      "branches_per_rollout": 2
-    }
+    "rollout-branches.v1.jsonl": { "count": 2, "rollout_ids": ["fixture-rollout-001"], "branches_per_rollout": 2 },
+    "ranked-rollouts.v1.jsonl": { "count": 2, "rollout_ids": ["fixture-rollout-001"], "branches_per_rollout": 2 },
+    "dpo-training.v1.jsonl": { "count": 1 },
+    "ppo-training.v1.jsonl": { "count": 2 },
+    "eval-items.v1.jsonl": { "count": 2, "note": "G3 check items — no overlap with rollout tasks" }
   },
   "expected": {
     "dpo_pairs": 1,
     "ppo_records": 2,
-    "g3_should_skip": true
+    "g3_should_skip": false,
+    "g3_eval_items": 2
   }
 }

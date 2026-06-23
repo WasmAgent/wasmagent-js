@@ -4,6 +4,11 @@ OpenTelemetry exporter — wire wasmagent `EventLog` into Jaeger / Tempo / any O
 
 > Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.
 
+## Stability: beta
+
+This package is in **beta**. The span schema and attribute names may change in minor releases
+as the OpenTelemetry semantic conventions for AI agents stabilise.
+
 ## Install
 
 ```bash

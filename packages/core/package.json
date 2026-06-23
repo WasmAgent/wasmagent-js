@@ -29,7 +29,9 @@
     "./models": {
       "import": "./dist/models/index.js",
       "types": "./dist/models/index.d.ts"
-    }
+    },
+    "./schemas/rollout-wire": "./src/ranking/schemas/rollout-wire.schema.json",
+    "./schemas/training-record": "./src/ranking/schemas/training-record.schema.json"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -85,6 +87,7 @@
   },
   "files": [
     "dist",
+    "src/ranking/schemas",
     "LICENSE",
     "README.md"
   ],
