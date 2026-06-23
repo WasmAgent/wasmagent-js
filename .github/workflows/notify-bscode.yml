@@ -39,8 +39,8 @@ jobs:
           event-type: wasmagent-js-updated
           client-payload: |
             {
-              "agentkit_sha": "${{ github.sha }}",
-              "agentkit_ref": "${{ github.ref }}"
+              "wasmagent_sha": "${{ github.sha }}",
+              "wasmagent_ref": "${{ github.ref }}"
             }
 
   bump-bscode-deps:

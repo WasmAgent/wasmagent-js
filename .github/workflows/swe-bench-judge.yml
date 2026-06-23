@@ -67,7 +67,7 @@ jobs:
         run: node examples/benchmarks/swe-bench-lite.mjs --smoke
 
       - name: Build judge image
-        run: docker build -t agentkit-swe-judge:latest examples/benchmarks/judge/
+        run: docker build -t wasmagent-swe-judge:latest examples/benchmarks/judge/
 
       - name: Round-trip judge against one task with an empty patch
         # The empty-patch case is expected to yield resolved=false; we
