@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/kernel-pyodide",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "PyodideKernel — CPython-in-WASM kernel for wasmagent",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "workspace:*"
+    "@wasmagent/core": "^1.0.0"
   },
   "peerDependencies": {
     "pyodide": ">=0.26.0"
@@ -52,8 +52,7 @@
     "typescript"
   ],
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "files": [
     "dist",

@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/tools-browser",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Browser automation tools for wasmagent — Playwright + CDP-bridge for navigate/click/fill/screenshot/extract",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,7 +26,7 @@
     }
   },
   "dependencies": {
-    "@wasmagent/core": "workspace:*",
+    "@wasmagent/core": "^1.0.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
@@ -59,8 +59,7 @@
     "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "files": [
     "dist",

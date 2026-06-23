@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/core",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Core runtime for wasmagent — agents, executor, memory, models, tools",
   "type": "module",
   "main": "./dist/index.js",
@@ -38,7 +38,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/agent-prompts": "workspace:*",
+    "@wasmagent/agent-prompts": "^1.0.0",
     "zod": "^3.23.0",
     "zod-to-json-schema": "^3.25.2"
   },
@@ -81,8 +81,7 @@
     "typescript"
   ],
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "files": [
     "dist",

@@ -1,10 +1,12 @@
 {
   "name": "openai-agents-quickjs",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "D5 — OpenAI Agents JS + agentkit-js QuickJS kernel (StackBlitz-runnable)",
   "type": "module",
-  "scripts": { "start": "node index.mjs" },
+  "scripts": {
+    "start": "node index.mjs"
+  },
   "dependencies": {
     "@wasmagent/openai-agents": "workspace:*",
     "@wasmagent/kernel-quickjs": "workspace:*",

@@ -1,10 +1,12 @@
 {
   "name": "claude-agent-quickjs",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "D5 — Claude Agent SDK + agentkit-js QuickJS kernel (StackBlitz-runnable)",
   "type": "module",
-  "scripts": { "start": "node index.mjs" },
+  "scripts": {
+    "start": "node index.mjs"
+  },
   "dependencies": {
     "@wasmagent/claude-agent-sdk": "workspace:*",
     "@wasmagent/kernel-quickjs": "workspace:*",

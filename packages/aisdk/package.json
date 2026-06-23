@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/aisdk",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Drop wasmagent sandbox kernels into the Vercel AI SDK as a `tool()` — edge-safe code execution with one capability manifest, no E2B / OS sandbox needed",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "workspace:*"
+    "@wasmagent/core": "^1.0.0"
   },
   "peerDependencies": {
     "ai": "^4.0.0 || ^5.0.0 || ^6.0.0",
@@ -63,8 +63,7 @@
     "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "files": [
     "dist",

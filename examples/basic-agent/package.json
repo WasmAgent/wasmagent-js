@@ -1,6 +1,6 @@
 {
   "name": "basic-agent",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "5-line agentkit-js example (D5 doctest)",
   "type": "module",

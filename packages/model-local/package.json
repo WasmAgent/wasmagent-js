@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/model-local",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Embedded local LLM provider for wasmagent — node-llama-cpp adapter with grammar-constrained tool calling, multi-mirror download (HF/hf-mirror/ModelScope), and cert pipeline",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,7 +26,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "workspace:*"
+    "@wasmagent/core": "^1.0.0"
   },
   "peerDependencies": {
     "node-llama-cpp": ">=3.18.0"
@@ -65,8 +65,7 @@
     "typescript"
   ],
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "files": [
     "dist",

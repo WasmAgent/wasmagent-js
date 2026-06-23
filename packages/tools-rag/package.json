@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/tools-rag",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "RAG / embedding tools for wasmagent — ModelEmbedder + ragTool + Pinecone/Qdrant/Local connectors",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "workspace:*",
+    "@wasmagent/core": "^1.0.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
@@ -47,8 +47,7 @@
     "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "files": [
     "dist",

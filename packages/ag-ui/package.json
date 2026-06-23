@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/ag-ui",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "AG-UI protocol adapter for @wasmagent/core — maps private AgentEvent stream to AG-UI 16-class events",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "workspace:*"
+    "@wasmagent/core": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -46,8 +46,7 @@
     "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "files": [
     "dist",

@@ -1,5 +1,14 @@
 # @agentkit-js/integration-tests
 
+## 1.0.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @wasmagent/agent-prompts@1.0.0
+  - @wasmagent/core@1.0.0
+  - @wasmagent/ui-cards@1.0.0
+
 ## 0.2.0
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/ui-cards-react",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "React components to render @wasmagent/ui-cards card blocks (Markdown, D2 diagrams, ChatMessage)",
   "type": "module",
   "main": "./dist/index.js",
@@ -33,7 +33,7 @@
     }
   },
   "dependencies": {
-    "@wasmagent/ui-cards": "workspace:*"
+    "@wasmagent/ui-cards": "^1.0.0"
   },
   "devDependencies": {
     "@terrastruct/d2": "^0.1.33",
@@ -67,8 +67,7 @@
     "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "files": [
     "dist",

@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/kernel-remote",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "RemoteSandboxKernel — microVM third isolation tier for wasmagent via E2B / Cloudflare Sandbox",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "workspace:*"
+    "@wasmagent/core": "^1.0.0"
   },
   "peerDependencies": {
     "e2b": ">=1.0.0"
@@ -58,8 +58,7 @@
     "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "files": [
     "dist",

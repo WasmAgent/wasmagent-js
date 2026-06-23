@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/evals-runner",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Evaluation runner for wasmagent — multi-model multi-axis benchmark harness with paired statistics + Pareto report. Targets the gaps in evomerge-style single-axis evaluation: long-context recall, multi-turn memory, agent trajectory, latency, cost.",
   "type": "module",
   "main": "./dist/index.js",
@@ -29,12 +29,12 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "workspace:*",
-    "@wasmagent/devtools": "workspace:*",
+    "@wasmagent/core": "^1.0.0",
+    "@wasmagent/devtools": "^1.0.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@wasmagent/kernel-quickjs": "workspace:*",
+    "@wasmagent/kernel-quickjs": "^1.0.0",
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
   },
@@ -63,8 +63,7 @@
     "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "files": [
     "dist",
