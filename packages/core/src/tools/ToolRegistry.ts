@@ -244,7 +244,7 @@ export class ToolRegistry {
       .filter((t) => !t.deferLoading)
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((t) => {
-        const desc = (compact && t.descriptionCompressed) ? t.descriptionCompressed : t.description;
+        const desc = compact && t.descriptionCompressed ? t.descriptionCompressed : t.description;
         const schema: Record<string, unknown> = {
           name: t.name,
           description: desc,
@@ -275,7 +275,7 @@ export class ToolRegistry {
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((t) => ({
         name: t.name,
-        description: (t.descriptionCompressed ?? t.description),
+        description: t.descriptionCompressed ?? t.description,
         input_schema: t.rawInputJsonSchema ?? (t.inputSchema ? zodToJsonSchema(t.inputSchema) : {}),
       }));
   }
