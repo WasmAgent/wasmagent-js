@@ -16,3 +16,4 @@ docs/.vitepress/cache/
 
 # Local benchmark caches (e.g. SWE-bench-lite tasks fetched from HF)
 .cache/
+.claude/

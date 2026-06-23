@@ -126,7 +126,85 @@ export type {
   RedisRestOptions,
 } from "./checkpoint/redis.js";
 export { RedisKvBackend, RedisRestKvBackend } from "./checkpoint/redis.js";
-
+// Enhancement runners [beta]
+export type {
+  BudgetForcingOptions,
+  BudgetForcingResult,
+  EnhancementPreset,
+  ParallelForkJoinOptions,
+  ParallelForkJoinResult,
+  ReflectRefineOptions,
+  ReflectRefineResult,
+  RolloutBranchResult,
+  RolloutForkRunnerOptions,
+  RolloutMemory,
+  RolloutMemoryRecord,
+  RolloutMemoryStoreOptions,
+  SelfConsistencyOptions,
+  SelfConsistencyResult,
+} from "./enhancement/index.js";
+export {
+  BudgetForcingRunner,
+  ParallelForkJoinRunner,
+  ReflectRefineRunner,
+  RolloutForkRunner,
+  RolloutMemoryStore,
+  resolveEnhancement,
+  SelfConsistencyRunner,
+} from "./enhancement/index.js";
+export type {
+  AgentRunner,
+  AgentTrace,
+  Constraints,
+  EfficiencyConstraints,
+  EvalRunResult,
+  EvalSample,
+  FaithfulnessOpts,
+  JudgeBreakdown,
+  JudgeCriterion,
+  JudgeScorerOptions,
+  JudgeScorerResult,
+  LlmJudgeScorerResult,
+  RelevanceOpts,
+  Scorer,
+  ScorerResult,
+  WeightedScorer,
+} from "./evals/index.js";
+// Evals [beta]
+export {
+  ANSWER_COMPLETENESS_CRITERIA,
+  answerCompletenessJudge,
+  collectTrace,
+  compositeScorer,
+  constraintScorer,
+  efficiencyScorer,
+  exactMatch,
+  faithfulnessScorer,
+  faithfulnessScorerAsync,
+  finalAnswerLength,
+  guardrailCompliance,
+  guardrailComplianceAsync,
+  judgeScorer,
+  llmJudge,
+  llmJudgeAsync,
+  recoveryScorer,
+  relevanceScorer,
+  relevanceScorerAsync,
+  runEval,
+  runJudgeScorer,
+  TRAJECTORY_QUALITY_CRITERIA,
+  toolCallAccuracy,
+  trajectoryQualityJudge,
+  trajectoryValidity,
+} from "./evals/index.js";
+export type { ErrorClassification } from "./executor/ErrorClassifier.js";
+// Error classification — GPT-Engineer improve_loop pattern [beta]
+export {
+  buildFixRetryMessage,
+  classifyExecutionError,
+  ErrorRecoveryStrategy,
+  MAX_REFINEMENT_STEPS,
+} from "./executor/ErrorClassifier.js";
 // Executor [stable]
 export type {
   ActionLanguage,
@@ -259,6 +337,16 @@ export {
   repairJson,
   TokenBudget,
 } from "./models/index.js";
+// Observability [experimental]
+export type {
+  GenAiMetricPoint,
+  MetricExporter,
+  OtelBridgeOptions,
+  ReadableSpan,
+  SpanAttributes,
+  SpanExporter,
+} from "./observability/index.js";
+export { InMemorySpanExporter, OtelBridge, withOtel } from "./observability/index.js";
 // Policies — approval gates for write-class tools [stable]
 export type {
   ApprovalPolicyOptions,
@@ -266,6 +354,47 @@ export type {
   WriteOpKind,
 } from "./policies/approvalPolicy.js";
 export { ApprovalPolicy, applyApprovalPolicy, PolicyPresets } from "./policies/approvalPolicy.js";
+// RLAIF ranking [beta]
+export type {
+  DpoRecord,
+  PpoRecord,
+  RankedBranch,
+  RankingResult,
+  RewardFunction,
+  RolloutRankerOptions,
+  RolloutRecord,
+  StatReport,
+} from "./ranking/index.js";
+export {
+  DEFAULT_REWARD_FUNCTIONS,
+  mcnemarExact,
+  RolloutRanker,
+  toDpoRecord,
+  toJsonl,
+  toPpoRecords,
+  wilsonCI,
+} from "./ranking/index.js";
+export type { ActionIR, CallDescriptor, IRNode, SchedulerEvent } from "./scheduler/index.js";
+// Scheduler [beta]
+export { deriveDependencies, Scheduler, SimpleIR } from "./scheduler/index.js";
+export type {
+  ActivationResult,
+  AgentsMdLoader,
+  ProjectInstructionsOptions,
+  ResolvedInstructions,
+  Skill,
+  SkillBody,
+  SkillManifest,
+  SkillTrigger,
+} from "./skills/index.js";
+// Skills [beta]
+export {
+  AGENTS_MD_FILENAME,
+  makeKvAgentsMdLoader,
+  makeNodeAgentsMdLoader,
+  ProjectInstructions,
+  SkillRegistry,
+} from "./skills/index.js";
 // A2 — durable SSE streaming with Last-Event-ID resume [stable]
 export type { EventLogOptions, LoggedEvent } from "./streaming/EventLog.js";
 export { EventLog, formatSseFrame } from "./streaming/EventLog.js";
@@ -310,127 +439,6 @@ export type {
   ToolUseStep,
   UserMessageStep,
 } from "./types/index.js";
-
-// Enhancement runners [beta]
-export type {
-  BudgetForcingOptions,
-  BudgetForcingResult,
-  EnhancementPreset,
-  ParallelForkJoinOptions,
-  ParallelForkJoinResult,
-  ReflectRefineOptions,
-  ReflectRefineResult,
-  RolloutBranchResult,
-  RolloutForkRunnerOptions,
-  RolloutMemory,
-  RolloutMemoryRecord,
-  RolloutMemoryStoreOptions,
-  SelfConsistencyOptions,
-  SelfConsistencyResult,
-} from "./enhancement/index.js";
-export {
-  BudgetForcingRunner,
-  ParallelForkJoinRunner,
-  ReflectRefineRunner,
-  RolloutForkRunner,
-  RolloutMemoryStore,
-  resolveEnhancement,
-  SelfConsistencyRunner,
-} from "./enhancement/index.js";
-export type {
-  AgentRunner,
-  AgentTrace,
-  Constraints,
-  EfficiencyConstraints,
-  EvalRunResult,
-  EvalSample,
-  FaithfulnessOpts,
-  JudgeBreakdown,
-  JudgeCriterion,
-  JudgeScorerOptions,
-  JudgeScorerResult,
-  LlmJudgeScorerResult,
-  RelevanceOpts,
-  Scorer,
-  ScorerResult,
-  WeightedScorer,
-} from "./evals/index.js";
-// Evals [beta]
-export {
-  ANSWER_COMPLETENESS_CRITERIA,
-  answerCompletenessJudge,
-  collectTrace,
-  compositeScorer,
-  constraintScorer,
-  efficiencyScorer,
-  exactMatch,
-  faithfulnessScorer,
-  faithfulnessScorerAsync,
-  finalAnswerLength,
-  guardrailCompliance,
-  guardrailComplianceAsync,
-  judgeScorer,
-  llmJudge,
-  llmJudgeAsync,
-  recoveryScorer,
-  relevanceScorer,
-  relevanceScorerAsync,
-  runEval,
-  runJudgeScorer,
-  TRAJECTORY_QUALITY_CRITERIA,
-  toolCallAccuracy,
-  trajectoryQualityJudge,
-  trajectoryValidity,
-} from "./evals/index.js";
-export type { ErrorClassification } from "./executor/ErrorClassifier.js";
-// Error classification — GPT-Engineer improve_loop pattern [beta]
-export {
-  buildFixRetryMessage,
-  classifyExecutionError,
-  ErrorRecoveryStrategy,
-  MAX_REFINEMENT_STEPS,
-} from "./executor/ErrorClassifier.js";
-// RLAIF ranking [beta]
-export type {
-  DpoRecord,
-  PpoRecord,
-  RankedBranch,
-  RankingResult,
-  RewardFunction,
-  RolloutRankerOptions,
-  RolloutRecord,
-  StatReport,
-} from "./ranking/index.js";
-export {
-  DEFAULT_REWARD_FUNCTIONS,
-  mcnemarExact,
-  RolloutRanker,
-  toDpoRecord,
-  toJsonl,
-  toPpoRecords,
-  wilsonCI,
-} from "./ranking/index.js";
-export type { ActionIR, CallDescriptor, IRNode, SchedulerEvent } from "./scheduler/index.js";
-// Scheduler [beta]
-export { deriveDependencies, Scheduler, SimpleIR } from "./scheduler/index.js";
-export type {
-  ActivationResult,
-  AgentsMdLoader,
-  ProjectInstructionsOptions,
-  ResolvedInstructions,
-  Skill,
-  SkillBody,
-  SkillManifest,
-  SkillTrigger,
-} from "./skills/index.js";
-// Skills [beta]
-export {
-  AGENTS_MD_FILENAME,
-  makeKvAgentsMdLoader,
-  makeNodeAgentsMdLoader,
-  ProjectInstructions,
-  SkillRegistry,
-} from "./skills/index.js";
 // Workflow — durable, resumable, resource-aware DAG execution [beta]
 export type {
   AcquireOptions,
@@ -487,14 +495,3 @@ export {
   FileTreeManager,
   globalFileTree,
 } from "./workspace/FileTreeManager.js";
-
-// Observability [experimental]
-export type {
-  GenAiMetricPoint,
-  MetricExporter,
-  OtelBridgeOptions,
-  ReadableSpan,
-  SpanAttributes,
-  SpanExporter,
-} from "./observability/index.js";
-export { InMemorySpanExporter, OtelBridge, withOtel } from "./observability/index.js";

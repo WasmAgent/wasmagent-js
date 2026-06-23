@@ -1009,7 +1009,7 @@ describe("ToolCallingAgent — L2 tool synthesis", () => {
 
 // ── SI-4: stopPolicies string descriptors ────────────────────────────────────
 describe("ToolCallingAgent — stopPolicies string descriptors", () => {
-  function countingModel(): { model: Model; callCount: () => number } {
+  function _countingModel(): { model: Model; callCount: () => number } {
     let count = 0;
     const model: Model = {
       providerId: "mock/counting",
@@ -1176,7 +1176,7 @@ describe("ToolCallingAgent — SI-8 agentConfig in checkpoint snapshot", () => {
     });
     for await (const _ of agent.run("task")) void _;
     // The agent should have saved a checkpoint with agentConfig.
-    const snap = await checkpointer.load(
+    const _snap = await checkpointer.load(
       // We don't know the traceId, but size > 0 means something was saved.
       "dummy" // fallback check below
     );

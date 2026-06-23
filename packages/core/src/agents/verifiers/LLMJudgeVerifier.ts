@@ -197,7 +197,7 @@ export class LLMJudgeVerifier implements Verifier {
             maxTokens: this.#maxTokens,
           })
         );
-      } catch (e) {
+      } catch (_e) {
         // A judge call that throws is counted as a fail vote — the
         // verifier does not "trust the executor more because the judge
         // failed." Hint reports the raw error for the next iteration's

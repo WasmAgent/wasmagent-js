@@ -1,5 +1,4 @@
 import { describe, expect, it } from "bun:test";
-import { z } from "zod";
 import type { AgentEvent, Model, StreamEvent } from "../models/types.js";
 import type { ToolDefinition } from "../tools/types.js";
 import {
@@ -203,7 +202,7 @@ describe("AgentSupervisor — core behaviour", () => {
 describe("retryOnErrorPolicy", () => {
   it("restarts on error event up to maxRetries times", async () => {
     let runs = 0;
-    const supervisor = new AgentSupervisor({
+    const _supervisor = new AgentSupervisor({
       agentFactory: () => {
         runs++;
         return new ToolCallingAgent({ tools: [], model: scriptedModel(["done"]), maxSteps: 1 });
