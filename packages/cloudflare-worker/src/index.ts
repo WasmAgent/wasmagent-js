@@ -196,7 +196,12 @@ function isRunAgentInput(v: unknown): v is RunAgentInput {
     v !== null &&
     // Only treat as RunAgentInput if it has AG-UI-specific fields
     // (messages array, threadId, runId, forwardedProps, resume, context) but NOT legacy agentType
-    ("messages" in v || "threadId" in v || "runId" in v || "forwardedProps" in v || "resume" in v || "context" in v) &&
+    ("messages" in v ||
+      "threadId" in v ||
+      "runId" in v ||
+      "forwardedProps" in v ||
+      "resume" in v ||
+      "context" in v) &&
     !("agentType" in v) // legacy RunBody has agentType, AG-UI doesn't
   );
 }
@@ -315,10 +320,7 @@ async function handleRun(
     // and replay them — resolves the session key from `resume` (string) or `threadId` (true).
     const resumeField = parsed.resume;
     if (resumeField && env.AGENTKIT_SESSIONS) {
-      const sessionKey =
-        typeof resumeField === "string"
-          ? resumeField
-          : (parsed.threadId ?? null);
+      const sessionKey = typeof resumeField === "string" ? resumeField : (parsed.threadId ?? null);
       if (sessionKey) {
         let priorCached: string | null = null;
         try {

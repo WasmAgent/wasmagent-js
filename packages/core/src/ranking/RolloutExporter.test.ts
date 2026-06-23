@@ -1,7 +1,7 @@
 import type { RolloutBranchResult } from "../enhancement/RolloutForkRunner.js";
-import type { RankedBranch } from "./RolloutRanker.js";
-import { toDpoRecord, toPpoRecords, toJsonl } from "./RolloutExporter.js";
 import type { AgentEvent } from "../types/events.js";
+import { toDpoRecord, toJsonl, toPpoRecords } from "./RolloutExporter.js";
+import type { RankedBranch } from "./RolloutRanker.js";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -25,7 +25,12 @@ function makeBranch(
   };
 }
 
-function makeRanked(branchIndex: number, rank: number, objectiveScore: 0 | 1, totalScore: number): RankedBranch {
+function makeRanked(
+  branchIndex: number,
+  rank: number,
+  objectiveScore: 0 | 1,
+  totalScore: number
+): RankedBranch {
   return { branchIndex, rank, objectiveScore, judgeScore: 5, totalScore };
 }
 
@@ -175,7 +180,10 @@ describe("toJsonl", () => {
   });
 
   test("content round-trips correctly", () => {
-    const records = [{ id: "a", val: 1 }, { id: "b", val: 2 }];
+    const records = [
+      { id: "a", val: 1 },
+      { id: "b", val: 2 },
+    ];
     const jsonl = toJsonl(records);
     const parsed = jsonl.split("\n").map((l) => JSON.parse(l));
     expect(parsed[0]).toEqual({ id: "a", val: 1 });

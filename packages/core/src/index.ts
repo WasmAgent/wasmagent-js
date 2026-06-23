@@ -361,8 +361,8 @@ export {
   mcnemarExact,
   RolloutRanker,
   toDpoRecord,
-  toPpoRecords,
   toJsonl,
+  toPpoRecords,
   wilsonCI,
 } from "./ranking/index.js";
 export type { ActionIR, CallDescriptor, IRNode, SchedulerEvent } from "./scheduler/index.js";

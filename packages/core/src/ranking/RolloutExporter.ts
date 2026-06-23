@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import type { AgentEvent } from "../types/events.js";
 import type { RolloutBranchResult } from "../enhancement/RolloutForkRunner.js";
+import type { AgentEvent } from "../types/events.js";
 import type { RankedBranch } from "./RolloutRanker.js";
 
 // ── Record types ──────────────────────────────────────────────────────────────

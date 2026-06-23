@@ -62,9 +62,21 @@ describe("toAgUiEvents — AG-UI mapping", () => {
 
   it("multiple thinking_deltas emit only one THINKING_START", async () => {
     const events = await collect([
-      makeEvent({ channel: "thinking", event: "thinking_delta", data: { delta: "first", step: 1 } }),
-      makeEvent({ channel: "thinking", event: "thinking_delta", data: { delta: "second", step: 1 } }),
-      makeEvent({ channel: "thinking", event: "thinking_delta", data: { delta: "third", step: 1 } }),
+      makeEvent({
+        channel: "thinking",
+        event: "thinking_delta",
+        data: { delta: "first", step: 1 },
+      }),
+      makeEvent({
+        channel: "thinking",
+        event: "thinking_delta",
+        data: { delta: "second", step: 1 },
+      }),
+      makeEvent({
+        channel: "thinking",
+        event: "thinking_delta",
+        data: { delta: "third", step: 1 },
+      }),
     ]);
     const types = events.map((e) => e.type);
     expect(types.filter((t) => t === "THINKING_START")).toHaveLength(1);
@@ -78,7 +90,14 @@ describe("toAgUiEvents — AG-UI mapping", () => {
       makeEvent({
         channel: "tool",
         event: "tool_call",
-        data: { toolName: "search", args: {}, callId: "c1", batchId: "b1", batchSize: 1, stepIndex: 1 },
+        data: {
+          toolName: "search",
+          args: {},
+          callId: "c1",
+          batchId: "b1",
+          batchSize: 1,
+          stepIndex: 1,
+        },
       }),
     ]);
     const types = events.map((e) => e.type);
@@ -384,10 +403,7 @@ describe("fromRunAgentInput — context injection", () => {
       context: [{ key: "a" }, { key: "b" }],
     });
     const contextBlock = result.task.slice(result.task.indexOf("<context>"));
-    const lines = contextBlock
-      .replace("<context>\n", "")
-      .replace("\n</context>", "")
-      .split("\n");
+    const lines = contextBlock.replace("<context>\n", "").replace("\n</context>", "").split("\n");
     expect(lines).toHaveLength(2);
     expect(JSON.parse(lines[0]!)).toEqual({ key: "a" });
     expect(JSON.parse(lines[1]!)).toEqual({ key: "b" });

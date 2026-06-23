@@ -95,7 +95,10 @@ export class KernelPoolValidator {
 
         // expectedOutputContains check overrides agreement — even a majority-matching
         // kernel fails if its output doesn't contain the expected string.
-        if (task.expectedOutputContains !== undefined && !output.includes(task.expectedOutputContains)) {
+        if (
+          task.expectedOutputContains !== undefined &&
+          !output.includes(task.expectedOutputContains)
+        ) {
           agreed = false;
         }
 

@@ -7,7 +7,15 @@
     "RolloutBranchRecord": {
       "description": "Layer 1: RolloutBranchResult serialized to JSONL by RolloutForkRunner. Consumed by evomerge load_rollouts().",
       "type": "object",
-      "required": ["rollout_id", "task", "branch_index", "temperature", "session_id", "tool_call_sequence", "final_answer"],
+      "required": [
+        "rollout_id",
+        "task",
+        "branch_index",
+        "temperature",
+        "session_id",
+        "tool_call_sequence",
+        "final_answer"
+      ],
       "additionalProperties": true,
       "properties": {
         "rollout_id": { "type": "string", "minLength": 1 },
@@ -29,7 +37,15 @@
     "DpoProvenance": {
       "description": "Layer 2 DPO: provenance block from toDpoRecord().",
       "type": "object",
-      "required": ["source", "rollout_id", "chosen_branch", "rejected_branch", "objective_score", "exported_at_ms", "n_gram_hash"],
+      "required": [
+        "source",
+        "rollout_id",
+        "chosen_branch",
+        "rejected_branch",
+        "objective_score",
+        "exported_at_ms",
+        "n_gram_hash"
+      ],
       "additionalProperties": false,
       "properties": {
         "source": { "type": "string", "const": "wasmagent-rollout" },
@@ -52,7 +68,14 @@
     "PpoProvenance": {
       "description": "Layer 2 PPO: provenance block from toPpoRecords().",
       "type": "object",
-      "required": ["source", "rollout_id", "branch_index", "objective_score", "exported_at_ms", "n_gram_hash"],
+      "required": [
+        "source",
+        "rollout_id",
+        "branch_index",
+        "objective_score",
+        "exported_at_ms",
+        "n_gram_hash"
+      ],
       "additionalProperties": false,
       "properties": {
         "source": { "type": "string", "const": "wasmagent-rollout" },

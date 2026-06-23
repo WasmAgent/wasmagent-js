@@ -3,10 +3,7 @@
   "$id": "https://wasmagent.dev/schemas/training-record/v1",
   "title": "Training Record Format",
   "description": "Final JSONL format produced by evomerge/datafactory/exporter.py. Validated by validate-rlaif.mjs before shipping to training. NOT the intermediate rollout wire format — see rollout-wire.schema.json.",
-  "oneOf": [
-    { "$ref": "#/$defs/DpoTrainingRecord" },
-    { "$ref": "#/$defs/PpoTrainingRecord" }
-  ],
+  "oneOf": [{ "$ref": "#/$defs/DpoTrainingRecord" }, { "$ref": "#/$defs/PpoTrainingRecord" }],
   "$defs": {
     "Message": {
       "type": "object",

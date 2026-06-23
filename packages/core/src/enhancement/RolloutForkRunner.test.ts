@@ -1,9 +1,9 @@
 import { z } from "zod";
+import type { Retriever, SearchResult } from "../memory/Retriever.js";
 import type { Model, StreamEvent } from "../models/types.js";
 import type { ToolDefinition } from "../tools/types.js";
-import type { Retriever, SearchResult } from "../memory/Retriever.js";
-import { RolloutMemoryStore } from "./RolloutMemoryStore.js";
 import { RolloutForkRunner } from "./RolloutForkRunner.js";
+import { RolloutMemoryStore } from "./RolloutMemoryStore.js";
 
 // ── Test doubles ─────────────────────────────────────────────────────────────
 

@@ -484,10 +484,7 @@ describe("POST /run — AG-UI resume from AGENTKIT_SESSIONS", () => {
     // KV is still queried for the content-hash cache (one call), but not for resume.
     const getMock = mock().mockResolvedValue(null);
     const mockKV = { get: getMock, put: mock().mockResolvedValue(undefined) };
-    const res = await runPost(
-      { resume: true },
-      makeEnv({ AGENTKIT_SESSIONS: mockKV })
-    );
+    const res = await runPost({ resume: true }, makeEnv({ AGENTKIT_SESSIONS: mockKV }));
     // Session key is null (no threadId), so no extra resume KV lookup — only the
     // content-hash cache lookup fires (one call).  The run should complete normally.
     await new Promise((r) => setTimeout(r, 50));

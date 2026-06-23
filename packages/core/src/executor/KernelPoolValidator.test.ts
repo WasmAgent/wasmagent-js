@@ -1,6 +1,6 @@
-import type { WasmKernel, KernelResult } from "./types.js";
-import { KernelPoolValidator } from "./KernelPoolValidator.js";
 import type { ValidationTask } from "./KernelPoolValidator.js";
+import { KernelPoolValidator } from "./KernelPoolValidator.js";
+import type { KernelResult, WasmKernel } from "./types.js";
 
 // ── Mock helpers ──────────────────────────────────────────────────────────────
 
