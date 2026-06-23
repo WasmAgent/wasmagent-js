@@ -14,7 +14,7 @@ npm install /model-anthropic /core @anthropic-ai/sdk
 
 ```ts
 import { AnthropicModel, AnthropicModels } from "/model-anthropic";
-const model = new AnthropicModel(AnthropicModels.SONNET_4_6, {
+const model = new AnthropicModel(AnthropicModels.SONNET_LATEST, {
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 ```

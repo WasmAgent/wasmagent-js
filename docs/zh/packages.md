@@ -1,13 +1,13 @@
 # 包结构
 
-wasmagent 是 30 个 npm 包的 monorepo，全部在 `@wasmagent/*` scope 下。
+wasmagent 是 33 个 npm 包的 monorepo，全部在 `@wasmagent/*` scope 下。
 
 ## 运行时
 
 | 包 | 是什么 |
 |---|---|
 | [`@wasmagent/core`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/core) | Agent、kernel、model、tool、runner、evals、checkpoint、observability |
-| [`@wasmagent/cli`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/cli) | `wasmagent` CLI:`run`、`init-tool`、`devtools`、`evals` |
+| [`@wasmagent/cli`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/cli) | `wasmagent` CLI:`run`、`init`、`init-tool`、`devtools`、`evals`、`model`、`goal`、`verify`、`validate-rollouts`、`export-rollouts` |
 | [`@wasmagent/devtools`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/devtools) | 时间旅行调试器 + 可选 React UI + 本地 Studio 的 `RunsAggregator` |
 | [`@wasmagent/evals-runner`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/evals-runner) | 多模型 × 多套件 Pareto 评测;6 个参考套件;McNemar / Wilson / bootstrap / G1 配对统计 |
 | [`@wasmagent/react`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/react) | `useAgentRun()` SSE 流式 hook |
@@ -33,6 +33,12 @@ wasmagent 是 30 个 npm 包的 monorepo，全部在 `@wasmagent/*` scope 下。
 |---|---|
 | [`@wasmagent/model-anthropic`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/model-anthropic) | 自动缓存断点、1 小时 TTL |
 | [`@wasmagent/model-openai`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/model-openai) | OpenAI / Azure OpenAI |
+
+### 本地 LLM（离线 / 隐私 / 低成本）
+
+| 包 | 备注 |
+|---|---|
+| [`@wasmagent/model-local`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/model-local) | `node-llama-cpp` 适配器；多镜像源（HF / hf-mirror / ModelScope）；JSON-schema 语法约束；`localFirst` / `offlineOnly` / `devLocalOr` 路由预设 |
 
 ### 国产模型适配
 
@@ -62,6 +68,8 @@ wasmagent 是 30 个 npm 包的 monorepo，全部在 `@wasmagent/*` scope 下。
 | [`@wasmagent/mcp-server`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-server) | 把任意 agent 暴露为 MCP server;`createCodeModeServer()` 提供 docs_search + execute_code 双工具表面 |
 | [`@wasmagent/aisdk`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/aisdk) | Vercel AI SDK 4–6 集成:`sandboxedJsTool()` + `codeModeTool()` |
 | [`@wasmagent/mastra-sandbox`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mastra-sandbox) | 实现 Mastra 的 sandbox provider 协议,后端是 wasmagent kernel |
+| [`@wasmagent/claude-agent-sdk`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/claude-agent-sdk) | Anthropic Claude Agent SDK 适配器——将 wasmagent kernel 封装为 Claude SDK 工具 |
+| [`@wasmagent/openai-agents`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/openai-agents) | OpenAI Agents JS 适配器——以 wasmagent kernel 为后端实现 `Tool<T>` 接口 |
 | [`@wasmagent/a2a`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/a2a) | A2A（Agent2Agent）入站 + 出站 |
 | [`@wasmagent/ag-ui`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/ag-ui) | AG-UI 入站 transport |
 

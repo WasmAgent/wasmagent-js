@@ -96,14 +96,20 @@ const zhSidebar = {
       text: "核心模式",
       items: [
         { text: "Durable runtime", link: "/zh/guides/durable-runtime" },
+        { text: "Memory 概览与决策树", link: "/zh/guides/memory" },
         { text: "Memory 模式", link: "/zh/guides/memory-patterns" },
         { text: "观察记忆", link: "/zh/guides/observational-memory" },
         { text: "Skills & 生命周期 hook", link: "/zh/guides/skills-and-hooks" },
         { text: "DevTools 时间旅行", link: "/zh/guides/devtools" },
+        { text: "DevTools 跨框架调试", link: "/zh/guides/devtools-cross-framework" },
+        { text: "目标导向 Agent", link: "/zh/guides/goal-directed" },
+        { text: "工作流引擎", link: "/zh/guides/workflows" },
+        { text: "Code Mode（MCP token 压缩）", link: "/zh/guides/code-mode" },
         { text: "Evals 实战手册", link: "/zh/guides/evals-cookbook" },
         { text: "MCP server", link: "/zh/guides/mcp-server" },
         { text: "MCP 延迟加载（–85%）", link: "/zh/guides/mcp-deferred-loading" },
         { text: "AGENTS.md 项目约定", link: "/zh/guides/agents-md" },
+        { text: "OpenAI 兼容配方", link: "/zh/guides/openai-compat-recipes" },
       ],
     },
     {
@@ -111,6 +117,14 @@ const zhSidebar = {
       items: [
         { text: "Vercel AI SDK", link: "/zh/guides/integrate-vercel-ai-sdk" },
         { text: "Mastra", link: "/zh/guides/integrate-mastra" },
+        { text: "Claude Agent SDK", link: "/zh/guides/integrate-claude-agent-sdk" },
+        { text: "OpenAI Agents JS", link: "/zh/guides/integrate-openai-agents" },
+      ],
+    },
+    {
+      text: "RLAIF 数据流水线",
+      items: [
+        { text: "RLAIF rollout 流水线", link: "/zh/guides/rlaif-rollout" },
       ],
     },
     {

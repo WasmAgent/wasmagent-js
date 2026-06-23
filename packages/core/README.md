@@ -16,7 +16,7 @@ npm install /core @anthropic-ai/sdk
 import { CodeAgent, AnthropicModel, AnthropicModels } from "/core";
 
 const agent = new CodeAgent({
-  model: new AnthropicModel(AnthropicModels.SONNET_4_6, { apiKey: process.env.ANTHROPIC_API_KEY }),
+  model: new AnthropicModel(AnthropicModels.SONNET_LATEST, { apiKey: process.env.ANTHROPIC_API_KEY }),
 });
 
 const result = await agent.run({ task: "What is 12 * 13?" });

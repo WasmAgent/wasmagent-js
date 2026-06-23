@@ -26,7 +26,7 @@ export ANTHROPIC_API_KEY=sk-ant-...   # or DOUBAO_API_KEY, DEEPSEEK_API_KEY, etc
 import { CodeAgent, AnthropicModel, AnthropicModels } from "@wasmagent/core";
 
 const agent = new CodeAgent({
-  model: new AnthropicModel(AnthropicModels.SONNET_4_6, {
+  model: new AnthropicModel(AnthropicModels.SONNET_LATEST, {
     apiKey: process.env.ANTHROPIC_API_KEY!,
   }),
 });

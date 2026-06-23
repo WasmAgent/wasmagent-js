@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * agentkit CLI (D6)
+ * wasmagent CLI (D6)
  *
  * Usage:
- *   agentkit run "<task>" [--model claude-sonnet-4-6] [--max-steps 20]
+ *   wasmagent run "<task>" [--model claude-sonnet-4-6] [--max-steps 20]
  *                         [--stream] [--events run_start,step_start,...]
- *   agentkit init-tool --name <name> [--output <dir>]
+ *   wasmagent init-tool --name <name> [--output <dir>]
  *
  * Mirrors smolagents' `smolagent` CLI (cli.py:294).
  */
@@ -45,7 +45,7 @@ import {
  * forwards `baseURL` if it is passed in `AnthropicModelOptions`. CLI users
  * setting `ANTHROPIC_BASE_URL` (e.g. to point at a local proxy) would
  * otherwise be silently ignored — so we wire the env var through here, in
- * one place shared by `agentkit run` and `agentkit goal`.
+ * one place shared by `wasmagent run` and `wasmagent goal`.
  *
  * Precedence: explicit `--base-url` flag > `ANTHROPIC_BASE_URL` env > unset.
  */
@@ -104,7 +104,7 @@ if (isMain) {
       name: { type: "string" },
       output: { type: "string", default: "." },
       lang: { type: "string", default: "ts" },
-      // A4 (S3, 2026-06): `agentkit devtools` flags. `events` doubles as both
+      // A4 (S3, 2026-06): `wasmagent devtools` flags. `events` doubles as both
       // the run-command filter and the devtools NDJSON input path.
       "events-file": { type: "string" },
       // D5 (2026-06): framework-agnostic GenAI semconv ingest. Either NDJSON
@@ -113,7 +113,7 @@ if (isMain) {
       // AI SDK or Mastra trace in the same Studio view.
       "otel-events-file": { type: "string" },
       port: { type: "string", default: "4317" },
-      // 2026-06-12: `agentkit evals` flags. `--suite` accepts comma-separated
+      // 2026-06-12: `wasmagent evals` flags. `--suite` accepts comma-separated
       // names; `--models` is comma-separated `id@baseUrl#modelId` triples;
       // `--seeds` is comma-separated integers.
       suite: { type: "string" },
@@ -121,13 +121,13 @@ if (isMain) {
       seeds: { type: "string", default: "0,1,2" },
       "base-url": { type: "string" },
       "report-file": { type: "string" },
-      // 2026-06-12: `agentkit model` (L6) flags. Loaded lazily via
-      // @wasmagent/model-local — no impact on `agentkit run` users who
+      // 2026-06-12: `wasmagent model` (L6) flags. Loaded lazily via
+      // @wasmagent/model-local — no impact on `wasmagent run` users who
       // don't install the local-model peer.
       mirror: { type: "string" },
       "cache-dir": { type: "string" },
-      // 2026-06-18: `agentkit goal` (G2 of cli-gap-analysis-2026-06-18.md)
-      // and `agentkit verify` (G3) flags. Goal-directed loop: max
+      // 2026-06-18: `wasmagent goal` (G2 of cli-gap-analysis-2026-06-18.md)
+      // and `wasmagent verify` (G3) flags. Goal-directed loop: max
       // iterations + judge sample count. Verify: a JSON file of
       // Criterion[].
       "max-iterations": { type: "string", default: "5" },
@@ -141,14 +141,14 @@ if (isMain) {
       criteria: { type: "string" },
       // 2026-06-18: Skip Phase 1 synthesis and load Criterion[] from a
       // JSON file. CI-friendly — the same input always produces the
-      // same grader. The file is the same shape `agentkit verify`
+      // same grader. The file is the same shape `wasmagent verify`
       // accepts: either a top-level array, or `{criteria: [...]}`.
       "from-criteria": { type: "string" },
-      // Note: --base-url flag is already declared above for `agentkit evals`
+      // Note: --base-url flag is already declared above for `wasmagent evals`
       // (it falls back to http://localhost:11434/v1 there). buildAnthropicModel
-      // reuses the same flag for `agentkit run` / `agentkit goal`, falling back
+      // reuses the same flag for `wasmagent run` / `wasmagent goal`, falling back
       // to ANTHROPIC_BASE_URL env var instead of a hardcoded ollama URL.
-      // 2026-06-23: `agentkit validate-rollouts` / `agentkit export-rollouts`
+      // 2026-06-23: `wasmagent validate-rollouts` / `wasmagent export-rollouts`
       // flags. --in is the input JSONL path; --format selects DPO vs PPO;
       // --out is the output path (stdout if absent).
       in: { type: "string" },
@@ -230,7 +230,7 @@ export async function runCommand(
   opts: Record<string, string | boolean | undefined>
 ): Promise<void> {
   if (!task) {
-    console.error('Error: no task provided. Usage: agentkit run "<task>"');
+    console.error('Error: no task provided. Usage: wasmagent run "<task>"');
     process.exit(1);
   }
 
@@ -375,7 +375,7 @@ async function initToolCommand(opts: Record<string, string | boolean | undefined
   const rawName = typeof opts.name === "string" ? opts.name.trim() : "";
   if (!rawName) {
     console.error("Error: --name <tool-name> is required");
-    console.error("  Example: agentkit init-tool --name web-search");
+    console.error("  Example: wasmagent init-tool --name web-search");
     process.exit(1);
   }
 
@@ -412,7 +412,7 @@ async function initToolTs(kebabName: string, pascalName: string, outputDir: stri
   console.log(`✓ Created ${testFile}`);
   console.log(`\nNext steps:`);
   console.log(`  1. Fill in forward() in ${toolFile}`);
-  console.log(`  2. Run: npx vitest run ${testFile}`);
+  console.log(`  2. Run: bun test ${testFile}`);
 }
 
 async function initToolRust(
@@ -448,7 +448,7 @@ import type { ToolDefinition } from "@wasmagent/core";
 
 /**
  * ${pascalName} tool.
- * Generated by: agentkit init-tool --name ${kebabName}
+ * Generated by: wasmagent init-tool --name ${kebabName}
  */
 export const ${camelCase(pascalName)}Tool: ToolDefinition<
   z.infer<typeof inputSchema>,
@@ -475,7 +475,7 @@ const outputSchema = ${camelCase(pascalName)}Tool.outputSchema;
 }
 
 export function generateTestTemplate(kebabName: string, pascalName: string): string {
-  return `import { describe, it, expect } from "vitest";
+  return `import { describe, it, expect } from "bun:test";
 import { ${camelCase(pascalName)}Tool } from "./${kebabName}.js";
 
 describe("${pascalName} tool", () => {
@@ -537,7 +537,7 @@ pub struct ${pascalName}Output {
     pub result: String,
 }
 
-/// ${pascalName} — main entry point called from the agentkit TypeScript wrapper.
+/// ${pascalName} — main entry point called from the wasmagent TypeScript wrapper.
 #[wasm_bindgen]
 pub fn ${snakeName}(input_json: &str) -> Result<String, JsValue> {
     let input: ${pascalName}Input = serde_json::from_str(input_json)
@@ -561,7 +561,7 @@ function generateRustWrapperTemplate(
 ): string {
   return `/**
  * ${pascalName} — TypeScript wrapper around the compiled WASM module.
- * Generated by: agentkit init-tool --name ${kebabName} --lang rust
+ * Generated by: wasmagent init-tool --name ${kebabName} --lang rust
  *
  * Build the WASM first: wasm-pack build --target nodejs
  * Then this file imports from the generated ./pkg/ directory.
@@ -638,23 +638,23 @@ export function parseEventsFilter(raw: string | undefined, streamMode: boolean):
 
 function printHelp(): void {
   console.log(`
-agentkit — TypeScript agent runtime (agentkit-js v0.1.0)
+wasmagent — TypeScript agent runtime (wasmagent-js v0.1.0)
 
 Usage:
-  agentkit run "<task>" [options]
-  agentkit goal "<task>" [options]
-  agentkit verify --criteria <path.json> [--workspace .]
-  agentkit init-tool --name <tool-name> [options]
-  agentkit devtools --events-file <ndjson> [--port 4317]
-  agentkit devtools --otel-events-file <ndjson|otlp.json> [--port 4317]
-  agentkit evals list
-  agentkit evals run --suite=<names> --models=<id@url[#modelId],...> [--seeds=0,1,2]
-  agentkit model list
-  agentkit model pull <alias> [--mirror=<huggingface|hf-mirror|modelscope|<url>>] [--cache-dir=<path>]
-  agentkit model verify <alias> [--cache-dir=<path>]
-  agentkit model rm <alias> [--cache-dir=<path>]
-  agentkit validate-rollouts <path.jsonl>
-  agentkit export-rollouts --in <path.jsonl> --format dpo|ppo [--out <output.jsonl>]
+  wasmagent run "<task>" [options]
+  wasmagent goal "<task>" [options]
+  wasmagent verify --criteria <path.json> [--workspace .]
+  wasmagent init-tool --name <tool-name> [options]
+  wasmagent devtools --events-file <ndjson> [--port 4317]
+  wasmagent devtools --otel-events-file <ndjson|otlp.json> [--port 4317]
+  wasmagent evals list
+  wasmagent evals run --suite=<names> --models=<id@url[#modelId],...> [--seeds=0,1,2]
+  wasmagent model list
+  wasmagent model pull <alias> [--mirror=<huggingface|hf-mirror|modelscope|<url>>] [--cache-dir=<path>]
+  wasmagent model verify <alias> [--cache-dir=<path>]
+  wasmagent model rm <alias> [--cache-dir=<path>]
+  wasmagent validate-rollouts <path.jsonl>
+  wasmagent export-rollouts --in <path.jsonl> --format dpo|ppo [--out <output.jsonl>]
 
 Commands:
   run "<task>"              Run a single-shot CodeAgent loop on a task
@@ -691,7 +691,7 @@ goal options:
   --judge-samples <n>      LLMJudge calls per llm_judge criterion (default: 3)
   --judge-majority         Pass criterion on majority vote instead of unanimous
   --from-criteria <path>   Skip Phase 1 synthesis; load Criterion[] from JSON
-                           (CI-friendly; same shape as agentkit verify accepts)
+                           (CI-friendly; same shape as wasmagent verify accepts)
   --allow-negotiate        On exhausted iterations, ask the synth model to
                            propose a relaxed criteria set; prompts y/N on stdin.
                            No-op when --from-criteria is set (CI determinism).
@@ -733,19 +733,19 @@ export-rollouts options:
   --out <output.jsonl>     Output file path (default: stdout)
 
 Examples:
-  agentkit run "What is 2+2?"
-  agentkit run "Analyse data" --stream | jq .
-  agentkit run "Search AI news" --events final_answer,error
-  agentkit goal "Write a 1500-word intro to OAuth in oauth.md" --workspace ./tmp
-  agentkit goal "Write the intro" --from-criteria ./criteria.json --workspace ./tmp
-  agentkit verify --criteria criteria.json --workspace ./tmp
-  agentkit init-tool --name web-search --output ./tools
-  agentkit devtools --events-file ./events.ndjson
-  agentkit evals list
-  agentkit evals run --suite=multi-turn-memory --models=qwen2.5:0.5b@http://localhost:11434/v1
-  agentkit validate-rollouts ./rollouts.jsonl
-  agentkit export-rollouts --in rollouts.jsonl --format dpo --out dpo.jsonl
-  agentkit export-rollouts --in rollouts.jsonl --format ppo
+  wasmagent run "What is 2+2?"
+  wasmagent run "Analyse data" --stream | jq .
+  wasmagent run "Search AI news" --events final_answer,error
+  wasmagent goal "Write a 1500-word intro to OAuth in oauth.md" --workspace ./tmp
+  wasmagent goal "Write the intro" --from-criteria ./criteria.json --workspace ./tmp
+  wasmagent verify --criteria criteria.json --workspace ./tmp
+  wasmagent init-tool --name web-search --output ./tools
+  wasmagent devtools --events-file ./events.ndjson
+  wasmagent evals list
+  wasmagent evals run --suite=multi-turn-memory --models=qwen2.5:0.5b@http://localhost:11434/v1
+  wasmagent validate-rollouts ./rollouts.jsonl
+  wasmagent export-rollouts --in rollouts.jsonl --format dpo --out dpo.jsonl
+  wasmagent export-rollouts --in rollouts.jsonl --format ppo
 `);
 }
 
@@ -789,9 +789,9 @@ export async function devtoolsCommand(
   const otelPath = opts["otel-events-file"] as string | undefined;
   if (!eventsPath && !otelPath) {
     console.error("Error: --events-file <path> or --otel-events-file <path> is required.");
-    console.error("  agentkit devtools --events-file ./events.ndjson");
+    console.error("  wasmagent devtools --events-file ./events.ndjson");
     console.error(
-      "  agentkit devtools --otel-events-file ./trace.ndjson  # any GenAI semconv source"
+      "  wasmagent devtools --otel-events-file ./trace.ndjson  # any GenAI semconv source"
     );
     process.exit(1);
   }
@@ -851,7 +851,7 @@ export async function devtoolsCommand(
   });
 
   await new Promise<void>((resolve) => server.listen(port, resolve));
-  console.log(`agentkit Studio: http://localhost:${port} (source: ${sourceLabel})`);
+  console.log(`wasmagent Studio: http://localhost:${port} (source: ${sourceLabel})`);
   console.log(
     `Tracking ${summaries.length} run${summaries.length === 1 ? "" : "s"} ` +
       `(${(rollup as { totalCostUsd: number }).totalCostUsd.toFixed(4)} USD total).`
@@ -867,7 +867,7 @@ function renderStudioHtml(): string {
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>agentkit Studio</title>
+  <title>wasmagent Studio</title>
   <style>
     body{font:14px/1.5 system-ui,Segoe UI,Helvetica,Arial,sans-serif;margin:24px;color:#222;}
     h1{margin:0 0 4px;font-size:18px;}
@@ -885,7 +885,7 @@ function renderStudioHtml(): string {
   </style>
 </head>
 <body>
-  <h1>agentkit Studio</h1>
+  <h1>wasmagent Studio</h1>
   <div class="sub">A4 — local runs overview · pure-logic aggregator from <code>@wasmagent/devtools</code></div>
   <div id="cards" class="cards"></div>
   <table>
@@ -942,7 +942,7 @@ function renderStudioHtml(): string {
 // ── 2026-06-12: evals command ────────────────────────────────────────────────
 
 /**
- * `agentkit evals run --suite=<name,name> --models=<id@url#modelId,...> --seeds=0,1,2`
+ * `wasmagent evals run --suite=<name,name> --models=<id@url#modelId,...> --seeds=0,1,2`
  *
  * Wraps `@wasmagent/evals-runner` so users can fire a multi-model
  * multi-suite evaluation without writing TypeScript. Maps to the same
@@ -955,16 +955,16 @@ function renderStudioHtml(): string {
 // ── goal command (G2 of cli-gap-analysis-2026-06-18.md) ──────────────────────
 
 /**
- * `agentkit goal "<task>"` — instantiate a `GoalDirectedAgent` against a
+ * `wasmagent goal "<task>"` — instantiate a `GoalDirectedAgent` against a
  * cwd-rooted workspace and stream its 5-phase loop (scout → criteria →
  * execute → verify → done) to the terminal.
  *
  * Why this is at the CLI layer (not just a library import): the
- * GoalDirectedAgent is the new "eighth axis" of agentkit-js
+ * GoalDirectedAgent is the new "eighth axis" of wasmagent-js
  * differentiation (see docs/guides/goal-directed.md). A flagship
  * primitive that ships only as a library has zero discovery surface;
- * `agentkit --help` users won't know it exists. This subcommand makes
- * `agentkit goal "write a 1500-word intro to OAuth in oauth.md"` a
+ * `wasmagent --help` users won't know it exists. This subcommand makes
+ * `wasmagent goal "write a 1500-word intro to OAuth in oauth.md"` a
  * one-liner anyone can try.
  *
  * The toolset is intentionally minimal — `read_file` + `write_file`
@@ -1015,7 +1015,7 @@ async function buildLocalFsWorkspace(rootDir: string): Promise<{
   // Top-level scout snapshot. We only list the *top-level* entries to
   // keep the synth prompt bounded; agents that need deeper traversal
   // can issue list-style tool calls (not implemented here on purpose —
-  // `agentkit goal` is a thin discovery surface).
+  // `wasmagent goal` is a thin discovery surface).
   let scoutEntries: string[] = [];
   try {
     scoutEntries = (await fs.readdir(rootAbs)).slice(0, 60);
@@ -1062,8 +1062,8 @@ async function buildLocalFsWorkspace(rootDir: string): Promise<{
  * Accepts both `[Criterion, ...]` (bare array) and `{criteria: [...]}`
  * — the same shape `GoalDirectedAgent` emits in its `criteria_proposed`
  * event payload, so a frozen-criteria run can be re-checked or replayed
- * offline. Used by both `agentkit goal --from-criteria` (skip Phase 1
- * synthesis) and `agentkit verify --criteria` (deterministic gate).
+ * offline. Used by both `wasmagent goal --from-criteria` (skip Phase 1
+ * synthesis) and `wasmagent verify --criteria` (deterministic gate).
  *
  * Exits the process with a non-zero code on any failure (file missing,
  * unreadable, not JSON, no `criteria` field, empty list). The CLI
@@ -1137,7 +1137,7 @@ export async function goalCommand(
   opts: Record<string, string | boolean | undefined>
 ): Promise<void> {
   if (!task) {
-    console.error('Error: no task provided. Usage: agentkit goal "<task>"');
+    console.error('Error: no task provided. Usage: wasmagent goal "<task>"');
     process.exit(1);
   }
 
@@ -1293,7 +1293,7 @@ export async function goalCommand(
 // ── verify command (G3 of cli-gap-analysis-2026-06-18.md) ────────────────────
 
 /**
- * `agentkit verify --criteria criteria.json [--workspace .]` — run the
+ * `wasmagent verify --criteria criteria.json [--workspace .]` — run the
  * deterministic verifier protocol against a workspace without an LLM
  * involved. Useful as a CI gate, a post-commit hook, or a sanity check
  * during development.
@@ -1304,7 +1304,7 @@ export async function goalCommand(
  *
  * `llm_judge` criteria are silently skipped — the verifier subcommand
  * is for the deterministic-only path. Anyone wanting LLM judgement
- * should run `agentkit goal` instead, where the judge is part of the
+ * should run `wasmagent goal` instead, where the judge is part of the
  * loop and gets adversarial defaults.
  */
 export async function verifyCommand(
@@ -1320,7 +1320,7 @@ export async function verifyCommand(
   const checkable = criteriaArr.filter((c) => c.verify_method !== "llm_judge");
   if (skipped.length > 0) {
     console.error(
-      `[verify] skipping ${skipped.length} llm_judge criterion(a) — use \`agentkit goal\` for LLM-judged criteria.`
+      `[verify] skipping ${skipped.length} llm_judge criterion(a) — use \`wasmagent goal\` for LLM-judged criteria.`
     );
   }
   if (checkable.length === 0) {
@@ -1377,7 +1377,9 @@ export async function evalsCommand(
       console.log(`    ${suite.description}`);
     }
     console.log("");
-    console.log("Run with:  agentkit evals run --suite=<name,...> --models=<id@url[#modelId],...>");
+    console.log(
+      "Run with:  wasmagent evals run --suite=<name,...> --models=<id@url[#modelId],...>"
+    );
     return;
   }
 
@@ -1391,13 +1393,13 @@ export async function evalsCommand(
     .map((s) => s.trim())
     .filter(Boolean);
   if (suiteNames.length === 0) {
-    console.error("Error: --suite=<name,...> is required (try `agentkit evals list`).");
+    console.error("Error: --suite=<name,...> is required (try `wasmagent evals list`).");
     process.exit(1);
   }
   const suites = suiteNames.map((n) => {
     const s = REFERENCE_SUITES[n];
     if (!s) {
-      console.error(`Unknown suite: ${n}. Try \`agentkit evals list\`.`);
+      console.error(`Unknown suite: ${n}. Try \`wasmagent evals list\`.`);
       process.exit(1);
     }
     return s;
@@ -1464,7 +1466,7 @@ export async function evalsCommand(
 // ── 2026-06-12: model command (L6) ────────────────────────────────────────────
 
 /**
- * `agentkit model <list|pull|verify|rm> [alias|path]`
+ * `wasmagent model <list|pull|verify|rm> [alias|path]`
  *
  * Thin wrapper over @wasmagent/model-local's downloader + registry. We
  * dynamic-import the peer so users who don't install the local-LLM provider
@@ -1521,7 +1523,7 @@ export async function modelCommand(
   if (sub === "pull") {
     const alias = positionals[1];
     if (!alias) {
-      console.error("Error: agentkit model pull <alias>");
+      console.error("Error: wasmagent model pull <alias>");
       process.exit(1);
       return;
     }
@@ -1562,7 +1564,7 @@ export async function modelCommand(
   if (sub === "verify") {
     const alias = positionals[1];
     if (!alias) {
-      console.error("Error: agentkit model verify <alias>");
+      console.error("Error: wasmagent model verify <alias>");
       process.exit(1);
       return;
     }
@@ -1573,7 +1575,7 @@ export async function modelCommand(
     );
     const fs = await import("node:fs");
     if (!fs.existsSync(path)) {
-      console.error(`Not cached: ${path}\n  Run: agentkit model pull ${alias}`);
+      console.error(`Not cached: ${path}\n  Run: wasmagent model pull ${alias}`);
       process.exit(1);
       return;
     }
@@ -1595,7 +1597,7 @@ export async function modelCommand(
   if (sub === "rm") {
     const alias = positionals[1];
     if (!alias) {
-      console.error("Error: agentkit model rm <alias>");
+      console.error("Error: wasmagent model rm <alias>");
       process.exit(1);
       return;
     }
@@ -1627,7 +1629,7 @@ export async function validateRolloutsCommand(
 ): Promise<void> {
   if (!filePath) {
     console.error("Error: path to JSONL file is required");
-    console.error("  Usage: agentkit validate-rollouts <path.jsonl>");
+    console.error("  Usage: wasmagent validate-rollouts <path.jsonl>");
     process.exit(1);
   }
 
