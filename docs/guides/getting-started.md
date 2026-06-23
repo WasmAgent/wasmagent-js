@@ -73,4 +73,45 @@ const agent = new CodeAgent({
 - [Evals cookbook](./evals-cookbook) — 16 built-in scorers, multi-criterion judges
 - [Use kernels with Vercel AI SDK](./integrate-vercel-ai-sdk) / [with Mastra](./integrate-mastra)
 
+## 6. Stream events and observe the run
+
+Every agent emits structured `AgentEvent` objects. Iterate the run generator to see them:
+
+```ts
+for await (const event of agent.run({ task: "List files in the sandbox" })) {
+  if (event.event === "tool_call")   console.log("tool →", event.data.toolName);
+  if (event.event === "final_answer") console.log("answer →", event.data.answer);
+}
+```
+
+For OTel-compatible tracing (Jaeger, Honeycomb, Grafana), wrap with `withOtel`:
+
+```ts
+import { withOtel, OtelBridge, InMemorySpanExporter } from "@wasmagent/core";
+
+const exporter = new InMemorySpanExporter();
+const bridge = new OtelBridge({ exporter });
+for await (const event of withOtel(agent.run({ task: "…" }), bridge)) { /* … */ }
+console.log(exporter.spans); // structured spans, compatible with OTLP export
+```
+
+## 7. Export a rollout JSONL for RLAIF
+
+Run two branches and export a preference pair for downstream training:
+
+```ts
+import { RolloutForkRunner } from "@wasmagent/core";
+
+const runner = new RolloutForkRunner({ branches: 2, model, tools });
+for await (const event of runner.run({ task: "Refactor this function" })) {
+  if (event.event === "rollout_record") {
+    // Each branch emits a rollout_record — write to JSONL for evomerge datafactory
+    fs.appendFileSync("rollouts.jsonl", JSON.stringify(event.data) + "\n");
+  }
+}
+// Then: python -m datafactory --input rollouts.jsonl --output-dpo dpo.jsonl
+```
+
+This is the "Runtime → Data Factory" loop that connects wasmagent-js to evomerge.
+
 If anything blocks you, [open an issue](https://github.com/WasmAgent/wasmagent-js/issues) — friction in this guide is the bug we want to hear about.

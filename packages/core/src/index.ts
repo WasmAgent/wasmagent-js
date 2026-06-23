@@ -323,6 +323,9 @@ export type {
   TokenUsage,
 } from "./models/index.js";
 // Models [stable]
+// Canonical import: @wasmagent/model-anthropic / @wasmagent/model-openai / etc.
+// The exports below are batteries-included shortcuts — same implementations,
+// re-exported here so single-package installs work without provider packages.
 export {
   AnthropicModel,
   AnthropicModels,

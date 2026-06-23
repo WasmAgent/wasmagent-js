@@ -1,0 +1,42 @@
+# Claim Registry — wasmagent-js
+#
+# Each entry pins a specific, verifiable performance or differentiation claim.
+# Fields:
+#   id             — stable identifier, referenced from README/docs
+#   claim          — exact wording as it appears in public docs
+#   evidence_script — runnable script that reproduces the measurement
+#   last_verified  — ISO date of last successful run
+#   ci_mode        — "nightly" | "manual" | "per-pr"
+#   tolerance      — acceptable deviation before the claim is considered broken
+#   notes          — optional context
+
+- id: observational-memory-token-reduction
+  claim: "~22% of baseline tokens on a 50-turn synthetic trace"
+  evidence_script: "examples/benchmarks/observational-memory.mjs"
+  last_verified: "2026-06-23"
+  ci_mode: "nightly"
+  tolerance: "+/- 5%"
+  notes: >
+    Measured with claude-haiku-4-5-20251001 on a synthetic 50-turn coding
+    trace. Baseline = no observational memory. Prompt-cache stability is
+    a precondition — verify with Anthropic cache_read_input_tokens > 0.
+
+- id: quickjs-cold-start-edge
+  claim: "QuickJS kernel cold-start < 50ms on Cloudflare Workers edge"
+  evidence_script: "examples/benchmarks/kernel-cold-start.mjs"
+  last_verified: "2026-06-23"
+  ci_mode: "manual"
+  tolerance: "+/- 10ms"
+  notes: >
+    Measured with wrangler dev --remote. Does not include WASM asset
+    download time (cached by CF edge after first request).
+
+- id: parallel-fork-join-quality-lift
+  claim: "ParallelForkJoinRunner improves final answer quality vs single-pass on HumanEval subset"
+  evidence_script: "examples/benchmarks/parallel-fork-quality.mjs"
+  last_verified: "2026-06-23"
+  ci_mode: "nightly"
+  tolerance: "+/- 3% pass@1"
+  notes: >
+    Uses 3 branches, majority-vote aggregation. Evaluated on 50-item
+    HumanEval-Python subset. Single-pass baseline uses same model/temperature.

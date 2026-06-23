@@ -2,6 +2,7 @@ import { defineConfig } from "vitepress";
 
 const enNav = [
   { text: "Guide", link: "/guides/getting-started" },
+  { text: "Ecosystem", link: "/ecosystem" },
   { text: "Kernels", link: "/kernels/comparison" },
   { text: "Benchmarks", link: "/benchmarks" },
   { text: "Packages", link: "/packages" },
@@ -44,6 +45,15 @@ const enSidebar = {
       items: [
         { text: "Use kernels with Vercel AI SDK", link: "/guides/integrate-vercel-ai-sdk" },
         { text: "Use kernels with Mastra", link: "/guides/integrate-mastra" },
+      ],
+    },
+    {
+      text: "RLAIF data pipeline",
+      items: [
+        { text: "Ecosystem overview", link: "/ecosystem" },
+        { text: "Data pipeline guide", link: "/data-pipeline" },
+        { text: "RLAIF rollout", link: "/guides/rlaif-rollout" },
+        { text: "Schema governance", link: "/schemas/GOVERNANCE" },
       ],
     },
   ],

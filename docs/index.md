@@ -2,16 +2,16 @@
 layout: home
 
 hero:
-  name: "agentkit-js"
-  text: "Edge-native agent runtime"
-  tagline: "Three-tier sandboxed code execution · prompt-cache cost control · first-class Chinese model support · ships to Cloudflare Workers."
+  name: "wasmagent-js"
+  text: "Secure portable agent runtime"
+  tagline: "WASM isolation · Cloudflare-ready · rollout ranking · training-data export hooks."
   actions:
     - theme: brand
       text: Get started
       link: /guides/getting-started
     - theme: alt
-      text: Why three sandbox tiers?
-      link: /kernels/comparison
+      text: Ecosystem overview
+      link: /ecosystem
     - theme: alt
       text: GitHub
       link: https://github.com/WasmAgent/wasmagent-js
@@ -40,6 +40,11 @@ features:
     details: Checkpoints, SSE Last-Event-ID resume, stateless human-in-the-loop. Backends - CF KV, Durable Objects, Redis, Upstash.
     link: /guides/durable-runtime
     linkText: Architecture
+  - icon: 🔄
+    title: RLAIF data flywheel
+    details: RolloutForkRunner + RolloutRanker export real build-verified trajectories as DPO/PPO training records. bscode collects the signal; evomerge trains on it.
+    link: /data-pipeline
+    linkText: Pipeline guide
   - icon: 🧪
     title: Honest, CI-gated benchmarks
     details: Every percentage in the README is reproduced in CI - drift outside ±10 % fails the build. No bit-rot.
@@ -53,5 +58,5 @@ features:
 ---
 
 <div style="text-align: center; margin-top: 3rem; opacity: 0.7;">
-<small>Apache-2.0 · <a href="https://github.com/WasmAgent/wasmagent-js/blob/main/README.md#comparison-with-other-agent-frameworks">vs Vercel AI SDK / Mastra / LangGraph</a></small>
+<small>Apache-2.0 · <a href="https://github.com/WasmAgent/wasmagent-js/blob/main/README.md#comparison-with-other-agent-frameworks">vs Vercel AI SDK / Mastra / LangGraph</a> · <a href="/ecosystem">Runtime + App + Data Factory ecosystem</a></small>
 </div>

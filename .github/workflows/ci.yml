@@ -63,6 +63,12 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: Stable API gate
+        run: node scripts/check-stable-api.mjs
+
+      - name: Bundle size budget
+        run: node scripts/check-bundle-budget.mjs
+
       - name: Test (excluding kernel-pyodide)
         run: bun run turbo run test --filter=!@wasmagent/kernel-pyodide
 

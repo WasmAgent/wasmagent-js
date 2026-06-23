@@ -10,6 +10,14 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
+    "./beta": {
+      "import": "./dist/beta.js",
+      "types": "./dist/beta.d.ts"
+    },
+    "./experimental": {
+      "import": "./dist/experimental.js",
+      "types": "./dist/experimental.d.ts"
+    },
     "./executor": {
       "import": "./dist/executor/index.js",
       "types": "./dist/executor/index.d.ts"
