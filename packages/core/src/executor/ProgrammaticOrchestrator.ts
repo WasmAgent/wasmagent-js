@@ -70,6 +70,9 @@ export class ProgrammaticOrchestrator {
    * @param script  Model-generated orchestration code (JavaScript).
    * @param signal  Optional AbortSignal to cancel execution.
    * @returns Final output string (the only content that enters the LLM context).
+   * @warning Scripts must end with an explicit `return` statement. A bare expression
+   *          at the end (e.g. `result;`) is a statement, not a return — `finalOutput`
+   *          will be an empty string without `return result;`.
    */
   async run(script: string, signal?: AbortSignal): Promise<ProgrammaticResult> {
     const scriptBytes = new TextEncoder().encode(script).byteLength;

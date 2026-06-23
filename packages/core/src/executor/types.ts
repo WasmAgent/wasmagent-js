@@ -39,7 +39,11 @@ export interface KernelResult {
  *   warning is logged so the caller is not silently misled.
  */
 export interface CapabilityManifest {
-  /** Allow outbound HTTP to these domains (glob patterns). Empty = no network. */
+  /**
+   * Allowlist of hostnames the kernel may contact over the network.
+   * Empty array (`[]`) = deny all network access.
+   * Note: there is no `allowNetwork` boolean field — use `allowedHosts: []` to deny all.
+   */
   allowedHosts: string[];
   /** Allow read access to these path prefixes. Empty = no FS reads. */
   allowedReadPaths: string[];

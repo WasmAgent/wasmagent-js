@@ -362,3 +362,57 @@ ${findingsLines.map((l) => l).join("\n")}
     600_000
   );
 });
+
+// ── T8-S2: Pure generation QA sweep ──────────────────────────────────────────
+
+describe("T8-S2 · Pure generation QA sweep (no tool-calling)", () => {
+  it.skipIf(!OLLAMA_UP)(
+    "evomerge 1b7 versions answer simple math via raw generation",
+    async () => {
+      const MODELS = [
+        "evomerge-t10-1b7-v7f:latest",
+        "evomerge-t10-1b7-v9a:latest",
+        "evomerge-t10-1b7-v10:latest",
+      ];
+
+      // Use raw Ollama generate API (not chat/tools)
+      async function rawGenerate(model: string, prompt: string): Promise<string> {
+        const r = await fetch("http://localhost:11434/api/generate", {
+          method: "POST",
+          body: JSON.stringify({ model, prompt, stream: false, options: { num_predict: 50, temperature: 0 } }),
+          signal: AbortSignal.timeout(25_000),
+        });
+        const d = await r.json() as { response: string };
+        return (d.response ?? "").trim().slice(0, 80);
+      }
+
+      const tasks = [
+        { prompt: "Q: What is 3+4? A:", expected: "7" },
+        { prompt: "Q: What is 10-3? A:", expected: "7" },
+        { prompt: "Q: The capital of France is:", expected: "Paris" },
+      ];
+
+      const results: Record<string, number> = {};
+
+      for (const modelId of MODELS) {
+        const available = await ollamaHas(modelId.split(":")[0]);
+        if (!available) { results[modelId] = -1; console.log(`  SKIP ${modelId} (not loaded)`); continue; }
+
+        let score = 0;
+        for (const { prompt, expected } of tasks) {
+          const answer = await rawGenerate(modelId, prompt);
+          if (answer.includes(expected)) score++;
+          console.log(`  ${modelId.split("-").slice(-1)[0]} | "${prompt}" → "${answer.slice(0,40)}" [${answer.includes(expected) ? "✓" : "✗"}]`);
+        }
+        results[modelId] = score;
+      }
+
+      console.log("\nQA Sweep results:", results);
+      // At least one model must have loaded (not all -1)
+      const loaded = Object.values(results).filter(v => v >= 0);
+      expect(loaded.length).toBeGreaterThan(0);
+      // Log without hard assertions on score (observational)
+    },
+    120_000
+  );
+});

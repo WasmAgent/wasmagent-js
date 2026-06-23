@@ -1,5 +1,5 @@
 # evomerge t10-1b7 Model Sweep — Tool Calling Accuracy
-Generated: 2026-06-23 23:19:51
+Generated: 2026-06-23 23:32:54
 
 ## Setup
 - Ollama endpoint: `http://localhost:11434`

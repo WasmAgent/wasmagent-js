@@ -136,7 +136,7 @@ describe("T5-S3 · QuickJSKernel WASM sandbox isolation", () => {
   it("reports 'undefined' for typeof process inside QuickJS", async () => {
     const kernel = new QuickJSKernel();
 
-    const result = await kernel.run("typeof process", { allowNetwork: false });
+    const result = await kernel.run("typeof process", { allowedHosts: [] });
 
     console.log("T5-S3 QuickJS typeof process:", result.output);
 

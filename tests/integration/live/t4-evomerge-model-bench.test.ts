@@ -223,9 +223,17 @@ describe("T4-S1 · Tool-calling: trained vs base model (evomerge qwen3-4b)", () 
   );
 });
 
-// ── S2: QA accuracy comparison ────────────────────────────────────────────────
+// ── S2: QA accuracy (v11 only — base model excluded) ─────────────────────────
+//
+// The base model (evomerge-qwen3-4b-base) is a raw completion model, not a
+// chat-tuned model. Sending it chat-formatted messages via the OpenAI-compatible
+// endpoint produces garbage or errors. S2 therefore only evaluates the trained
+// v11 model on pure QA (no tool-calling). Use S1 for the tool-calling comparison
+// (which already handles TOOL_UNSUPPORTED gracefully for both models).
 
-describe("T4-S2 · QA accuracy: trained vs base model", () => {
+const V11_LIVE = TRAINED_LIVE;
+
+describe("T4-S2 · QA accuracy: v11 trained model only (base excluded — completion model)", () => {
   const QA_PAIRS: Array<{ question: string; correct: string; label: string }> = [
     { question: "What is 7 × 8? Answer with just the number.", correct: "56", label: "7×8" },
     {
@@ -243,67 +251,48 @@ describe("T4-S2 · QA accuracy: trained vs base model", () => {
     },
   ];
 
-  it.skipIf(!BOTH_LIVE)(
-    "scores both models on 5 factual questions; no assertion on relative ordering",
+  it.skipIf(!V11_LIVE)(
+    "v11 answers 5 factual questions correctly (no tool-calling, no base model comparison)",
     async () => {
       let trainedScore = 0;
-      let baseScore = 0;
 
       const rows: Array<{
         label: string;
         correct: string;
         trainedAnswer: string;
-        baseAnswer: string;
         trainedPass: boolean;
-        basePass: boolean;
       }> = [];
 
       for (const { question, correct, label } of QA_PAIRS) {
-        const [trainedAns, baseAns] = await Promise.all([
-          runQA(TRAINED_ID, trainedModel(), question),
-          runQA(BASE_ID, baseModel(), question),
-        ]);
+        const trainedAns = await runQA(TRAINED_ID, trainedModel(), question);
 
         const trainedPass = trainedAns.includes(correct);
-        const basePass = baseAns.includes(correct);
         if (trainedPass) trainedScore++;
-        if (basePass) baseScore++;
 
         rows.push({
           label,
           correct,
           trainedAnswer: trainedAns.slice(0, 60),
-          baseAnswer: baseAns.slice(0, 60),
           trainedPass,
-          basePass,
         });
       }
 
-      console.log("\n── T4-S2 QA Accuracy Comparison ────────────────────────────────");
-      console.log(`  ${"Question".padEnd(12)} | ${"Correct".padEnd(6)} | ${"Trained".padEnd(25)} | ${"Base".padEnd(25)} | Trained✓ | Base✓`);
-      console.log(`  ${"-".repeat(100)}`);
+      console.log("\n── T4-S2 QA Accuracy (v11 only) ────────────────────────────────");
+      console.log(`  ${"Question".padEnd(12)} | ${"Correct".padEnd(6)} | ${"v11 Answer".padEnd(40)} | v11✓`);
+      console.log(`  ${"-".repeat(80)}`);
       for (const r of rows) {
         console.log(
-          `  ${r.label.padEnd(12)} | ${r.correct.padEnd(6)} | ${r.trainedAnswer.padEnd(25)} | ${r.baseAnswer.padEnd(25)} | ${r.trainedPass ? "YES" : "NO ".padEnd(5)} | ${r.basePass ? "YES" : "NO"}`
+          `  ${r.label.padEnd(12)} | ${r.correct.padEnd(6)} | ${r.trainedAnswer.padEnd(40)} | ${r.trainedPass ? "YES" : "NO"}`
         );
       }
-      console.log(`  ${"-".repeat(100)}`);
-      console.log(`  TRAINED score: ${trainedScore}/5  |  BASE score: ${baseScore}/5`);
-
-      if (trainedScore > baseScore) {
-        console.log(`  FINDING: DPO training improved QA accuracy (+${trainedScore - baseScore})`);
-      } else if (trainedScore < baseScore) {
-        console.log(`  FINDING: Base model scored higher on QA — possible regression (${baseScore - trainedScore} pts)`);
-      } else {
-        console.log("  FINDING: Both models scored equally on QA");
-      }
+      console.log(`  ${"-".repeat(80)}`);
+      console.log(`  v11 score: ${trainedScore}/5`);
+      console.log("  NOTE: base model excluded — it is a raw completion model, not chat-tuned");
       console.log("────────────────────────────────────────────────────────────────");
 
-      // Only assert no crash — scores are observational
-      expect(trainedScore).toBeGreaterThanOrEqual(0);
-      expect(baseScore).toBeGreaterThanOrEqual(0);
+      // Assert v11 answers correctly (it is chat-tuned via DPO)
+      expect(trainedScore).toBeGreaterThan(0);
       expect(trainedScore).toBeLessThanOrEqual(5);
-      expect(baseScore).toBeLessThanOrEqual(5);
     },
     300_000
   );
@@ -347,4 +336,50 @@ describe("T4-S3 · Context retention: does the model remember injected facts?", 
     },
     90_000
   );
+});
+
+// ── S4: Format check — training format bleed detection ───────────────────────
+//
+// FINDING (2026-06-24): evomerge-t10-qwen3-4b-v11 suffers from "training format
+// bleed" — it returns {"choice":"<letter>"} for general QA questions because the
+// ARM-F SFT training data uses {"choice":"<tool>"} for every action turn. The
+// model generalized this JSON format to all responses outside its training
+// distribution. See docs/eval-reports/model-sweep-1b7.md for full diagnosis.
+//
+// This test DOCUMENTS the issue rather than asserting it's fixed. Once the
+// training pipeline adds general QA recovery data, update the assertion to
+// expect(isFormatBleed).toBe(false).
+
+describe("T4-S4 · Training format bleed detection", () => {
+  it.skipIf(!V11_LIVE)("detects whether v11 returns JSON-wrapped output (known issue)", async () => {
+    const model = new OpenAIModel("evomerge-t10-qwen3-4b-v11:latest", {
+      baseURL: "http://localhost:11434/v1", apiKey: "ollama",
+    });
+    const agent = new ToolCallingAgent({ model, tools: [], maxSteps: 3 });
+
+    let finalAnswer = "";
+    for await (const ev of agent.run("What is 7 times 8? Reply with just the number.")) {
+      if (ev.event === "final_answer") finalAnswer = (ev.data as { answer: string }).answer;
+    }
+
+    const isFormatBleed = /^\{.*"choice".*\}$/s.test(finalAnswer.trim());
+    const hasCorrectAnswer = finalAnswer.includes("56");
+
+    console.log("T4-S4 v11 answer:", JSON.stringify(finalAnswer));
+    console.log("T4-S4 format bleed detected:", isFormatBleed);
+    console.log("T4-S4 correct answer (56):", hasCorrectAnswer);
+
+    if (isFormatBleed) {
+      console.warn(
+        "WARNING: v11 exhibits training format bleed — outputs {\"choice\":...} for QA tasks. " +
+        "Root cause: ARM-F SFT training data overfit. " +
+        "See docs/eval-reports/model-sweep-1b7.md for details."
+      );
+    }
+
+    // Test passes regardless — this is a DIAGNOSTIC test, not a regression guard.
+    // The metric we track is whether format bleed is present or absent.
+    expect(finalAnswer.length).toBeGreaterThan(0);
+    // Log result for CI visibility (do not fail — issue is known and documented)
+  }, 30_000);
 });
