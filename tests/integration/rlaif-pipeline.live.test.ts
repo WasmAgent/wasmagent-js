@@ -15,14 +15,12 @@
 
 import { describe, expect, it } from "bun:test";
 import { z } from "zod";
-import { AnthropicModel, InMemoryVectorStore } from "@wasmagent/core";
+import { AnthropicModel, BuildPassesVerifier, InMemoryVectorStore, ScalarLLMJudgeVerifier } from "@wasmagent/core";
 import {
-  BuildPassesVerifier,
   DEFAULT_REWARD_FUNCTIONS,
   RolloutForkRunner,
   RolloutMemoryStore,
   RolloutRanker,
-  ScalarLLMJudgeVerifier,
   toDpoRecord,
   toPpoRecords,
   toJsonl,

@@ -18,8 +18,8 @@
 import { describe, expect, it } from "bun:test";
 import { z } from "zod";
 import type { Model, StreamEvent, ToolDefinition } from "@wasmagent/core";
+import { BuildPassesVerifier } from "@wasmagent/core";
 import {
-  BuildPassesVerifier,
   DEFAULT_REWARD_FUNCTIONS,
   RolloutForkRunner,
   RolloutRanker,
