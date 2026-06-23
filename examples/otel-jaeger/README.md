@@ -1,6 +1,6 @@
 # otel-jaeger — End-to-end OpenTelemetry trace pipeline
 
-Spin up Jaeger locally and export agentkit-js traces to it. Useful for
+Spin up Jaeger locally and export WasmAgent traces to it. Useful for
 visualizing agent runs, debugging slow steps, and measuring tool
 latency distributions.
 
@@ -38,7 +38,7 @@ invoke_agent (35s)
 Each span carries:
 - Standard `gen_ai.*` attributes (input tokens, output tokens, cache
   read tokens, model name, request id)
-- agentkit-specific attributes (step index, tool name, error code)
+- WasmAgent-specific attributes (step index, tool name, error code)
 
 ## Sampling, redaction, baggage
 

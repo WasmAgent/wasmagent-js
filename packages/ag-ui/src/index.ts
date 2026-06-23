@@ -3,7 +3,7 @@
  *
  * Maps the private AgentEvent stream to the AG-UI 16-class event protocol
  * (docs.ag-ui.com), enabling any AG-UI-compatible frontend (CopilotKit,
- * LangGraph Studio, AWS Bedrock AgentCore, etc.) to consume agentkit runs.
+ * LangGraph Studio, AWS Bedrock AgentCore, etc.) to consume WasmAgent runs.
  *
  * AG1: Uses official field names (timestamp not timestampMs) and event classes.
  * AG2: Implements fromRunAgentInput() for bidirectional protocol support.
@@ -55,7 +55,7 @@ export type AgUiEventType =
 
 export interface AgUiBaseEvent {
   type: AgUiEventType;
-  /** Run identifier (maps to agentkit traceId). */
+  /** Run identifier (maps to WasmAgent traceId). */
   runId: string;
   /** Official AG-UI field name: timestamp (Unix ms). */
   timestamp: number;
@@ -212,7 +212,7 @@ export function fromRunAgentInput(input: RunAgentInput): {
 // ── Main adapter ──────────────────────────────────────────────────────────────
 
 /**
- * Transform an agentkit AgentEvent async iterable into an AG-UI event stream.
+ * Transform a WasmAgent AgentEvent async iterable into an AG-UI event stream.
  *
  * Conforms to the official AG-UI event protocol (ag-ui-protocol 2026-04):
  * - Uses `timestamp` (not `timestampMs`)

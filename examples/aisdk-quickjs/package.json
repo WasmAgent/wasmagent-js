@@ -2,7 +2,7 @@
   "name": "aisdk-quickjs",
   "version": "0.1.1",
   "private": true,
-  "description": "D5 — Vercel AI SDK + agentkit-js QuickJS kernel (StackBlitz-runnable)",
+  "description": "D5 — Vercel AI SDK + WasmAgent QuickJS kernel (StackBlitz-runnable)",
   "type": "module",
   "scripts": {
     "start": "node index.mjs"

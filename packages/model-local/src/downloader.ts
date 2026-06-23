@@ -3,7 +3,7 @@
  *
  * Resolution precedence (high → low):
  *   1. Explicit `mirror` argument (programmatic).
- *   2. `AGENTKIT_MODEL_MIRROR` env var — value is a {@link SourceKind}
+ *   2. `WASMAGENT_MODEL_MIRROR` env var — value is a {@link SourceKind}
  *      preset or a URL prefix to a custom CDN.
  *   3. Registry-declared order (HuggingFace first; mirrors as fallback).
  *
@@ -15,8 +15,8 @@
  *     produces a warning but proceeds — see registry.ts.
  *
  * Caching:
- *   - Default cache directory: `~/.agentkit/models`
- *   - Override: `AGENTKIT_MODEL_DIR` env var, or `cacheDir` arg.
+ *   - Default cache directory: `~/.wasmagent/models`
+ *   - Override: `WASMAGENT_MODEL_DIR` env var, or `cacheDir` arg.
  *   - Files are stored under `<cacheDir>/<sanitised-filename>`. We do NOT
  *     re-download if a cached file matches sha256 (or is present and the
  *     entry has no sha256 pinned).
@@ -44,7 +44,7 @@ import {
 import { LocalModelChecksumError, LocalModelDownloadError } from "./types.js";
 
 export interface DownloadOptions {
-  /** Override cache directory. Default: $AGENTKIT_MODEL_DIR or ~/.agentkit/models. */
+  /** Override cache directory. Default: $WASMAGENT_MODEL_DIR or ~/.wasmagent/models. */
   cacheDir?: string;
   /** Override mirror preference. Beats env var. */
   mirror?: string;
@@ -60,14 +60,14 @@ export interface DownloadOptions {
 }
 
 export function defaultCacheDir(): string {
-  const env = process.env.AGENTKIT_MODEL_DIR;
+  const env = process.env.WASMAGENT_MODEL_DIR;
   if (env && env.length > 0) return env;
-  return join(homedir(), ".agentkit", "models");
+  return join(homedir(), ".wasmagent", "models");
 }
 
 export function effectiveMirror(explicit?: string): string | undefined {
   if (explicit) return explicit;
-  const env = process.env.AGENTKIT_MODEL_MIRROR;
+  const env = process.env.WASMAGENT_MODEL_MIRROR;
   return env && env.length > 0 ? env : undefined;
 }
 

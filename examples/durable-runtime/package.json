@@ -1,5 +1,5 @@
 {
-  "name": "agentkit-example-durable-runtime",
+  "name": "wasmagent-example-durable-runtime",
   "private": true,
   "type": "module",
   "scripts": {

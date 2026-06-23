@@ -13,7 +13,7 @@
 ## What's broken
 
 The starter dataset at
-`agentkit-js/datasets/multi-turn-sft-starter/train_seed.jsonl` and the
+`WasmAgent/datasets/multi-turn-sft-starter/train_seed.jsonl` and the
 expanded `evomerge/outputs/t10_sft_data/train_val_eval.jsonl` use
 this shape per record:
 
@@ -43,7 +43,7 @@ tool_calls array. SFT teaches the model to emit this whole shape in
 one decode step.
 
 **arm-f production inference shape** (in
-`agentkit-js/packages/evals-runner/src/suites/multi-turn-scaffold-arms.ts:runArmF`):
+`WasmAgent/packages/evals-runner/src/suites/multi-turn-scaffold-arms.ts:runArmF`):
 
 ```
 turn N (pass 1):
@@ -133,7 +133,7 @@ regeneration is too expensive.
 ## Implementation steps for Option A
 
 1. **Update the generator** at
-   `agentkit-js/datasets/multi-turn-sft-starter/generate.mjs`:
+   `WasmAgent/datasets/multi-turn-sft-starter/generate.mjs`:
    - Replace the `callTurn(...)` helper to emit two assistant turns
      (choice + args) instead of one with tool_calls
    - Insert `Pick the next tool` user turn before each choice emit
@@ -188,17 +188,17 @@ regeneration is too expensive.
 
 ## Run H artifacts
 
-- `agentkit-js/docs/reports/multi-turn-scaffold-ablation-2026-06-13/run-H-sft-diagnostic/report.md`
-- `agentkit-js/docs/reports/multi-turn-scaffold-ablation-2026-06-13/run-H-sft-diagnostic/raw.json`
-- This spec: `agentkit-js/docs/strategy/multi-turn-sft-spec-v2-arm-f-shape.md`
+- `WasmAgent/docs/reports/multi-turn-scaffold-ablation-2026-06-13/run-H-sft-diagnostic/report.md`
+- `WasmAgent/docs/reports/multi-turn-scaffold-ablation-2026-06-13/run-H-sft-diagnostic/raw.json`
+- This spec: `WasmAgent/docs/strategy/multi-turn-sft-spec-v2-arm-f-shape.md`
 
 ## Cross-reference
 
-- Original spec: `agentkit-js/docs/strategy/multi-turn-sft-spec.md`
+- Original spec: `WasmAgent/docs/strategy/multi-turn-sft-spec.md`
   (still the authoritative document for everything not contradicted
   here; this is the shape-fix delta)
 - evomerge `CLAUDE.md` §T10 (arm-f shape will need to be added; the
   current §T10 still describes the native tool_calls shape, which
   Run H proved inadequate)
-- agentkit-js `MEMORY.md` →
-  [memory/desktop_agent_feasibility_2026_06_13.md](../../../.claude/projects/-Users-I041705-github-agentkit-js/memory/project_desktop_agent_feasibility_2026_06_13.md)
+- WasmAgent `MEMORY.md` →
+  [memory/desktop_agent_feasibility_2026_06_13.md](../../../.claude/projects/-Users-I041705-github-WasmAgent/memory/project_desktop_agent_feasibility_2026_06_13.md)

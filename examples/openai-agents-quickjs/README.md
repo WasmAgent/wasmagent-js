@@ -1,4 +1,4 @@
-# openai-agents-quickjs — OpenAI Agents JS + agentkit-js (D5 StackBlitz demo)
+# openai-agents-quickjs — OpenAI Agents JS + WasmAgent (D5 StackBlitz demo)
 
 ```bash
 npm install

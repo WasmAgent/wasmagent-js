@@ -4,7 +4,7 @@
  * stdio.ts — newline-delimited JSON-RPC over stdin/stdout.
  *
  * Wires the existing transport-agnostic `McpAgentServer.handle()` to a
- * standard-conformant MCP stdio transport, so `agentkit-mcp-server` can
+ * standard-conformant MCP stdio transport, so `wasmagent-mcp-server` can
  * be exec'd by any MCP host that speaks stdio (Claude Desktop, Cursor,
  * Glama health-checks, etc.).
  *
@@ -53,20 +53,20 @@ function logStderr(...parts: unknown[]): void {
   // Per the spec, stderr is best-effort logging; the host MAY ignore it.
   // Prefix so a host that *does* surface stderr can group our lines.
   // eslint-disable-next-line no-console
-  console.error("[agentkit-mcp-server]", ...parts);
+  console.error("[wasmagent-mcp-server]", ...parts);
 }
 
 function printHelp(): void {
   // eslint-disable-next-line no-console
   console.error(
     [
-      `agentkit-mcp-server v${VERSION} — MCP stdio entry point`,
+      `wasmagent-mcp-server v${VERSION} — MCP stdio entry point`,
       "",
       "Usage:",
-      "  agentkit-mcp-server                # default code-mode server (VmKernel, no tools)",
-      "  agentkit-mcp-server --config <p>   # load a module that default-exports an McpAgentServer",
-      "  agentkit-mcp-server --help         # this help",
-      "  agentkit-mcp-server --version      # print version and exit",
+      "  wasmagent-mcp-server                # default code-mode server (VmKernel, no tools)",
+      "  wasmagent-mcp-server --config <p>   # load a module that default-exports an McpAgentServer",
+      "  wasmagent-mcp-server --help         # this help",
+      "  wasmagent-mcp-server --version      # print version and exit",
       "",
       "The default server is suitable for Glama health-checks and basic",
       "introspection only — it has no downstream tools wired in. For a",
@@ -197,7 +197,7 @@ async function main(): Promise<number> {
     server = createCodeModeServer({
       tools: new ToolRegistry(),
       kernel: new VmKernel(),
-      serverInfo: { name: "agentkit-mcp-server", version: VERSION },
+      serverInfo: { name: "wasmagent-mcp-server", version: VERSION },
     });
     logStderr("started default code-mode server (VmKernel, 0 downstream tools)");
   }

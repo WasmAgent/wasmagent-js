@@ -13,7 +13,7 @@ Demonstrates the full M5 stack:
 `wrangler.toml`:
 
 ```toml
-name = "agentkit-prod"
+name = "WasmAgent-prod"
 main = "src/index.ts"
 compatibility_date = "2026-06-01"
 node_compat = false
@@ -34,7 +34,7 @@ id = "<your-dlq-kv-id>"
 # D1 — run history
 [[d1_databases]]
 binding = "AGENTKIT_DB"
-database_name = "agentkit_runs"
+database_name = "WasmAgent_runs"
 database_id = "<your-d1-id>"
 
 # Durable Object — long-running agents
@@ -61,8 +61,8 @@ AGENTKIT_LOG_LEVEL = "info"
 ## 2. D1 schema
 
 ```bash
-wrangler d1 create agentkit_runs
-wrangler d1 execute agentkit_runs --command "
+wrangler d1 create WasmAgent_runs
+wrangler d1 execute WasmAgent_runs --command "
 CREATE TABLE IF NOT EXISTS runs (
   id TEXT PRIMARY KEY,
   user_id TEXT,
@@ -108,7 +108,7 @@ console.log(`${header}.${body}.${sig}`);
 
 ```bash
 TOKEN="<jwt from step 3>"
-curl -X POST https://agentkit-prod.your-subdomain.workers.dev/run \
+curl -X POST https://WasmAgent-prod.your-subdomain.workers.dev/run \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"task":"What is 2+2?", "agentType":"tool-calling"}'

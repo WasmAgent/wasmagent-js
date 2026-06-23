@@ -1,4 +1,4 @@
-# aisdk-quickjs — Vercel AI SDK + agentkit-js (D5 StackBlitz demo)
+# aisdk-quickjs — Vercel AI SDK + WasmAgent (D5 StackBlitz demo)
 
 Smallest possible "Vercel AI SDK with a sandboxed JS tool" example. Runs on
 StackBlitz with no setup beyond `OPENAI_API_KEY`.

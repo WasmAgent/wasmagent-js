@@ -7,7 +7,7 @@
  * Run with: node lazy-observations.js
  */
 
-import { LazyObservationHandle } from "@agentkit-js/core";
+import { LazyObservationHandle } from "@wasmagent/core";
 
 // Simulate slow tool calls (e.g. API calls that take different amounts of time).
 function slowTool(name, delayMs, result) {

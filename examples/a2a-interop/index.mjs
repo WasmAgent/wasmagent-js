@@ -7,7 +7,7 @@
 // frameworks with their own test harnesses), but we CAN prove the on-the-wire
 // shape is correct two different ways inside a single Node process:
 //
-//   1. Raw HTTP — exactly what any non-agentkit-js client (ADK, CrewAI, your
+//   1. Raw HTTP — exactly what any non-WasmAgent client (ADK, CrewAI, your
 //      own httpie / fetch) will see. If our agent card and task endpoint
 //      match the A2A v1.0 spec on the bytes, every external framework that
 //      speaks A2A can drive us.
@@ -15,7 +15,7 @@
 //   2. A2ARemoteAgent — the symmetric path. We wrap our own server as if it
 //      were a remote agent, register the wrapper as a Tool inside a
 //      ToolCallingAgent, and prove a parent-child agent call works through
-//      the protocol. This is the "agentkit-js calls another agent over A2A"
+//      the protocol. This is the "WasmAgent calls another agent over A2A"
 //      direction — equally important because it's what consumers do when
 //      they want to stitch their own agents to ADK/CrewAI ones.
 //
@@ -109,7 +109,7 @@ if ((taskJson.result ?? "").includes("42")) {
 // 3. Path B — A2ARemoteAgent wraps the server as a Tool. This is the path a
 //    user takes when their agent needs to *call* an external agent over A2A.
 // ─────────────────────────────────────────────────────────────────────────────
-console.log("\n=== Path B: agentkit-js → A2ARemoteAgent → A2A server ===");
+console.log("\n=== Path B: WasmAgent → A2ARemoteAgent → A2A server ===");
 
 const fetchedCard = await A2ARemoteAgent.fetchAgentCard(baseUrl);
 console.log(`  ↪ Re-discovered card via A2ARemoteAgent: ${fetchedCard.name}`);
@@ -122,7 +122,7 @@ const inventoryTool = A2ARemoteAgent.asTool({
 
 // Direct tool call (no parent agent, no model — just to prove the wire).
 // ToolDefinition uses .forward(input, signal?) — same shape as every other
-// agentkit-js tool, no special A2A surface.
+// WasmAgent tool, no special A2A surface.
 const direct = await inventoryTool.forward({
   task: "How many widgets do we have?",
 });

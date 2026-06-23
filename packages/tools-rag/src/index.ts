@@ -1,5 +1,5 @@
 /**
- * @wasmagent/tools-rag — RAG / embedding tools for agentkit-js.
+ * @wasmagent/tools-rag — RAG / embedding tools for WasmAgent.
  *
  * Provides:
  * - {@link HttpEmbedder}: generic embedder for any OpenAI-compatible

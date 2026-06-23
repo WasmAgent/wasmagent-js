@@ -1,5 +1,5 @@
 /**
- * D5 — StackBlitz-runnable demo: Vercel AI SDK + agentkit-js QuickJS kernel.
+ * D5 — StackBlitz-runnable demo: Vercel AI SDK + WasmAgent QuickJS kernel.
  *
  * Demonstrates the smallest possible surface: register a single sandboxed JS
  * tool, ask the model to use it. No external sandbox provider needed.

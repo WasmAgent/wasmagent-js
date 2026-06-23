@@ -1,4 +1,4 @@
-# mcp-memory-server — agentkit memory as an MCP server
+# mcp-memory-server — WasmAgent memory as an MCP server
 
 A minimal MCP server that exposes 4 memory tools — `memory_read`,
 `memory_write`, `memory_list`, `memory_delete` — backed by
@@ -7,7 +7,7 @@ Drops into any MCP-compatible host (Claude Desktop, Cursor, Glama,
 your own client) so the model on the other side can persist and
 recall facts across turns.
 
-The agentkit equivalent of running a [Mem0](https://github.com/mem0ai/mem0) /
+The WasmAgent equivalent of running a [Mem0](https://github.com/mem0ai/mem0) /
 [Letta](https://github.com/letta-ai/letta) / [Zep](https://github.com/getzep/zep)
 memory bridge: same shape (MCP tools), different backend (you own the
 storage and the namespace semantics). Single file, ~200 lines, no LLM
@@ -52,7 +52,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
 ```
 
 Should print a single response advertising `serverInfo.name:
-agentkit-mcp-memory-server` and exit.
+WasmAgent-mcp-memory-server` and exit.
 
 ## Wiring into Claude Desktop
 
@@ -62,9 +62,9 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`
 ```json
 {
   "mcpServers": {
-    "agentkit-memory": {
+    "WasmAgent-memory": {
       "command": "node",
-      "args": ["/absolute/path/to/agentkit-js/examples/mcp-memory-server/index.mjs"]
+      "args": ["/absolute/path/to/WasmAgent/examples/mcp-memory-server/index.mjs"]
     }
   }
 }

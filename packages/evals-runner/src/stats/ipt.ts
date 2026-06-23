@@ -37,7 +37,7 @@
  *   and perturbed didn't, normalised by total pairs), and
  *   `verdictPerPair[]` for inspection.
  *
- * ## Use in agentkit-js evals
+ * ## Use in WasmAgent evals
  *
  * The expected pattern: for a suite item that tests a rule (e.g.
  * "the model should always rename file X to Y when asked to rename"),

@@ -4,7 +4,7 @@
  * Take any object that runs like an agent (a `SubagentRunnable`) and expose
  * it as a Model Context Protocol server. The host (Claude Code, Cursor,
  * Copilot, etc.) gets a uniform, transport-agnostic interface — JSON-RPC
- * over a request/response handler — and gains the ability to call agentkit
+ * over a request/response handler — and gains the ability to call WasmAgent
  * agents like any other MCP server.
  *
  * ## Why this matters strategically
@@ -13,7 +13,7 @@
  * 2025–2026: it's been adopted by Anthropic, OpenAI, Microsoft, Google,
  * and AWS, and is now governed by the Linux Foundation's AAIF. Every
  * competing agent framework already publishes its agents AS MCP servers.
- * agentkit-js previously only consumed MCP — this package closes the loop.
+ * WasmAgent previously only consumed MCP — this package closes the loop.
  *
  * ## Spec target & design constraints
  *
@@ -48,7 +48,7 @@ export type { CodeModeServerOptions } from "./codeMode.js";
 // A1 — code-mode server (S1 strategic line, 2026-06):
 //   Two-tool MCP surface (docs_search + execute_code) that collapses N
 //   downstream tools into one in-sandbox dispatch. Pairs with any kernel
-//   from agentkit-js for unified security policy.
+//   from WasmAgent for unified security policy.
 export { createCodeModeServer } from "./codeMode.js";
 export { createFetchHandler } from "./fetchHandler.js";
 export { McpAgentServer } from "./McpAgentServer.js";
@@ -62,7 +62,7 @@ export { createPortalServer } from "./portal.js";
 // Stdio transport — wraps any McpAgentServer in newline-delimited
 // JSON-RPC over stdin/stdout. Useful for examples that ship their own
 // server (e.g. examples/mcp-memory-server) and for downstream consumers
-// who want to embed agentkit's MCP layer in a Claude Desktop / Cursor /
+// who want to embed WasmAgent's MCP layer in a Claude Desktop / Cursor /
 // Glama deployment without re-implementing the wire framing.
 export { runStdio } from "./stdio.js";
 export { InMemoryTaskStore } from "./taskStore.js";

@@ -29,11 +29,11 @@ describe("HybridRetriever", () => {
     const dense = new FakeDense();
     const hybrid = new HybridRetriever({ dense });
 
-    await hybrid.add("d1", "agentkit is a typescript agent runtime");
+    await hybrid.add("d1", "wasmagent is a typescript agent runtime");
     await hybrid.add("d2", "react 19 introduced the use hook");
     await hybrid.add("d3", "the quick brown fox jumps over the lazy dog");
 
-    const out = await hybrid.search("agentkit typescript runtime", 3);
+    const out = await hybrid.search("wasmagent typescript runtime", 3);
     expect(out.length).toBeGreaterThan(0);
     expect(out[0]?.id).toBe("d1");
   });

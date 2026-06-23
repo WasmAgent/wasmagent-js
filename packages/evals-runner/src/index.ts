@@ -1,13 +1,13 @@
 /**
  * @wasmagent/evals-runner — multi-model multi-axis evaluation harness.
  *
- * Composes agentkit's existing scorers, EventLog, and statistical
+ * Composes WasmAgent's existing scorers, EventLog, and statistical
  * primitives into a complete pipeline: dataset in, Pareto report out.
  * Covers the axes accuracy-only benchmarks miss: long-context recall,
  * multi-turn memory, agent trajectory, latency, cost.
  *
- * agentkit-js is independent — this package adds an evaluation layer on
- * top of agentkit's primitives, but the runtime keeps no knowledge of
+ * WasmAgent is independent — this package adds an evaluation layer on
+ * top of WasmAgent's primitives, but the runtime keeps no knowledge of
  * any specific consumer.
  *
  * Public API:

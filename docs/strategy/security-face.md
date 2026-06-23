@@ -1,4 +1,4 @@
-# Enterprise Security Face — code-mode in agentkit-js
+# Enterprise Security Face — code-mode in WasmAgent
 
 > Last refreshed: **2026-06-12**.
 > Companion to [`SECURITY.md`](../../SECURITY.md),
@@ -34,7 +34,7 @@ Three observations from 2026 procurement reviews shape this doc:
    guest tries to escape.*
 3. **Single-tier isolation is rejected by default.** A serious
    review will ask whether you can fall back to a stronger tier for
-   untrusted code or escalating threat. The agentkit answer is the
+   untrusted code or escalating threat. The WasmAgent answer is the
    three-tier matrix; this doc is what to point at when asked.
 
 ---
@@ -110,7 +110,7 @@ A host can pin per-tool-call limits without owning kernel construction.
 
 Cloudflare's enterprise MCP reference architecture (2026-05) requires
 the MCP server to *step down* the user's full identity to a scoped
-agent identity before any tool execution. The agentkit code-mode MCP
+agent identity before any tool execution. The WasmAgent code-mode MCP
 server (`packages/mcp-server/src/codeMode.ts`) does not bind you to
 Cloudflare's OAuth implementation, but it accepts the same shape.
 
@@ -181,7 +181,7 @@ no third-party audit yet. We do not paper over the third bullet.
 
 ## 7. What an enterprise review should ask us
 
-If you are evaluating agentkit for a security-sensitive deployment,
+If you are evaluating WasmAgent for a security-sensitive deployment,
 here is the question set that maps to a clear yes/no answer:
 
 1. *Which kernel tier do we plan to use, and is it appropriate for

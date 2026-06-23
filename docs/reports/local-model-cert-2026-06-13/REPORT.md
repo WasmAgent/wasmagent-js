@@ -72,7 +72,7 @@ node examples/benchmarks/cert-all-aliases.mjs --skip-cert
 node examples/benchmarks/cert-all-aliases.mjs --aliases qwen2.5-1.5b
 
 # Verify a pinned alias against current cache
-agentkit model verify qwen2.5-1.5b
+WasmAgent model verify qwen2.5-1.5b
 ```
 
 ## DoD vs the plan (V3)
@@ -81,6 +81,6 @@ agentkit model verify qwen2.5-1.5b
 - ✅ The ⚠️ placeholder warning header in `registry.ts` removed
 - ✅ Audit log committed at `docs/reports/local-model-cert-2026-06-13/sha256.json`
 - ✅ All `model-local` unit tests passing (67/67) against the corrected registry
-- ⏳ `agentkit model verify <alias>` green for all five — covered by the
-  next `agentkit-js` release (the verify CLI already exists; running it
+- ⏳ `WasmAgent model verify <alias>` green for all five — covered by the
+  next `WasmAgent` release (the verify CLI already exists; running it
   is a one-liner once the package is rebuilt)

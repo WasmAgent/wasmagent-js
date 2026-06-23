@@ -1,7 +1,7 @@
 /**
  * @wasmagent/agent-prompts — composable system-prompt fragments.
  *
- * agentkit-js is a generic agent runtime. This package provides
+ * WasmAgent is a generic agent runtime. This package provides
  * **building blocks** for system prompts (reasoning preambles, sandbox
  * descriptions, output contracts, error-recovery rules, card-block
  * conventions), plus a {@link composePrompt} composer.

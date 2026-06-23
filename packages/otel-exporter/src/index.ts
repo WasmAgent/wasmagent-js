@@ -50,7 +50,7 @@ export interface OtlpHttpExporterOptions {
   timeoutMs?: number;
   /**
    * Service name for the resource span wrapper.
-   * Default: "agentkit"
+   * Default: "wasmagent"
    */
   serviceName?: string;
   /**
@@ -99,7 +99,7 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
     this.#maxRetries = opts.maxRetries ?? 3;
     this.#retryDelayMs = opts.retryDelayMs ?? 1000;
     this.#resource = {
-      "service.name": opts.serviceName ?? "agentkit",
+      "service.name": opts.serviceName ?? "wasmagent",
       ...(opts.serviceVersion ? { "service.version": opts.serviceVersion } : {}),
     };
   }

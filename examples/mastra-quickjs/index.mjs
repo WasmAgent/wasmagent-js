@@ -1,20 +1,20 @@
 /**
  * D5 — StackBlitz-runnable demo: Mastra sandbox provider backed by an
- * agentkit-js QuickJS kernel.
+ * WasmAgent QuickJS kernel.
  *
  * Mastra's sandbox-provider contract takes any object that implements
- * `execute(code, opts) -> { output }`. agentkit's `agentkitMastraSandbox`
+ * `execute(code, opts) -> { output }`. WasmAgent's `createMastraSandbox`
  * returns exactly that, with the same `CapabilityManifest` you'd use
- * everywhere else in agentkit.
+ * everywhere else in WasmAgent.
  *
  * The script demonstrates the contract directly — wiring it into Mastra's
  * `Agent` follows the standard Mastra `workspace.sandbox` slot once you
  * have `@mastra/core` installed.
  */
-import { agentkitMastraSandbox } from "@wasmagent/mastra-sandbox";
+import { createMastraSandbox } from "@wasmagent/mastra-sandbox";
 import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
-const sandbox = agentkitMastraSandbox({
+const sandbox = createMastraSandbox({
   kernel: new QuickJSKernel(),
   capabilities: { cpuMs: 3000 },
 });

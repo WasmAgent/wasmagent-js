@@ -13,7 +13,7 @@
  *   wf:<runId>:step:<stepId>  — JSON WorkflowStepRecord
  *   wf:<runId>:event:<seq>    — JSON WorkflowEventEnvelope
  *
- * Naming convention follows the agentkit-js codebase: KvBackend stays the one
+ * Naming convention follows the WasmAgent codebase: KvBackend stays the one
  * canonical KV abstraction; WorkflowStateStore composes on top.
  */
 

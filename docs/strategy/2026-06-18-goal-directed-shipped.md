@@ -21,15 +21,15 @@ If we don't capture this here, the only trace is `git log` — three commits who
 
 | Commit | Repo | One-line |
 |--------|------|----------|
-| `5c2ddae` | agentkit-js | `feat(core): GoalDirectedAgent — agent synthesises own success criteria, verifies, loops` |
-| `0793062` | bscode | `🎯 Goal` mode toggle — UI wiring of the new agent type, no business logic in agentkit-js |
-| `95bec2d` | agentkit-js | `feat(cli): agentkit goal/verify + agentkit-evals binary; fix model-spec parser` |
-| `0017bd0` | agentkit-js | `docs(goal-directed): add Auto-routing pattern — classifier loop axis, no manual toggle` |
+| `5c2ddae` | WasmAgent | `feat(core): GoalDirectedAgent — agent synthesises own success criteria, verifies, loops` |
+| `0793062` | bscode | `🎯 Goal` mode toggle — UI wiring of the new agent type, no business logic in WasmAgent |
+| `95bec2d` | WasmAgent | `feat(cli): WasmAgent goal/verify + WasmAgent-evals binary; fix model-spec parser` |
+| `0017bd0` | WasmAgent | `docs(goal-directed): add Auto-routing pattern — classifier loop axis, no manual toggle` |
 
 **Together they form one product surface**, but they fall into three layers — that layering is the [generic-foundation principle](../../CONTRIBUTING.md) at work:
 
-- `agentkit-js` core gets the **mechanism**: a `GoalDirectedAgent` class, a `Verifier` protocol, a `VerificationPipeline`, deterministic and LLM-judge verifiers, an `LLMJudge` with adversarial sampling default. Zero bscode-isms.
-- `agentkit-js` CLI gets the **discovery surface**: `agentkit goal "<task>"` runs the loop end-to-end with a local-fs workspace and `read_file`/`write_file` tools auto-wired. `agentkit verify --criteria criteria.json` runs the deterministic half without an LLM (CI-friendly).
+- `WasmAgent` core gets the **mechanism**: a `GoalDirectedAgent` class, a `Verifier` protocol, a `VerificationPipeline`, deterministic and LLM-judge verifiers, an `LLMJudge` with adversarial sampling default. Zero bscode-isms.
+- `WasmAgent` CLI gets the **discovery surface**: `WasmAgent goal "<task>"` runs the loop end-to-end with a local-fs workspace and `read_file`/`write_file` tools auto-wired. `WasmAgent verify --criteria criteria.json` runs the deterministic half without an LLM (CI-friendly).
 - `bscode` gets the **UX**: a `🎯 Goal` mode toggle wired to the auto-routing classifier (see `docs/guides/goal-directed.md` "Auto-routing pattern"). The classifier is forbidden from outputting `goalDirected` — manual toggle wins, classifier fills the rest. This codifies last week's lesson on user-choice override.
 
 ---
@@ -39,7 +39,7 @@ If we don't capture this here, the only trace is `git log` — three commits who
 `docs/guides/goal-directed.md` already names seven product axes
 (multi-provider model adapters, multi-runtime kernels, memory layers,
 workflow engine, code-mode, AG-UI, devtools/OTel). They describe **what
-agentkit-js is at rest** — surfaces a user picks from. The eighth axis
+WasmAgent is at rest** — surfaces a user picks from. The eighth axis
 is about **how a run unfolds**:
 
 | Axis | One-line value | Status |
@@ -115,7 +115,7 @@ While preparing the baseline against a local Anthropic-compat proxy (bscode work
 
 This is the same precedence the official `@anthropic-ai/sdk` uses when constructed directly. Five new tests pin the contract. Filed as G9 in [`docs/strategy/cli-gap-analysis-2026-06-18.md`](cli-gap-analysis-2026-06-18.md).
 
-This fix matters beyond the baseline: anyone running `agentkit goal` against a corporate gateway, vLLM, or a sandbox proxy was previously stuck. The 5 lines + helper extraction unblock all of them.
+This fix matters beyond the baseline: anyone running `WasmAgent goal` against a corporate gateway, vLLM, or a sandbox proxy was previously stuck. The 5 lines + helper extraction unblock all of them.
 
 ---
 
@@ -131,7 +131,7 @@ Cross-checked against the 06-17 update's competitive snapshot:
 | smolagents | ✗ | ✗ | ✗ | One-shot CodeAct loop, exits on `final_answer`. |
 | MS Agent Framework | ✗ | policy only | ✗ | Governance toolkit verifies *should*, not *did*. |
 | Claude Code (Anthropic CLI) | partial | proprietary | yes | Closest match, but not portable, not extensible. |
-| **agentkit-js 2026-06-18** | **✓** | **`Verifier` protocol** | **✓** | Plus deterministic + LLM-judge defaults; CI-friendly via `agentkit verify`. |
+| **WasmAgent 2026-06-18** | **✓** | **`Verifier` protocol** | **✓** | Plus deterministic + LLM-judge defaults; CI-friendly via `WasmAgent verify`. |
 
 The asymmetry isn't accidental — the other frameworks are competing on
 **graph expressivity**, **tool registry size**, and **observability**.
@@ -161,12 +161,12 @@ concern. That's the slot the eighth axis fills.
 
 | # | Follow-up | ETA |
 |---|-----------|-----|
-| 1 | `agentkit goal --from-criteria <path.json>` to skip Phase 1 synthesis (CI-friendly, deterministic input) | this week |
+| 1 | `WasmAgent goal --from-criteria <path.json>` to skip Phase 1 synthesis (CI-friendly, deterministic input) | this week |
 | 2 | A "stress" baseline where iteration 1 fails on purpose, to demonstrate the retry-with-hint loop | this week |
 | 3 | Multi-tier judge example (haiku judge + sonnet executor) in `docs/guides/goal-directed.md` | this week |
 | 4 | bscode `worker` end-to-end screenshot of the `🎯 Goal` mode (separate, user-driven verification) | when user runs it |
 
-The first one is small (~30 lines) and lands as a separate commit; it's listed in [`docs/strategy/cli-gap-analysis-2026-06-18.md`](cli-gap-analysis-2026-06-18.md) as G3a (CI variant of `agentkit goal`).
+The first one is small (~30 lines) and lands as a separate commit; it's listed in [`docs/strategy/cli-gap-analysis-2026-06-18.md`](cli-gap-analysis-2026-06-18.md) as G3a (CI variant of `WasmAgent goal`).
 
 ---
 

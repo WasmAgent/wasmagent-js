@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
 /**
- * agentkit-evals — independent CLI for the @wasmagent/evals-runner.
+ * wasmagent-evals — independent CLI for the @wasmagent/evals-runner.
  *
- * # Why a separate bin from `agentkit evals run`
+ * # Why a separate bin from `wasmagent evals run`
  *
  * `@wasmagent/cli` exposes the same evals surface via
- * `agentkit evals run …`, but pulls in every transitive dep that the
+ * `wasmagent evals run …`, but pulls in every transitive dep that the
  * multi-tool needs (devtools, model adapters, etc.). The independent
- * `agentkit-evals` binary lets eval-only consumers (CI matrix runners,
+ * `wasmagent-evals` binary lets eval-only consumers (CI matrix runners,
  * researchers comparing models, our own regression harness) install
  * just `@wasmagent/evals-runner` and get a usable CLI without
- * pulling in the rest of agentkit's surface area.
+ * pulling in the rest of wasmagent's surface area.
  *
  * Until 2026-06-18 this binary was a *dead link* — `package.json`
  * declared `bin: "./dist/cli.js"` but `src/cli.ts` did not exist.
@@ -19,10 +19,10 @@
  *
  * # Surface
  *
- *   agentkit-evals list
+ *   wasmagent-evals list
  *     Print available reference suites + descriptions.
  *
- *   agentkit-evals run \
+ *   wasmagent-evals run \
  *     --suite=<name>[,<name>…] \
  *     --models=<id>[@baseUrl][#wireModelId][,…] \
  *     [--seeds=0,1,2] \
@@ -30,17 +30,17 @@
  *     [--report-file=path.md] \
  *     [--json]
  *     Run the named suites against the listed models. Prints a Markdown
- *     report (or JSON if --json) — same machinery `agentkit evals run`
+ *     report (or JSON if --json) — same machinery `wasmagent evals run`
  *     uses, but standalone.
  *
- *   agentkit-evals --help / -h
- *   agentkit-evals --version / -v
+ *   wasmagent-evals --help / -h
+ *   wasmagent-evals --version / -v
  *
  * # Deliberate non-goals
  *
  * No `init`, no `run` of arbitrary tasks, no model bootstrapping. This
  * binary is **only** for evaluation. Anything else: install
- * `@wasmagent/cli` and use `agentkit`.
+ * `@wasmagent/cli` and use `wasmagent`.
  */
 
 import { writeFile } from "node:fs/promises";
@@ -53,14 +53,14 @@ import { type ModelSpec, REFERENCE_SUITES, renderReportMarkdown, runEvaluation }
 // symlinked layouts, so a literal is the safe default.
 const VERSION = "0.1.0";
 
-const HELP = `agentkit-evals — eval runner for @wasmagent/evals-runner
+const HELP = `wasmagent-evals — eval runner for @wasmagent/evals-runner
 
 USAGE
-  agentkit-evals list
-  agentkit-evals run --suite=<name>[,<name>…] --models=<spec>[,<spec>…]
+  wasmagent-evals list
+  wasmagent-evals run --suite=<name>[,<name>…] --models=<spec>[,<spec>…]
 
 OPTIONS
-  --suite=<name,…>      Comma-separated suite names (try \`agentkit-evals list\`).
+  --suite=<name,…>      Comma-separated suite names (try \`wasmagent-evals list\`).
   --models=<spec,…>     Comma-separated model specs.
                         Format: <id>[@<baseUrl>][#<wireModelId>]
                         baseUrl falls back to --base-url when omitted.
@@ -78,15 +78,15 @@ OPTIONS
 
 EXAMPLES
   # List what's available.
-  agentkit-evals list
+  wasmagent-evals list
 
   # Run a single suite against a local Ollama.
-  agentkit-evals run \\
+  wasmagent-evals run \\
     --suite=tool-sequence \\
     --models="qwen2.5:0.5b@http://localhost:11434/v1"
 
   # Compare two models on two suites; write Markdown report to file.
-  agentkit-evals run \\
+  wasmagent-evals run \\
     --suite=tool-sequence,latency-under-budget \\
     --models="model-a@http://a.local/v1,model-b@http://b.local/v1" \\
     --seeds=0,1,2,3,4 \\
@@ -97,7 +97,7 @@ NOTES
     @wasmagent/evals-runner. Anything you can do here you can do in
     a Node script that imports the same module.
   - For the multi-tool experience (run, init-tool, devtools, model)
-    install @wasmagent/cli and use \`agentkit evals run\` instead;
+    install @wasmagent/cli and use \`wasmagent evals run\` instead;
     the underlying runner is the same.
 `;
 
@@ -127,7 +127,7 @@ async function listCommand(): Promise<void> {
     process.stdout.write(`  ${name.padEnd(28)} — ${suite.title}\n`);
     process.stdout.write(`    ${suite.description}\n`);
   }
-  process.stdout.write("\nRun with:  agentkit-evals run --suite=<name,…> --models=<spec,…>\n");
+  process.stdout.write("\nRun with:  wasmagent-evals run --suite=<name,…> --models=<spec,…>\n");
 }
 
 async function runCommand(opts: Record<string, string | boolean | undefined>): Promise<void> {
@@ -136,11 +136,11 @@ async function runCommand(opts: Record<string, string | boolean | undefined>): P
     .map((s) => s.trim())
     .filter(Boolean);
   if (suiteNames.length === 0) {
-    fail("Error: --suite=<name,…> is required (try `agentkit-evals list`).");
+    fail("Error: --suite=<name,…> is required (try `wasmagent-evals list`).");
   }
   const suites = suiteNames.map((n) => {
     const s = REFERENCE_SUITES[n];
-    if (!s) fail(`Unknown suite: ${n}. Try \`agentkit-evals list\`.`);
+    if (!s) fail(`Unknown suite: ${n}. Try \`wasmagent-evals list\`.`);
     return s;
   });
 
@@ -240,7 +240,7 @@ async function main(): Promise<void> {
       break;
     default:
       fail(
-        `Unknown command: ${command}. Use 'list' or 'run'. (\`agentkit-evals --help\` for full usage.)`
+        `Unknown command: ${command}. Use 'list' or 'run'. (\`wasmagent-evals --help\` for full usage.)`
       );
   }
 }
@@ -253,7 +253,7 @@ const isMain =
   );
 if (isMain) {
   main().catch((err) => {
-    process.stderr.write(`agentkit-evals: ${err instanceof Error ? err.message : String(err)}\n`);
+    process.stderr.write(`wasmagent-evals: ${err instanceof Error ? err.message : String(err)}\n`);
     process.exit(1);
   });
 }

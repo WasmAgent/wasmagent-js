@@ -1,6 +1,6 @@
 # durable-runtime — checkpoint + SSE resume + HITL e2e
 
-Demonstrates the agentkit-js durable runtime primitives without any model
+Demonstrates the WasmAgent durable runtime primitives without any model
 calls. Three "processes" share one in-memory `KvBackend` to prove the
 contract: kill a worker, spawn a new one, the run continues.
 

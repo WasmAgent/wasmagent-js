@@ -9,10 +9,10 @@
  *
  * Prereqs:
  *   1. Install the optional native peer:  npm i node-llama-cpp
- *   2. Pull the model:                    npx agentkit model pull qwen3.5-0.8b
+ *   2. Pull the model:                    npx WasmAgent model pull qwen3.5-0.8b
  *   3. Run:                               node examples/local-offline/index.mjs
  *
- * Why this example exists: it's the simplest realisation of agentkit-js's
+ * Why this example exists: it's the simplest realisation of WasmAgent's
  * "self-hosted intelligent agent" claim — model + execution + state, all
  * on the user's machine. No cloud LLM, no API key, no telemetry.
  */

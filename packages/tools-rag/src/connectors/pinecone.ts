@@ -26,7 +26,7 @@ interface PineconeQueryResponse {
 }
 
 /**
- * Pinecone-backed vector store. Implements the agentkit `Retriever`
+ * Pinecone-backed vector store. Implements the WasmAgent `Retriever`
  * interface so it drops in anywhere `InMemoryVectorStore` /
  * `KvBackendVectorStore` is used.
  *

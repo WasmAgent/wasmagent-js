@@ -345,31 +345,31 @@ describe("POST /run — SSE streaming", () => {
 });
 
 describe("POST /run — CORS", () => {
-  it("AGENTKIT_ALLOWED_ORIGIN matches → origin echoed back", async () => {
+  it("WASMAGENT_ALLOWED_ORIGIN matches → origin echoed back", async () => {
     const { default: worker } = await import("./index.js");
     const res = await worker.fetch(
       new Request("http://localhost/health", {
         headers: { Origin: "https://app.example.com" },
       }),
-      makeEnv({ AGENTKIT_ALLOWED_ORIGIN: "https://app.example.com" }) as never,
+      makeEnv({ WASMAGENT_ALLOWED_ORIGIN: "https://app.example.com" }) as never,
       mockCtx as never
     );
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("https://app.example.com");
   });
 
-  it("AGENTKIT_ALLOWED_ORIGIN mismatches → null", async () => {
+  it("WASMAGENT_ALLOWED_ORIGIN mismatches → null", async () => {
     const { default: worker } = await import("./index.js");
     const res = await worker.fetch(
       new Request("http://localhost/health", {
         headers: { Origin: "https://evil.com" },
       }),
-      makeEnv({ AGENTKIT_ALLOWED_ORIGIN: "https://app.example.com" }) as never,
+      makeEnv({ WASMAGENT_ALLOWED_ORIGIN: "https://app.example.com" }) as never,
       mockCtx as never
     );
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("null");
   });
 
-  it("no AGENTKIT_ALLOWED_ORIGIN → wildcard", async () => {
+  it("no WASMAGENT_ALLOWED_ORIGIN → wildcard", async () => {
     const { default: worker } = await import("./index.js");
     const res = await worker.fetch(
       new Request("http://localhost/health"),

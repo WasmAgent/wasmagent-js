@@ -84,7 +84,7 @@ Decision logic when the production run lands:
 ## Caveats
 
 - Arm (b)'s grammar uses Ollama's `format: "json"` (any JSON), not a per-tool JSON schema. The latter is supported by Ollama v0.5+ but adds a per-tool schema construction step we can layer on if (b) shows a meaningful gap; for now the simpler global JSON constraint already captures the form-level failure mode the BFCL paper cites.
-- Arm (c) uses `CodeAgent` + `QuickJSKernel` in CodeAct shape. The plan also mentions `ProgrammaticOrchestrator`; in the agentkit-js architecture, `CodeAgent` IS the user-facing surface for PTC (it owns its own kernel and the orchestrator is plumbing). The behaviour is identical; we noted the path explicitly here.
+- Arm (c) uses `CodeAgent` + `QuickJSKernel` in CodeAct shape. The plan also mentions `ProgrammaticOrchestrator`; in the WasmAgent architecture, `CodeAgent` IS the user-facing surface for PTC (it owns its own kernel and the orchestrator is plumbing). The behaviour is identical; we noted the path explicitly here.
 - Arm (e)'s `ObservationalMemory` is what every `ToolCallingAgent` already uses for its assembler — there's no "off" mode to compare against, so we don't add a separate knob. (If you want to ablate it specifically, swap the assembler at `agent.assembler` post-construction; not needed for the G0 measurement.)
 
 ## DoD vs the plan (V2)

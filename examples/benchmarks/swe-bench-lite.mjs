@@ -6,7 +6,7 @@
  * traction problem. LongMemEval-500 is the answer for the memory axis;
  * SWE-bench-lite-class is the answer for the *code-mode dispatch* axis,
  * directly comparable to Cloudflare Code Mode MCP (whose numbers are
- * not public, so any honest agentkit number is automatically the
+ * not public, so any honest WasmAgent number is automatically the
  * first-mover entry on this axis).
  *
  * ## Status
@@ -34,7 +34,7 @@
  * to a small set of repos. The "code-mode dispatch" framing is:
  *
  *   - Expose the repo-edit tool surface (read_file / write_file /
- *     run_tests / git_diff …) via the agentkit code-mode MCP server
+ *     run_tests / git_diff …) via the WasmAgent code-mode MCP server
  *     (`@wasmagent/mcp-server`'s `createCodeModeServer()`).
  *   - The agent receives `docs_search` + `execute_code` and dispatches
  *     all tool calls inside a single sandboxed script per step.
@@ -91,7 +91,7 @@
  * SWE-bench-lite's official leaderboard ranks by accuracy alone.
  * That single dimension hides the variance we care about
  * (cost/correct, latency under budget, cache effectiveness). The
- * agentkit report follows the evals-runner Pareto convention:
+ * WasmAgent report follows the evals-runner Pareto convention:
  * accuracy × USD/correct × p95 wall × J/correct, with the
  * single-axis SWE-bench number called out *and* contextualized
  * in a Pareto plot. A reader who only wants the headline gets it;
@@ -326,7 +326,7 @@ function normalizeRow(row) {
 /**
  * Run one task through the code-mode dispatch path: load a fake repo
  * tool surface, ask the answerer for a codemode script, execute the
- * script inside an agentkit kernel via `agentkitCodemodeExecutor`, and
+ * script inside an WasmAgent kernel via `createCodemodeExecutor`, and
  * return the patch + counters.
  *
  * Stub-mode (the only mode wired today): `answerer.scriptFor(task)`
@@ -339,10 +339,10 @@ function normalizeRow(row) {
  * @returns {Promise<{patch: string, toolCallCount: number, error?: string, logs: string[]}>}
  */
 async function dispatchCodemode(task, answerer) {
-  // Lazy-import agentkit so smokeRun (which never calls dispatch) does
+  // Lazy-import WasmAgent so smokeRun (which never calls dispatch) does
   // not pay the cost of the workspace's TS build for every CI tick.
   const { JsKernel } = await import("../../packages/core/dist/index.js");
-  const { agentkitCodemodeExecutor } = await import(
+  const { createCodemodeExecutor } = await import(
     "../../packages/aisdk/dist/index.js"
   );
 
@@ -407,7 +407,7 @@ async function dispatchCodemode(task, answerer) {
     );
   }
 
-  const exec = agentkitCodemodeExecutor({
+  const exec = createCodemodeExecutor({
     kernel: new JsKernel(),
     capabilities: {
       // Tool surface is host-bridged (each tool runs on the host); the
@@ -568,7 +568,7 @@ async function dispatchDirect(task, answerer) {
  */
 async function runTests(task, patch, opts = {}) {
   const start = Date.now();
-  const imageTag = opts.imageTag ?? "agentkit-swe-judge:latest";
+  const imageTag = opts.imageTag ?? "WasmAgent-swe-judge:latest";
   const judgeDir =
     opts.judgeDir ?? resolvePath("examples/benchmarks/judge");
   const timeoutMs = opts.timeoutMs ?? 30 * 60_000; // 30 min default

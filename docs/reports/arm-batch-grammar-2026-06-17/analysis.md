@@ -97,7 +97,7 @@ cross-arm 分析（per-item，3 seeds 中至少 1 通过算"会"）：
 ### 5.3 G1 56% 路径剩下两条
 
 1. **evomerge 侧 rejection sampling**：v7f 在 arm-f 上有 35 个正确 cells（包含 6 个 tautology），剩 29 个真本事 cells。把这些轨迹反哺 v9 SFT，预期 +5-10pp。**但单靠这个不够 G1**。
-2. **agentkit-js 侧改 arm-f 的脚手架**（不是 plan stage，是 retrieval / args reminder / tool 后续提示）：
+2. **WasmAgent 侧改 arm-f 的脚手架**（不是 plan stage，是 retrieval / args reminder / tool 后续提示）：
    - 在 Pick stage prompt 里加"剩余子目标"提示
    - 在 Provide stage 加 args schema 文字注释
    - 这些改动只动 prompt 不动 grammar，预期 +3-7pp
@@ -115,7 +115,7 @@ evomerge 现在面对一个清晰的选择：
 
 这不是 arm 设计能解决的，是产品/客户决策。
 
-## 6. agentkit-js 侧的去留
+## 6. WasmAgent 侧的去留
 
 ### 6.1 arm-batch-grammar 留还是去？
 

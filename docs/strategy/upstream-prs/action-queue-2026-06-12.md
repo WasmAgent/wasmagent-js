@@ -62,7 +62,7 @@ So the Glama listing PR has to land in two parts:
 
    ```json
    "bin": {
-     "agentkit-mcp-server": "./dist/stdio.js"
+     "WasmAgent-mcp-server": "./dist/stdio.js"
    }
    ```
 
@@ -157,7 +157,7 @@ Then resume waiting. Do not bump twice.
 
 Status: 🟢 **gate cleared 2026-06-13.**
 
-The pre-submission requirement (`agentkitCodemodeExecutor` shim in
+The pre-submission requirement (`WasmAgentCodemodeExecutor` shim in
 `@wasmagent/aisdk` so the recipe in
 [`cloudflare-codemode-byo-executor.md`](cloudflare-codemode-byo-executor.md)
 actually runs) is now met. The shim ships in

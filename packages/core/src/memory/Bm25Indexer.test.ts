@@ -27,7 +27,7 @@ describe("Bm25Indexer", () => {
   it("ranks the document containing the query token highest", () => {
     const idx = new Bm25Indexer();
     idx.index("d1", "the quick brown fox jumps over the lazy dog");
-    idx.index("d2", "agentkit is a typescript agent runtime built on wasm");
+    idx.index("d2", "wasmagent is a typescript agent runtime built on wasm");
     idx.index("d3", "the lazy dog naps under the tree");
 
     const top = idx.search("lazy dog", 5);

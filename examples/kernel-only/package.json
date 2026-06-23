@@ -1,9 +1,9 @@
 {
-  "name": "agentkit-example-kernel-only",
+  "name": "wasmagent-example-kernel-only",
   "version": "0.0.2",
   "private": true,
   "type": "module",
-  "description": "Standalone usage of @wasmagent/kernel-quickjs WITHOUT pulling in the rest of agentkit-js — proves the kernel packages can be embedded into any agent framework.",
+  "description": "Standalone usage of @wasmagent/kernel-quickjs WITHOUT pulling in the rest of WasmAgent — proves the kernel packages can be embedded into any agent framework.",
   "scripts": {
     "start": "node index.mjs"
   },

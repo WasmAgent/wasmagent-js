@@ -7,7 +7,7 @@
  */
 import { JsKernel, ToolRegistry } from "@wasmagent/core";
 import { codeModeTool, sandboxedJsTool } from "@wasmagent/aisdk";
-import { agentkitMastraSandbox } from "@wasmagent/mastra-sandbox";
+import { createMastraSandbox } from "@wasmagent/mastra-sandbox";
 import { z } from "zod";
 
 // ── 1. sandboxedJsTool ──────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ console.log("[A2.2] codeModeTool chain ✓");
 
 // ── 4. mastra-sandbox provider ──────────────────────────────────────────────
 
-const sandbox = agentkitMastraSandbox({
+const sandbox = createMastraSandbox({
   kernel: new JsKernel({ timeoutMs: 3_000 }),
   capabilities: { env: { REGION: "us" } },
 });

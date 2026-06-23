@@ -1,5 +1,5 @@
 /**
- * JWT authentication for the agentkit-js Cloudflare Worker.
+ * JWT authentication for the WasmAgent Cloudflare Worker.
  *
  * Supports HS256 (shared secret) and RS256 (public/private keypair) via
  * the WebCrypto API — no extra dependencies. Verified payloads carry

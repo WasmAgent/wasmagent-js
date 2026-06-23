@@ -1,11 +1,11 @@
 /**
- * @wasmagent/mastra-sandbox — Mastra sandbox provider backed by agentkit kernels.
+ * @wasmagent/mastra-sandbox — Mastra sandbox provider backed by WasmAgent kernels.
  *
  * Mastra (mastra.ai) opened its sandbox provider contract in 2026-02 to let
  * users plug in a custom code-execution backend instead of the default
  * Blaxel-hosted sandbox. The contract Mastra needs is small — at minimum a
  * function `execute(code, options) -> { output, stderr?, exitCode? }`. This
- * package implements that contract over any agentkit `Kernel`, so a Mastra
+ * package implements that contract over any WasmAgent `Kernel`, so a Mastra
  * agent can run model-generated code inside QuickJS / Pyodide / Wasmtime /
  * Remote with no extra infrastructure to provision.
  *
@@ -14,7 +14,7 @@
  *   - **No external service**: WASM kernels run in-process, on every Workers
  *     edge, with sub-100ms cold start. You don't need an API key or an
  *     account on a sandbox vendor.
- *   - **Same security policy as the rest of agentkit**: one
+ *   - **Same security policy as the rest of WasmAgent**: one
  *     `CapabilityManifest` gates network, fs, env, cpu, memory across all
  *     four kernel tiers. Move a workload between QuickJS and Wasmtime
  *     without rewriting policy.
@@ -69,7 +69,7 @@ export interface MastraSandboxOptions {
 }
 
 /**
- * Build a Mastra sandbox provider that delegates to the supplied agentkit
+ * Build a Mastra sandbox provider that delegates to the supplied WasmAgent
  * kernel. Drop the result into Mastra's agent config wherever a custom
  * sandbox provider is accepted.
  *
@@ -77,9 +77,9 @@ export interface MastraSandboxOptions {
  *
  *   import { Agent } from "@mastra/core";
  *   import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
- *   import { agentkitMastraSandbox } from "@wasmagent/mastra-sandbox";
+ *   import { createMastraSandbox } from "@wasmagent/mastra-sandbox";
  *
- *   const sandbox = agentkitMastraSandbox({
+ *   const sandbox = createMastraSandbox({
  *     kernel: new QuickJSKernel({ timeoutMs: 5_000 }),
  *     capabilities: {
  *       allowedHosts: ["api.example.com"],
@@ -90,7 +90,7 @@ export interface MastraSandboxOptions {
  *
  *   const agent = new Agent({ tools: { sandbox }, ... });
  */
-export function agentkitMastraSandbox(opts: MastraSandboxOptions): MastraSandboxProvider {
+export function createMastraSandbox(opts: MastraSandboxOptions): MastraSandboxProvider {
   return {
     async execute(code, options) {
       const merged: Partial<CapabilityManifest> = { ...(opts.capabilities ?? {}) };

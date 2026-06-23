@@ -64,7 +64,7 @@ function rec(id, v1Id, category, task, turns, lossWeight = "default") {
     messages,
     loss_weight_tokens: lossWeight,
     provenance: {
-      source: "agentkit-js/v1-ruler-traces-v1-starter",
+      source: "wasmagent/v1-ruler-traces-v1-starter",
       v1_item_id: v1Id,
       n_gram_hash: nGramHash(task),
     },

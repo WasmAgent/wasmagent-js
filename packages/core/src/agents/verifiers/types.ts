@@ -40,7 +40,7 @@
  * autocomplete, but applications can register custom kinds via
  * `VerificationPipeline.register()`. This keeps the protocol product-
  * agnostic — bscode's "build_passes" or a CI's "lighthouse_score_min"
- * verifier registers without touching agentkit core.
+ * verifier registers without touching WasmAgent core.
  */
 
 /**

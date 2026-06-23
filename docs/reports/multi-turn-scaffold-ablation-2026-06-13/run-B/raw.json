@@ -39,7 +39,7 @@
     {
       "name": "mt-tool-exec.arm-e-full",
       "title": "Arm (e) full stack (grammar + CodeAgent + SC k=5)",
-      "description": "G0 candidate arm: every layer of scaffolding agentkit ships, applied at once. ≥50% on a 1.5B model is the green-light threshold."
+      "description": "G0 candidate arm: every layer of scaffolding WasmAgent ships, applied at once. ≥50% on a 1.5B model is the green-light threshold."
     }
   ],
   "seeds": [

@@ -16,7 +16,7 @@
  * mid-run would then cost a full prompt re-tokenization on the very
  * next call, every call.
  *
- * agentkit-js renders blocks in a separate `user`-role message
+ * WasmAgent renders blocks in a separate `user`-role message
  * immediately AFTER the cached system message — same shape and
  * placement as the existing `scratchpad` slot in MessageAssembler
  * (`packages/core/src/memory/MessageAssembler.ts:121-126`). This:

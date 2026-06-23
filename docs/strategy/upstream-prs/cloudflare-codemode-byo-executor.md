@@ -5,7 +5,7 @@
 codemode docs live at submission time — the developer docs at
 [developers.cloudflare.com/agents/api-reference/codemode](https://developers.cloudflare.com/agents/api-reference/codemode)
 mirror the package's source-of-truth doc).
-**Status:** **FILED 2026-06-17** — issue [cloudflare/agents#1771](https://github.com/cloudflare/agents/issues/1771) opened (PR creation is gated to collaborators on `cloudflare/agents`; per the fallback in §Pre-submission to-do, opened as `community-recipe` issue with the patch ready to cherry-pick from [telleroutlook/agents@community-recipe-agentkit-byo-executor](https://github.com/telleroutlook/agents/tree/community-recipe-agentkit-byo-executor)). Direction 1 of the 2026-06-12
+**Status:** **FILED 2026-06-17** — issue [cloudflare/agents#1771](https://github.com/cloudflare/agents/issues/1771) opened (PR creation is gated to collaborators on `cloudflare/agents`; per the fallback in §Pre-submission to-do, opened as `community-recipe` issue with the patch ready to cherry-pick from [telleroutlook/agents@community-recipe-WasmAgent-byo-executor](https://github.com/telleroutlook/agents/tree/community-recipe-WasmAgent-byo-executor)). Direction 1 of the 2026-06-12
 optimization brief explicitly calls this out as the highest-leverage
 upstream entry: the Cloudflare codemode docs already say the
 `DynamicWorkerExecutor` is "just one implementation" and that users
@@ -26,12 +26,12 @@ The Cloudflare codemode design explicitly leaves a hole:
 3. **Language scope.** JS only. Python execution at the edge is a
    real ask for data-analysis agents.
 
-agentkit-js' kernels fill all three holes:
+WasmAgent' kernels fill all three holes:
 
 - `kernel-quickjs` runs anywhere (it *also* runs on CF Workers);
   no platform binding.
 - `kernel-pyodide` adds Python.
-- agentkit's `needsApproval` lifecycle is a first-class concept
+- WasmAgent's `needsApproval` lifecycle is a first-class concept
   in `core` (`Tool.needsApproval` + `await_human_input` step).
 
 So the right ask is *not* "rewrite the docs" — it is "add a one-page
@@ -43,7 +43,7 @@ those three gaps, exactly as the docs say is intended."
 A new page under the codemode docs, ~50 lines:
 
 ````markdown
-# Bring-your-own executor: agentkit-js kernels
+# Bring-your-own executor: WasmAgent kernels
 
 The `DynamicWorkerExecutor` is the default; codemode is designed
 for any executor that conforms to the `CodeExecutor` contract.
@@ -62,12 +62,12 @@ provide three executors that close gaps in the default:
 ```ts
 import { Agent } from "@cloudflare/agents/codemode";
 import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
-import { agentkitCodemodeExecutor } from "@wasmagent/aisdk"; // see note
+import { WasmAgentCodemodeExecutor } from "@wasmagent/aisdk"; // see note
 
 const agent = new Agent({
   // Same tools, same prompt — only the executor changes.
   tools: { /* … */ },
-  executor: agentkitCodemodeExecutor({
+  executor: WasmAgentCodemodeExecutor({
     kernel: new QuickJSKernel(),
     // Honor the same security policy face Cloudflare's executor uses.
     capabilities: { allowedHosts: ["api.example.com"], cpuMs: 5000 },
@@ -75,8 +75,8 @@ const agent = new Agent({
 });
 ```
 
-> **Note:** the `agentkitCodemodeExecutor` shim is a thin adapter
-> in `@wasmagent/aisdk` (PR pending) that wraps any agentkit
+> **Note:** the `WasmAgentCodemodeExecutor` shim is a thin adapter
+> in `@wasmagent/aisdk` (PR pending) that wraps any WasmAgent
 > `Kernel` in the `CodeExecutor` contract. It honors the manifest's
 > `allowedHosts` / `cpuMs` / `memoryLimitBytes` consistently across
 > the three kernel tiers; see
@@ -88,7 +88,7 @@ const agent = new Agent({
 - You're entirely on Cloudflare Workers + JS-only tools and don't
   need approval semantics. The default is the simplest path.
 
-## When the agentkit kernels are the better fit
+## When the WasmAgent kernels are the better fit
 
 - You deploy the same agent to CF Workers *and* Node — kernel-quickjs
   runs in both.
@@ -96,7 +96,7 @@ const agent = new Agent({
 - A subset of tools call into Python (data analysis, scientific).
 ````
 
-The page is honest: it does not claim agentkit replaces
+The page is honest: it does not claim WasmAgent replaces
 `DynamicWorkerExecutor` — it closes the three explicit gaps the
 Cloudflare docs themselves call out.
 
@@ -109,7 +109,7 @@ PR against `cloudflare/agents`. The PR body should:
    doc that says "you can build your own executor."
 2. Quote the **two gaps** in the default that the recipe addresses:
    approval, platform-binding, language scope.
-3. Link to the agentkit-js repo + Apache-2.0 license badge.
+3. Link to the WasmAgent repo + Apache-2.0 license badge.
 4. Acknowledge that the maintainer may prefer to keep this as an
    external link or to inline only a sentence — *whichever shape
    they accept is the win*. The point is the link from the
@@ -127,21 +127,21 @@ PR against `cloudflare/agents`. The PR body should:
 
 ## Pre-submission to-do
 
-1. ✅ **Done (2026-06-17)** — `agentkitCodemodeExecutor` shim shipped in `@wasmagent/aisdk@0.1.0`. 412-line implementation with a marker-rerun execution loop honouring CF's `Executor` contract verbatim. 10 tests cover flat-Record + namespaced provider surfaces, positional vs object args, console.log capture, tool-throw surfacing, unknown-tool fail-fast, and `maxIterations` runaway bound. Source: [`packages/aisdk/src/codemodeExecutor.ts`](../../../packages/aisdk/src/codemodeExecutor.ts).
+1. ✅ **Done (2026-06-17)** — `WasmAgentCodemodeExecutor` shim shipped in `@wasmagent/aisdk@0.1.0`. 412-line implementation with a marker-rerun execution loop honouring CF's `Executor` contract verbatim. 10 tests cover flat-Record + namespaced provider surfaces, positional vs object args, console.log capture, tool-throw surfacing, unknown-tool fail-fast, and `maxIterations` runaway bound. Source: [`packages/aisdk/src/codemodeExecutor.ts`](../../../packages/aisdk/src/codemodeExecutor.ts).
 2. **Verify on submission day** — the `CodeExecutor` interface name churned during CF codemode's GA stabilization. Re-check the SDK source the day this PR is filed; if the `Executor` shape moved, bump the structural copy in `codemodeExecutor.ts` and ship a patch release.
 3. **Fallback path** — if the maintainer says "we don't take third-party recipes inline," open an issue tagged `community-recipe` with the same content as §"PR body" below. The discoverable artifact wins regardless of inclusion form.
 
 ## PR body (ready to paste into cloudflare/agents)
 
-> **Title:** `docs: bring-your-own executor recipe — agentkit-js kernels for cross-platform / Python / approval-gated codemode`
+> **Title:** `docs: bring-your-own executor recipe — WasmAgent kernels for cross-platform / Python / approval-gated codemode`
 >
 > **Body:**
 >
-> The codemode docs already note that `DynamicWorkerExecutor` is one implementation and that users can supply their own. This PR adds a one-page recipe pointing at `@wasmagent/aisdk`'s `agentkitCodemodeExecutor`, which closes three explicit gaps the default leaves:
+> The codemode docs already note that `DynamicWorkerExecutor` is one implementation and that users can supply their own. This PR adds a one-page recipe pointing at `@wasmagent/aisdk`'s `WasmAgentCodemodeExecutor`, which closes three explicit gaps the default leaves:
 >
-> 1. **Platform binding.** `DynamicWorkerExecutor` requires a Cloudflare Workers runtime; the agentkit shim runs on Node, Bun, Vercel, and Lambda (it also runs on CF Workers — same code path).
+> 1. **Platform binding.** `DynamicWorkerExecutor` requires a Cloudflare Workers runtime; the WasmAgent shim runs on Node, Bun, Vercel, and Lambda (it also runs on CF Workers — same code path).
 > 2. **Language scope.** JS-only today; swap `QuickJSKernel` for `PyodideKernel` to add CPython-in-WASM at the edge.
-> 3. **Approval semantics.** Tools marked `needsApproval: true` are stripped today rather than pause-and-wait. agentkit's tool registry surfaces a first-class `await_human_input` step.
+> 3. **Approval semantics.** Tools marked `needsApproval: true` are stripped today rather than pause-and-wait. WasmAgent's tool registry surfaces a first-class `await_human_input` step.
 >
 > The shim is Apache-2.0, structurally typed against the `Executor` contract (no hard dep on `@cloudflare/codemode`), and shipped in [`@wasmagent/aisdk@0.1.0`](https://www.npmjs.com/package/@wasmagent/aisdk). 10 tests green. Source: <https://github.com/WasmAgent/wasmagent-js/blob/main/packages/aisdk/src/codemodeExecutor.ts>.
 >
@@ -161,7 +161,7 @@ PR against `cloudflare/agents`. The PR body should:
 - A landed PR could amplify a *competing* third-party kernel if
   someone else lands first. Treat that as fine: the goal is
   cross-platform codemode existing as an option, not lock-in to
-  agentkit.
+  WasmAgent.
 
 ## Tracking
 

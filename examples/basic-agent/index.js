@@ -6,7 +6,7 @@
  * For the Pyodide (Python) kernel variant, see the comment at the bottom.
  */
 
-import { CodeAgent, AnthropicModel } from "@agentkit-js/core";
+import { CodeAgent, AnthropicModel } from "@wasmagent/core";
 import { z } from "zod";
 
 // 1. Define a tool.

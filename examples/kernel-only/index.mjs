@@ -4,7 +4,7 @@
 // No CodeAgent, no ToolCallingAgent, no model adapter. The point is that the
 // kernel packages are usable as composable WASM sandboxes from any agent
 // framework — Vercel AI SDK, Mastra, LangGraph, your own — not just from
-// the rest of agentkit-js.
+// the rest of WasmAgent.
 //
 // Run: node examples/kernel-only/index.mjs
 

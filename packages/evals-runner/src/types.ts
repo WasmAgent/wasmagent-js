@@ -24,7 +24,7 @@
 // ── Inlined shared interfaces (structurally identical to @wasmagent/core) ────
 //
 // Why inline rather than import? evals-runner is the "referee" package —
-// it should be adoptable by teams that do NOT use agentkit agents at all.
+// it should be adoptable by teams that do NOT use WasmAgent agents at all.
 // A hard import of @wasmagent/core would force that dependency on every
 // framework-neutral adopter. Because TypeScript uses structural typing,
 // a `Scorer` written against core's definition is assignable here with no
@@ -33,7 +33,7 @@
 /**
  * A recorded agent run. Framework-agnostic: populate from whatever event
  * log your agent runtime produces. `events` is typed as `unknown[]` so
- * non-agentkit runtimes don't need to map to agentkit event shapes.
+ * non-WasmAgent runtimes don't need to map to WasmAgent event shapes.
  */
 export interface AgentTrace {
   traceId: string;
@@ -87,7 +87,7 @@ export interface ModelSpec {
 }
 
 /**
- * The runner's view of one item in a benchmark. Mirrors agentkit-core's
+ * The runner's view of one item in a benchmark. Mirrors WasmAgent-core's
  * `EvalSample` (so existing core scorers work unchanged) but adds an
  * `expectedAnswerMatcher` hook for fuzzy / regex acceptance and the
  * conversation-style `messages` array used by memory/long-context suites.
@@ -131,7 +131,7 @@ export interface BenchmarkSuite {
   name: string;
   /** Human-readable title. */
   title: string;
-  /** One-line description shown in `agentkit evals list`. */
+  /** One-line description shown in `wasmagent evals list`. */
   description: string;
   /** The dataset. */
   items: BenchmarkItem[];

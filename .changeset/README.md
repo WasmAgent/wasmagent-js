@@ -1,6 +1,6 @@
 # Changesets
 
-This folder contains release coordination for `agentkit-js` published packages.
+This folder contains release coordination for `WasmAgent` published packages.
 
 - `config.json` — release policy (linked versions across `@wasmagent/*`, public access).
 - `*.md` — pending changesets describing what changed in upcoming releases. Each is consumed by `bunx changeset version` and turned into CHANGELOG entries + version bumps.

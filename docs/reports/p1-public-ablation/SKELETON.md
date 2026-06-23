@@ -11,14 +11,14 @@
 
 > Bare ToolCallingAgent on a 1.5B local model: **N1%** on
 > `multi-turn-tool-exec` (30 stateful items, terminal-state judge).
-> agentkit-js full scaffold (grammar + CodeAgent + SC k=5): **N2%**.
+> WasmAgent full scaffold (grammar + CodeAgent + SC k=5): **N2%**.
 > Improvement Δ = **N3 pp**, McNemar exact p = **N4**.
 
 ## Agentkit-side reproduction (tracks V2 REPORT.md)
 
 ```bash
-git clone https://github.com/<org>/agentkit-js
-cd agentkit-js
+git clone https://github.com/<org>/WasmAgent
+cd WasmAgent
 bun install
 bun run -F '@wasmagent/evals-runner' build
 
@@ -52,7 +52,7 @@ bfcl generate --model openai/qwen2.5:1.5b@http://localhost:11434/v1 \
 bfcl evaluate --test-category multi_turn_base --model qwen2.5:1.5b
 ```
 
-Two arms only (bare vs full agentkit scaffold) to control budget;
+Two arms only (bare vs full WasmAgent scaffold) to control budget;
 the internal report gives the wider grid.
 
 When the BFCL run completes, append the per-category numbers below

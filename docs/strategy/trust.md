@@ -15,7 +15,7 @@
 
 ## 1. The differentiator vs Mastra (and Vercel-AI / OpenAI Agents JS)
 
-| | Mastra | Vercel AI SDK | OpenAI Agents JS | **agentkit-js (this project)** |
+| | Mastra | Vercel AI SDK | OpenAI Agents JS | **WasmAgent (this project)** |
 |---|---|---|---|---|
 | **License** | Apache-2.0 core + **Enterprise (commercial)** modules | Apache-2.0 | MIT | **Apache-2.0 — every package, no double-license** ([LICENSE](../../LICENSE)) |
 | **SOC 2 / SOC 3** | ❌ public statement: "no SOC 2 yet" (2026-04 third-party assessments) | n/a (SDK, not a service) | n/a (SDK) | n/a — **no SaaS to certify** (we ship code, not a hosted control plane); see [Section 6](#6-no-saas-no-data-collection) for what that means for your data |
@@ -59,7 +59,7 @@ quarter a maintainer files a synthetic P0, the clock runs in public,
 and the row is added to the log whether it was met or missed.
 
 **Why this matters more than a SOC 2 badge for our threat model.**
-agentkit-js's threat model is *kernel escape from untrusted
+WasmAgent's threat model is *kernel escape from untrusted
 model-generated code*, not *unauthorised access to a customer
 database*. SOC 2 assesses operational controls of a service
 operator. We are not a service operator. The drill log is the
@@ -98,7 +98,7 @@ splits its monorepo at the SOC 2 / SSO / multi-tenant feature line.
 We don't make those features (we don't make a SaaS), so we don't
 need that split.
 
-| What this means in practice | Mastra | agentkit-js |
+| What this means in practice | Mastra | WasmAgent |
 |---|---|---|
 | Use any feature commercially without paying | ⚠️ depends on package | ✅ |
 | Fork, rebrand, ship inside a closed-source product | ✅ | ✅ |
@@ -112,14 +112,14 @@ If you want a single line on your procurement form, it is:
 
 ## 6. No SaaS, no data collection
 
-agentkit-js is a library, not a hosted service. We do not run a
+WasmAgent is a library, not a hosted service. We do not run a
 control plane, a metrics endpoint, or any default outbound network
 traffic. Concretely:
 
 - **No telemetry by default.** `@wasmagent/otel-exporter` exists
   but you must wire it to your own collector. There is no "phone
   home" path on `npm install` or at runtime.
-- **No managed studio.** Our DevTools are a local `agentkit
+- **No managed studio.** Our DevTools are a local `WasmAgent
   devtools` HTTP server bound to `127.0.0.1` by default. No cloud
   account required.
 - **No vendor lock-in.** Three kernel tiers, four checkpoint

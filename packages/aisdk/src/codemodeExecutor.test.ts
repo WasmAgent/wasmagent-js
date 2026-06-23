@@ -16,20 +16,20 @@
  */
 
 import { JsKernel } from "@wasmagent/core";
-import { agentkitCodemodeExecutor } from "./codemodeExecutor.js";
+import { createCodemodeExecutor } from "./codemodeExecutor.js";
 
-describe("agentkitCodemodeExecutor — construction", () => {
+describe("createCodemodeExecutor — construction", () => {
   it("rejects missing opts", () => {
-    expect(() => agentkitCodemodeExecutor(undefined as never)).toThrow(/opts is required/);
+    expect(() => createCodemodeExecutor(undefined as never)).toThrow(/opts is required/);
   });
   it("rejects missing kernel", () => {
-    expect(() => agentkitCodemodeExecutor({} as never)).toThrow(/kernel must be a WasmKernel/);
+    expect(() => createCodemodeExecutor({} as never)).toThrow(/kernel must be a WasmKernel/);
   });
 });
 
-describe("agentkitCodemodeExecutor — flat Record providers", () => {
+describe("createCodemodeExecutor — flat Record providers", () => {
   it("calls a single tool and returns its result", async () => {
-    const exec = agentkitCodemodeExecutor({ kernel: new JsKernel() });
+    const exec = createCodemodeExecutor({ kernel: new JsKernel() });
     const got = await exec.execute(`return await tools.add({ a: 2, b: 3 });`, {
       // Object-arg fn: receives the arg object as a single parameter.
       add: async (a: unknown) => {
@@ -42,7 +42,7 @@ describe("agentkitCodemodeExecutor — flat Record providers", () => {
   });
 
   it("chains multiple tools without returning to the host between calls", async () => {
-    const exec = agentkitCodemodeExecutor({ kernel: new JsKernel() });
+    const exec = createCodemodeExecutor({ kernel: new JsKernel() });
     const got = await exec.execute(
       `
       const a = await tools.double({ n: 4 });
@@ -60,9 +60,9 @@ describe("agentkitCodemodeExecutor — flat Record providers", () => {
   });
 });
 
-describe("agentkitCodemodeExecutor — namespaced ResolvedProvider[]", () => {
+describe("createCodemodeExecutor — namespaced ResolvedProvider[]", () => {
   it("dispatches via the namespaced shape", async () => {
-    const exec = agentkitCodemodeExecutor({ kernel: new JsKernel() });
+    const exec = createCodemodeExecutor({ kernel: new JsKernel() });
     const got = await exec.execute(`return await tools.weather.getCurrent({ location: 'SF' });`, [
       {
         name: "weather",
@@ -78,7 +78,7 @@ describe("agentkitCodemodeExecutor — namespaced ResolvedProvider[]", () => {
   });
 
   it("honors positionalArgs=true", async () => {
-    const exec = agentkitCodemodeExecutor({ kernel: new JsKernel() });
+    const exec = createCodemodeExecutor({ kernel: new JsKernel() });
     const got = await exec.execute(`return await tools.math.sum(1, 2, 3);`, [
       {
         name: "math",
@@ -92,9 +92,9 @@ describe("agentkitCodemodeExecutor — namespaced ResolvedProvider[]", () => {
   });
 });
 
-describe("agentkitCodemodeExecutor — console + errors", () => {
+describe("createCodemodeExecutor — console + errors", () => {
   it("captures console.log into logs[]", async () => {
-    const exec = agentkitCodemodeExecutor({ kernel: new JsKernel() });
+    const exec = createCodemodeExecutor({ kernel: new JsKernel() });
     const got = await exec.execute(`console.log("hello"); console.warn("warned"); return 42;`, {});
     expect(got.result).toBe(42);
     // Each kernel collects console.* into KernelResult.logs and we
@@ -111,7 +111,7 @@ describe("agentkitCodemodeExecutor — console + errors", () => {
     // tool call in try/catch in the LLM-emitted script is a known edge
     // case that swallows the executor's pause marker (see codemodeExecutor.ts
     // docblock); here we test the bare throw path which is the real shape.
-    const exec = agentkitCodemodeExecutor({ kernel: new JsKernel() });
+    const exec = createCodemodeExecutor({ kernel: new JsKernel() });
     const got = await exec.execute(`return await tools.boom({});`, {
       boom: async () => {
         throw new Error("kaboom");
@@ -121,7 +121,7 @@ describe("agentkitCodemodeExecutor — console + errors", () => {
   });
 
   it("fails fast on unknown tool name", async () => {
-    const exec = agentkitCodemodeExecutor({ kernel: new JsKernel() });
+    const exec = createCodemodeExecutor({ kernel: new JsKernel() });
     const got = await exec.execute(`return await tools.missing({});`, {});
     // `tools.missing` is not registered on the proxy — accessing it
     // throws synchronously inside the script with our sentinel message.
@@ -129,13 +129,13 @@ describe("agentkitCodemodeExecutor — console + errors", () => {
   });
 });
 
-describe("agentkitCodemodeExecutor — bounds", () => {
+describe("createCodemodeExecutor — bounds", () => {
   it("respects maxIterations", async () => {
     // A script that emits a fresh tool-call each iteration — without a
     // bound, it would loop forever. The marker-rerun loop should
     // terminate cleanly when maxIterations is reached and surface the
     // partial state.
-    const exec = agentkitCodemodeExecutor({
+    const exec = createCodemodeExecutor({
       kernel: new JsKernel(),
       maxIterations: 3,
     });

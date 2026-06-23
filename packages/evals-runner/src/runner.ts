@@ -2,10 +2,10 @@
  * Core runner: takes models × suites × seeds, produces a structured report.
  *
  * Implementation notes:
- *   - We do NOT spin up the full agentkit `ToolCallingAgent` / `CodeAgent`
+ *   - We do NOT spin up the full WasmAgent `ToolCallingAgent` / `CodeAgent`
  *     loop here — most evaluation suites are single-shot question →
  *     answer. The runner calls the model directly through `ModelProvider`
- *     and synthesises a minimal `AgentTrace` for the agentkit scorers.
+ *     and synthesises a minimal `AgentTrace` for the WasmAgent scorers.
  *     Agent-trajectory suites are a separate code path (see
  *     `suites/agent-trajectory.ts`) that do exercise the agent loop.
  *   - Per-model concurrency is capped to avoid overwhelming a single
@@ -206,7 +206,7 @@ export async function runEvaluation(
  *  1. Build the message list (item.messages or [system, user task]).
  *  2. Call the model.
  *  3. Synthesise a minimal AgentTrace (model_start / model_done /
- *     final_answer) so the agentkit scorers — written for full
+ *     final_answer) so the WasmAgent scorers — written for full
  *     ToolCallingAgent traces — work unchanged.
  *  4. Run every scorer; aggregate scores.
  *  5. Decide pass/fail via expectedAnswerMatcher or exactMatch fallback.

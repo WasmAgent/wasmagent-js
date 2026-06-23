@@ -11,7 +11,7 @@
  * McpToolCollection.fromStdio() call with your real MCP server command.
  */
 
-import { ToolCallingAgent, AnthropicModel, McpToolCollection } from "@agentkit-js/core";
+import { ToolCallingAgent, AnthropicModel, McpToolCollection } from "@wasmagent/core";
 import { z } from "zod";
 
 // ── Option A: MCP server via stdio ────────────────────────────────────────────
@@ -23,7 +23,7 @@ import { z } from "zod";
 // const tools = await McpToolCollection.fromSse("https://my-mcp-server.example.com/sse");
 
 // ── Option B: manual tools (no MCP server needed for this demo) ──────────────
-import { ToolRegistry } from "@agentkit-js/core";
+import { ToolRegistry } from "@wasmagent/core";
 
 const registry = new ToolRegistry();
 registry.register({

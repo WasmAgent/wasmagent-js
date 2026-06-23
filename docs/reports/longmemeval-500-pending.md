@@ -11,12 +11,12 @@
 
 Mastra's public 94.87% on LongMemEval (gpt-5-mini observer) is the
 single most visible memory-system number in the 2026 TS-agent
-landscape. The agentkit reply has to be on the same dataset, with a
+landscape. The WasmAgent reply has to be on the same dataset, with a
 methodology that emphasises:
 
 1. **Multi-observer comparison.** Mastra's third-party review
    (2026-03) flagged Claude 4.5-class incompatibility as a weakness.
-   The agentkit observer is a regular Model adapter, so we report
+   The WasmAgent observer is a regular Model adapter, so we report
    ≥2 Anthropic observers head-to-head against an OpenAI baseline.
 2. **Multi-session subcategory.** The same review flagged a ~7 pp
    drop on multi-session questions vs. the headline. The

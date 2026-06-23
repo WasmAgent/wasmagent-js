@@ -1,7 +1,7 @@
 /**
  * A2 — DevTools event-log replay engine.
  *
- * Pure logic. Loads a list of `LoggedEvent`s (from agentkit-js's EventLog
+ * Pure logic. Loads a list of `LoggedEvent`s (from WasmAgent's EventLog
  * or any equivalent source), exposes a navigable timeline, and supports
  * "fork from step N" — produce a new event list that ends at step N so a
  * caller can rerun the agent from that point with different inputs

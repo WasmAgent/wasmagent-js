@@ -429,7 +429,7 @@ describe("runCommand", () => {
 // ── modelCommand (L6, 2026-06-12) ─────────────────────────────────────────────
 
 describe("modelCommand", () => {
-  // Each test sets up a temp cache dir so we don't touch the real ~/.agentkit.
+  // Each test sets up a temp cache dir so we don't touch the real ~/.wasmagent.
   let stdoutSpy: ReturnType<typeof spyOn>;
   let stderrSpy: ReturnType<typeof spyOn>;
   let consoleLogSpy: ReturnType<typeof spyOn>;
@@ -468,7 +468,7 @@ describe("modelCommand", () => {
   it("`pull` without alias prints an error and exits non-zero", async () => {
     const { modelCommand } = await import("./index.js");
     await expect(modelCommand(["pull"], {})).rejects.toThrow(/exit 1/);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("agentkit model pull"));
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("wasmagent model pull"));
   });
 
   it("rejects unknown subcommands", async () => {
@@ -640,7 +640,7 @@ describe("verifyCommand", () => {
     const fs = await import("node:fs/promises");
     const os = await import("node:os");
     const path = await import("node:path");
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "agentkit-verify-test-"));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "wasmagent-verify-test-"));
   });
 
   afterEach(async () => {
@@ -818,7 +818,7 @@ describe("loadCriteriaFromFile", () => {
     const fs = await import("node:fs/promises");
     const os = await import("node:os");
     const path = await import("node:path");
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "agentkit-cli-criteria-"));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "wasmagent-cli-criteria-"));
     // process.exit throws so the function "exits" without ending the
     // test runner. The string sentinel is caught by toThrow().
     exitSpy = spyOn(process, "exit").mockImplementation(() => {

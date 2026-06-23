@@ -1,5 +1,5 @@
 {
-  "name": "agentkit-example-devtools-replay",
+  "name": "wasmagent-example-devtools-replay",
   "private": true,
   "type": "module",
   "scripts": {

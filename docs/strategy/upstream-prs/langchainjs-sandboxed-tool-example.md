@@ -33,7 +33,7 @@ import { QuickJSKernel } from '@wasmagent/kernel-quickjs';
 import { MockChatModel } from '@langchain/core/utils/testing'; // CI-safe, no key needed
 import { z } from 'zod';
 
-// Wrap the agentkit kernel as a LangChain DynamicStructuredTool
+// Wrap the WasmAgent kernel as a LangChain DynamicStructuredTool
 const sandboxTool = new DynamicStructuredTool({
   name: 'execute_code',
   description: 'Run a JS snippet in a WASM sandbox. Returns { output, logs }.',

@@ -18,8 +18,8 @@ import {
   finalAnswerLength,
   recoveryScorer,
   trajectoryValidity,
-} from "@agentkit-js/core";
-import { AnthropicModel } from "@agentkit-js/model-anthropic";
+} from "@wasmagent/core";
+import { AnthropicModel } from "@wasmagent/model-anthropic";
 
 async function main() {
   const apiKey = process.env.ANTHROPIC_API_KEY;

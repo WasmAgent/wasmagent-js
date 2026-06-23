@@ -1,5 +1,5 @@
 /**
- * Tests for the GenAI OTel → agentkit LoggedEvent adapter (D5).
+ * Tests for the GenAI OTel → WasmAgent LoggedEvent adapter (D5).
  */
 
 import { convertGenAiSpansToEvents, type GenAiSpan, parseGenAiInput } from "./genaiOtelAdapter.js";

@@ -6,7 +6,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "agentkit-mcp-server": "./dist/stdio.js"
+    "wasmagent-mcp-server": "./dist/stdio.js"
   },
   "exports": {
     ".": {

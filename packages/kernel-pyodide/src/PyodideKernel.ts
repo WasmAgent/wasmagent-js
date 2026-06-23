@@ -165,7 +165,7 @@ del _j, _os
    * Q9: The urllib monkey-patch is applied here (once) rather than in #applyCapabilities
    * (which runs every step). Re-patching every step caused _original_urlopen to
    * capture the previous _checked_urlopen on the second call, forming a call chain
-   * that grew one layer deeper per step. Using a sentinel (_agentkit_original_urlopen)
+   * that grew one layer deeper per step. Using a sentinel (_wasmagent_original_urlopen)
    * ensures the true original is only captured once, no matter how many times the
    * data variables (_allowed_hosts) are updated.
    */
@@ -174,10 +174,10 @@ del _j, _os
 import urllib.request as _urllib_req, urllib.parse as _urllib_parse
 
 # Q9: capture the true original once using a sentinel — prevents nesting if called again.
-if not hasattr(_urllib_req, "_agentkit_original_urlopen"):
-    _urllib_req._agentkit_original_urlopen = _urllib_req.urlopen
+if not hasattr(_urllib_req, "_wasmagent_original_urlopen"):
+    _urllib_req._wasmagent_original_urlopen = _urllib_req.urlopen
 
-_original_urlopen = _urllib_req._agentkit_original_urlopen
+_original_urlopen = _urllib_req._wasmagent_original_urlopen
 
 # Seed data variables with deny-all defaults; updated per-call by #applyCapabilities.
 _allowed_hosts = []

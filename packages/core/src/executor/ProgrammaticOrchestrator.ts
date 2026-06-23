@@ -1,15 +1,28 @@
 import type { CapabilityManifest, WasmKernel } from "../executor/types.js";
 import type { ToolRegistry } from "../tools/ToolRegistry.js";
 
+export interface ProgrammaticOrchestratorOptions {
+  /** Reset kernel state before each run. Default true for public deployments. */
+  resetKernelPerRun?: boolean;
+  /** Maximum re-run iterations. Default 50. */
+  maxIterations?: number;
+  /** Maximum tool calls per run. Default 50. */
+  maxToolCalls?: number;
+  /** Maximum script size in bytes. Default 65536 (64 KiB). */
+  maxScriptBytes?: number;
+  /** Maximum tool result size in bytes. Default 65536 (64 KiB). */
+  maxToolResultBytes?: number;
+}
+
 /**
  * L3-1: ProgrammaticOrchestrator — self-hosted PTC (Programmatic Tool Calling) backend.
  *
- * Executes model-generated orchestration scripts inside an agentkit kernel.
+ * Executes model-generated orchestration scripts inside a WasmAgent kernel.
  * Scripts can call registered tools via an injected `callTool()` global.
  * Only the final script output enters the context window — intermediate
  * tool results remain in the kernel's memory.
  *
- * This is agentkit's ZDR-friendly alternative to Anthropic's hosted PTC container:
+ * This is WasmAgent's ZDR-friendly alternative to Anthropic's hosted PTC container:
  *   - Works with any kernel tier: JsKernel, QuickJSKernel, WasmtimeKernel
  *   - Respects CapabilityManifest for tool access control
  *   - Intermediate results never enter the LLM context (−37% tokens, −19 round trips)
@@ -27,15 +40,24 @@ export class ProgrammaticOrchestrator {
   readonly #kernel: WasmKernel;
   readonly #tools: ToolRegistry;
   readonly #capabilities: Partial<CapabilityManifest>;
+  readonly #options: Required<ProgrammaticOrchestratorOptions>;
 
   constructor(
     kernel: WasmKernel,
     tools: ToolRegistry,
-    capabilities: Partial<CapabilityManifest> = {}
+    capabilities: Partial<CapabilityManifest> = {},
+    options: ProgrammaticOrchestratorOptions = {}
   ) {
     this.#kernel = kernel;
     this.#tools = tools;
     this.#capabilities = capabilities;
+    this.#options = {
+      resetKernelPerRun: options.resetKernelPerRun ?? false,
+      maxIterations: options.maxIterations ?? 50,
+      maxToolCalls: options.maxToolCalls ?? 50,
+      maxScriptBytes: options.maxScriptBytes ?? 65536,
+      maxToolResultBytes: options.maxToolResultBytes ?? 65536,
+    };
   }
 
   /**
@@ -50,6 +72,11 @@ export class ProgrammaticOrchestrator {
    * @returns Final output string (the only content that enters the LLM context).
    */
   async run(script: string, signal?: AbortSignal): Promise<ProgrammaticResult> {
+    const scriptBytes = new TextEncoder().encode(script).byteLength;
+    if (scriptBytes > this.#options.maxScriptBytes) {
+      throw new Error(`ProgrammaticOrchestrator: script size ${scriptBytes} bytes exceeds limit of ${this.#options.maxScriptBytes} bytes`);
+    }
+
     const toolCalls: ToolCallRecord[] = [];
 
     // Inject callTool as a pseudo-synchronous global by wrapping the script
@@ -57,16 +84,24 @@ export class ProgrammaticOrchestrator {
     // are accumulated in toolCalls but never returned to the caller.
     const callToolShim = async (name: string, args: Record<string, unknown>): Promise<string> => {
       if (signal?.aborted) throw new Error("ProgrammaticOrchestrator: aborted");
+      if (toolCalls.length >= this.#options.maxToolCalls) {
+        throw new Error(`ProgrammaticOrchestrator: exceeded maxToolCalls=${this.#options.maxToolCalls}`);
+      }
       const callId = `ptc-${toolCalls.length}-${name}`;
       const result = await this.#tools.call(
         { toolName: name, args, callId, ...(signal ? { signal } : {}) },
         this.#capabilities.extraCapabilities
       );
+      const resultText = typeof result.output === "string" ? result.output : JSON.stringify(result.output ?? "");
+      const resultBytes = new TextEncoder().encode(resultText).byteLength;
+      if (resultBytes > this.#options.maxToolResultBytes) {
+        throw new Error(`ProgrammaticOrchestrator: tool "${name}" result size ${resultBytes} bytes exceeds limit of ${this.#options.maxToolResultBytes} bytes`);
+      }
       toolCalls.push({ name, args, callId, result: result.output, isError: !!result.error });
       if (result.error) {
         throw new Error(`Tool "${name}" failed: ${result.error.message}`);
       }
-      return typeof result.output === "string" ? result.output : JSON.stringify(result.output);
+      return resultText;
     };
 
     // The kernel can't receive async functions across the worker boundary (JsKernel).
@@ -170,7 +205,8 @@ export class ProgrammaticOrchestrator {
     const resolved = new Map<string, string>();
 
     let output = "";
-    for (let iteration = 0; iteration < 50; iteration++) {
+    let completed = false;
+    for (let iteration = 0; iteration < this.#options.maxIterations; iteration++) {
       if (signal?.aborted) throw new Error("ProgrammaticOrchestrator: aborted");
 
       // Reset the per-run __ptc_calls__ array so each re-run sees the same
@@ -225,6 +261,7 @@ export class ProgrammaticOrchestrator {
         parsed = JSON.parse(raw) as typeof parsed;
       } catch {
         output = raw;
+        completed = true;
         break;
       }
 
@@ -249,6 +286,7 @@ export class ProgrammaticOrchestrator {
           );
         }
         output = finalResult;
+        completed = true;
         break;
       }
 
@@ -268,6 +306,10 @@ export class ProgrammaticOrchestrator {
       resolved.set(key, resultStr);
       const injectScript = `__ptc_results__[${JSON.stringify(key)}] = ${JSON.stringify(resultStr)};`;
       await this.#kernel.run(injectScript, this.#capabilities);
+    }
+
+    if (!completed) {
+      throw new Error(`ProgrammaticOrchestrator: exceeded maxIterations=${this.#options.maxIterations} without completing`);
     }
 
     return output;

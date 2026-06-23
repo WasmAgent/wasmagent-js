@@ -1,6 +1,6 @@
 # kernel-only example
 
-This example demonstrates that the agentkit-js code-execution kernels are
+This example demonstrates that the WasmAgent code-execution kernels are
 **standalone WASM sandboxes** — they don't require `@wasmagent/core` or any
 framework-level integration. You can drop them into any agent framework that
 takes a tool definition.
@@ -11,7 +11,7 @@ node examples/kernel-only/index.mjs
 
 What you'll see: synchronous JS in a QuickJS WASM sandbox, captured stdout,
 the security boundary that prevents reaching host globals, and a clean
-shutdown — without any agentkit-js framework code on the import graph.
+shutdown — without any WasmAgent framework code on the import graph.
 
 ## Use it from your own framework
 

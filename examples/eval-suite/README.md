@@ -1,6 +1,6 @@
 # eval-suite — End-to-end agent evaluation
 
-Demonstrates the full agentkit-js evals stack on a 3-sample arithmetic
+Demonstrates the full WasmAgent evals stack on a 3-sample arithmetic
 + factual benchmark, with a composite scorer combining correctness,
 efficiency, recovery, and length constraints.
 

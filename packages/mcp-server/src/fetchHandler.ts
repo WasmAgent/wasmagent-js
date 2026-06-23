@@ -15,6 +15,12 @@ export interface CreateFetchHandlerOptions {
   path?: string;
   /** CORS allowed origin. Default `"*"`. */
   allowedOrigin?: string;
+  /** Optional auth check. Return true to allow, false to reject with 401. */
+  auth?: (request: Request) => boolean | Promise<boolean>;
+  /** Maximum request body size in bytes. Default 1048576 (1 MiB). */
+  maxBodyBytes?: number;
+  /** Maximum batch request size. Default 20. */
+  maxBatchSize?: number;
 }
 
 export function createFetchHandler(
@@ -23,6 +29,8 @@ export function createFetchHandler(
 ): (request: Request) => Promise<Response> {
   const path = opts.path ?? "/mcp";
   const allowOrigin = opts.allowedOrigin ?? "*";
+  const maxBodyBytes = opts.maxBodyBytes ?? 1_048_576;
+  const maxBatchSize = opts.maxBatchSize ?? 20;
   return async (request: Request) => {
     const url = new URL(request.url);
     if (url.pathname !== path) {
@@ -36,6 +44,24 @@ export function createFetchHandler(
     }
     if (request.method !== "POST") {
       return new Response("Method Not Allowed", { status: 405, headers: corsHeaders(allowOrigin) });
+    }
+    if (opts.auth) {
+      const allowed = await opts.auth(request);
+      if (!allowed) {
+        return jsonResp(
+          { jsonrpc: "2.0", id: null, error: { code: -32001, message: "Unauthorized" } },
+          401,
+          allowOrigin
+        );
+      }
+    }
+    const contentLength = Number(request.headers.get("content-length") ?? "0");
+    if (contentLength > maxBodyBytes) {
+      return jsonResp(
+        { jsonrpc: "2.0", id: null, error: { code: -32000, message: "Request body too large" } },
+        413,
+        allowOrigin
+      );
     }
     let body: unknown;
     try {
@@ -51,8 +77,18 @@ export function createFetchHandler(
     // Batch support: spec allows an array of requests, each handled
     // independently. Notifications (no id) get no response and are filtered.
     if (Array.isArray(body)) {
+      if (body.length > maxBatchSize) {
+        return jsonResp(
+          { jsonrpc: "2.0", id: null, error: { code: -32000, message: "Batch too large" } },
+          413,
+          allowOrigin
+        );
+      }
       const handled = await Promise.all(body.map((b) => server.handle(b)));
       const responses = handled.map((h) => h.response).filter((r) => r.id !== undefined);
+      if (responses.length === 0) {
+        return new Response(null, { status: 204, headers: corsHeaders(allowOrigin) });
+      }
       return jsonResp(responses, 200, allowOrigin);
     }
     const result = await server.handle(body);
@@ -64,12 +100,13 @@ export function createFetchHandler(
 }
 
 function corsHeaders(allowOrigin: string): Record<string, string> {
-  return {
+  const headers: Record<string, string> = {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id",
-    Vary: allowOrigin === "*" ? "" : "Origin",
   };
+  if (allowOrigin !== "*") headers["Vary"] = "Origin";
+  return headers;
 }
 
 function jsonResp(payload: unknown, status: number, allowOrigin: string): Response {

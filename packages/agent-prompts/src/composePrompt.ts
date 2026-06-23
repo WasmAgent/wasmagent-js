@@ -1,7 +1,7 @@
 /**
  * Prompt composer — combines fragments into a full system prompt.
  *
- * Use this when you want the agentkit conventions (reasoning-first,
+ * Use this when you want the WasmAgent conventions (reasoning-first,
  * output contract, error recovery, card blocks) bundled into one prompt
  * along with your own product-specific instructions (persona, tool
  * surface, file conventions, etc.).

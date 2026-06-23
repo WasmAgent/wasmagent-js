@@ -1,5 +1,5 @@
 /**
- * @wasmagent/aisdk — make agentkit kernels available as Vercel AI SDK tools.
+ * @wasmagent/aisdk — make WasmAgent kernels available as Vercel AI SDK tools.
  *
  * The Vercel AI SDK (`ai` package) ships great DX for streaming, tool calling,
  * and agent loops — but its default tool execution path runs the JS function
@@ -9,7 +9,7 @@
  * model's output and your service.
  *
  * This package gives the AI SDK two reusable tool factories that delegate to
- * agentkit's `Kernel` family:
+ * WasmAgent's `Kernel` family:
  *
  *   - {@link sandboxedJsTool} — one-shot JS evaluator. Drop-in for
  *     "let the model run a snippet to do math / parse JSON / try things"
@@ -155,11 +155,11 @@ export function codeModeTool(
 // (factory + execute() marker-rerun loop + 10 tests, 2026-06-17). Closes
 // the three explicit gaps in CF's default `DynamicWorkerExecutor`:
 // cross-platform JS, optional Python via PyodideKernel, and pause-on-
-// approval lifecycle through agentkit's tool registry. Upstream PR draft
+// approval lifecycle through WasmAgent's tool registry. Upstream PR draft
 // at `docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md`.
 export {
-  type AgentkitCodemodeExecutorOptions,
-  agentkitCodemodeExecutor,
+  type CodemodeExecutorOptions,
+  createCodemodeExecutor,
   type CodemodeExecuteResult,
   type CodemodeExecutor,
   type CodemodeProvidersOrFns,
@@ -167,8 +167,8 @@ export {
 } from "./codemodeExecutor.js";
 export type { MemoryToolOptions } from "./memory.js";
 // ── D3 (2026-06-13): cross-framework memory product surface ─────────────────
-// The agentkit memory primitives (`createMemoryTool`, `ObservationalMemory`)
-// were previously only consumable from inside agentkit. The `memoryTool`
-// adapter below makes them usable from a Vercel AI SDK project without an
-// agentkit agent loop. See `./memory.ts` for the rationale.
+// The WasmAgent memory primitives (`createMemoryTool`, `ObservationalMemory`)
+// were previously only consumable from inside WasmAgent. The `memoryTool`
+// adapter below makes them usable from a Vercel AI SDK project without a
+// WasmAgent agent loop. See `./memory.ts` for the rationale.
 export { memoryTool, ObservationalMemory } from "./memory.js";

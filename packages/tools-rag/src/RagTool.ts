@@ -18,7 +18,7 @@ export interface RagToolOpts {
 /**
  * Build a RAG retrieval tool — agent → query string → ranked chunks.
  *
- * Wraps any agentkit `Retriever` (InMemoryVectorStore, KvBackendVectorStore,
+ * Wraps any WasmAgent `Retriever` (InMemoryVectorStore, KvBackendVectorStore,
  * PineconeStore, QdrantStore, or any custom impl) into a tool an agent
  * can call.
  *

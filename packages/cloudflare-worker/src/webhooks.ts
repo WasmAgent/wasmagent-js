@@ -1,5 +1,5 @@
 /**
- * Webhook delivery for the agentkit-js Cloudflare Worker.
+ * Webhook delivery for the WasmAgent Cloudflare Worker.
  *
  * Posts run-completion (and optionally other lifecycle events) to one
  * or more configured URLs. Optionally signs the payload with HMAC-SHA-

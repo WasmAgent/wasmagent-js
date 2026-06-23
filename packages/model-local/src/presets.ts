@@ -21,7 +21,7 @@ import { FallbackModel, type Model } from "@wasmagent/core/models";
  * Try the local model first; on any error, fall through to the cloud model.
  *
  * Equivalent to `new FallbackModel([local, cloud])` — but the named factory
- * carries intent and gives `agentkit devtools` a stable label to surface in
+ * carries intent and gives `WasmAgent devtools` a stable label to surface in
  * trace overlays.
  */
 export function localFirst(local: Model, cloud: Model): FallbackModel {

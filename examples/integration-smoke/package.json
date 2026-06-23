@@ -1,5 +1,5 @@
 {
-  "name": "agentkit-integration-smoke",
+  "name": "wasmagent-integration-smoke",
   "version": "0.0.1",
   "private": true,
   "description": "Local-only end-to-end smoke scripts that drive the public package surface (A1/A2/A4/A5 etc.). NOT part of CI — run them by hand to verify a fresh build.",

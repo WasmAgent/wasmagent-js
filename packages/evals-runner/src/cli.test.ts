@@ -1,5 +1,5 @@
 /**
- * Tests for the agentkit-evals binary surface — the CLI's argument
+ * Tests for the wasmagent-evals binary surface — the CLI's argument
  * parsing + help + spec parsing. The actual runEvaluation invocation
  * is exercised by the suite-level tests (multi-turn-tool-exec.test.ts
  * and friends); we don't double-cover it here.
@@ -7,10 +7,10 @@
 
 import { HELP, parseModelSpec, VERSION } from "./cli.js";
 
-describe("agentkit-evals CLI", () => {
+describe("wasmagent-evals CLI", () => {
   it("HELP text mentions both subcommands and the model-spec format", () => {
-    expect(HELP).toMatch(/agentkit-evals list/);
-    expect(HELP).toMatch(/agentkit-evals run/);
+    expect(HELP).toMatch(/wasmagent-evals list/);
+    expect(HELP).toMatch(/wasmagent-evals run/);
     // The model spec format is the only thing users will get wrong;
     // lock it explicitly so a future copy edit doesn't lose it.
     expect(HELP).toMatch(/<id>\[@<baseUrl>]\[#<wireModelId>]/);

@@ -203,8 +203,8 @@ export const armBareSuite: BenchmarkSuite = {
 // "final answer" branch — the model is grammar-pinned to one of those.
 //
 // Caveat: Ollama's grammar enforcement applies to the model's RAW output;
-// agentkit's parsing layer then has to interpret that as a tool_use OR a
-// final-answer text. We keep the interpretation logic on the agentkit
+// WasmAgent's parsing layer then has to interpret that as a tool_use OR a
+// final-answer text. We keep the interpretation logic on the WasmAgent
 // side (ToolCallingAgent already handles malformed output gracefully); the
 // grammar arm's job is only to *reduce form-level errors*, which is the
 // failure mode the BFCL paper identifies as dominant for <1B models.

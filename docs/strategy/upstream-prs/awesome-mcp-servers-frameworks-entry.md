@@ -69,7 +69,7 @@ will be re-ordered against `main` at PR time.)
 2. **Emoji legend** — must use 📇 (TypeScript) + at least one of
    ☁️ / 🏠. The package targets both, so we list both.
 3. **Avoid claims unverifiable by the maintainer.** The 13.6%
-   number is from agentkit's own CI; the PR body links the benchmark
+   number is from WasmAgent's own CI; the PR body links the benchmark
    file directly so the reviewer can run it themselves.
 4. **The Glama directory sync runs on a schedule.** The web entry
    may take 24–48h after merge to appear. That is a feature, not a

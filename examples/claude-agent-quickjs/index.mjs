@@ -1,5 +1,5 @@
 /**
- * D5 — StackBlitz-runnable demo: Claude Agent SDK shape + agentkit-js
+ * D5 — StackBlitz-runnable demo: Claude Agent SDK shape + WasmAgent
  * QuickJS kernel.
  *
  * `sandboxedJsClaudeTool({ kernel })` returns a `ClaudeAgentTool` shape

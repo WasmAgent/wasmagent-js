@@ -51,7 +51,7 @@ const executeSandboxedAction: Action = {
 
 export const sandboxedCodePlugin: Plugin = {
   name: '@wasmagent/eliza-plugin',
-  description: 'Sandboxed JS/Python code execution via agentkit WASM kernels',
+  description: 'Sandboxed JS/Python code execution via WasmAgent WASM kernels',
   actions: [executeSandboxedAction],
 };
 ```

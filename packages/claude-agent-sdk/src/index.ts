@@ -1,5 +1,5 @@
 /**
- * @wasmagent/claude-agent-sdk — agentkit kernels as Claude Agent SDK tools.
+ * @wasmagent/claude-agent-sdk — WasmAgent kernels as Claude Agent SDK tools.
  *
  * Anthropic's Claude Agent SDK (and the equivalent shape inside the
  * `@anthropic-ai/sdk` `tools` parameter) accepts user-defined tools as

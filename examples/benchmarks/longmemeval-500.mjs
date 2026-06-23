@@ -15,7 +15,7 @@
  *   2. Observer/Reflector were not compatible with Claude 4.5-class
  *      models at the time.
  *
- * Both are direct attack surfaces for agentkit:
+ * Both are direct attack surfaces for WasmAgent:
  *
  *   - Our ObservationalMemory observer prompt is byte-stable, so
  *     prompt-cache hits compound across the same conversation —
@@ -59,7 +59,7 @@
  *     (Anthropic API exposes this on every call; we sum).
  *   - USD cost at the user-supplied --price-in / --price-out per million.
  *   - Per-observer column when --observers is comma-separated, so
- *     reviewers see the agentkit-vs-Mastra observer-flexibility story.
+ *     reviewers see the WasmAgent-vs-Mastra observer-flexibility story.
  *
  * ## Why this is a separate file
  *

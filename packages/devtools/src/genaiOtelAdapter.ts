@@ -1,8 +1,8 @@
 /**
  * GenAI OTel adapter (D5 — framework-agnostic devtools ingest).
  *
- * Lets `agentkit devtools` consume any OTel GenAI semantic-convention
- * trace, not only agentkit's own EventLog. The shape we accept is the
+ * Lets `WasmAgent devtools` consume any OTel GenAI semantic-convention
+ * trace, not only WasmAgent's own EventLog. The shape we accept is the
  * intersection that Vercel AI SDK, Mastra, OpenAI Agents JS, Anthropic
  * SDK observability, and the OTel collector all already emit:
  *
@@ -43,7 +43,7 @@
  * Comparing two runs from different upstreams is the use case —
  * over-strictness would make that impossible.
  *
- * The output is a list of agentkit `LoggedEvent`s. We synthesize the
+ * The output is a list of WasmAgent `LoggedEvent`s. We synthesize the
  * minimum set the existing `summariseRun` actually reads:
  * `run_start`, `step_start`, `step_end`, `model_done`, `tool_call`,
  * `tool_result`, `final_answer`, `error`. Anything beyond that
@@ -77,7 +77,7 @@ export interface GenAiSpan {
 }
 
 export interface GenAiConversionResult {
-  /** Synthesized agentkit `LoggedEvent`s, ordered by trace then by start time. */
+  /** Synthesized WasmAgent `LoggedEvent`s, ordered by trace then by start time. */
   events: LoggedEvent[];
   /** Number of input spans the converter could not place. */
   skipped: number;
@@ -88,7 +88,7 @@ export interface GenAiConversionResult {
 // ── Conversion ───────────────────────────────────────────────────────────────
 
 /**
- * Convert a flat list of GenAI semconv spans to agentkit `LoggedEvent`s
+ * Convert a flat list of GenAI semconv spans to WasmAgent `LoggedEvent`s
  * suitable for `groupByTraceId` / `summariseRun`. Spans without a
  * usable `traceId` are skipped (counted) — silent dropping would hide
  * producer bugs.

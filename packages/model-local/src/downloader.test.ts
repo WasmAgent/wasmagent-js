@@ -21,21 +21,21 @@ import type { RegisteredModel } from "./registry.js";
 import { LocalModelChecksumError, LocalModelDownloadError } from "./types.js";
 
 let dir: string;
-const ORIGINAL_ENV_DIR = process.env.AGENTKIT_MODEL_DIR;
-const ORIGINAL_ENV_MIRROR = process.env.AGENTKIT_MODEL_MIRROR;
+const ORIGINAL_ENV_DIR = process.env.WASMAGENT_MODEL_DIR;
+const ORIGINAL_ENV_MIRROR = process.env.WASMAGENT_MODEL_MIRROR;
 
 beforeEach(async () => {
-  dir = await mkdtemp(join(tmpdir(), "agentkit-modeldl-"));
-  delete process.env.AGENTKIT_MODEL_DIR;
-  delete process.env.AGENTKIT_MODEL_MIRROR;
+  dir = await mkdtemp(join(tmpdir(), "wasmagent-modeldl-"));
+  delete process.env.WASMAGENT_MODEL_DIR;
+  delete process.env.WASMAGENT_MODEL_MIRROR;
 });
 
 afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
-  if (ORIGINAL_ENV_DIR === undefined) delete process.env.AGENTKIT_MODEL_DIR;
-  else process.env.AGENTKIT_MODEL_DIR = ORIGINAL_ENV_DIR;
-  if (ORIGINAL_ENV_MIRROR === undefined) delete process.env.AGENTKIT_MODEL_MIRROR;
-  else process.env.AGENTKIT_MODEL_MIRROR = ORIGINAL_ENV_MIRROR;
+  if (ORIGINAL_ENV_DIR === undefined) delete process.env.WASMAGENT_MODEL_DIR;
+  else process.env.WASMAGENT_MODEL_DIR = ORIGINAL_ENV_DIR;
+  if (ORIGINAL_ENV_MIRROR === undefined) delete process.env.WASMAGENT_MODEL_MIRROR;
+  else process.env.WASMAGENT_MODEL_MIRROR = ORIGINAL_ENV_MIRROR;
 });
 
 function sha256Of(buf: Uint8Array): string {
@@ -84,21 +84,21 @@ const fakeModel = (overrides: Partial<RegisteredModel> = {}): RegisteredModel =>
 });
 
 describe("defaultCacheDir / effectiveMirror", () => {
-  it("uses AGENTKIT_MODEL_DIR when set", () => {
-    process.env.AGENTKIT_MODEL_DIR = "/tmp/my-models";
+  it("uses WASMAGENT_MODEL_DIR when set", () => {
+    process.env.WASMAGENT_MODEL_DIR = "/tmp/my-models";
     expect(defaultCacheDir()).toBe("/tmp/my-models");
   });
 
-  it("falls back to ~/.agentkit/models", () => {
-    delete process.env.AGENTKIT_MODEL_DIR;
-    expect(defaultCacheDir()).toMatch(/\.agentkit[\\/]+models$/);
+  it("falls back to ~/.wasmagent/models", () => {
+    delete process.env.WASMAGENT_MODEL_DIR;
+    expect(defaultCacheDir()).toMatch(/\.wasmagent[\\/]+models$/);
   });
 
   it("effectiveMirror prefers explicit arg, then env, then undefined", () => {
-    process.env.AGENTKIT_MODEL_MIRROR = "modelscope";
+    process.env.WASMAGENT_MODEL_MIRROR = "modelscope";
     expect(effectiveMirror("hf-mirror")).toBe("hf-mirror");
     expect(effectiveMirror()).toBe("modelscope");
-    delete process.env.AGENTKIT_MODEL_MIRROR;
+    delete process.env.WASMAGENT_MODEL_MIRROR;
     expect(effectiveMirror()).toBeUndefined();
   });
 });
@@ -224,8 +224,8 @@ describe("downloadGGUF", () => {
     expect(order[0]).toBe("https://hfmirror.example/q.gguf");
   });
 
-  it("AGENTKIT_MODEL_MIRROR env var biases source order", async () => {
-    process.env.AGENTKIT_MODEL_MIRROR = "modelscope";
+  it("WASMAGENT_MODEL_MIRROR env var biases source order", async () => {
+    process.env.WASMAGENT_MODEL_MIRROR = "modelscope";
     const m = fakeModel();
     const order: string[] = [];
     const fetchImpl: typeof fetch = async (url) => {

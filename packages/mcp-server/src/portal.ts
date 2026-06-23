@@ -2,14 +2,14 @@
  * createPortalServer — D1 (S1 strategic line, 2026-06-13).
  *
  * **What this is.** A *neutral, multi-server* MCP Portal: federate N upstream
- * MCP servers (or any agentkit `ToolRegistry`) behind the same two-tool
+ * MCP servers (or any WasmAgent `ToolRegistry`) behind the same two-tool
  * code-mode surface (`docs_search` + `execute_code`). The host sees one
  * gateway with one auth surface and one capability manifest; the model sees
  * one combined tool catalogue and dispatches them in-sandbox.
  *
  * **Why now.** Cloudflare announced *MCP Server Portals* (2026-Q2): the same
  * pattern, but locked to their platform. The market still has no
- * self-hostable, runtime-neutral Portal. agentkit's three-tier kernel +
+ * self-hostable, runtime-neutral Portal. WasmAgent's three-tier kernel +
  * `CapabilityManifest` already give us everything Cloudflare's version
  * promises *except* the federation step — that's what this module adds.
  *
@@ -27,9 +27,9 @@
  *      upstreams instead of multiplying.
  *
  * **Non-goals.** This module does NOT speak MCP transport to upstreams —
- * agentkit-js already has `McpToolCollection.fromHttp()` /
+ * WasmAgent already has `McpToolCollection.fromHttp()` /
  * `fromStdio()` for that. The Portal accepts anything that exposes a
- * `ToolRegistry`-shaped surface, so any transport agentkit can already
+ * `ToolRegistry`-shaped surface, so any transport WasmAgent can already
  * connect to (HTTP / stdio / WebSocket via the MCP SDK; in-process tool
  * registries; `@wasmagent/aisdk` adapters; future transports) plugs in
  * without changes here.

@@ -63,7 +63,7 @@ So: ninth axis. Three layers, one strategic frame.
 
 These compose: a run can do L1 fallbacks throughout its iterations, hit a dead end, *then* propose L3 negotiation. The frame they share: the framework helps the agent stay productive on the user's actual problem instead of grinding on the model's first interpretation of it.
 
-**Boundary.** L3 is opt-in. The default `` `agentkit goal "<task>"` `` run still hard-fails on exhausted iteration cap — this preserves CI determinism. `agentkit goal --allow-negotiate` (or its programmatic equivalent in `GoalDirectedAgentOptions`) flips the bit. This matters for [06-17 referee positioning](2026-06-17-update.md#2-the-internal-experimental-campaign-06-17-same-day): a referee that lets the contestant change the rules mid-match is no longer a referee.
+**Boundary.** L3 is opt-in. The default `` `WasmAgent goal "<task>"` `` run still hard-fails on exhausted iteration cap — this preserves CI determinism. `WasmAgent goal --allow-negotiate` (or its programmatic equivalent in `GoalDirectedAgentOptions`) flips the bit. This matters for [06-17 referee positioning](2026-06-17-update.md#2-the-internal-experimental-campaign-06-17-same-day): a referee that lets the contestant change the rules mid-match is no longer a referee.
 
 ---
 
@@ -113,7 +113,7 @@ That's the user-visible difference in one trace. Compare to today's `failed (exh
 | MS Agent Framework | policy-only | ✗ | ✗ |
 | Claude Code (Anthropic CLI) | yes (proprietary) | yes (CLI exec) | yes (asks user mid-task) | 
 | smolagents-js | ✗ | partial (CodeAct) | ✗ |
-| **agentkit-js (shipped)** | **annotation-driven** | **kernel-substrate** | **opt-in negotiation event** |
+| **WasmAgent (shipped)** | **annotation-driven** | **kernel-substrate** | **opt-in negotiation event** |
 
 The *partial* entries are honest: OpenAI Agents SDK ships SandboxAgent (so synthesis-via-sandbox is possible if the user wires it; it's not a first-class concept). Mastra ships Workspace providers (same shape).
 
@@ -159,7 +159,7 @@ These survive into [`docs/rfcs/adaptive-execution.md`](../rfcs/adaptive-executio
 
 Three reasons:
 
-- **The 8th axis is fresh.** The framing for "what differentiates agentkit-js" is already in the reader's mind from yesterday's update. The 9th axis lands while the comparison frame is still warm.
+- **The 8th axis is fresh.** The framing for "what differentiates WasmAgent" is already in the reader's mind from yesterday's update. The 9th axis lands while the comparison frame is still warm.
 - **It's defensive moat work.** Every framework that ships sandboxes / kernels eventually grows toward L1/L2 because users hit the failure modes. Being first to *ship the framing* is cheaper than racing competitors who arrive at the same conclusion six months later.
 - **It's the natural follow-up to the 06-17 governance pitch.** The story so far: "we enforce *what* an agent can do (CapabilityManifest) and verify *whether* it delivered (goal-directed)." The 9th axis adds: "and we keep it productive when the first plan doesn't survive contact with reality." That's a completed pitch.
 

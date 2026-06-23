@@ -30,7 +30,7 @@
  *   - **Token cost** — total prompt+completion tokens across all questions,
  *     and a derived USD figure for the model's published rate. This is the
  *     axis Mastra does not publish; cache-stable observation prefix means
- *     agentkit's tokens-per-question should be lower at equal accuracy.
+ *     WasmAgent's tokens-per-question should be lower at equal accuracy.
  *
  * ## Why a sample mode at all
  *

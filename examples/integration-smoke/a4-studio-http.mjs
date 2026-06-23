@@ -75,7 +75,7 @@ const fixture = [
   },
 ];
 
-const fixturePath = join(tmpdir(), `agentkit-studio-smoke-${Date.now()}.ndjson`);
+const fixturePath = join(tmpdir(), `WasmAgent'studio-smoke-${Date.now()}.ndjson`);
 await writeFile(fixturePath, fixture.map((e) => JSON.stringify(e)).join("\n"), "utf8");
 
 const cliBin = new URL("../../packages/cli/dist/index.js", import.meta.url).pathname;
@@ -120,7 +120,7 @@ try {
   console.log("[A4] /api/rollup + /api/runs ✓");
 
   const html = await (await fetch(`http://127.0.0.1:${port}/`)).text();
-  if (!html.includes("agentkit Studio") || !html.includes("/api/rollup")) {
+  if (!html.includes("WasmAgent Studio") || !html.includes("/api/rollup")) {
     throw new Error("HTML page missing markers");
   }
   console.log("[A4] / HTML page ✓");

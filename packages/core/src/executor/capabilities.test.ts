@@ -200,7 +200,7 @@ describe("JsKernel __fs__ real I/O (A2)", () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), "agentkit-test-"));
+    tmpDir = await mkdtemp(join(tmpdir(), "wasmagent-test-"));
   });
 
   afterEach(async () => {

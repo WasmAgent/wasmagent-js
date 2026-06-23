@@ -243,7 +243,7 @@ export function App() {
   return (
     <div style={PAGE_STYLE}>
       <header style={HEADER_STYLE}>
-        <h1 style={TITLE_STYLE}>agentkit-js Chat Cards Demo</h1>
+        <h1 style={TITLE_STYLE}>WasmAgent Chat Cards Demo</h1>
         <span style={BADGE_STYLE}>@wasmagent/react</span>
       </header>
 

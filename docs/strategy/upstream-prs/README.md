@@ -67,7 +67,7 @@ integration shape, not a JS executor. Skip.
 | [`awesome-mcp-servers-frameworks-entry.md`](awesome-mcp-servers-frameworks-entry.md) | `punkpeye/awesome-mcp-servers` | **PR** [#7910](https://github.com/punkpeye/awesome-mcp-servers/pull/7910) — 🟡 OPEN. Glama bot ([2026-06-12](https://github.com/punkpeye/awesome-mcp-servers/pull/7910#issuecomment-4689364380)) requires (1) listing on `glama.ai/mcp/servers` with health checks and (2) Glama score badge in the entry. Action: Glama listing + PR amendment. |
 | [`mastra-mcp-overview-link.md`](mastra-mcp-overview-link.md)                 | `mastra-ai/mastra`                | **Issue** [#17884](https://github.com/mastra-ai/mastra/issues/17884) — 🔴 **CLOSED** by maintainer @roaminro ([2026-06-12](https://github.com/mastra-ai/mastra/issues/17884#issuecomment-4691748965)): *"we're not adding any new third-party projects to that section at the moment."* See "Maintainer responses" below for what this means strategically.                |
 | [`vercel-ai-sdk-mcp-example.md`](vercel-ai-sdk-mcp-example.md)               | `vercel/ai`                       | **Issue** [#16063](https://github.com/vercel/ai/issues/16063) — 🟡 OPEN, no maintainer response as of 2026-06-12. Standing by per the issue body's request for content-shape preference.                                                                       |
-| [`cloudflare-codemode-byo-executor.md`](cloudflare-codemode-byo-executor.md) | `cloudflare/agents`               | **Issue** [#1753](https://github.com/cloudflare/agents/issues/1753) — filed 2026-06-13. cloudflare/agents has `pull_request_creation_policy: collaborators_only`, so the change ships as an issue with a link to a ready-to-cherry-pick branch on the fork at [`telleroutlook/agents@docs/codemode-byo-executor`](https://github.com/telleroutlook/agents/tree/docs/codemode-byo-executor) (+34/-2 in `docs/codemode.md`). agentkit-js Direction 1 priority entry. |
+| [`cloudflare-codemode-byo-executor.md`](cloudflare-codemode-byo-executor.md) | `cloudflare/agents`               | **Issue** [#1753](https://github.com/cloudflare/agents/issues/1753) — filed 2026-06-13. cloudflare/agents has `pull_request_creation_policy: collaborators_only`, so the change ships as an issue with a link to a ready-to-cherry-pick branch on the fork at [`telleroutlook/agents@docs/codemode-byo-executor`](https://github.com/telleroutlook/agents/tree/docs/codemode-byo-executor) (+34/-2 in `docs/codemode.md`). WasmAgent Direction 1 priority entry. |
 
 ## Maintainer responses (2026-06-12)
 
@@ -120,7 +120,7 @@ What this means:
   and the upstream adapter download tracking are for.
 - **Re-attempt window.** The phrase *"at the moment"* is a soft
   policy, not a permanent NACK. A re-pitch makes sense **after**
-  agentkit lands a public benchmark number (Direction 2) or a
+  WasmAgent lands a public benchmark number (Direction 2) or a
   large enough Mastra-side adoption signal that the policy
   resets. Until then, do not re-open #17884; that is poor
   manners and the maintainer's preference is already on record.
@@ -148,16 +148,16 @@ local working copies, read on submission day, did not:
 
 - **Mastra** — `overview.mdx`'s `## Connecting to an MCP registry`
   Tabs section lists *hosted registries* (Klavis, mcp.run, Composio,
-  Smithery, Apify, Ampersand). agentkit is a single open-source MCP
+  Smithery, Apify, Ampersand). WasmAgent is a single open-source MCP
   server *library*, not a registry — adding it as a tab would be
   the wrong shape. The honest move is to ask the maintainers if
   they'd accept a separate "Open-source MCP server libraries"
-  section, with agentkit as one of multiple seed entries. *(Resolved
+  section, with WasmAgent as one of multiple seed entries. *(Resolved
   2026-06-12: maintainer declined the section. See "Maintainer
   responses" above.)*
 - **vercel/ai** — `examples/mcp/` uses `experimental_createMCPClient`
   to *consume* an MCP server, which is a different shape from
-  `tool()` + sandbox-kernel. Naming the new dir `mcp-agentkit/` would
+  `tool()` + sandbox-kernel. Naming the new dir `mcp-WasmAgent/` would
   be misleading. The honest move is to ask the maintainers whether
   they'd prefer `examples/sandboxed-tools/`, a docs cookbook entry,
   or to skip it.
@@ -178,7 +178,7 @@ sandbox." `@wasmagent/kernel-quickjs` is exactly that. The
 four adapter packages combined.
 
 The pre-submission gate is real, not a stall: the recipe references
-an `agentkitCodemodeExecutor` shim in `@wasmagent/aisdk` that has
+an `WasmAgentCodemodeExecutor` shim in `@wasmagent/aisdk` that has
 to ship first so the example actually runs. That shim is the next
 landed change in this direction.
 

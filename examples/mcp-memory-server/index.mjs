@@ -2,8 +2,8 @@
  * mcp-memory-server.ts — minimal MCP server that exposes memory CRUD as
  * 4 tools any MCP host (Claude Desktop, Cursor, Glama, …) can call.
  *
- * This is the agentkit-js equivalent of running a Mem0/Letta/Zep MCP
- * memory bridge in front of a host: the host speaks MCP; agentkit
+ * This is the WasmAgent equivalent of running a Mem0/Letta/Zep MCP
+ * memory bridge in front of a host: the host speaks MCP; WasmAgent
  * provides storage + namespacing + TTL via `StructuredMemory`.
  *
  * Wire shape (matches MCP 2025-11 stdio transport):
@@ -53,14 +53,14 @@ const memory = new StructuredMemory(new InMemoryStructuredKv());
 //
 // Each MCP tool resolves to a JSON-encoded "task" string the synthetic
 // agent below interprets. This mirrors codeMode.ts in the same package
-// (the standard agentkit-js pattern for MCP servers that don't actually
+// (the standard WasmAgent pattern for MCP servers that don't actually
 // run an LLM).
 
 const tools = [
   {
     name: "memory_read",
     description:
-      "Read a value from agentkit memory. Returns the stored value (any " +
+      "Read a value from WasmAgent memory. Returns the stored value (any " +
       "JSON-serializable shape) or `null` if no entry exists.",
     inputSchema: {
       type: "object",
@@ -90,7 +90,7 @@ const tools = [
   {
     name: "memory_write",
     description:
-      "Store a value under a key in agentkit memory. Overwrites an " +
+      "Store a value under a key in WasmAgent memory. Overwrites an " +
       "existing entry. Use for stable user facts (semantic), recent " +
       "session events (episodic), or learned how-tos (procedural).",
     inputSchema: {
@@ -257,7 +257,7 @@ const agent = {
 
 const server = new McpAgentServer({
   serverInfo: {
-    name: "agentkit-mcp-memory-server",
+    name: "WasmAgent-mcp-memory-server",
     version: "0.1.0",
   },
   agent,

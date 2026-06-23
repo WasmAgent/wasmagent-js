@@ -50,7 +50,7 @@ creation to collaborators).
   Claude Desktop and Cursor use the same SDK validators, so the
   boolean form would have silently broken those integrations too.
   Fixed in `eeb5454`. Glama published this as the
-  `agentkit-mcp-server@0.2.0` release.
+  `WasmAgent-mcp-server@0.2.0` release.
 - **`feat(evals-runner)`** — added `arm-batch-grammar` ablation arm.
   Single-call full-plan executor with strict `{plan: [{name, input}, ...]}`
   json_schema. Used to falsify our own
@@ -74,7 +74,7 @@ creation to collaborators).
 - **`chore(lint)`** — biome warnings driven from 22 errors / 131
   warnings to 0 / 0 / 0 across 402 files. Caught and reverted four
   biome `--unsafe` transformations that introduced real bugs.
-- **`docs(aisdk)`** — `agentkitCodemodeExecutor` docstring refresh.
+- **`docs(aisdk)`** — `WasmAgentCodemodeExecutor` docstring refresh.
   No code change; the implementation has been complete since
   ~06-12 but the docstrings still claimed "TODO part 2/3".
 

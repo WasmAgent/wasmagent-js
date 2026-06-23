@@ -61,7 +61,7 @@ official scripts; cite the synthetic versions only as smoke tests.
 
 LoCoMo's original LLM judge agreed with humans only ~44% of the time,
 which is why the field rebuilt it. We can't ship a Qwen3-14B judge
-inside agentkit (size + dependency cost), so we use a deterministic
+inside WasmAgent (size + dependency cost), so we use a deterministic
 forbidden-substring check. It's not a perfect proxy — a real strict
 judge can recognize "the user said vegan, model said vegetarian-but-with-cheese"
 as a logical inconsistency that no string match catches — but it

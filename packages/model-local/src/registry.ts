@@ -34,7 +34,7 @@ export interface ModelSource {
 export interface RegisteredModel {
   /** Canonical alias used by `new LocalModel({ model: "..." })`. */
   alias: string;
-  /** Human-friendly description shown in `agentkit model list`. */
+  /** Human-friendly description shown in `wasmagent model list`. */
   description: string;
   /** Ordered list of download sources — index 0 is the canonical (sha256 anchor). */
   sources: ModelSource[];

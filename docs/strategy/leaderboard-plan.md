@@ -10,7 +10,7 @@
 Mastra leveraged **one** number — 94.87% on LongMemEval — into the
 entire 2026-Q1 press cycle for the framework. Cloudflare Code Mode
 MCP sells *purely* on a token-savings story with no task-completion
-number behind it. agentkit-js has the technical foundation to land
+number behind it. WasmAgent has the technical foundation to land
 both flavours of leaderboard number, but at 2026-06-12 has neither
 on the README's "Verified status" table.
 
@@ -35,7 +35,7 @@ whether we are still in "in-flight" or "published."
 The number to beat / explain is **Mastra 94.87%** (gpt-5-mini
 observer, 2026-02). Two third-party reviews flagged the
 multi-session sub-category and Claude-4.5 incompatibility as
-weaknesses. The agentkit observer is a regular Model adapter, so
+weaknesses. The WasmAgent observer is a regular Model adapter, so
 multi-observer comparison ships for free, and `ObservationalMemory`
 keeps the observer prompt byte-stable so prompt-cache hits compound.
 
@@ -57,7 +57,7 @@ issues?*
 
 Whoever publishes the first credible SWE-bench-lite number on the
 code-mode dispatch shape owns the citation slot until the next
-entrant. agentkit's `createCodeModeServer()` is shipping; the
+entrant. WasmAgent's `createCodeModeServer()` is shipping; the
 harness in
 [`examples/benchmarks/swe-bench-lite.mjs`](../../examples/benchmarks/swe-bench-lite.mjs)
 is the skeleton.

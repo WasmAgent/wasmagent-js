@@ -2,7 +2,7 @@
  * D3 (2026-06-13) — memory adapter tests.
  *
  * These pin down that the AI SDK shape exposed by `memoryTool()`
- * round-trips correctly to agentkit's `createMemoryTool` core
+ * round-trips correctly to WasmAgent's `createMemoryTool` core
  * implementation: write → read returns the persisted value, and the
  * tool description matches core (so callers don't see drift between
  * frameworks).

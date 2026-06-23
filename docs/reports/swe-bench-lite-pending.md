@@ -13,7 +13,7 @@
 Direction 2 of the [2026-06-12 optimization
 brief](../strategy/2026-06-competitiveness.md) calls for a single
 citable public-leaderboard number to break the chicken-and-egg
-distribution problem. Two leaderboards fit agentkit's
+distribution problem. Two leaderboards fit WasmAgent's
 differentiators:
 
 | Axis            | Leaderboard          | Status                                                            |
@@ -76,12 +76,12 @@ node examples/benchmarks/swe-bench-lite.mjs --report \
 
 ## What this report does *not* claim
 
-- It does not benchmark agentkit's framework face vs Vercel AI SDK
+- It does not benchmark WasmAgent's framework face vs Vercel AI SDK
   / Mastra / LangGraph as agent frameworks. The benchmark is
   scoped to **dispatch shape**, with the same answerer model in
   both cells, so the comparison isolates the variable that is
   actually under test.
-- It does not claim the agentkit code-mode dispatch is faster
+- It does not claim the WasmAgent code-mode dispatch is faster
   than any specific framework's tool-loop. The honest comparison
   is *bootstrap-tokens* + *task-completion* — two axes the chain
   of round-trips affects most directly.
@@ -97,7 +97,7 @@ status as of 2026-06-13:
   `node examples/benchmarks/swe-bench-lite.mjs --load-tasks=3`.
 - ✅ **Containerised test runner.** `runTests(task, patch)` builds
   `examples/benchmarks/judge/Dockerfile` on first call and runs
-  `docker run --rm -v $tmp:/work agentkit-swe-judge:latest`. The
+  `docker run --rm -v $tmp:/work WasmAgent-swe-judge:latest`. The
   judge (`judge.py`, ~250 lines) clones at `base_commit`, applies
   `test_patch` + the agent patch, runs pytest per node-id from
   `fail_to_pass` ∪ `pass_to_pass`, writes `result.json`.

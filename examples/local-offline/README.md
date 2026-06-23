@@ -1,6 +1,6 @@
 # local-offline — fully offline agent demo
 
-A complete agentkit-js agent running with **no cloud calls** at all:
+A complete WasmAgent agent running with **no cloud calls** at all:
 
 - **Model**: `@wasmagent/model-local` + `node-llama-cpp` (Qwen 3.5 0.8B by default)
 - **Execution**: `@wasmagent/kernel-quickjs` — WASM sandbox, no Node.js APIs reachable
@@ -16,9 +16,9 @@ npm install node-llama-cpp
 
 # 2. Pull the recommended model. Set AGENTKIT_MODEL_MIRROR if you're behind the GFW.
 #    Options: huggingface (default), hf-mirror, modelscope, or any URL prefix.
-npx agentkit model pull qwen3.5-0.8b
+npx WasmAgent model pull qwen3.5-0.8b
 # Or with an explicit mirror:
-AGENTKIT_MODEL_MIRROR=modelscope npx agentkit model pull qwen3.5-0.8b
+AGENTKIT_MODEL_MIRROR=modelscope npx WasmAgent model pull qwen3.5-0.8b
 ```
 
 ## Run
@@ -28,7 +28,7 @@ AGENTKIT_MODEL_MIRROR=modelscope npx agentkit model pull qwen3.5-0.8b
 node index.mjs
 
 # Or with a custom task:
-node index.mjs "Reverse the string 'agentkit' and return the result."
+node index.mjs "Reverse the string 'WasmAgent' and return the result."
 ```
 
 ## What you should see

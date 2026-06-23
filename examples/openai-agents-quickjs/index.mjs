@@ -1,5 +1,5 @@
 /**
- * D5 — StackBlitz-runnable demo: OpenAI Agents JS shape + agentkit-js
+ * D5 — StackBlitz-runnable demo: OpenAI Agents JS shape + WasmAgent
  * QuickJS kernel.
  *
  * `sandboxedJsAgentTool({ kernel })` returns the `Tool` shape the OpenAI

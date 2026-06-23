@@ -3,7 +3,7 @@
  *
  * Continuous-observation alternative to the one-shot
  * {@link MessageAssembler.compact}. Inspired by Mastra's Observational Memory
- * (LongMemEval 94.87%, 5–40× compression) but adapted to agentkit-js'
+ * (LongMemEval 94.87%, 5–40× compression) but adapted to WasmAgent's
  * existing primitives:
  *
  *   - sits on top of an existing MessageAssembler — does NOT replace it

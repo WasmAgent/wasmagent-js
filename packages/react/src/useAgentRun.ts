@@ -1,7 +1,7 @@
 /**
- * useAgentRun — React hook for streaming agentkit-js AgentEvent SSE output (B2).
+ * useAgentRun — React hook for streaming WasmAgent AgentEvent SSE output (B2).
  *
- * Consumes a Server-Sent Events stream from the agentkit Cloudflare Worker `/run`
+ * Consumes a Server-Sent Events stream from the WasmAgent Cloudflare Worker `/run`
  * endpoint (or any compatible SSE endpoint that sends `data: <AgentEvent json>\n\n`).
  *
  * Usage:

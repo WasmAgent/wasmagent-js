@@ -7,12 +7,12 @@
  *   ANTHROPIC_API_KEY=...
  */
 import { writeFile } from "node:fs/promises";
-import { ToolCallingAgent } from "@agentkit-js/core";
-import { AnthropicModel } from "@agentkit-js/model-anthropic";
+import { ToolCallingAgent } from "@wasmagent/core";
+import { AnthropicModel } from "@wasmagent/model-anthropic";
 import {
   buildBrowserTools,
   openPlaywrightSession,
-} from "@agentkit-js/tools-browser";
+} from "@wasmagent/tools-browser";
 
 async function main() {
   const apiKey = process.env.ANTHROPIC_API_KEY;

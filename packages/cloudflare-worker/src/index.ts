@@ -1,5 +1,5 @@
 /**
- * Cloudflare Workers entry point for agentkit-js.
+ * Cloudflare Workers entry point for WasmAgent.
  *
  * Exposes a simple HTTP API:
  *   OPTIONS *         → CORS preflight (204)
@@ -113,7 +113,7 @@ export interface Env {
    * Comma-separated list of allowed CORS origins (e.g. "https://app.example.com").
    * Falls back to "*" when not set — restrict in production.
    */
-  AGENTKIT_ALLOWED_ORIGIN?: string;
+  WASMAGENT_ALLOWED_ORIGIN?: string;
 }
 
 const SESSION_TTL_SECONDS = 3600; // 1 hour
@@ -122,10 +122,10 @@ const MAX_STEPS_CAP = 50; // hard cap regardless of caller value
 const MAX_KV_EVENTS = 500; // KV event accumulator cap (~5 MB safety margin)
 
 function getCorsHeaders(env: Env, request: Request): Record<string, string> {
-  const allowed = env.AGENTKIT_ALLOWED_ORIGIN ?? "*";
+  const allowed = env.WASMAGENT_ALLOWED_ORIGIN ?? "*";
   if (allowed === "*") {
     console.warn(
-      "[agentkit-worker] AGENTKIT_ALLOWED_ORIGIN is not set; CORS is open to all origins."
+      "[wasmagent-worker] WASMAGENT_ALLOWED_ORIGIN is not set; CORS is open to all origins."
     );
   }
   const origin = request.headers.get("Origin") ?? "";
@@ -512,7 +512,7 @@ async function handleRun(
               });
             } catch (err) {
               console.error(
-                "[agentkit-worker] KV session write failed:",
+                "[wasmagent-worker] KV session write failed:",
                 err instanceof Error ? err.message : String(err)
               );
             }
@@ -605,7 +605,7 @@ async function handleRun(
             await eventLog.purge(eventLogTraceId);
           } catch (err) {
             console.error(
-              "[agentkit-worker] EventLog purge failed:",
+              "[wasmagent-worker] EventLog purge failed:",
               err instanceof Error ? err.message : String(err)
             );
           }
@@ -618,7 +618,7 @@ async function handleRun(
             });
           } catch (err) {
             console.error(
-              "[agentkit-worker] KV session write failed:",
+              "[wasmagent-worker] KV session write failed:",
               err instanceof Error ? err.message : String(err)
             );
           }

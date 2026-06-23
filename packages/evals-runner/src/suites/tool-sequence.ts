@@ -3,7 +3,7 @@
  * order for a multi-step task. We don't actually execute the tools; the
  * test is whether the model decides on the right sequence.
  *
- * 3-step sequences driven by `expectedTools`, scored by agentkit's
+ * 3-step sequences driven by `expectedTools`, scored by WasmAgent's
  * `toolCallAccuracy` scorer (LCS-based). Most published function-calling
  * benchmarks are 1-step; in production agents the multi-step planning
  * surface is what fails first, hence this depth.

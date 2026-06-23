@@ -14,7 +14,7 @@
  *
  * "Inject once, query many" design — the conversation history is dosed
  * with facts at known positions, then a barrage of queries tests each
- * competency on that same dosed history. agentkit's adaptation: each
+ * competency on that same dosed history. WasmAgent's adaptation: each
  * item carries a single canonical query (one shot per item), but the
  * 4 competencies are represented as separate items rather than separate
  * queries on shared histories. This trades data efficiency for

@@ -108,7 +108,7 @@ describe("ragTool", () => {
 
   it("returns ranked chunks from the underlying store", async () => {
     const tool = ragTool({ store: fakeStore });
-    const out = await tool.forward({ query: "agentkit" }, {} as never);
+    const out = await tool.forward({ query: "wasmagent" }, {} as never);
     expect(out).toHaveLength(2);
     expect(out[0]?.id).toBe("doc-1");
   });

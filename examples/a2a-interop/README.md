@@ -6,8 +6,8 @@ run inside a single Node process:
 
 | Path | Direction | What it proves |
 |---|---|---|
-| **A** | external client → `createA2AServer(agent, …)` via raw `fetch` | Any A2A-compliant framework (Google ADK, CrewAI 1.14+, Langroid) can drive an agentkit-js agent without modification |
-| **B** | agentkit-js → `A2ARemoteAgent.asTool(…)` → A2A server | An agentkit-js agent can call out to an A2A server (typically ADK / CrewAI / your own) the same way it calls any other tool |
+| **A** | external client → `createA2AServer(agent, …)` via raw `fetch` | Any A2A-compliant framework (Google ADK, CrewAI 1.14+, Langroid) can drive an WasmAgent agent without modification |
+| **B** | WasmAgent → `A2ARemoteAgent.asTool(…)` → A2A server | An WasmAgent agent can call out to an A2A server (typically ADK / CrewAI / your own) the same way it calls any other tool |
 
 ```bash
 node examples/a2a-interop/index.mjs
@@ -27,7 +27,7 @@ Expected output:
   ↪ Reply: There are 42 widgets in stock.
   ✓ external HTTP client got the answer through A2A
 
-=== Path B: agentkit-js → A2ARemoteAgent → A2A server ===
+=== Path B: WasmAgent → A2ARemoteAgent → A2A server ===
   ↪ Re-discovered card via A2ARemoteAgent: Inventory Agent
   ↪ Direct tool call: There are 42 widgets in stock....
   ✓ A2ARemoteAgent.asTool() round-trips through the protocol

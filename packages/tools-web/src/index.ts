@@ -1,5 +1,5 @@
 /**
- * @wasmagent/tools-web — web-search tool adapters for agentkit-js.
+ * @wasmagent/tools-web — web-search tool adapters for WasmAgent.
  *
  * Three production-ready providers, normalized to a common
  * {@link SearchResult} schema so an agent can swap providers without

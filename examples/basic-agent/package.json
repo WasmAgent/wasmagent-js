@@ -2,7 +2,7 @@
   "name": "basic-agent",
   "version": "0.1.2",
   "private": true,
-  "description": "5-line agentkit-js example (D5 doctest)",
+  "description": "5-line WasmAgent example (D5 doctest)",
   "type": "module",
   "scripts": {
     "start": "node index.js"

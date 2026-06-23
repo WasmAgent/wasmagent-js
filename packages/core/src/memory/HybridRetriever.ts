@@ -7,7 +7,7 @@ import type { Embedder, Retriever, SearchResult } from "./Retriever.js";
  * normalized score blend. Generally outperforms either signal alone
  * on real-world QA datasets.
  *
- * Plug in any agentkit `Embedder` and an underlying `Retriever` that
+ * Plug in any WasmAgent `Embedder` and an underlying `Retriever` that
  * already does dense ANN search (InMemoryVectorStore, PineconeStore,
  * QdrantStore from `@wasmagent/tools-rag`, etc.). HybridRetriever
  * maintains its own BM25 index in parallel.

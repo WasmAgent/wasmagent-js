@@ -10,7 +10,7 @@
  */
 import { JsKernel, ToolRegistry, MapKvBackend } from "@wasmagent/core";
 import { codeModeTool, sandboxedJsTool } from "@wasmagent/aisdk";
-import { agentkitMastraSandbox } from "@wasmagent/mastra-sandbox";
+import { createMastraSandbox } from "@wasmagent/mastra-sandbox";
 import {
   createCodeModeServer,
   createFetchHandler,
@@ -35,7 +35,7 @@ function fail(label, detail) {
 {
   const cap = { allowedHosts: ["api.example.com"] };
   const tool = sandboxedJsTool({ kernel: new JsKernel({ timeoutMs: 1_000 }), capabilities: cap });
-  const sandbox = agentkitMastraSandbox({
+  const sandbox = createMastraSandbox({
     kernel: new JsKernel({ timeoutMs: 1_000 }),
     capabilities: cap,
   });

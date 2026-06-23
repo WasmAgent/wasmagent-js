@@ -8,7 +8,7 @@ This memo exists because the ROADMAP can only be opinionated about
 *what we will do*. To explain *why* — and to be honest about where we
 fit in the 2026 TS-agent landscape — we need a separate document that
 quotes outside numbers, names competitors, and admits weaknesses.
-The audience is a prospective adopter who is comparing agentkit-js
+The audience is a prospective adopter who is comparing WasmAgent
 against Vercel AI SDK, LangGraph.js, OpenAI Agents JS, Mastra,
 or Cloudflare Agents SDK and needs to know whether to bet on us.
 
@@ -24,7 +24,7 @@ or Cloudflare Agents SDK and needs to know whether to bet on us.
 | Prompt-cache discipline| ✅ Anthropic stable-prefix, byte-stable observer prompts, proven in `ObservationalMemory`                  |
 | Quality runners        | ✅ Self-consistency / Reflect-Refine / Budget-Forcing / Parallel-Fork-Join all in `core/src/enhancement/`  |
 | Statistical evals      | ✅ McNemar exact + Wilson CI + paired bootstrap in `evals-runner/src/stats` (rare in JS-land)             |
-| Zero-deploy DevTools   | ✅ `agentkit devtools` CLI + RunsAggregator + EventLogReplay (no SaaS, no account)                        |
+| Zero-deploy DevTools   | ✅ `WasmAgent devtools` CLI + RunsAggregator + EventLogReplay (no SaaS, no account)                        |
 | **npm distribution**   | ⚠️ `@wasmagent/core` first published 2026-06-12 — still a single version on npm                       |
 | **Bus factor**         | ⚠️ Single maintainer; no co-publishers yet                                                              |
 | **Public benchmarks**  | ⚠️ Internal LongMemEval-style runs published; the official 500-question set has not yet been run         |

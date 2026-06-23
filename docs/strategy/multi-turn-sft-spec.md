@@ -1,4 +1,4 @@
-# Multi-turn Tool-Exec SFT Spec — agentkit-js → evomerge hand-off
+# Multi-turn Tool-Exec SFT Spec — WasmAgent → evomerge hand-off
 
 > **Audience**: the evomerge contractor team / future Claude instance
 > working in `/Users/I041705/github/evomerge` under that repo's
@@ -184,7 +184,7 @@ JSONL, one object per line, schema:
   ],
   "loss_weight_tokens": "default | recovery | state_summary",
   "provenance": {
-    "source": "agentkit-js/v1-ruler-traces-v1",
+    "source": "WasmAgent/v1-ruler-traces-v1",
     "v1_item_id": "fs-2step-rename",
     "n_gram_hash": "sha256:..."
   }
@@ -229,7 +229,7 @@ internally; the V1 ruler is the user-facing acceptance test.
 
 ### 6.2 Starter dataset (this commit ships)
 
-`agentkit-js/datasets/multi-turn-sft-starter/` (this commit):
+`WasmAgent/datasets/multi-turn-sft-starter/` (this commit):
 
 - `train_seed.jsonl` — **40 hand-rolled records** demonstrating the
   schema, distributed across V1 families: 13 `fs-*`, 7 `cal-*`, 8
@@ -426,7 +426,7 @@ expect a clean number + a recommendation, not a value judgement.
 
 This spec was written by reading evomerge's repository state at
 2026-06-13 (CLAUDE.md, scripts/p17_*, src/evomerge/eval/) and
-the agentkit-js V2 ablation reports
+the WasmAgent V2 ablation reports
 (docs/reports/multi-turn-scaffold-ablation-2026-06-13/Run F + Run
 G). All references to specific evomerge file paths are verified
 present at write time; if their Phase 15 restructure moves files,
@@ -437,5 +437,5 @@ The starter dataset in `datasets/multi-turn-sft-starter/` is
 generated synthetically from V1 fixture surface forms; no public
 benchmark data is included. The 200-item train/val/eval split
 that scales this is a **first deliverable from evomerge** — they
-own data generation under their G3 protocol; agentkit-js owns the
+own data generation under their G3 protocol; WasmAgent owns the
 eval ruler and the spec.

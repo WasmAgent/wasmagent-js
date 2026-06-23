@@ -9,11 +9,11 @@
  */
 
 import { JsKernel } from "@wasmagent/core";
-import { agentkitMastraSandbox } from "./index.js";
+import { createMastraSandbox } from "./index.js";
 
-describe("agentkitMastraSandbox", () => {
+describe("createMastraSandbox", () => {
   it("returns the kernel output stringified, with logs as stderr", async () => {
-    const sandbox = agentkitMastraSandbox({ kernel: new JsKernel() });
+    const sandbox = createMastraSandbox({ kernel: new JsKernel() });
     const result = await sandbox.execute("console.log('hello'); ({ a: 1, b: [2,3] })");
     expect(result.exitCode).toBe(0);
     // JsKernel returns the JSON-cloneable object directly; we stringify.
@@ -22,7 +22,7 @@ describe("agentkitMastraSandbox", () => {
   });
 
   it("surfaces capability denials as exitCode 1", async () => {
-    const sandbox = agentkitMastraSandbox({
+    const sandbox = createMastraSandbox({
       kernel: new JsKernel(),
       capabilities: { allowedHosts: ["api.example.com"] },
     });
@@ -34,7 +34,7 @@ describe("agentkitMastraSandbox", () => {
 
   it("per-call timeout tightens the kernel default", async () => {
     // JsKernel default is 5000ms — pass timeout: 100 to shrink it.
-    const sandbox = agentkitMastraSandbox({ kernel: new JsKernel({ timeoutMs: 5_000 }) });
+    const sandbox = createMastraSandbox({ kernel: new JsKernel({ timeoutMs: 5_000 }) });
     const start = Date.now();
     const result = await sandbox.execute("while(true){}", { timeout: 100 });
     const elapsed = Date.now() - start;
@@ -45,7 +45,7 @@ describe("agentkitMastraSandbox", () => {
   }, 10_000);
 
   it("per-call env merges with provider-level env (call wins on conflict)", async () => {
-    const sandbox = agentkitMastraSandbox({
+    const sandbox = createMastraSandbox({
       kernel: new JsKernel(),
       capabilities: { env: { REGION: "us", APP: "demo" } },
     });

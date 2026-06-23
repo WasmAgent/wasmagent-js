@@ -114,7 +114,7 @@ export interface McpSamplingRequest {
 }
 
 /**
- * MCP tool collection — wraps an MCP server's tools as agentkit ToolDefinitions.
+ * MCP tool collection — wraps an MCP server's tools as WasmAgent ToolDefinitions.
  *
  * Supports MCP spec 2025-11-25:
  *  - Streamable HTTP transport (preferred) with SSE fallback.

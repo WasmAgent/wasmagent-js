@@ -1,10 +1,10 @@
 /**
- * GoalAgent — Loop Engineering 的 declarative `/goal` 原语（agentkit-js 形态）。
+ * GoalAgent — Loop Engineering 的 declarative `/goal` 原语（WasmAgent 形态）。
  *
  * 核心抽象：用户声明一个**可机器判定**的完成条件 `verify()`，agent
  * 反复迭代直到 verify 返回 true 或撞到预算/步数上限。这是
  * Claude Code v2.1.139+ 的 `/goal` 原语在 SDK 层的等价物，但
- * agentkit 的实现刻意保持库性质（不绑 cron、不绑 worktree
+ * WasmAgent 的实现刻意保持库性质（不绑 cron、不绑 worktree
  * 自动管理、不假设运行环境是 CLI）——把那些做成上层应用的事。
  *
  * ## 与 ToolCallingAgent 的关系
@@ -38,7 +38,7 @@
  *   - **L1/L2/L3 分层是用户的事**：GoalAgent 只接受**一个** model；
  *     如果你想分层，把不同层各自构造成 GoalAgent / ToolCallingAgent
  *     再组合（比如 L3 协调器调 L2 执行器，L2 执行器内部用 L1
- *     verify()）。这是刻意的——agentkit 不做 router，你做。
+ *     verify()）。这是刻意的——WasmAgent 不做 router，你做。
  *
  * ## 与 Loop Engineering 文献的对应
  *

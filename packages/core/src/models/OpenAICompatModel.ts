@@ -196,7 +196,7 @@ export abstract class OpenAICompatModel implements Model {
 
     if (opts.tools && opts.tools.length > 0) {
       // OpenAI chat.completions wire format requires `function.parameters`
-      // (JSON Schema). agentkit's ToolRegistry.toJsonSchema emits Anthropic-
+      // (JSON Schema). WasmAgent's ToolRegistry.toJsonSchema emits Anthropic-
       // style `function.input_schema` because that's the canonical key
       // Anthropic's Messages API uses; we rename per-call here so each
       // model adapter speaks its own provider's wire format. Lenient
@@ -448,7 +448,7 @@ export interface OpenAICompatModelOptions {
 // ── Message converter ─────────────────────────────────────────────────────────
 
 /**
- * Convert agentkit ModelMessage[] to OpenAI-compatible message array.
+ * Convert WasmAgent ModelMessage[] to OpenAI-compatible message array.
  *
  * @param policy - Round-trip policy for reasoning_content:
  *   "never" (default): thinking blocks are discarded.

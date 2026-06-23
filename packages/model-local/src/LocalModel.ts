@@ -4,7 +4,7 @@
  * Why this file is small:
  *   - Streaming, retry, fallback, and grammar shaping are already handled
  *     by core (StreamEvent / RetryPolicy / FallbackModel) and our own
- *     {@link grammar} helpers. This file only translates between agentkit's
+ *     {@link grammar} helpers. This file only translates between WasmAgent's
  *     `ModelMessage[] → AsyncGenerator<StreamEvent>` interface and
  *     node-llama-cpp's session-based API.
  *

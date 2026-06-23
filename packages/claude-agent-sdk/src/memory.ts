@@ -1,7 +1,7 @@
 /**
  * @wasmagent/claude-agent-sdk — Memory tool adapter (D3, 2026-06-13).
  *
- * Exposes agentkit's `createMemoryTool` (cross-session KV-backed memory)
+ * Exposes WasmAgent's `createMemoryTool` (cross-session KV-backed memory)
  * as a Claude Agent SDK tool quadruple.
  *
  * See `@wasmagent/aisdk/memory` for the rationale (D3 cross-framework

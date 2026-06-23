@@ -35,6 +35,8 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "biome check packages/",
+    "check:branding": "node scripts/check-branding.mjs",
+    "check:stable-api": "node scripts/check-stable-api.mjs",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean",
     "dev": "turbo run dev --parallel",

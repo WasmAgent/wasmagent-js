@@ -1,4 +1,4 @@
-# claude-agent-quickjs — Claude Agent SDK + agentkit-js (D5 StackBlitz demo)
+# claude-agent-quickjs — Claude Agent SDK + WasmAgent (D5 StackBlitz demo)
 
 ```bash
 npm install

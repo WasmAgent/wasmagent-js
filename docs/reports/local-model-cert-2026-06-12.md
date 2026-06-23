@@ -51,7 +51,7 @@ Both came from a local Ollama install (Qwen2.5-0.5B is the recommended candidate
 | Bilingual instruction | — | — | 0/4 (0%) — empty outputs ⚠️ |
 | CodeAgent (QuickJS sandbox) | — | — | **2/2 (100%)** |
 
-- Tool calling perfect, **CodeAgent 100% — `sum(1..10) = 55`, `len("agentkit") = 8` both correct**.
+- Tool calling perfect, **CodeAgent 100% — `sum(1..10) = 55`, `len("WasmAgent") = 8` both correct**.
 - Bilingual returned empty strings on all 4 prompts. This is a quirk of this specific evolved/merged variant's chat template, not a `LocalModel` bug — out-of-the-box `qwen3-0.6b` (in our registry) is expected to work normally.
 
 ## Implications for the recommended-list
@@ -85,7 +85,7 @@ node examples/benchmarks/local-model-cert.mjs --model qwen3-0.6b --kernel quickj
 
 - `qwen3-0.6b` and `gemma-3-1b` real-machine pulls + sha256 pinning in `MODEL_REGISTRY` (currently `sha256: ""`).
 - Promote at least one model to `recommended: true` after a clean run.
-- Add `agentkit-js/bscode` integration test with `localFirst(local, cloud)` — exercise the routing preset on a real workload.
+- Add `WasmAgent/bscode` integration test with `localFirst(local, cloud)` — exercise the routing preset on a real workload.
 
 ## File pointers
 

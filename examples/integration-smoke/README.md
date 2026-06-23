@@ -37,8 +37,8 @@ patterns where unit tests tend to skip a corner.
 | Script | Strategic line | What it pins |
 |---|---|---|
 | `a1-codemode.mjs` | S1 / A1 | Drive `createCodeModeServer` over JSON-RPC like a real MCP host. Verifies `tools/list` publishes exactly `docs_search + execute_code`, the in-sandbox `callTool` chain works, and only the script's return value crosses back. |
-| `a2-aisdk-mastra.mjs` | S1 / A2 | Verify `@wasmagent/aisdk` (`sandboxedJsTool`) and `@wasmagent/mastra-sandbox` (`agentkitMastraSandbox`) actually work end-to-end against the structurally-typed shapes those upstream SDKs expose. No `ai` / `@mastra/core` import — just the call shape. |
-| `a4-studio-http.mjs` | S3 / A4 | Start the local Studio HTTP server (`agentkit devtools`), exercise `/api/rollup`, `/api/runs`, `/`. Asserts JSON shape and clean shutdown. |
+| `a2-aisdk-mastra.mjs` | S1 / A2 | Verify `@wasmagent/aisdk` (`sandboxedJsTool`) and `@wasmagent/mastra-sandbox` (`WasmAgentMastraSandbox`) actually work end-to-end against the structurally-typed shapes those upstream SDKs expose. No `ai` / `@mastra/core` import — just the call shape. |
+| `a4-studio-http.mjs` | S3 / A4 | Start the local Studio HTTP server (`WasmAgent devtools`), exercise `/api/rollup`, `/api/runs`, `/`. Asserts JSON shape and clean shutdown. |
 | `a5-openai-compat.mjs` | S / A5 | Construct `GenericOpenAICompatModel` for the 5 documented recipes (Ollama, OpenRouter, AI Gateway, DeepSeek, Groq). No network — only that `capabilities` + `providerId` + extras land where each recipe doc claims they do. |
 | `cross-kernel.mjs` | A1 | The cross-kernel contract: same `CapabilityManifest` produces the same observable surface in `JsKernel` and `QuickJSKernel`. Catches per-kernel drift the per-package unit tests can't see. |
 
@@ -53,7 +53,7 @@ patterns where unit tests tend to skip a corner.
 | `edge-mcp-protocol.mjs` | MCP protocol fuzzing — malformed envelopes, adversarial `execute_code` inputs. Asserts the right JSON-RPC error code/shape rather than crashes or hangs. |
 | `edge-sandbox-escape.mjs` | Sandbox escape vectors per kernel. For each kernel × each known escape pattern, assert the kernel either rejects the script or produces a value that proves the host process was NOT reached. |
 | `edge-state-pollution.mjs` | Per-call isolation under sequential capability churn (cap → no-cap → different cap), `reset()` actually clearing user state, two concurrent `run()` on the same kernel not corrupting each other. |
-| `edge-studio-robustness.mjs` | `agentkit devtools` with malformed / degenerate NDJSON event logs, plus the HTTP surface under concurrent / malformed / large requests. |
+| `edge-studio-robustness.mjs` | `WasmAgent devtools` with malformed / degenerate NDJSON event logs, plus the HTTP surface under concurrent / malformed / large requests. |
 
 ## Run order
 

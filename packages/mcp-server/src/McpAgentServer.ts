@@ -402,7 +402,7 @@ function defaultTool(): McpToolEntry {
   return {
     name: DEFAULT_TOOL_NAME,
     description:
-      "Run the underlying agentkit-js agent on a free-form task and return its final answer.",
+      "Run the underlying WasmAgent agent on a free-form task and return its final answer.",
     inputSchema: {
       type: "object",
       properties: {

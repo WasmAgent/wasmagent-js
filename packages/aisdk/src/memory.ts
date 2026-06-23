@@ -1,7 +1,7 @@
 /**
  * @wasmagent/aisdk — Memory tool adapters (D3, 2026-06-13).
  *
- * Exposes agentkit's `createMemoryTool` (cross-session KV-backed memory)
+ * Exposes WasmAgent's `createMemoryTool` (cross-session KV-backed memory)
  * as a Vercel AI SDK `tool()` so the same memory primitive plays nicely in
  * an AI SDK agent without wrapping or re-implementation.
  *
@@ -18,9 +18,9 @@
  *      number (94.87% LongMemEval) is impressive, but the
  *      cost-per-correct axis is where small teams beat the platforms.
  *
- * agentkit-js already has `createMemoryTool` (KV-backed) and
+ * WasmAgent already has `createMemoryTool` (KV-backed) and
  * `ObservationalMemory` (continuous compression, prompt-cache-stable).
- * Until D3 they were only consumable from inside agentkit — meaning the
+ * Until D3 they were only consumable from inside WasmAgent — meaning the
  * memory primitive was effectively framework-locked despite the kernels
  * being framework-agnostic.
  *
@@ -37,7 +37,7 @@
  * and compresses history into a planning step. There is no clean way to
  * expose it as an AI SDK `tool()` because the AI SDK manages its own
  * message list. Instead, we re-export the class so consumers running an
- * `Agent` loop with an agentkit `MessageAssembler` (e.g. `aisdk-bridge.ts`)
+ * `Agent` loop with a WasmAgent `MessageAssembler` (e.g. `aisdk-bridge.ts`)
  * can drop it in directly. End-to-end Vercel AI SDK integration is
  * tracked under D3 phase 2 — see ROADMAP for the message-list shim plan.
  */
@@ -68,7 +68,7 @@ export function memoryTool(opts: MemoryToolOptions): AiSdkToolDefinition<unknown
   };
 }
 
-// Re-export ObservationalMemory so AI SDK consumers running an agentkit
+// Re-export ObservationalMemory so AI SDK consumers running a WasmAgent
 // MessageAssembler can wire it up without an extra import.
 export { ObservationalMemory } from "@wasmagent/core";
 // Re-export the underlying types for callers wiring custom backends.

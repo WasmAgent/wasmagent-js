@@ -9,14 +9,14 @@
  *      The caller (an LLM in another agent) reads this once to learn the API.
  *
  *   2. `execute_code(code)` — runs a model-generated script in an
- *      agentkit Kernel. The script may call `callTool(name, args)` against
+ *      WasmAgent Kernel. The script may call `callTool(name, args)` against
  *      any downstream tool. Intermediate tool outputs never leave the
  *      kernel; only the script's final return value crosses the MCP wire.
  *
  * This mirrors Cloudflare's "Code Mode MCP server" (InfoQ 2026-04) and Red Hat
  * codemode-lite (2026-04) — both validated that collapsing N tool slots into
  * one `execute_code` entry saves >50% tokens once N exceeds ~30, while keeping
- * full tool reach via in-sandbox calls. agentkit's value-add is that the
+ * full tool reach via in-sandbox calls. WasmAgent's value-add is that the
  * sandbox is the same `Kernel` interface used elsewhere (QuickJS / Pyodide /
  * Wasmtime / Remote), so the same security manifest gates network, fs, env,
  * cpu and memory uniformly across language and isolation tier.

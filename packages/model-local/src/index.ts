@@ -1,5 +1,5 @@
 /**
- * @wasmagent/model-local — embedded llama.cpp adapter for agentkit-js.
+ * @wasmagent/model-local — embedded llama.cpp adapter for WasmAgent.
  *
  * Quick start:
  *

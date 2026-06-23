@@ -1,7 +1,7 @@
 /**
  * Edge integration smoke: Studio NDJSON + HTTP robustness.
  *
- * Drive `agentkit devtools` with malformed and degenerate event logs, then
+ * Drive `WasmAgent devtools` with malformed and degenerate event logs, then
  * probe the HTTP surface with concurrent, malformed, and large requests.
  */
 import { spawn } from "node:child_process";

@@ -4,7 +4,7 @@
  * Pure-logic data layer for the local Studio's "runs overview" page.
  * Mastra Studio's metrics tab earns its reputation by answering one
  * question well: *what did this agent cost me, and where is the latency?*
- * agentkit already emits everything needed (`model_done` events carry
+ * WasmAgent already emits everything needed (`model_done` events carry
  * `inputTokens / outputTokens / cacheReadTokens / estimatedUsd`,
  * `step_start` / `step_end` carry per-step wall-clock, `error` events
  * carry failure reasons) — this aggregator turns that fire-hose into the

@@ -7,7 +7,7 @@
 ## Why this target, not the "sandbox provider list"
 
 The optimization brief referenced a Mastra "sandbox provider list"
-that would naturally absorb agentkit alongside Blaxel and E2B. That
+that would naturally absorb WasmAgent alongside Blaxel and E2B. That
 list does not exist as a maintained registry as of 2026-06-12. The
 closest pages found in the actual repo:
 
@@ -16,11 +16,11 @@ closest pages found in the actual repo:
   Edition's Agent Builder, not sandbox providers.
 - `docs/src/content/en/docs/mcp/` — has only two files
   (`overview.mdx`, `mcp-apps.mdx`); the natural home for a one-line
-  pointer to agentkit's MCP code-mode server.
+  pointer to WasmAgent's MCP code-mode server.
 
 We propose a small, additive PR against `docs/mcp/overview.mdx` with
 a *Notable third-party MCP servers* sub-section listing one or two
-options (agentkit + at least one other already-published server, to
+options (WasmAgent + at least one other already-published server, to
 avoid the appearance of a self-promotion-only PR).
 
 ## Files to touch
@@ -66,11 +66,11 @@ referencing this section.)
 > [`@wasmagent/mcp-server`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-server),
 > which exposes the `execute_code` + `docs_search` two-tool code-mode
 > surface introduced by Cloudflare's Code Mode MCP and Anthropic's
-> Code Execution with MCP. It pairs with any of agentkit's three
+> Code Execution with MCP. It pairs with any of WasmAgent's three
 > sandbox kernels (in-process node:vm, WASM via QuickJS / Pyodide /
 > Wasmtime, remote microVM via E2B / CF Sandbox).
 >
-> Token-saving benchmark in agentkit's CI: the bootstrap-context cost
+> Token-saving benchmark in WasmAgent's CI: the bootstrap-context cost
 > drops to 13.6% of direct-tool-use at N=30 tools (`examples/benchmarks/code-mode-tokens.mjs`).
 >
 > The section is intentionally additive — no Mastra-side code or
@@ -83,12 +83,12 @@ referencing this section.)
    (2026-04)** but has also been protective of the docs site's
    editorial voice. The PR body must read as additive ("here is
    what readers might want to find next"), not promotional.
-2. **Don't add agentkit-js-specific details** beyond the package
+2. **Don't add WasmAgent-specific details** beyond the package
    name and one-line description. The page is Mastra's, not ours.
 3. **Watch for a request to extend the list.** If a maintainer asks
    for ≥2 entries before merging, propose Cloudflare's own Code Mode
    MCP server (already public, makes the list look genuinely
-   curated) plus agentkit. Both are public and Apache/MIT-licensed.
+   curated) plus WasmAgent. Both are public and Apache/MIT-licensed.
 
 ## Acceptance criteria for "this PR worked"
 

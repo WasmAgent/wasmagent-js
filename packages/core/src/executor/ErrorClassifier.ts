@@ -1,5 +1,5 @@
 /**
- * ErrorClassifier — GPT-Engineer improve_loop pattern adapted for agentkit-js.
+ * ErrorClassifier — GPT-Engineer improve_loop pattern adapted for WasmAgent.
  *
  * Classifies execution errors into recovery strategies, enabling the agent to:
  * - Retry with a structured fix prompt (most common)

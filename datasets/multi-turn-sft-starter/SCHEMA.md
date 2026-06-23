@@ -22,7 +22,7 @@
   ],
   "loss_weight_tokens": "default" | "recovery" | "state_summary",
   "provenance": {
-    "source": "agentkit-js/v1-ruler-traces-v1-starter",
+    "source": "WasmAgent/v1-ruler-traces-v1-starter",
     "v1_item_id": "<exact V1 item id>" | "synth-<descriptor>",
     "n_gram_hash": "<sha256 prefix of task string>"
   }

@@ -40,7 +40,7 @@ export interface Retriever {
  * D3: Pluggable embedding backend.
  *
  * - Default: TfidfEmbedder (zero external deps, good for prototypes)
- * - Production: use ModelEmbedder with any agentkit Model adapter
+ * - Production: use ModelEmbedder with any WasmAgent Model adapter
  */
 export interface Embedder {
   /** Embed a text into a dense vector. */

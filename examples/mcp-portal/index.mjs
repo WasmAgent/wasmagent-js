@@ -5,7 +5,7 @@
  * Sources:
  *   1. `fs`     — a small filesystem-style upstream (read_file / list_dir).
  *   2. `github` — a GitHub-like upstream (list_repos / create_issue).
- *   3. `memory` — agentkit's built-in cross-session memory tool.
+ *   3. `memory` — WasmAgent's built-in cross-session memory tool.
  *
  * The host (Claude Code, Cursor, custom MCP client) sees ONE server with
  * ONLY `docs_search` and `execute_code`. Inside `execute_code`, the model
@@ -53,7 +53,7 @@ github.register({
   outputSchema: z.array(z.string()),
   readOnly: true,
   idempotent: true,
-  forward: async ({ org }) => [`${org}/agentkit-js`, `${org}/bscode`],
+  forward: async ({ org }) => [`${org}/WasmAgent`, `${org}/bscode`],
 });
 github.register({
   name: "create_issue",
@@ -65,13 +65,13 @@ github.register({
   forward: async ({ repo, title }) => ({ url: `https://example/${repo}/issues/1?t=${title}` }),
 });
 
-// ── 3. Upstream C: agentkit's own memory tool, federated alongside the rest ─
+// ── 3. Upstream C: WasmAgent's own memory tool, federated alongside the rest ─
 const memory = new ToolRegistry();
 memory.register(createMemoryTool({ backend: new MapKvBackend() }));
 
 // ── Portal: one MCP face, three upstreams ───────────────────────────────────
 const portal = createPortalServer({
-  serverInfo: { name: "agentkit-portal-demo", version: "1.0.0" },
+  serverInfo: { name: "WasmAgent-portal-demo", version: "1.0.0" },
   // JsKernel for the demo — production deployments swap to QuickJSKernel
   // (edge-safe) or RemoteSandboxKernel (microVM) without touching this code.
   kernel: new JsKernel(),

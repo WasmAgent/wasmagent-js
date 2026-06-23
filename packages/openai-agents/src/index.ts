@@ -1,5 +1,5 @@
 /**
- * @wasmagent/openai-agents — agentkit kernels as OpenAI Agents JS tools.
+ * @wasmagent/openai-agents — WasmAgent kernels as OpenAI Agents JS tools.
  *
  * The OpenAI Agents JS SDK (`@openai/agents`) accepts a `Tool`-shaped
  * definition: `{ name, description, parameters (Zod), execute(input) }`.

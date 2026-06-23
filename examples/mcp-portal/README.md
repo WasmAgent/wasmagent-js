@@ -7,7 +7,7 @@ Federate 3 tool sources behind ONE two-tool MCP surface (`docs_search` +
 |---|---|
 | `fs` | filesystem-style (`read_file`, `list_dir`) |
 | `github` | GitHub-like (`list_repos`, `create_issue`) |
-| `memory` | agentkit's built-in `createMemoryTool({ backend })` |
+| `memory` | WasmAgent's built-in `createMemoryTool({ backend })` |
 
 What the host MCP client sees:
 

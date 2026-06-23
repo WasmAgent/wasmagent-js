@@ -48,7 +48,7 @@ thesis, not by code size or test count.
 | `@wasmagent/kernel-remote`             | ★    | Third (microVM) tier — E2B / Cloudflare Sandbox. Required to honor "three-tier" claim.                 |
 | `@wasmagent/mcp-server`                | ★    | The two-tool code-mode MCP shape. Direct competitor to Cloudflare Code Mode MCP.                      |
 | `@wasmagent/evals-runner`              | ★    | Public-leaderboard play (Direction 2). Statistics axis is the differentiator vs Mastra.               |
-| `@wasmagent/cli`                       | ★    | Single binary surface for `agentkit run / devtools / evals / model`. Discovery entry for newcomers.   |
+| `@wasmagent/cli`                       | ★    | Single binary surface for `WasmAgent run / devtools / evals / model`. Discovery entry for newcomers.   |
 | `@wasmagent/aisdk`                     | ◆    | Vercel AI SDK adapter. Primary contributor pipeline; in flight upstream (issue #16063).               |
 | `@wasmagent/mastra-sandbox`            | ◆    | Mastra sandbox provider; in flight upstream (issue #17884).                                           |
 | `@wasmagent/claude-agent-sdk`          | ◆    | Anthropic Claude Agent SDK adapter. Tracks v0/v1 SDK type evolution.                                  |
@@ -124,7 +124,7 @@ demand signals warrant promotion.
 
 The brief's Direction 4 also calls out bscode itself: "considere把 Web
 IDE 部分降为可选 (使漏斗维护成本与其转化价值匹配)." First-round
-progress 2026-06-13 (bscode commit linked from agentkit-js
+progress 2026-06-13 (bscode commit linked from WasmAgent
 [`CHANGELOG.md`](../../CHANGELOG.md)):
 
 - The new `/recipes` reverse-funnel route is **architecturally
@@ -147,7 +147,7 @@ demo for visitors who arrive at `/`; the brief's "降为可选" is now
 delivered by routing, not by ripping the IDE out.
 
 Further reductions tracked under `governance:bscode-shrink` issues
-(target: total LOC ≤ agentkit-js framework LOC by 2026-Q4).
+(target: total LOC ≤ WasmAgent framework LOC by 2026-Q4).
 
 ## Falsifiability
 

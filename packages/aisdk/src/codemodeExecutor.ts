@@ -1,16 +1,16 @@
 /**
  * codemodeExecutor.ts — Cloudflare codemode `Executor` adapter (Direction 1).
  *
- * Lets users plug an agentkit `Kernel` into `@cloudflare/codemode` as a
+ * Lets users plug a WasmAgent `Kernel` into `@cloudflare/codemode` as a
  * custom executor:
  *
  *     import { createCodeTool } from "@cloudflare/codemode/ai";
- *     import { agentkitCodemodeExecutor } from "@wasmagent/aisdk";
+ *     import { createCodemodeExecutor } from "@wasmagent/aisdk";
  *     import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
  *
  *     const codemode = createCodeTool({
  *       tools: myAiSdkTools,
- *       executor: agentkitCodemodeExecutor({
+ *       executor: createCodemodeExecutor({
  *         kernel: new QuickJSKernel(),
  *         capabilities: { allowedHosts: [], cpuMs: 5000 },
  *       }),
@@ -21,7 +21,7 @@
  *   1. Cross-platform (Node / Bun / Vercel / Lambda) — `DynamicWorkerExecutor`
  *      requires a Workers runtime.
  *   2. Optional Python tier (swap `QuickJSKernel` for `PyodideKernel`).
- *   3. Honors `needsApproval` if the caller wires it through agentkit's
+ *   3. Honors `needsApproval` if the caller wires it through WasmAgent's
  *      tool lifecycle (the executor itself stays neutral here — approval
  *      is a tool-registry concern, not an executor concern).
  *
@@ -87,9 +87,9 @@ export interface CodemodeExecutor {
   execute(code: string, providersOrFns: CodemodeProvidersOrFns): Promise<CodemodeExecuteResult>;
 }
 
-// ── agentkit options ────────────────────────────────────────────────────────
+// ── WasmAgent options ────────────────────────────────────────────────────────
 
-export interface AgentkitCodemodeExecutorOptions {
+export interface CodemodeExecutorOptions {
   /**
    * Kernel that runs the LLM-emitted code. `QuickJSKernel` for edge-safe
    * cross-platform execution; `PyodideKernel` for Python; `JsKernel` for
@@ -98,7 +98,7 @@ export interface AgentkitCodemodeExecutorOptions {
    */
   kernel: WasmKernel;
   /**
-   * Same `CapabilityManifest` shape every other agentkit kernel honors.
+   * Same `CapabilityManifest` shape every other WasmAgent kernel honors.
    * Defaults to deny-all (no network, no fs, no env). Override via
    * `{ allowedHosts: [...], cpuMs: 5000, ... }`.
    */
@@ -114,23 +114,23 @@ export interface AgentkitCodemodeExecutorOptions {
 // ── factory (signature only — implementation in part 2) ─────────────────────
 
 /**
- * Build a codemode-shaped `Executor` backed by an agentkit kernel.
+ * Build a codemode-shaped `Executor` backed by a WasmAgent kernel.
  *
  * @experimental — the wire shape of `CodemodeExecutor` tracks
  *                 `@cloudflare/codemode` and may shift if the upstream
  *                 contract changes during stabilization.
  */
-export function agentkitCodemodeExecutor(opts: AgentkitCodemodeExecutorOptions): CodemodeExecutor {
+export function createCodemodeExecutor(opts: CodemodeExecutorOptions): CodemodeExecutor {
   // Defensive read: rejects malformed opts at construction time, before
   // the LLM emits its first script. The empty-body validations below are
   // load-bearing — a missing `kernel` would otherwise surface as a
   // confusing "cannot read properties of undefined" deep inside the
   // execute() call.
   if (!opts || typeof opts !== "object") {
-    throw new TypeError("agentkitCodemodeExecutor: opts is required");
+    throw new TypeError("createCodemodeExecutor: opts is required");
   }
   if (!opts.kernel || typeof opts.kernel.run !== "function") {
-    throw new TypeError("agentkitCodemodeExecutor: opts.kernel must be a WasmKernel (with .run())");
+    throw new TypeError("createCodemodeExecutor: opts.kernel must be a WasmKernel (with .run())");
   }
 
   return {
@@ -212,19 +212,19 @@ export function agentkitCodemodeExecutor(opts: AgentkitCodemodeExecutorOptions):
         }
 
         if (!parsed.pending) {
-          lastError = "agentkitCodemodeExecutor: pause without pending call payload";
+          lastError = "createCodemodeExecutor: pause without pending call payload";
           break;
         }
         const { key, name, args } = parsed.pending;
         if (resolved.has(key)) {
-          lastError = `agentkitCodemodeExecutor: call ${name} (${key}) re-requested after resolution`;
+          lastError = `createCodemodeExecutor: call ${name} (${key}) re-requested after resolution`;
           break;
         }
         const target = flat.get(name);
         if (!target) {
           // Inject a JSON-stringified error so the script's await can
           // throw a meaningful message rather than re-pause forever.
-          const errMsg = `agentkitCodemodeExecutor: unknown tool "${name}"`;
+          const errMsg = `createCodemodeExecutor: unknown tool "${name}"`;
           lastError = errMsg;
           break;
         }
@@ -372,7 +372,7 @@ function buildToolsObjectLiteral(flat: Map<string, FlatProvider>, marker: string
           if (typeof prop === 'symbol' || prop in target) return target[prop];
           // Unknown leaf — throw a clear error the LLM script will see.
           var dotted = prefix ? (prefix + '.' + String(prop)) : String(prop);
-          throw new Error('agentkitCodemodeExecutor: unknown tool "' + dotted + '"');
+          throw new Error('createCodemodeExecutor: unknown tool "' + dotted + '"');
         }
       });
     }

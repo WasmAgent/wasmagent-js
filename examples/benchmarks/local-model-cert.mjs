@@ -122,7 +122,7 @@ const BILINGUAL_TASKS = [
 
 const CODEAGENT_TASKS = [
   { id: "ca1", prompt: "Compute the sum of 1..10 in JavaScript and return as final answer.", expected: /\b55\b/ },
-  { id: "ca2", prompt: "Return the length of the string 'agentkit'.", expected: /\b8\b/ },
+  { id: "ca2", prompt: "Return the length of the string 'wasmagent'.", expected: /\b8\b/ },
 ];
 
 // ── runners ────────────────────────────────────────────────────────────────
@@ -373,7 +373,7 @@ class MockLocalModel {
     else if (/1\+1/.test(text)) reply = "2";
     else if (/中国的首都/.test(text)) reply = "北京";
     else if (/sum of 1\.\.10/.test(text)) reply = "55";
-    else if (/length of the string 'agentkit'/.test(text)) reply = "8";
+    else if (/length of the string 'wasmagent'/.test(text)) reply = "8";
     else reply = "ok";
     yield { type: "text_delta", delta: reply };
     yield { type: "stop", stopReason: "end_turn" };

@@ -30,7 +30,7 @@ interface QdrantSearchResponse {
 }
 
 /**
- * Qdrant-backed vector store. Implements the agentkit `Retriever`
+ * Qdrant-backed vector store. Implements the WasmAgent `Retriever`
  * interface. Works with both self-hosted Qdrant and Qdrant Cloud.
  *
  * Storage: text is stored in payload under "__text". Metadata fields

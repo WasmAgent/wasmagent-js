@@ -85,7 +85,7 @@ export class WasmtimeKernel implements WasmKernel {
 
     let tmpDir: string | undefined;
     try {
-      tmpDir = await mkdtemp(join(tmpdir(), "agentkit-wasmtime-"));
+      tmpDir = await mkdtemp(join(tmpdir(), "wasmagent-wasmtime-"));
       const jsPath = join(tmpDir, "agent.js");
       const wasmPath = join(tmpDir, "agent.wasm");
 

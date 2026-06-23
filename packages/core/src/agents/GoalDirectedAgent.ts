@@ -64,7 +64,7 @@ import {
 
 /**
  * Snapshot of the workspace + tools the agent will see during scouting.
- * Caller provides this — agentkit core stays product-agnostic, doesn't
+ * Caller provides this — WasmAgent core stays product-agnostic, doesn't
  * touch the filesystem itself.
  */
 export interface ScoutSnapshot {

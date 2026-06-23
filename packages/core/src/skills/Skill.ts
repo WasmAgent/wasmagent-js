@@ -9,7 +9,7 @@
  *
  * This mirrors the Claude Agent SDK SKILL.md model and CrewAI v1.12 /
  * Pydantic AI Capabilities — the convergent 2026 abstraction across major
- * frameworks. agentkit-js' deferLoading mechanism (tool schemas hidden
+ * frameworks. WasmAgent's deferLoading mechanism (tool schemas hidden
  * until referenced) already does the equivalent for tools; this layer
  * extends progressive disclosure to instructions too.
  *

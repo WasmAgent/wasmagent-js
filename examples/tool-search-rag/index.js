@@ -11,14 +11,14 @@
  * Run:
  *   bun run start
  */
-import { ToolCallingAgent } from "@agentkit-js/core";
-import { AnthropicModel } from "@agentkit-js/model-anthropic";
-import { tavilySearchTool } from "@agentkit-js/tools-web";
+import { ToolCallingAgent } from "@wasmagent/core";
+import { AnthropicModel } from "@wasmagent/model-anthropic";
+import { tavilySearchTool } from "@wasmagent/tools-web";
 import {
   HttpEmbedder,
   InMemoryVectorStore,
   ragTool,
-} from "@agentkit-js/tools-rag";
+} from "@wasmagent/tools-rag";
 
 async function main() {
   const requireEnv = (name) => {
@@ -52,8 +52,8 @@ async function main() {
       text: "Vue 3.5 added reactive props destructure and improved reactivity efficiency.",
     },
     {
-      id: "agentkit",
-      text: "agentkit-js is a TypeScript agent runtime built on WASM. It supports CodeAgent (sandboxed code execution) and ToolCallingAgent (function calling).",
+      id: "wasmagent",
+      text: "WasmAgent is a TypeScript agent runtime built on WASM. It supports CodeAgent (sandboxed code execution) and ToolCallingAgent (function calling).",
     },
   ];
   for (const { id, text } of seed) await store.add(id, text);

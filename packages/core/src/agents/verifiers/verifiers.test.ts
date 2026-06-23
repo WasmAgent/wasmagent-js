@@ -196,7 +196,7 @@ describe("DeterministicVerifier", () => {
     );
     expect(tooMany.ok).toBe(false);
     // Latin path
-    const ws2 = fakeWs({ "en.md": "Hello world from agentkit verifier suite" });
+    const ws2 = fakeWs({ "en.md": "Hello world from WasmAgent verifier suite" });
     const ok = await v.verify(
       {
         id: "wc2",

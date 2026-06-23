@@ -173,7 +173,7 @@ export class OtelBridge {
   /** E1: one inference span per model generation call, keyed by traceId:step. */
   readonly #inferences = new Map<string, LiveSpan>();
   readonly #finished: ReadableSpan[] = [];
-  /** Maps agentkit traceId → OTel traceId (valid 32-char hex). */
+  /** Maps WasmAgent traceId → OTel traceId (valid 32-char hex). */
   readonly #traceIdMap = new Map<string, string>();
   /** When a traceparent is injected, we continue that trace instead of creating a new one. */
   readonly #upstreamTraceId: string | undefined;
@@ -194,12 +194,12 @@ export class OtelBridge {
     }
   }
 
-  /** Resolve the OTel traceId for an agentkit traceId, creating one if needed. */
-  #resolveOtelTraceId(agentkitTraceId: string): string {
-    let otelId = this.#traceIdMap.get(agentkitTraceId);
+  /** Resolve the OTel traceId for a WasmAgent traceId, creating one if needed. */
+  #resolveOtelTraceId(traceId: string): string {
+    let otelId = this.#traceIdMap.get(traceId);
     if (!otelId) {
       otelId = this.#upstreamTraceId ?? newOtelTraceId();
-      this.#traceIdMap.set(agentkitTraceId, otelId);
+      this.#traceIdMap.set(traceId, otelId);
     }
     return otelId;
   }
@@ -216,8 +216,8 @@ export class OtelBridge {
         const task = String((ev as { data: { task: string } }).data.task ?? "");
         this.#setAttr(span.attributes, "task", "gen_ai.agent.task", task);
         this.#setAttr(span.attributes, null, "gen_ai.operation.name", "invoke_agent");
-        // Preserve original agentkit traceId as an attribute for correlation.
-        span.attributes["agentkit.trace_id"] = traceId;
+        // Preserve original WasmAgent traceId as an attribute for correlation.
+        span.attributes["wasmagent.trace_id"] = traceId;
         this.#runs.set(traceId, { span, ended: false });
         break;
       }
@@ -477,12 +477,12 @@ export class OtelBridge {
   }
 
   #open(
-    agentkitTraceId: string,
+    traceId: string,
     parentSpanId: string | undefined,
     name: string,
     startTimeMs: number
   ): ReadableSpan {
-    const otelTraceId = this.#resolveOtelTraceId(agentkitTraceId);
+    const otelTraceId = this.#resolveOtelTraceId(traceId);
     return {
       traceId: otelTraceId,
       spanId: nextSpanId(),

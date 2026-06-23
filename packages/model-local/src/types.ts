@@ -25,7 +25,7 @@ export type LocalModelSource =
  *
  * Resolution precedence (high → low):
  *   1. Explicit `source` option (this field).
- *   2. Environment variable `AGENTKIT_MODEL_MIRROR`.
+ *   2. Environment variable `WASMAGENT_MODEL_MIRROR`.
  *   3. Registry-declared order (typically HuggingFace first).
  *
  * Either a registered preset name or a URL prefix to use as a custom base.
@@ -39,7 +39,7 @@ export interface LocalModelOptions {
   /** Override mirror preference for registry-aliased models. */
   mirror?: MirrorPreset;
 
-  /** Cache directory. Default: `~/.agentkit/models` (or `$AGENTKIT_MODEL_DIR`). */
+  /** Cache directory. Default: `~/.wasmagent/models` (or `$WASMAGENT_MODEL_DIR`). */
   cacheDir?: string;
 
   /**

@@ -62,7 +62,7 @@ export async function createKernel(opts: KernelOptions = {}): Promise<WasmKernel
     case "js":
       if (await isEdgeRuntime()) {
         throw new Error(
-          "[agentkit] Non-Node runtime detected (Cloudflare Workers / browser / Deno).\n" +
+          "[wasmagent] Non-Node runtime detected (Cloudflare Workers / browser / Deno).\n" +
             "The default JsKernel and VmKernel both require node:vm, which is unavailable.\n" +
             "Use the edge-safe QuickJS kernel instead:\n" +
             '  import { QuickJSKernel } from "@wasmagent/kernel-quickjs";\n' +

@@ -1,6 +1,6 @@
 # benchmarks — reproducible verification of README claims
 
-C1 — every percentage in the [agentkit-js README](../../README.md) "Differentiating
+C1 — every percentage in the [WasmAgent README](../../README.md) "Differentiating
 features" section is checked here against a deterministic, model-free harness so
 anyone can clone the repo and run them in CI without an Anthropic API key.
 
@@ -34,7 +34,7 @@ ratio (±10% tolerance), making this CI-ready.
 
 The repo's GitHub Actions workflow runs `bun run bench` after the test
 matrix; any drift outside tolerance fails the PR. So the percentages in
-the agentkit-js README cannot bit-rot without someone seeing it.
+the WasmAgent README cannot bit-rot without someone seeing it.
 
 ## Determinism
 

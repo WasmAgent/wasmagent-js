@@ -157,7 +157,7 @@ function buildHarness(code: string, capabilities?: Partial<CapabilityManifest>):
   const envLiteral = JSON.stringify(env);
 
   return [
-    `// agentkit RemoteSandboxKernel harness`,
+    `// WasmAgent RemoteSandboxKernel harness`,
     networkGuard,
     `globalThis.__env__ = Object.freeze(${envLiteral});`,
     `try {`,
