@@ -6,8 +6,8 @@
  * step.sleep / step.waitForEvent against the runWorkflowEntrypoint helper.
  */
 
-import type { WorkflowDefinition, WorkflowStateStore } from "@wasmagent/core";
-import { KvWorkflowStateStore, MemoryKvBackend } from "@wasmagent/core";
+import type { WorkflowDefinition, WorkflowStateStore } from "@wasmagent/core/beta";
+import { KvWorkflowStateStore, MemoryKvBackend } from "@wasmagent/core/beta";
 import {
   type CfStepConfig,
   type CfWorkflowBinding,

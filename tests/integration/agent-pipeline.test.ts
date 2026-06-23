@@ -20,18 +20,16 @@ import type {
   ModelMessage,
   StreamEvent,
   ToolDefinition,
-  WorkflowDefinition,
   WorkspaceReader,
 } from "@wasmagent/core";
+import { GoalDirectedAgent, ToolCallingAgent, ToolRegistry } from "@wasmagent/core";
+import type { WorkflowDefinition } from "@wasmagent/core/beta";
 import {
-  GoalDirectedAgent,
   KvWorkflowStateStore,
   LocalWorkflowEngine,
   MemoryKvBackend,
   ParallelForkJoinRunner,
-  ToolCallingAgent,
-  ToolRegistry,
-} from "@wasmagent/core";
+} from "@wasmagent/core/beta";
 import { z } from "zod";
 
 // ── Mock helpers ─────────────────────────────────────────────────────────────

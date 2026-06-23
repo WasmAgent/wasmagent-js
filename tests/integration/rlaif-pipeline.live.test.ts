@@ -15,20 +15,19 @@
 
 import { describe, expect, it } from "bun:test";
 import { z } from "zod";
+import { AnthropicModel, InMemoryVectorStore } from "@wasmagent/core";
 import {
-  AnthropicModel,
   BuildPassesVerifier,
   DEFAULT_REWARD_FUNCTIONS,
   RolloutForkRunner,
   RolloutMemoryStore,
   RolloutRanker,
-  InMemoryVectorStore,
   ScalarLLMJudgeVerifier,
   toDpoRecord,
   toPpoRecords,
   toJsonl,
-} from "@wasmagent/core";
-import type { RolloutRecord } from "@wasmagent/core";
+} from "@wasmagent/core/beta";
+import type { RolloutRecord } from "@wasmagent/core/beta";
 
 // ── Skip guard ────────────────────────────────────────────────────────────────
 

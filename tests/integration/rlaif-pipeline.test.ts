@@ -26,8 +26,8 @@ import {
   toDpoRecord,
   toPpoRecords,
   toJsonl,
-} from "@wasmagent/core";
-import type { RolloutRecord } from "@wasmagent/core";
+} from "@wasmagent/core/beta";
+import type { RolloutRecord } from "@wasmagent/core/beta";
 
 // ── Mock helpers ──────────────────────────────────────────────────────────────
 
