@@ -47,6 +47,12 @@ export interface DoubaoModelOptions extends OpenAICompatModelOptions {
    * Default: false (transparent prefix caching is always-on and zero-config).
    */
   useContextApi?: boolean;
+  /**
+   * Override the Volcengine Ark base URL.
+   * Default: DOUBAO_BASE_URL ("https://ark.cn-beijing.volces.com/api/v3").
+   * Useful for a regional endpoint or internal proxy.
+   */
+  baseUrl?: string;
 }
 
 /**
@@ -66,7 +72,7 @@ export class DoubaoModel extends OpenAICompatModel {
   constructor(modelId: DoubaoModelId, apiKeyOrOpts?: string | DoubaoModelOptions) {
     const opts: DoubaoModelOptions =
       typeof apiKeyOrOpts === "string" ? { apiKey: apiKeyOrOpts } : (apiKeyOrOpts ?? {});
-    super(modelId, DOUBAO_BASE_URL, {
+    super(modelId, opts.baseUrl ?? DOUBAO_BASE_URL, {
       ...opts,
       reasoningContentField: "reasoning_content",
       supportsReasoningEffort: true,

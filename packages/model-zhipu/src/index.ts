@@ -22,6 +22,13 @@ export type GLMModelId = (typeof GLMModels)[keyof typeof GLMModels] | (string & 
 export interface ZhipuModelOptions extends OpenAICompatModelOptions {
   /** Enable GLM thinking mode. Default: true for glm-5* and glm-4.x models. */
   enableThinking?: boolean;
+  /**
+   * Override the base URL. Useful for:
+   * - GLM Coding Plan: "https://open.bigmodel.cn/api/coding/paas/v4"
+   * - Internal proxy or regional endpoint
+   * Default: ZHIPU_BASE_URL ("https://open.bigmodel.cn/api/paas/v4")
+   */
+  baseUrl?: string;
 }
 
 /**
@@ -42,7 +49,7 @@ export class ZhipuModel extends OpenAICompatModel {
     const opts: ZhipuModelOptions =
       typeof apiKeyOrOpts === "string" ? { apiKey: apiKeyOrOpts } : (apiKeyOrOpts ?? {});
     const isThinkingModel = modelId.startsWith("glm-5") || /^glm-4\.[0-9]/.test(modelId);
-    super(modelId, ZHIPU_BASE_URL, {
+    super(modelId, opts.baseUrl ?? ZHIPU_BASE_URL, {
       ...opts,
       reasoningContentField: "reasoning_content",
     });

@@ -27,6 +27,11 @@ export interface DeepSeekModelOptions extends OpenAICompatModelOptions {
    * Default: true (thinking is shown as thinking_delta stream events).
    */
   preserveThinking?: boolean;
+  /**
+   * Override the base URL. Default: DEEPSEEK_BASE_URL ("https://api.deepseek.com/v1").
+   * Useful for an internal proxy or regional endpoint.
+   */
+  baseUrl?: string;
 }
 
 /**
@@ -45,7 +50,7 @@ export class DeepSeekModel extends OpenAICompatModel {
   constructor(modelId: DeepSeekModelId, apiKeyOrOpts?: string | DeepSeekModelOptions) {
     const opts: DeepSeekModelOptions =
       typeof apiKeyOrOpts === "string" ? { apiKey: apiKeyOrOpts } : (apiKeyOrOpts ?? {});
-    super(modelId, DEEPSEEK_BASE_URL, {
+    super(modelId, opts.baseUrl ?? DEEPSEEK_BASE_URL, {
       ...opts,
       reasoningContentField: "reasoning_content",
     });
