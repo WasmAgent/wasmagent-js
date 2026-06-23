@@ -83,6 +83,7 @@ export class KernelPoolValidator {
     // Build per-kernel results.
     const results: KernelValidationResult[] = [];
     for (const kernelId of kernelIds) {
+      // biome-ignore lint/style/noNonNullAssertion: kernelId comes from outputMatrix.keys()
       const taskOutputs = outputMatrix.get(kernelId)!;
       const taskResults: KernelValidationResult["taskResults"] = [];
       let passed = 0;

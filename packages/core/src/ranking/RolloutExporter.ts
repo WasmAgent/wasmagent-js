@@ -76,7 +76,9 @@ export function toDpoRecord(
   if (ranked.length < 2) return null;
 
   const sorted = [...ranked].sort((a, b) => a.rank - b.rank);
+  // biome-ignore lint/style/noNonNullAssertion: length >= 2 checked above
   const chosenRanked = sorted[0]!;
+  // biome-ignore lint/style/noNonNullAssertion: length >= 2 checked above
   const rejectedRanked = sorted[sorted.length - 1]!;
 
   const branchMap = buildBranchMap(branches);
