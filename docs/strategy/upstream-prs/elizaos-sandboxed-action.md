@@ -1,63 +1,80 @@
-# Draft: elizaOS/eliza — sandboxed code execution plugin
+# Upstream: elizaOS/eliza — WasmAgent capability governance plugin
 
 **Target repo:** [`elizaOS/eliza`](https://github.com/elizaOS/eliza)
-**Target path:** community plugin via npm registry (`elizaos` keyword)
-**Status:** 🟡 OPEN — issue filed 2026-06-23
+**Issue:** [elizaOS/eliza#9087](https://github.com/elizaOS/eliza/issues/9087)
+**Status:** 🔴 PIVOTED — original per-call sandbox approach rejected (2026-06-24)
 
-## Why elizaOS
+## Feedback received
 
-elizaOS has a rich Action/Provider/Evaluator plugin system but no sandboxed
-code-execution action. The architecture has a first-class `remote` plugin mode
-(Bun Worker isolation with `RemotePluginPermissions`) that is a natural fit for
-a WASM kernel. The community plugin path (npm + registry listing) means no
-maintainer approval gate for the initial ship.
+> "Sandboxing individual calls doesn't work with our model, where the whole agent is in a sandbox."
+> — lalalune, 2026-06-24
 
-## What we learned from the codebase
+This is correct. elizaOS wraps the entire agent runtime in a **Bun Worker** with
+`RemotePluginPermissions`, providing OS-process-level isolation for the whole agent.
+Nesting a WASM kernel inside that is redundant and adds latency without adding security.
 
-elizaOS actions have:
-- `descriptionCompressed?: string` — brevity variant for token-constrained contexts.
-  **Adopted into `ToolDefinition` as `descriptionCompressed`** (2026-06-23).
-- `ActionResult.cleanup?: () => void` — deterministic resource teardown.
-- `parameters?: ActionParameter[]` — structured input validated before handler runs.
-- `suppressEarlyReply` — suppresses draft reply for async actions.
+## Revised value proposition
 
-## Contribution shape
+The right integration is **not** the sandbox. What WasmAgent adds on top of elizaOS's
+existing sandbox:
 
-1. **Community plugin on npm** — `@wasmagent/eliza-plugin` published with `elizaos` keyword.
-2. **Registry listing** — PR to `packages/registry/entries/third-party` once the
-   plugin is stable.
-3. **No maintainer gate** — community plugins are discovered via keyword; the PR
-   to the registry is a cosmetic listing step, not a code-acceptance gate.
+| WasmAgent capability | elizaOS gap filled |
+|---|---|
+| `CapabilityManifest` — fine-grained tool permissions (network allowlist, file scope, env vars) | elizaOS `RemotePluginPermissions` is coarse (allow/deny per plugin type, not per tool call) |
+| `RolloutForkRunner` + `RolloutRanker` — multi-branch quality selection | elizaOS has no parallel execution or quality ranking built in |
+| `TrainingDataExporter` (via evomerge) — DPO/PPO export from agent runs | elizaOS has no rollout data loop |
+| `EventLog` + OTel bridge — per-step audit trail | elizaOS has basic logging but no structured trace export |
 
-## Plugin interface
+## Revised contribution shape
+
+### Option A: `@wasmagent/eliza-capability-plugin` (recommended)
+
+Expose `CapabilityManifest` as a per-plugin permission layer on top of elizaOS's
+`RemotePluginPermissions`:
 
 ```ts
-import type { Plugin, Action, ActionResult } from '@elizaos/core';
-import { codeModeTool } from '@wasmagent/aisdk';
-import { QuickJSKernel } from '@wasmagent/kernel-quickjs';
+import type { Plugin, Action } from '@elizaos/core';
+import { applyApprovalPolicy, PolicyPresets } from '@wasmagent/core';
 
-const executeSandboxedAction: Action = {
-  name: 'EXECUTE_SANDBOXED_CODE',
-  description: 'Execute a JavaScript snippet inside a WASM sandbox ...',
-  descriptionCompressed: 'Run JS in WASM sandbox via callTool()',
-  parameters: [{ name: 'code', type: 'string', required: true }],
-  validate: async (_runtime, message) => message.content.text?.includes('```') ?? false,
-  handler: async (_runtime, _message, _state, options, callback): Promise<ActionResult> => {
-    const kernel = new QuickJSKernel({ timeoutMs: 5000 });
-    // ... run code, call callback with result
-    return { success: true, userFacingText: result, cleanup: () => kernel[Symbol.asyncDispose]() };
-  },
-};
+// Wrap any elizaOS action's tool calls with capability governance
+export function withCapabilityGovernance(action: Action, policy = PolicyPresets.balanced()): Action {
+  return {
+    ...action,
+    handler: async (runtime, message, state, options, callback) => {
+      const gatedOptions = { ...options, tools: applyApprovalPolicy(policy, options?.tools ?? []) };
+      return action.handler(runtime, message, state, gatedOptions, callback);
+    },
+  };
+}
 
-export const sandboxedCodePlugin: Plugin = {
-  name: '@wasmagent/eliza-plugin',
-  description: 'Sandboxed JS/Python code execution via WasmAgent WASM kernels',
-  actions: [executeSandboxedAction],
+export const wasmAgentCapabilityPlugin: Plugin = {
+  name: '@wasmagent/eliza-capability-plugin',
+  description: 'Fine-grained tool capability governance for elizaOS agents',
+  // Wraps existing actions; does not add a sandbox (elizaOS already has one)
 };
 ```
 
-## Acceptance criteria
+### Option B: Rollout data export action
 
-- npm package `@wasmagent/eliza-plugin` published with `elizaos` keyword.
-- Listed on [plugins.elizacloud.ai](https://plugins.elizacloud.ai).
-- Registry PR merged to `elizaOS/eliza`.
+Add an `EXPORT_ROLLOUT_DATA` action that captures elizaOS agent runs as
+`rollout-wire/v1` records and sends them to evomerge for DPO/PPO training:
+
+```ts
+import type { Action } from '@elizaos/core';
+import { toJsonl } from '@wasmagent/core/beta';
+
+// Intercept elizaOS run completion → emit rollout-wire/v1 JSONL
+const exportRolloutAction: Action = {
+  name: 'EXPORT_ROLLOUT_DATA',
+  description: 'Export this agent run as a WasmAgent rollout record for training data collection',
+  // ...
+};
+```
+
+## Decision
+
+Pursue **Option A** as a community plugin. Document the architectural boundary
+clearly: "WasmAgent does not re-sandbox inside elizaOS; it adds capability governance
+and training data export on top of elizaOS's native sandbox."
+
+Update `docs/distribution/upstream-prs.md` when the revised plugin is ready.
