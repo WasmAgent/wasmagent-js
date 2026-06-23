@@ -22,16 +22,12 @@
       "description": "One model call → one async IIFE program → ProgrammaticOrchestrator drives the kernel and re-runs with cached tool results. Tests the compress-the-rounds hypothesis (CodeAct, MS Agent Framework 2026-04). 2026-06-13 fix: previous attempt used CodeAgent + bare kernel and had no tool injection; replaced."
     }
   ],
-  "seeds": [
-    0
-  ],
+  "seeds": [0],
   "aggregates": [
     {
       "modelId": "qwen2.5:0.5b",
       "suiteName": "mt-tool-exec.arm-c-code",
-      "seedAccs": [
-        0
-      ],
+      "seedAccs": [0],
       "meanAcc": 0,
       "wilsonLo": 0,
       "wilsonHi": 0.3903342882858781,
@@ -47,9 +43,7 @@
     {
       "modelId": "evomerge-qwen25-1b5:latest",
       "suiteName": "mt-tool-exec.arm-c-code",
-      "seedAccs": [
-        0.5
-      ],
+      "seedAccs": [0.5],
       "meanAcc": 0.5,
       "wilsonLo": 0.1876163063291083,
       "wilsonHi": 0.8123836936708917,

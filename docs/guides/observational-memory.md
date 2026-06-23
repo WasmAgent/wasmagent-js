@@ -13,7 +13,7 @@
   primitive and ship a benchmark you can run).
 - **Cheap observer + expensive agent** — the observer runs on a small
   model (Haiku, Doubao, DeepSeek). The agent keeps running on whichever
-  model you set. agentkit's multi-model layer makes this a one-liner.
+  model you set. wasmagent's multi-model layer makes this a one-liner.
 - **Prompt-cache aware** — compressed observations land at the front of
   the assembler so the prefix stays byte-stable across subsequent agent
   calls. This is the angle vendors with no `cache_control` awareness

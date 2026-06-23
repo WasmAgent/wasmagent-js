@@ -21,16 +21,12 @@
       "description": "Same hypothesis as arm (f) but one model call per step instead of two: a oneOf grammar pins both name (const) and args (strict schema) per branch. Comparator for arm (f) — measures whether the second pass earns its round-trip."
     }
   ],
-  "seeds": [
-    0
-  ],
+  "seeds": [0],
   "aggregates": [
     {
       "modelId": "evomerge-qwen25-1b5:latest",
       "suiteName": "mt-tool-exec.arm-f-param-only",
-      "seedAccs": [
-        0.5
-      ],
+      "seedAccs": [0.5],
       "meanAcc": 0.5,
       "wilsonLo": 0.1876163063291083,
       "wilsonHi": 0.8123836936708917,
@@ -46,9 +42,7 @@
     {
       "modelId": "evomerge-qwen25-1b5:latest",
       "suiteName": "mt-tool-exec.arm-f-param-only-1pass",
-      "seedAccs": [
-        0.16666666666666666
-      ],
+      "seedAccs": [0.16666666666666666],
       "meanAcc": 0.16666666666666666,
       "wilsonLo": 0.030053369713914257,
       "wilsonHi": 0.563502822476671,

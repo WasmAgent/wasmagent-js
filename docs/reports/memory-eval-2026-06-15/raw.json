@@ -33,20 +33,12 @@
       "description": "20-item synthetic suite modelled on MemoryAgentBench (HUST-AI-HYZ, ICLR 2026). 5 items per competency: Accurate Retrieval, Test-Time Learning, Long-Range Understanding, Conflict Resolution. Strict judge stand-in via forbidden-substring check."
     }
   ],
-  "seeds": [
-    0,
-    1,
-    2
-  ],
+  "seeds": [0, 1, 2],
   "aggregates": [
     {
       "modelId": "qwen2.5:0.5b",
       "suiteName": "locomo-refined",
-      "seedAccs": [
-        0.5,
-        0.4,
-        0.4
-      ],
+      "seedAccs": [0.5, 0.4, 0.4],
       "meanAcc": 0.43333333333333335,
       "wilsonLo": 0.27377485565579335,
       "wilsonHi": 0.6080269301223697,
@@ -62,11 +54,7 @@
     {
       "modelId": "evo-qwen3-1b7-q3km:latest",
       "suiteName": "locomo-refined",
-      "seedAccs": [
-        0.5,
-        0.5,
-        0.5
-      ],
+      "seedAccs": [0.5, 0.5, 0.5],
       "meanAcc": 0.5,
       "wilsonLo": 0.33154125628494124,
       "wilsonHi": 0.6684587437150588,
@@ -82,11 +70,7 @@
     {
       "modelId": "evomerge-t10-1b7-v3:latest",
       "suiteName": "locomo-refined",
-      "seedAccs": [
-        0.6,
-        0.6,
-        0.6
-      ],
+      "seedAccs": [0.6, 0.6, 0.6],
       "meanAcc": 0.6,
       "wilsonLo": 0.4232036023982002,
       "wilsonHi": 0.7540937189345551,
@@ -102,11 +86,7 @@
     {
       "modelId": "qwen2.5:0.5b",
       "suiteName": "memory-agent-bench",
-      "seedAccs": [
-        0.55,
-        0.55,
-        0.55
-      ],
+      "seedAccs": [0.55, 0.55, 0.55],
       "meanAcc": 0.55,
       "wilsonLo": 0.4249193587562342,
       "wilsonHi": 0.6690634560204384,
@@ -122,11 +102,7 @@
     {
       "modelId": "evo-qwen3-1b7-q3km:latest",
       "suiteName": "memory-agent-bench",
-      "seedAccs": [
-        0.8,
-        0.8,
-        0.8
-      ],
+      "seedAccs": [0.8, 0.8, 0.8],
       "meanAcc": 0.8000000000000002,
       "wilsonLo": 0.6821819418382982,
       "wilsonHi": 0.8817149468217376,
@@ -142,11 +118,7 @@
     {
       "modelId": "evomerge-t10-1b7-v3:latest",
       "suiteName": "memory-agent-bench",
-      "seedAccs": [
-        0.7,
-        0.7,
-        0.7
-      ],
+      "seedAccs": [0.7, 0.7, 0.7],
       "meanAcc": 0.6999999999999998,
       "wilsonLo": 0.5749129204259879,
       "wilsonHi": 0.8010183386807025,

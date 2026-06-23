@@ -1,6 +1,6 @@
 # 评测 runner — 把 wasmagent 当成模型评测器用
 
-> **状态**:`@wasmagent/evals-runner@0.1.0` 已发布(2026-06-12)。
+> **状态**:`@wasmagent/evals-runner@1.0.0` 已发布(2026-06-12)。
 > 厂商无关 OpenAI 兼容:Ollama / OpenRouter / AI Gateway / OpenAI / vLLM
 > 都行。模型规格格式跟 wasmagent 其他地方一样
 > ([`docs/zh/guides/openai-compat-recipes`](./openai-compat-recipes.md))。
@@ -14,10 +14,10 @@
 
 ```bash
 # 看套件列表:
-agentkit evals list
+wasmagent evals list
 
 # 5 个本地 Ollama 模型 × multi-turn-memory 套件 × 3 seed:
-agentkit evals run \
+wasmagent evals run \
   --suite=multi-turn-memory \
   --models="qwen2.5:0.5b,evo-qwen3-1b7-q3km:latest,evomerge-qwen25-1b5:latest,evomerge-qwen3-v2:latest,gemma4-12b:latest" \
   --base-url=http://localhost:11434/v1 \

@@ -61,9 +61,7 @@ const enSidebar = {
   "/kernels/": [
     {
       text: "Sandboxed code execution",
-      items: [
-        { text: "Decision tree & comparison", link: "/kernels/comparison" },
-      ],
+      items: [{ text: "Decision tree & comparison", link: "/kernels/comparison" }],
     },
   ],
 };
@@ -117,9 +115,7 @@ const zhSidebar = {
     },
     {
       text: "Kernel",
-      items: [
-        { text: "决策树与对比", link: "/zh/kernels-comparison" },
-      ],
+      items: [{ text: "决策树与对比", link: "/zh/kernels-comparison" }],
     },
   ],
 };
@@ -178,9 +174,7 @@ export default defineConfig({
   },
 
   themeConfig: {
-    socialLinks: [
-      { icon: "github", link: "https://github.com/WasmAgent/wasmagent-js" },
-    ],
+    socialLinks: [{ icon: "github", link: "https://github.com/WasmAgent/wasmagent-js" }],
 
     footer: {
       message: "Released under the Apache-2.0 License.",
@@ -190,8 +184,7 @@ export default defineConfig({
     search: { provider: "local" },
 
     editLink: {
-      pattern:
-      "https://github.com/WasmAgent/wasmagent-js/edit/main/docs/:path",
+      pattern: "https://github.com/WasmAgent/wasmagent-js/edit/main/docs/:path",
     },
   },
 

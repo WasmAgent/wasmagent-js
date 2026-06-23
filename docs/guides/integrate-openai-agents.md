@@ -1,4 +1,4 @@
-# Use agentkit kernels with the OpenAI Agents JS SDK
+# Use wasmagent kernels with the OpenAI Agents JS SDK
 
 > Last refreshed: **2026-06-12**.
 > Companion to [`integrate-vercel-ai-sdk.md`](integrate-vercel-ai-sdk.md)
@@ -11,7 +11,7 @@ is generating the code that runs, that's not isolation — it is the
 opposite of isolation.
 
 `@wasmagent/openai-agents` produces tools whose `execute` is an
-agentkit kernel run:
+wasmagent kernel run:
 
 - **`sandboxedJsAgentTool`** — one-shot JS evaluator.
 - **`codeModeAgentTool`** — code-mode tool (one tool surface, N

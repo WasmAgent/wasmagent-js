@@ -1,6 +1,6 @@
 # Memory Patterns Guide
 
-agentkit-js ships three memory primitives that work well together:
+wasmagent-js ships three memory primitives that work well together:
 - **Vector retrieval** (semantic + BM25 hybrid): the [`HybridRetriever`](../../packages/core/src/memory/HybridRetriever.ts)
 - **Structured key-value memory** with TTL & decay: the [`StructuredMemory`](../../packages/core/src/memory/StructuredMemory.ts)
 - **Cross-session persistent memory tool** for agents: [`createMemoryTool`](../../packages/core/src/memory/MemoryTool.ts)
@@ -80,7 +80,7 @@ const embedder = new HttpEmbedder({
 const dense = new InMemoryVectorStore(embedder);
 const hybrid = new HybridRetriever({ dense, bm25Weight: 0.4, semanticWeight: 0.6 });
 
-await hybrid.add("doc-1", "agentkit-js is a TypeScript agent runtime");
+await hybrid.add("doc-1", "wasmagent-js is a TypeScript agent runtime");
 // ... ingest more docs ...
 
 const tool = ragTool({ store: hybrid });

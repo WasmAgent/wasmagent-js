@@ -4,8 +4,8 @@
 > the model decided to call done. A **goal-directed agent** synthesizes its own
 > success criteria, verifies them deterministically (with an adversarial LLM
 > judge as a last resort), and *loops with feedback* until it passes — or
-> tells you exactly what's missing. agentkit ships this as a first-class
-> primitive: `GoalDirectedAgent`. Most teams using agentkit don't reach for
+> tells you exactly what's missing. wasmagent ships this as a first-class
+> primitive: `GoalDirectedAgent`. Most teams using wasmagent don't reach for
 > it, and most teams using *any* agent framework don't have it. That gap is
 > where shipping quality comes from.
 
@@ -120,7 +120,7 @@ verifier from a freeform task description.
 
 ## What this is NOT
 
-It is not a replacement for any of these — they remain agentkit's
+It is not a replacement for any of these — they remain wasmagent's
 other axes of differentiation:
 
 - **Multi-provider model adapters** (`@wasmagent/model-anthropic`,
@@ -131,7 +131,7 @@ other axes of differentiation:
   `kernel-wasmtime`, `kernel-remote`) — execute generated code in the
   shape that fits your security and compute envelope.
 - **Memory layers** (`MemoryBlockSet`, `Checkpointer`, structured
-  observational memory) — agentkit doesn't make you pick.
+  observational memory) — wasmagent doesn't make you pick.
 - **Workflow engine** (`LocalWorkflowEngine`,
   `CloudflareWorkflowEngine`) — durable, resumable, checkpointable
   multi-step flows.
@@ -201,7 +201,7 @@ several `llm_judge` criteria) can run 3-5x. The `tokenBudget` option
 caps total spend; see also `synthModel` (cheaper model for synthesis)
 and `judgeModel` (independent grader).
 
-The **opt-in** posture is intentional. agentkit's product partners
+The **opt-in** posture is intentional. wasmagent's product partners
 expose this as a UI toggle ("Loop until verified") rather than a
 default — because for casual chat the extra cost is wasted.
 
@@ -243,7 +243,7 @@ The UI surface — showing the synthesized criteria *before* the user
 even sees the answer — is the point. It is the visible difference
 between a chat that hopes and a chat that delivers.
 
-### Frozen criteria for CI: `agentkit goal --from-criteria`
+### Frozen criteria for CI: `wasmagent goal --from-criteria`
 
 For deterministic CI gates and A/B comparisons, you usually don't want
 the synth model to invent a fresh grader on every run. Pin the criteria
@@ -251,7 +251,7 @@ once and feed them in:
 
 ```bash
 # Phase 1 still runs the first time — capture the synthesized criteria.
-agentkit goal "Write the OAuth intro" --workspace ./tmp \
+wasmagent goal "Write the OAuth intro" --workspace ./tmp \
   --stream | tee transcript.ndjson
 
 # Extract them into a frozen file your CI commits.
@@ -259,7 +259,7 @@ jq -c 'select(.event=="criteria_proposed") | .data.criteria' \
   transcript.ndjson | head -1 > criteria.json
 
 # Subsequent runs skip Phase 1 — same grader every time.
-agentkit goal "Write the OAuth intro" --workspace ./tmp \
+wasmagent goal "Write the OAuth intro" --workspace ./tmp \
   --from-criteria criteria.json
 ```
 
@@ -317,7 +317,7 @@ decides. So the recommended product wiring is:
 The classifier prompt that anchors the `loop` axis is product-specific
 (bscode's lives in `apps/worker/src/app.ts`'s `/classify` route). The
 shape it produces — `{mode, framework, loop}` — is what your dispatcher
-maps. Keep agentkit's `GoalDirectedAgent` agnostic of how you decided
+maps. Keep wasmagent's `GoalDirectedAgent` agnostic of how you decided
 to invoke it.
 
 ## See also

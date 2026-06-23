@@ -2,9 +2,9 @@
 
 > **Audience:** security architects, AI risk officers, procurement evaluating "agent platforms" against OWASP Agentic Applications Top 10 (2025-12) and EU AI Act / Colorado AI Act / ISO 42001 control families.
 >
-> **Question this doc answers:** for each of the 10 OWASP risk categories, *what is the runtime primitive in agentkit-js that enforces it, and where exactly does it stop?*
+> **Question this doc answers:** for each of the 10 OWASP risk categories, *what is the runtime primitive in wasmagent-js that enforces it, and where exactly does it stop?*
 >
-> **Posture (read this first):** `CapabilityManifest` is **not a governance product**. It is the *deny-all, runtime-enforced* layer that a governance product calls into to actually stop a violation in flight. Microsoft's Agent Governance Toolkit (2026-04-02, MIT) decides whether an action *should* run; agentkit's kernel decides whether it *can* — and isolates the blast radius if it does. The two layers compose; neither replaces the other.
+> **Posture (read this first):** `CapabilityManifest` is **not a governance product**. It is the *deny-all, runtime-enforced* layer that a governance product calls into to actually stop a violation in flight. Microsoft's Agent Governance Toolkit (2026-04-02, MIT) decides whether an action *should* run; wasmagent's kernel decides whether it *can* — and isolates the blast radius if it does. The two layers compose; neither replaces the other.
 
 ---
 
@@ -39,11 +39,11 @@ For each OWASP Agentic Top 10 risk:
 
 | # | OWASP risk | Primitive that enforces | Where the line is |
 |---|-----------|-----------------------|------------------|
-| **1** | **Goal hijacking** — adversarial input rewrites the agent's objective | *Outside the kernel boundary by design.* Kernel does not see the agent's plan | Mitigation: governance layer (e.g. MS Agent Governance Toolkit) does prompt-injection detection / policy-on-paths; agentkit's job is that even if the goal flips, the kernel still refuses unauthorised tool/network/FS calls — `extraCapabilities`, `allowedHosts`, `allowedReadPaths/WritePaths` all remain in force regardless of the LLM's reasoning. |
+| **1** | **Goal hijacking** — adversarial input rewrites the agent's objective | *Outside the kernel boundary by design.* Kernel does not see the agent's plan | Mitigation: governance layer (e.g. MS Agent Governance Toolkit) does prompt-injection detection / policy-on-paths; wasmagent's job is that even if the goal flips, the kernel still refuses unauthorised tool/network/FS calls — `extraCapabilities`, `allowedHosts`, `allowedReadPaths/WritePaths` all remain in force regardless of the LLM's reasoning. |
 | **2** | **Tool misuse / unauthorised tool invocation** | `extraCapabilities: string[]` — the kernel only resolves named tools present in this allow-list | A tool not listed cannot be called from inside sandboxed code, full stop. *Not covered:* tool selection inside the LLM's reasoning trace before the call reaches the kernel — that's the governance layer's job. |
 | **3** | **Identity abuse / credential misuse** | `env?: Readonly<Record<string, string>>` — explicit value allow-list, not a `process.env` pass-through. The kernel never sees host environment | Sandboxed code sees only the values explicitly placed in `env`. The host's API keys, DB passwords, OAuth refresh tokens cannot leak into sandboxed execution unless the consumer explicitly puts them there. *Not covered:* what the consumer chooses to put in `env` (and whether that's appropriate per session) — see Gravitee's State of AI Agent Security 2026: only 22% of agents have independent identity. The primitive supports independent identity; using it remains a consumer choice. |
 | **4** | **Memory poisoning** — adversarial inputs persist into long-term memory and re-corrupt later runs | *Partial.* Kernel `reset()` clears cross-step variables. Memory persistence (`@wasmagent/memory`, `MemoryBlockSet`) is a separate package | The kernel guarantees no implicit cross-session state in WASM linear memory after `reset()`. *Not covered:* what `MemoryAdapter` writes to durable storage, and whether the consumer validates incoming memory blocks. Recommended pairing: governance-layer input validation + `MemoryBlockSet` size caps. |
-| **5** | **Cascading failures / runaway loops** | `cpuMs: number` (hard deadline, lower-of with `KernelOptions.timeoutMs` — defence-in-depth) and `memoryLimitBytes` (soft ceiling, hard on QuickJS/Wasmtime/Remote, advisory on Pyodide/Js) | A single kernel invocation cannot exceed `cpuMs` real time. *Not covered:* application-level retry storms — that's the consumer's orchestration layer. agentkit's `WorkflowEngine` ([`packages/core/src/workflow/`](../../packages/core/src/workflow/)) provides resumable, terminable workflow steps that compose with this limit. |
+| **5** | **Cascading failures / runaway loops** | `cpuMs: number` (hard deadline, lower-of with `KernelOptions.timeoutMs` — defence-in-depth) and `memoryLimitBytes` (soft ceiling, hard on QuickJS/Wasmtime/Remote, advisory on Pyodide/Js) | A single kernel invocation cannot exceed `cpuMs` real time. *Not covered:* application-level retry storms — that's the consumer's orchestration layer. wasmagent's `WorkflowEngine` ([`packages/core/src/workflow/`](../../packages/core/src/workflow/)) provides resumable, terminable workflow steps that compose with this limit. |
 | **6** | **Rogue agents** — an unauthorised agent inserts itself into a multi-agent conversation | *Outside the kernel boundary.* Mitigation belongs to the agent-id / session layer | Kernel does not authenticate the calling agent. *We support it indirectly:* `RemoteSandboxKernel` requires consumers to attach their own auth headers, and the `a2a` package's identity primitives (separate package) compose with `CapabilityManifest` per-session. |
 | **7** | **Excessive agency / over-broad tool surface** | The combination of `allowedHosts` (network), `allowedReadPaths`/`allowedWritePaths` (filesystem), `extraCapabilities` (named tools), `env` (secrets), `cpuMs` / `memoryLimitBytes` (resources) — each defaulting to deny-all | The blast radius of a compromised tool call is bounded by what the manifest grants. *Not covered:* whether the manifest itself was over-granted at construction time — that's the consumer's policy layer (and the place where a governance product's "least privilege" recommendation feeds in). |
 | **8** | **Data exfiltration** | `allowedHosts: string[]` — empty = network is fully off | Sandboxed code with `allowedHosts: []` cannot DNS-resolve, cannot fetch, cannot WebSocket. WASM kernels have no socket primitive at all. *Not covered:* exfiltration via *allowed* hosts (e.g. agent uploads stolen data to the same documentation host it's allowed to read). Mitigation: keep `allowedHosts` to specific paths if your kernel transport supports it, plus governance-layer egress monitoring. |
@@ -56,7 +56,7 @@ For each OWASP Agentic Top 10 risk:
 
 The toolkit (2026-04-02, MIT) is the closest comparable open-source primitive. It is **complementary**, not competing:
 
-| Capability | MS Agent Governance Toolkit | agentkit-js `CapabilityManifest` + kernels |
+| Capability | MS Agent Governance Toolkit | wasmagent-js `CapabilityManifest` + kernels |
 |------------|----------------------------|--------------------------------------------|
 | OWASP Agentic Top 10 coverage | 10/10 (declared) | 7/10 directly enforced; 3/10 boundary-acknowledged (1 / 4 / 6) |
 | Framework-neutral | ✅ (20+ adapters) | ✅ (5 kernels, framework-agnostic API) |
@@ -67,7 +67,7 @@ The toolkit (2026-04-02, MIT) is the closest comparable open-source primitive. I
 | Decides "can it run?" | (delegates to runtime) | ✅ |
 | Stops a violation in flight | only by being checked beforehand | ✅ — sandbox boundary halts execution |
 
-**Recommended composition:** governance toolkit decides `should`, agentkit kernel enforces `can` and isolates the blast radius. A worked example is in [`examples/governance-toolkit-integration.md`](../../examples/governance-toolkit-integration.md) (placeholder — to be added 2026-Q3).
+**Recommended composition:** governance toolkit decides `should`, wasmagent kernel enforces `can` and isolates the blast radius. A worked example is in [`examples/governance-toolkit-integration.md`](../../examples/governance-toolkit-integration.md) (placeholder — to be added 2026-Q3).
 
 ---
 
@@ -87,7 +87,7 @@ Both protocols solve **authentication** ("which agent is calling?") and explicit
 
 For procurement teams evaluating against current regulation:
 
-| Regulation / Standard | Article / Control | Primitive in agentkit-js |
+| Regulation / Standard | Article / Control | Primitive in wasmagent-js |
 |----------------------|-------------------|--------------------------|
 | **EU AI Act** Art. 14 (human oversight) | High-risk system must allow human intervention | `WorkflowEngine` terminable contract + `cpuMs` deadline ([`packages/core/src/workflow/`](../../packages/core/src/workflow/)) |
 | **EU AI Act** Art. 15 (accuracy / cybersecurity) | Robustness, resilience, security | Kernel boundary (WASM) + `CapabilityManifest` deny-all + `evals-runner` paired statistical accuracy reporting |
@@ -104,7 +104,7 @@ This mapping is **claims about the primitives we ship**, not a compliance audit.
 
 A short, honest list. This is what a governance/product layer above us must own:
 
-1. **Prompt-injection detection** — agentkit does not parse the agent's prompt for adversarial content. Use a governance toolkit.
+1. **Prompt-injection detection** — wasmagent does not parse the agent's prompt for adversarial content. Use a governance toolkit.
 2. **Decision logging / audit trail formatting** — kernels emit structured events (see [`packages/core/src/types/events.ts`](../../packages/core/src/types/events.ts)); transforming those into your SIEM's audit format is your code.
 3. **Multi-tenant key management** — `env` accepts whatever values you put in it; rotating, vaulting, and per-session scoping of those values is your platform's job.
 4. **Cross-agent identity** — `a2a` provides the agent-id primitive; pairing identities to manifests is a session-layer decision.
@@ -118,7 +118,7 @@ Every "primitive" referenced in §1 is testable. The deny-all defaults are exerc
 
 ```sh
 git clone https://github.com/WasmAgent/wasmagent-js
-cd agentkit-js
+cd wasmagent-js
 bun install
 bun run -F '@wasmagent/core' test:capability
 ```

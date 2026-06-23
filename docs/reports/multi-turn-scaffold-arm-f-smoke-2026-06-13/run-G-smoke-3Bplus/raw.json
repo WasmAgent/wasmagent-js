@@ -22,16 +22,12 @@
       "description": "Per step: pass 1 grammar-pins tool-name choice from a closed enum; pass 2 grammar-pins args for that exact tool. The model never makes both decisions in the same call. Tests whether wrong-name + wrong-arg-name is the failure mode that scaffold can address; if it is, accuracy lifts and the bottleneck moves elsewhere."
     }
   ],
-  "seeds": [
-    0
-  ],
+  "seeds": [0],
   "aggregates": [
     {
       "modelId": "evo-qwen3-1b7-q3km:latest",
       "suiteName": "mt-tool-exec.arm-f-param-only",
-      "seedAccs": [
-        0.5
-      ],
+      "seedAccs": [0.5],
       "meanAcc": 0.5,
       "wilsonLo": 0.1876163063291083,
       "wilsonHi": 0.8123836936708917,
@@ -47,9 +43,7 @@
     {
       "modelId": "evomerge-qwen3-v2:latest",
       "suiteName": "mt-tool-exec.arm-f-param-only",
-      "seedAccs": [
-        0.6666666666666666
-      ],
+      "seedAccs": [0.6666666666666666],
       "meanAcc": 0.6666666666666666,
       "wilsonLo": 0.29999331491929243,
       "wilsonHi": 0.9032285889854148,

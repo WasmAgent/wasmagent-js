@@ -1,6 +1,6 @@
 # Evals Cookbook
 
-agentkit-js ships 15 scorers covering correctness, faithfulness,
+wasmagent-js ships 15 scorers covering correctness, faithfulness,
 relevance, efficiency, constraints, recovery, guardrail compliance,
 and LLM-as-judge. This guide shows how to combine them for production-
 grade benchmarking.

@@ -21,20 +21,12 @@
       "description": "Per step: pass 1 grammar-pins tool-name choice from a closed enum; pass 2 grammar-pins args for that exact tool. The model never makes both decisions in the same call. Tests whether wrong-name + wrong-arg-name is the failure mode that scaffold can address; if it is, accuracy lifts and the bottleneck moves elsewhere."
     }
   ],
-  "seeds": [
-    0,
-    1,
-    2
-  ],
+  "seeds": [0, 1, 2],
   "aggregates": [
     {
       "modelId": "evomerge-t10-1b7-v7f:latest",
       "suiteName": "mt-tool-exec.arm-a-bare",
-      "seedAccs": [
-        0.13333333333333333,
-        0.1,
-        0.13333333333333333
-      ],
+      "seedAccs": [0.13333333333333333, 0.1, 0.13333333333333333],
       "meanAcc": 0.12222222222222223,
       "wilsonLo": 0.06963615962340394,
       "wilsonHi": 0.20573742418413885,
@@ -50,11 +42,7 @@
     {
       "modelId": "evomerge-t10-1b7-v7f:latest",
       "suiteName": "mt-tool-exec.arm-f-param-only",
-      "seedAccs": [
-        0.43333333333333335,
-        0.36666666666666664,
-        0.43333333333333335
-      ],
+      "seedAccs": [0.43333333333333335, 0.36666666666666664, 0.43333333333333335],
       "meanAcc": 0.41111111111111115,
       "wilsonLo": 0.31513204016694607,
       "wilsonHi": 0.5143676266112993,
@@ -708,12 +696,7 @@
               "callId": "36AnX303r0d8DDmXa0sne3OsNl1Ppju7",
               "toolName": "list_files",
               "output": {
-                "paths": [
-                  "inbox/a.txt",
-                  "inbox/b.txt",
-                  "inbox/c.txt",
-                  "keep.txt"
-                ]
+                "paths": ["inbox/a.txt", "inbox/b.txt", "inbox/c.txt", "keep.txt"]
               },
               "batchId": "72597a37-c814-4ad6-979a-d0dc09959d4f",
               "batchSize": 7,
@@ -1012,12 +995,7 @@
               "callId": "NkxB3yWUPzkd0tyjXa7yCVroUFk8VcOi",
               "toolName": "list_files",
               "output": {
-                "paths": [
-                  "inbox/a.txt",
-                  "inbox/b.txt",
-                  "inbox/c.txt",
-                  "keep.txt"
-                ]
+                "paths": ["inbox/a.txt", "inbox/b.txt", "inbox/c.txt", "keep.txt"]
               },
               "batchId": "7ec2b58d-e8a4-4bc5-80ec-8ce5bbef2599",
               "batchSize": 1,
@@ -6081,12 +6059,7 @@
               "callId": "AUXmsyD3EU6bDbCJ0Be1IuG1ERjyVyVd",
               "toolName": "list_files",
               "output": {
-                "paths": [
-                  "inbox/a.txt",
-                  "inbox/b.txt",
-                  "inbox/c.txt",
-                  "keep.txt"
-                ]
+                "paths": ["inbox/a.txt", "inbox/b.txt", "inbox/c.txt", "keep.txt"]
               },
               "batchId": "f6c23fab-bf46-43ba-a13f-63bf3b1531e8",
               "batchSize": 5,
@@ -6520,12 +6493,7 @@
               "callId": "HEKWGACWLrlQsWJKU5n4odkjQ4dgur3N",
               "toolName": "list_files",
               "output": {
-                "paths": [
-                  "a.tmp",
-                  "b.tmp",
-                  "c.tmp",
-                  "keep.txt"
-                ]
+                "paths": ["a.tmp", "b.tmp", "c.tmp", "keep.txt"]
               },
               "batchId": "4893afea-40b7-418a-a893-e814550bbd28",
               "batchSize": 2,
@@ -7074,10 +7042,7 @@
               "callId": "LAgKCrq28Q2ZgelMQWGEN42TkQtxNrta",
               "toolName": "list_files",
               "output": {
-                "paths": [
-                  "part1.txt",
-                  "part2.txt"
-                ]
+                "paths": ["part1.txt", "part2.txt"]
               },
               "batchId": "08b27379-680e-4c85-bb62-742fe2075661",
               "batchSize": 6,

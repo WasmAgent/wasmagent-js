@@ -1,7 +1,7 @@
 # DevTools — event timeline & time-travel debugging
 
 > **A2** — UI for inspecting an agent's execution trace and forking a fresh
-> run from any step. Built on agentkit-js' existing primitives:
+> run from any step. Built on wasmagent-js' existing primitives:
 > [`EventLog`](../../packages/core/src/streaming/EventLog.ts) +
 > [`KvCheckpointer`](../../packages/core/src/checkpoint/index.ts).
 > No new persistence needed — the data was already there; this is the
@@ -100,7 +100,7 @@ replay.stepForEventId(id);  // map an event id back to its step number
 ## Why a fork API at all?
 
 The single biggest UX win from LangGraph Studio's time-travel debugger is
-"go back to step N, change something, re-run". agentkit-js already had
+"go back to step N, change something, re-run". wasmagent-js already had
 the persistence half (EventLog records every event with a stable id;
 KvCheckpointer captures assembler state per step). The missing piece was
 a small, runtime-agnostic engine that could compute "the prefix up to

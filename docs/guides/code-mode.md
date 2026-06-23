@@ -13,8 +13,8 @@ the model's prompt — even tools the model never calls. Codemode-lite measured
 **53% token savings** simply by collapsing those tools behind a single
 `run_python` entry and letting the model fetch docs JIT.
 
-Code-mode in agentkit-js replaces that single `run_python` (which only RH ran
-inside their own gVisor container) with **any agentkit `Kernel`** —
+Code-mode in wasmagent-js replaces that single `run_python` (which only RH ran
+inside their own gVisor container) with **any wasmagent `Kernel`** —
 `QuickJSKernel`, `PyodideKernel`, `WasmtimeKernel`, or `RemoteSandboxKernel`.
 The same `CapabilityManifest` (allowedHosts / allowedReadPaths /
 allowedWritePaths / env / cpuMs / memoryLimitBytes) gates the sandbox

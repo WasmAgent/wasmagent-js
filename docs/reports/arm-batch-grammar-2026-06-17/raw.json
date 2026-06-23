@@ -26,20 +26,12 @@
       "description": "Single LLM call emits the COMPLETE plan as {plan: [{name, input}, ...]} under a strict json_schema (oneOf per tool, minItems=1, maxItems=8). Tools run sequentially after the call returns; model sees no intermediate results. Tests whether 1.7B's bare-wins behavior (multi-call in one turn) survives when grammar pins schema legality without sacrificing global plan view."
     }
   ],
-  "seeds": [
-    0,
-    1,
-    2
-  ],
+  "seeds": [0, 1, 2],
   "aggregates": [
     {
       "modelId": "evomerge-t10-1b7-v7f:latest",
       "suiteName": "mt-tool-exec.arm-a-bare",
-      "seedAccs": [
-        0.06666666666666667,
-        0.06666666666666667,
-        0.06666666666666667
-      ],
+      "seedAccs": [0.06666666666666667, 0.06666666666666667, 0.06666666666666667],
       "meanAcc": 0.06666666666666667,
       "wilsonLo": 0.030909927727348276,
       "wilsonHi": 0.13790094781659787,
@@ -55,11 +47,7 @@
     {
       "modelId": "evomerge-t10-1b7-v7f:latest",
       "suiteName": "mt-tool-exec.arm-f-param-only",
-      "seedAccs": [
-        0.4,
-        0.4,
-        0.36666666666666664
-      ],
+      "seedAccs": [0.4, 0.4, 0.36666666666666664],
       "meanAcc": 0.3888888888888889,
       "wilsonLo": 0.29469917203989227,
       "wilsonHi": 0.49217541143291443,
@@ -75,11 +63,7 @@
     {
       "modelId": "evomerge-t10-1b7-v7f:latest",
       "suiteName": "mt-tool-exec.arm-g-batch-grammar",
-      "seedAccs": [
-        0.13333333333333333,
-        0.13333333333333333,
-        0.16666666666666666
-      ],
+      "seedAccs": [0.13333333333333333, 0.13333333333333333, 0.16666666666666666],
       "meanAcc": 0.14444444444444446,
       "wilsonLo": 0.08639988783072515,
       "wilsonHi": 0.2315987792822563,
@@ -574,12 +558,7 @@
               "callId": "GTeqSUrltsYbXH08csCfJScnaNENEwAB",
               "toolName": "list_files",
               "output": {
-                "paths": [
-                  "inbox/a.txt",
-                  "inbox/b.txt",
-                  "inbox/c.txt",
-                  "keep.txt"
-                ]
+                "paths": ["inbox/a.txt", "inbox/b.txt", "inbox/c.txt", "keep.txt"]
               },
               "batchId": "9966b3f5-eff1-4f70-bed5-23969c2bb7fa",
               "batchSize": 4,
@@ -1529,10 +1508,7 @@
               "callId": "sSDFnkaVvjnT1FmGGGLFI8VJt3mJN6rl",
               "toolName": "list_files",
               "output": {
-                "paths": [
-                  "part1.txt",
-                  "part2.txt"
-                ]
+                "paths": ["part1.txt", "part2.txt"]
               },
               "batchId": "aa80646b-f552-4e3f-881f-d2afc8d1baca",
               "batchSize": 6,
@@ -5741,12 +5717,7 @@
               "callId": "NQoVM4L4GZt15hZlurPQlyXKrAAWTgnT",
               "toolName": "list_files",
               "output": {
-                "paths": [
-                  "inbox/a.txt",
-                  "inbox/b.txt",
-                  "inbox/c.txt",
-                  "keep.txt"
-                ]
+                "paths": ["inbox/a.txt", "inbox/b.txt", "inbox/c.txt", "keep.txt"]
               },
               "batchId": "4e94c9fa-6121-479c-8446-4823eeda9273",
               "batchSize": 7,
@@ -6367,13 +6338,7 @@
               "callId": "t0ayIadkZKjSLVzKNg65zZ6RqpiKiXsK",
               "toolName": "list_files",
               "output": {
-                "paths": [
-                  "alpha.log",
-                  "beta.log",
-                  "binary.bin",
-                  "delta.txt",
-                  "gamma.txt"
-                ]
+                "paths": ["alpha.log", "beta.log", "binary.bin", "delta.txt", "gamma.txt"]
               },
               "batchId": "2a8c00aa-839f-41d2-969d-96e9b59ea225",
               "batchSize": 3,
@@ -6544,13 +6509,7 @@
               "callId": "vpOLMO1B7vrLgvyN2aIoczPQNXhTo5NQ",
               "toolName": "list_files",
               "output": {
-                "paths": [
-                  "alpha.log",
-                  "beta.log",
-                  "binary.bin",
-                  "delta.txt",
-                  "gamma.txt"
-                ]
+                "paths": ["alpha.log", "beta.log", "binary.bin", "delta.txt", "gamma.txt"]
               },
               "batchId": "54a22181-4d56-46bd-bcb8-51d9e118501a",
               "batchSize": 1,
@@ -9927,11 +9886,7 @@
               "callId": "Wtx9zlXaiRxWkIdE9AZ1MguKUrf3d6G6",
               "toolName": "list_files",
               "output": {
-                "paths": [
-                  "inbox/a.txt",
-                  "inbox/b.txt",
-                  "keep.txt"
-                ]
+                "paths": ["inbox/a.txt", "inbox/b.txt", "keep.txt"]
               },
               "batchId": "5a3612d8-d5dc-4b45-abf9-12b0199e5eba",
               "batchSize": 4,
@@ -10780,12 +10735,7 @@
               "callId": "AreQ60FwGhu70MLb5dnej6szJFyTTOfH",
               "toolName": "list_files",
               "output": {
-                "paths": [
-                  "inbox/a.txt",
-                  "inbox/b.txt",
-                  "inbox/c.txt",
-                  "keep.txt"
-                ]
+                "paths": ["inbox/a.txt", "inbox/b.txt", "inbox/c.txt", "keep.txt"]
               },
               "batchId": "44577d8c-7452-425b-a7bb-a0d38601b6bb",
               "batchSize": 7,

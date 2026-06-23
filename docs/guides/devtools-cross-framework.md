@@ -1,13 +1,13 @@
-# DevTools — debugging your *non-agentkit* agent
+# DevTools — debugging your *non-wasmagent* agent
 
 > Companion to [`devtools.md`](devtools.md). That guide covers the
-> agentkit-native EventLog path. **This guide assumes you are NOT
-> using agentkit-js as your framework** — you are on Vercel AI SDK,
+> wasmagent-native EventLog path. **This guide assumes you are NOT
+> using wasmagent-js as your framework** — you are on Vercel AI SDK,
 > Mastra, OpenAI Agents JS, Anthropic SDK, LangSmith-instrumented
 > code, or any other producer that emits OpenTelemetry GenAI
 > semantic-convention spans.
 
-`agentkit devtools --otel-events-file <path>` reads NDJSON or
+`wasmagent devtools --otel-events-file <path>` reads NDJSON or
 OTLP/JSON, maps `gen_ai.*` attributes onto the events the existing
 Studio view consumes, and serves a self-contained HTML page on
 `localhost`. No SaaS, no account, nothing leaves your machine.
@@ -21,11 +21,11 @@ Either:
 
 ```bash
 # One-shot, no install:
-npx -p @wasmagent/cli agentkit devtools --otel-events-file ./spans.ndjson
+npx -p @wasmagent/cli wasmagent devtools --otel-events-file ./spans.ndjson
 
 # Or globally:
 npm install -g @wasmagent/cli
-agentkit devtools --otel-events-file ./spans.ndjson --port 4317
+wasmagent devtools --otel-events-file ./spans.ndjson --port 4317
 ```
 
 You do **not** need to install `@wasmagent/core` for this path.
@@ -47,7 +47,7 @@ import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-base";
 
 new NodeSDK({
   // Console exporter is convenient because it dumps NDJSON to stdout —
-  // pipe to a file and feed straight to `agentkit devtools`.
+  // pipe to a file and feed straight to `wasmagent devtools`.
   traceExporter: new ConsoleSpanExporter(),
 }).start();
 ```
@@ -56,7 +56,7 @@ Then:
 
 ```bash
 node --import ./instrument.ts your-app.mjs > spans.ndjson
-agentkit devtools --otel-events-file ./spans.ndjson
+wasmagent devtools --otel-events-file ./spans.ndjson
 ```
 
 (Replace the console exporter with your usual collector when you're
@@ -105,9 +105,9 @@ Once the page loads:
   trace, sortable. Useful for "which runs are blowing my budget."
 - **Step replay.** Click into any trace to see step-by-step events
   in submission order, with the same fork-from-step affordance the
-  agentkit-native view provides.
+  wasmagent-native view provides.
 - **Side-by-side comparison.** Run two NDJSON files in two devtools
-  sessions on different ports to A/B compare an agentkit prototype
+  sessions on different ports to A/B compare an wasmagent prototype
   against your existing Vercel AI SDK / Mastra implementation. This
   is the recipe we recommend for evaluating whether to migrate any
   particular component.
@@ -132,7 +132,7 @@ Once the page loads:
 - Suggested capture recipe for a producer not above → PR welcome.
 
 The point of this page is that you do not need to be an
-agentkit-js user to benefit from the Studio. Cross-framework
+wasmagent-js user to benefit from the Studio. Cross-framework
 issues land first because they are exactly the audience the package
 is positioned for in
 [`docs/strategy/maintenance-tiers.md`](../strategy/maintenance-tiers.md)

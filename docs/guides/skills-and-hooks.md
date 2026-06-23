@@ -5,7 +5,7 @@
 > Claude Agent SDK SKILL.md / CrewAI v1.12 / Pydantic AI Capabilities
 > convention that the 2026 framework round all converged on.
 
-agentkit-js already had `deferLoading` for tool schemas. A3 generalises
+wasmagent-js already had `deferLoading` for tool schemas. A3 generalises
 that idea to **whole skill bundles** (instructions + tools), and adds a
 **post-tool hook** sibling to the existing `ToolGuardrail` (which acts as
 a pre-tool hook).

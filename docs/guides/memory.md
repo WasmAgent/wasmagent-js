@@ -1,11 +1,11 @@
-# Memory in agentkit-js
+# Memory in wasmagent-js
 
 > One-stop entry point. If you've heard of "agent memory" in 2026 — Mem0,
 > Letta, Zep, OpenAI Sessions, Anthropic memory tool — this guide tells
-> you which agentkit-js primitive is the equivalent, when each is the
+> you which wasmagent-js primitive is the equivalent, when each is the
 > right call, and the failure modes to watch for.
 
-agentkit-js ships **eight** memory-related primitives. They are not
+wasmagent-js ships **eight** memory-related primitives. They are not
 alternative implementations — they are layers in a stack, and a real
 production agent typically uses two or three at once. The decision
 problem is not "which one do I pick", it's "which combination matches
@@ -45,14 +45,14 @@ What do you need to retain?
    → Checkpointer               (KvCheckpointer for prod)
 ```
 
-## What "memory" means in 2026 (and what agentkit calls each part)
+## What "memory" means in 2026 (and what wasmagent calls each part)
 
 The vendor landscape (Mem0, Letta, Zep, OpenAI Agents SDK, Anthropic
 SDK, LangGraph, Microsoft Agent Framework) has converged on a small
-number of distinct concepts. agentkit-js implements all of them; the
+number of distinct concepts. wasmagent-js implements all of them; the
 naming differs.
 
-| 2026 industry concept | agentkit-js equivalent | Reference |
+| 2026 industry concept | wasmagent-js equivalent | Reference |
 |---|---|---|
 | Conversation history / Session (turn-by-turn) | `MessageAssembler` (in-run) + `Checkpointer` (cross-run) | [memory-patterns.md](./memory-patterns.md), [`MessageAssembler`](../../packages/core/src/memory/MessageAssembler.ts) |
 | Core memory blocks (Letta) — editable in-context state | `MemoryBlockSet` + `coreMemoryTools()` | [§ Core memory blocks](#core-memory-blocks) below |
@@ -64,8 +64,8 @@ naming differs.
 | Bi-temporal knowledge graph (Zep / Graphiti) | **Not implemented** — bring your own graph store; we mark `valid_at` in `StructuredMemory` metadata if you need it | — |
 
 The intentional gap: **bi-temporal entity graphs are Zep's product**.
-Building a clone in agentkit-js would be 6-figure engineering with
-mostly enterprise-ROI applications. agentkit-js leaves that adjacent.
+Building a clone in wasmagent-js would be 6-figure engineering with
+mostly enterprise-ROI applications. wasmagent-js leaves that adjacent.
 
 ## Pick by lifecycle, not by name
 
@@ -178,7 +178,7 @@ cross-session user profile (use `StructuredMemory`).
 
 ### How it differs from Letta
 
-Letta renders core memory inside the system prompt. agentkit-js renders
+Letta renders core memory inside the system prompt. wasmagent-js renders
 it as a separate user-role message right after the cached system
 prefix, so editing a block does not invalidate the prompt cache. The
 practical impact: on Anthropic / Bedrock with prefix caching, an agent
@@ -239,17 +239,17 @@ than the main model — see the math in
 
 ### 5. Cross-session state is the application's problem
 
-agentkit-js gives you the storage primitives; it does NOT give you a
+wasmagent-js gives you the storage primitives; it does NOT give you a
 "user model" or a "persona snapshot". Mem0 and Letta ship those at the
 product layer because they are domain-specific (CRM-shaped vs.
 coding-assistant-shaped vs. consumer-chat-shaped). If you want
 auto-extracted user profiles, write the extractor in your app — or
-adopt Mem0 alongside agentkit (they layer cleanly: Mem0 owns user
-facts, agentkit owns the agent loop).
+adopt Mem0 alongside wasmagent (they layer cleanly: Mem0 owns user
+facts, wasmagent owns the agent loop).
 
 ## Evaluating memory
 
-agentkit-js ships two memory-related eval suites in
+wasmagent-js ships two memory-related eval suites in
 [`@wasmagent/evals-runner`](../../packages/evals-runner/):
 
 - **`multi-turn-memory`** (54 items, 6 categories) — tests recall
@@ -279,6 +279,6 @@ see the `docs/reports/memory-eval-*.md` series.
 We did not implement Zep / Graphiti's bi-temporal entity graph
 (`valid_at` / `invalid_at` fact invalidation, incremental graph
 updates). That product is Zep's; if you need it, run Zep alongside
-agentkit and have the agent call Graphiti via MCP. For 80% of agent
+wasmagent and have the agent call Graphiti via MCP. For 80% of agent
 workloads — a code assistant, a customer support bot, a research
 agent — the seven primitives above are sufficient.

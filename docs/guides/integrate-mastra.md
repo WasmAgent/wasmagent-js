@@ -1,12 +1,12 @@
-# Use agentkit-js kernels with Mastra
+# Use wasmagent-js kernels with Mastra
 
-The agentkit-js code-execution kernels (`@wasmagent/kernel-quickjs`, `kernel-pyodide`, `kernel-wasmtime`, `kernel-remote`) work standalone. You can register them as tools in [Mastra](https://mastra.ai) — or any other agent framework that takes a tool definition — without pulling in the rest of agentkit-js.
+The wasmagent-js code-execution kernels (`@wasmagent/kernel-quickjs`, `kernel-pyodide`, `kernel-wasmtime`, `kernel-remote`) work standalone. You can register them as tools in [Mastra](https://mastra.ai) — or any other agent framework that takes a tool definition — without pulling in the rest of wasmagent-js.
 
 This page shows how to expose `QuickJSKernel` as a Mastra tool.
 
 ## Why bother
 
-Mastra ships an excellent batteries-included DX — four-layer memory, suspend/resume, evals, MCP support. What it does not ship is sandboxed code execution as a first-class feature. The agentkit-js kernel packages plug that gap.
+Mastra ships an excellent batteries-included DX — four-layer memory, suspend/resume, evals, MCP support. What it does not ship is sandboxed code execution as a first-class feature. The wasmagent-js kernel packages plug that gap.
 
 ## Install
 

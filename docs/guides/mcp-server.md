@@ -1,4 +1,4 @@
-# Expose an agentkit agent as an MCP server (F1)
+# Expose an wasmagent agent as an MCP server (F1)
 
 The `@wasmagent/mcp-server` package wraps any object that runs like an
 agent — `ToolCallingAgent`, `CodeAgent`, or any custom `SubagentRunnable` —
@@ -10,8 +10,8 @@ poll later.
 
 ## Why this exists
 
-agentkit-js was previously a one-way MCP citizen: it consumed MCP servers
-through `McpToolCollection`, but no host could call an agentkit agent. F1
+wasmagent-js was previously a one-way MCP citizen: it consumed MCP servers
+through `McpToolCollection`, but no host could call an wasmagent agent. F1
 closes the loop. The same Workers/Node deployment that runs your agent now
 ships its own MCP endpoint — no extra service, no protocol drift.
 

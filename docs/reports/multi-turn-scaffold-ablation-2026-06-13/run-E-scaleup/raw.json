@@ -27,20 +27,12 @@
       "description": "G0 candidate arm. CodeAct (one program per rollout, PO drives the kernel) × 5 fresh rollouts × terminal-state majority. NOTE: grammar=json is intentionally OFF here because format=json (arm b) and JS-code-fence (arm c) are structurally incompatible — see comment in source. ≥50% on a 1.5B model is the G0 green-light threshold."
     }
   ],
-  "seeds": [
-    0,
-    1,
-    2
-  ],
+  "seeds": [0, 1, 2],
   "aggregates": [
     {
       "modelId": "qwen2.5:0.5b",
       "suiteName": "mt-tool-exec.arm-c-code",
-      "seedAccs": [
-        0.03333333333333333,
-        0,
-        0
-      ],
+      "seedAccs": [0.03333333333333333, 0, 0],
       "meanAcc": 0.011111111111111112,
       "wilsonLo": 0.001964084098699803,
       "wilsonHi": 0.0602840831816497,
@@ -56,11 +48,7 @@
     {
       "modelId": "evomerge-qwen25-1b5:latest",
       "suiteName": "mt-tool-exec.arm-c-code",
-      "seedAccs": [
-        0.1,
-        0.06666666666666667,
-        0.03333333333333333
-      ],
+      "seedAccs": [0.1, 0.06666666666666667, 0.03333333333333333],
       "meanAcc": 0.06666666666666667,
       "wilsonLo": 0.030909927727348276,
       "wilsonHi": 0.13790094781659787,
@@ -76,11 +64,7 @@
     {
       "modelId": "qwen2.5:0.5b",
       "suiteName": "mt-tool-exec.arm-e-full",
-      "seedAccs": [
-        0,
-        0,
-        0
-      ],
+      "seedAccs": [0, 0, 0],
       "meanAcc": 0,
       "wilsonLo": 0,
       "wilsonHi": 0.040935625627630166,
@@ -96,11 +80,7 @@
     {
       "modelId": "evomerge-qwen25-1b5:latest",
       "suiteName": "mt-tool-exec.arm-e-full",
-      "seedAccs": [
-        0.06666666666666667,
-        0.1,
-        0.06666666666666667
-      ],
+      "seedAccs": [0.06666666666666667, 0.1, 0.06666666666666667],
       "meanAcc": 0.07777777777777778,
       "wilsonLo": 0.038184815295978405,
       "wilsonHi": 0.1519386019006871,

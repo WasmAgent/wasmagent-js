@@ -1,9 +1,9 @@
-# Evaluation runner — agentkit-js as a model-evaluation harness
+# Evaluation runner — wasmagent-js as a model-evaluation harness
 
-> **Status**: shipped in `@wasmagent/evals-runner@0.1.0` (2026-06-12).
+> **Status**: shipped in `@wasmagent/evals-runner@1.0.0` (2026-06-12).
 > Provider-agnostic OpenAI-compat: point at Ollama / OpenRouter /
 > AI Gateway / OpenAI / vLLM. Same model-spec format as the rest of
-> agentkit-js (`docs/guides/openai-compat-recipes.md`).
+> wasmagent-js (`docs/guides/openai-compat-recipes.md`).
 
 ## What it does
 
@@ -18,10 +18,10 @@ build that produced it.
 
 ```bash
 # Pick a suite from the catalogue:
-agentkit evals list
+wasmagent evals list
 
 # Run multi-turn memory across 5 local Ollama models, 3 seeds:
-agentkit evals run \
+wasmagent evals run \
   --suite=multi-turn-memory \
   --models="qwen2.5:0.5b,evo-qwen3-1b7-q3km:latest,evomerge-qwen25-1b5:latest,evomerge-qwen3-v2:latest,gemma4-12b:latest" \
   --base-url=http://localhost:11434/v1 \
@@ -37,7 +37,7 @@ provides a fallback for specs that omit `@`.
 Bilateral specs (different base URLs per model) work the same way:
 
 ```bash
-agentkit evals run \
+wasmagent evals run \
   --suite=multi-turn-memory \
   --models="qwen2.5:0.5b@http://localhost:11434/v1,gpt4o-mini@https://api.openai.com/v1#gpt-4o-mini"
 ```

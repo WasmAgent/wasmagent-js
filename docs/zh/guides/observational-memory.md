@@ -5,7 +5,7 @@
 ## 提供的能力
 
 - **5–40× 压缩**，与 Mastra 的 Observational Memory 相当（LongMemEval 94.87% 参考；我们不自报数字 — 暴露 primitive 并提供你可以跑的 benchmark）。
-- **便宜观察者 + 贵 agent** — 观察者跑在小模型（Haiku、豆包、DeepSeek）上。Agent 保持你设的模型。agentkit 的多模型层让这是一行配置。
+- **便宜观察者 + 贵 agent** — 观察者跑在小模型（Haiku、豆包、DeepSeek）上。Agent 保持你设的模型。wasmagent 的多模型层让这是一行配置。
 - **prompt-cache 感知** — 压缩观察落在 assembler 前部，使前缀字节级稳定，后续 agent 调用一直走 cache。这是没有 `cache_control` 意识的厂商打不到的角度。
 - **异步 + 非阻塞** — `noteStep()` 调度一次扫描后立即返回。Agent 从不等压缩。
 - **持久化** — 绑定 `KvBackend` 时，观察存于 `obs:<sessionId>:<seqId>`，worker 回收后仍然存活。

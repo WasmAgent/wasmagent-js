@@ -1,4 +1,4 @@
-# Use agentkit kernels with the Claude Agent SDK
+# Use wasmagent kernels with the Claude Agent SDK
 
 > Last refreshed: **2026-06-12**.
 > Companion to [`integrate-vercel-ai-sdk.md`](integrate-vercel-ai-sdk.md)

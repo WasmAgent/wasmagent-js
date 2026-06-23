@@ -7,7 +7,7 @@ wasmagent 是 30 个 npm 包的 monorepo，全部在 `@wasmagent/*` scope 下。
 | 包 | 是什么 |
 |---|---|
 | [`@wasmagent/core`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/core) | Agent、kernel、model、tool、runner、evals、checkpoint、observability |
-| [`@wasmagent/cli`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/cli) | `agentkit` CLI:`run`、`init-tool`、`devtools`、`evals` |
+| [`@wasmagent/cli`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/cli) | `wasmagent` CLI:`run`、`init-tool`、`devtools`、`evals` |
 | [`@wasmagent/devtools`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/devtools) | 时间旅行调试器 + 可选 React UI + 本地 Studio 的 `RunsAggregator` |
 | [`@wasmagent/evals-runner`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/evals-runner) | 多模型 × 多套件 Pareto 评测;6 个参考套件;McNemar / Wilson / bootstrap / G1 配对统计 |
 | [`@wasmagent/react`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/react) | `useAgentRun()` SSE 流式 hook |

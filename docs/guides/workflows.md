@@ -5,7 +5,7 @@
 
 ## Why this exists
 
-agentkit-js already has a wave-based parallel scheduler (`Scheduler`), a
+wasmagent-js already has a wave-based parallel scheduler (`Scheduler`), a
 checkpointer (`KvCheckpointer`), and an event log (`EventLog`). What was
 missing — until now — is a single primitive that combines them into a
 **durable, observable, terminable, resumable** unit of work that runs the same

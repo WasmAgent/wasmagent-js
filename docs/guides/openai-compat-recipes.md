@@ -12,7 +12,7 @@ Moonshot, Zhipu, MiniMax, Together, Fireworks, Groq, Anyscale, Ollama,
 LM Studio, vLLM, llama-server — speaks an OpenAI-compatible
 `/chat/completions`.
 
-agentkit's answer: **`GenericOpenAICompatModel`** in `@wasmagent/core`.
+wasmagent's answer: **`GenericOpenAICompatModel`** in `@wasmagent/core`.
 One concrete class, three constructor args, every provider's quirks
 expressed as runtime config. New providers become README recipes (this
 file), not new packages.

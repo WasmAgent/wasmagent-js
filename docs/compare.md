@@ -5,14 +5,14 @@ A short cut of the [comparison table from the main README](https://github.com/Wa
 > **2026-06-17 update.** The framework field has shifted: OpenAI Agents
 > SDK now has a *native sandbox* (2026-04), Vercel AI SDK 6 ships
 > `DurableAgent` + a DevTools panel, Cloudflare ships code-mode
-> portal-default. Several rows that used to be **agentkit-only** are
+> portal-default. Several rows that used to be **wasmagent-only** are
 > now **table stakes**. The differentiation has tightened to
 > *swappability* (drop our kernel into any framework's executor
 > socket) and *governance* (`CapabilityManifest` ↔ OWASP Agentic
 > Top 10 with real WASM isolation; see
 > [`docs/security/capability-manifest-owasp.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/security/capability-manifest-owasp.md)).
 
-|  | Vercel AI SDK 6 | Mastra | LangGraph.js | OpenAI Agents JS | CF Agents SDK | **agentkit-js** |
+|  | Vercel AI SDK 6 | Mastra | LangGraph.js | OpenAI Agents JS | CF Agents SDK | **wasmagent-js** |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
 | Edge-safe sandboxed code execution | ❌ | ❌ | ❌ | ✅ native sandbox (2026-04) | ✅ isolate (CF only) | ✅ **3 tiers, portable** |
 | Real Python in-process | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ Pyodide |
@@ -41,15 +41,15 @@ We are intentionally **not** competing on:
 - Hosted commercial SaaS — Mastra Cloud, LangSmith, Vercel platform. We're a runtime + framework, not a hosted product.
 - **Headline benchmark numbers.** Agent benchmarks are in a "self-reported, never independently reproduced" trust crisis (2026-Q1/Q2 industry consensus). Our angle is the *referee, not the contestant* — `evals-runner` (paired McNemar / Wilson / bootstrap, scipy-aligned 1e-7) is the harness anyone can re-run on any pair of agents. Worked example: [three-round arm-f vs bare vs batch-grammar ablation](https://github.com/WasmAgent/wasmagent-js/tree/main/docs/reports/arm-f-vs-bare-2026-06-17).
 
-If you're choosing between agentkit-js and one of the above frameworks, the question is whether you need any of the rows in the table that say "✅" only for agentkit-js. If you don't, the bigger ecosystems are the right call.
+If you're choosing between wasmagent-js and one of the above frameworks, the question is whether you need any of the rows in the table that say "✅" only for wasmagent-js. If you don't, the bigger ecosystems are the right call.
 
 ## Why three sandbox tiers?
 
-See the [kernel decision tree](/kernels/comparison) — every cell other than agentkit-js is "❌" because no framework treats sandbox isolation as a swappable interface across runtimes (in-process / WASM / remote) and languages (JS + real Python).
+See the [kernel decision tree](/kernels/comparison) — every cell other than wasmagent-js is "❌" because no framework treats sandbox isolation as a swappable interface across runtimes (in-process / WASM / remote) and languages (JS + real Python).
 
 ## Compose, don't switch (this is the headline pitch — 2026-06-17)
 
-If you already use Vercel AI SDK 6, Mastra, OpenAI Agents JS, Claude Agent SDK, or Cloudflare's codemode — **you do not need to switch frameworks to use agentkit's kernels**. Each kernel is an `import` away:
+If you already use Vercel AI SDK 6, Mastra, OpenAI Agents JS, Claude Agent SDK, or Cloudflare's codemode — **you do not need to switch frameworks to use wasmagent's kernels**. Each kernel is an `import` away:
 
 - [Use kernels with Vercel AI SDK](/guides/integrate-vercel-ai-sdk)
 - [Use kernels with Mastra](/guides/integrate-mastra)

@@ -1,6 +1,6 @@
-# Use agentkit-js kernels with Vercel AI SDK
+# Use wasmagent-js kernels with Vercel AI SDK
 
-The agentkit-js code-execution kernels (`@wasmagent/kernel-quickjs`, `kernel-pyodide`, `kernel-wasmtime`, `kernel-remote`) **do not require the rest of agentkit-js**. You can drop them into any agent framework that lets you register a custom tool — including Vercel AI SDK.
+The wasmagent-js code-execution kernels (`@wasmagent/kernel-quickjs`, `kernel-pyodide`, `kernel-wasmtime`, `kernel-remote`) **do not require the rest of wasmagent-js**. You can drop them into any agent framework that lets you register a custom tool — including Vercel AI SDK.
 
 This page shows how to expose `QuickJSKernel` as a Vercel AI SDK tool, giving you edge-safe sandboxed code execution that the AI SDK does not ship today.
 

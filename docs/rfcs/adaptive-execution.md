@@ -3,7 +3,7 @@
 > **Status:** all 4 phases shipped 2026-06-18 · paired-stat ablation green (L1/L2/L3 all p = 1.86e-9 on mock-LLM, n=30 per arm) · bscode UI integration in flight
 > **Author:** maintainer + Claude (paired)
 > **Tracks:** [`docs/strategy/2026-06-18-adaptive-execution.md`](../strategy/2026-06-18-adaptive-execution.md) (the *why*)
-> **All phases of 4 complete on agentkit-js** — see [`docs/eval-reports/adaptive-execution-2026-06-18-baseline.md`](../eval-reports/adaptive-execution-2026-06-18-baseline.md) for the ablation evidence.
+> **All phases of 4 complete on wasmagent-js** — see [`docs/eval-reports/adaptive-execution-2026-06-18-baseline.md`](../eval-reports/adaptive-execution-2026-06-18-baseline.md) for the ablation evidence.
 
 This RFC proposes the **API shape** for the ninth differentiation axis. It does not propose implementation details beyond what's needed to commit to the public surface. Phases 2–4 will each get their own follow-up RFC for the per-layer mechanics.
 
@@ -137,7 +137,7 @@ new GoalDirectedAgent({
 CLI flag mirror:
 
 ```bash
-agentkit goal "<task>" --allow-negotiate
+wasmagent goal "<task>" --allow-negotiate
 ```
 
 In `--allow-negotiate` CLI mode without `--from-criteria`, the agent prints the proposal and reads user decision from stdin. With `--from-criteria` set, `--allow-negotiate` is a noop (CI mode prefers determinism — accept this asymmetry).
@@ -173,7 +173,7 @@ Sequencing them lets each build adoption without the others. L1 is useful even o
 - `Tool.alternatives` is optional. Existing tools work unchanged.
 - `enableToolSynthesis` defaults to `false`. Existing `GoalDirectedAgent` constructions are byte-identical.
 - `allowNegotiate` defaults to `false`. The new `negotiation-proposed` outcome only ever appears when this is set.
-- `GoalDirectedOutcome` gains a string variant. Any consumer using exhaustive switch on it will get a TypeScript error and need to handle the new case — that's the point. Update the `agentkit goal` CLI's outcome printer in the same PR that flips the type.
+- `GoalDirectedOutcome` gains a string variant. Any consumer using exhaustive switch on it will get a TypeScript error and need to handle the new case — that's the point. Update the `wasmagent goal` CLI's outcome printer in the same PR that flips the type.
 
 ---
 
@@ -194,7 +194,7 @@ Following the [06-17 referee positioning](../strategy/2026-06-17-update.md): the
 1. **Should L1 alternatives be model-suggested or human-curated?** Today's proposal: human-curated (`Tool.alternatives`). A future extension could allow model-suggested at registration time, but this RFC keeps the trust model simple.
 2. **Token cost of L1 prompt insertion.** Every fallback-offer adds ~80–150 tokens. On long failure chains this compounds. The implementation should cap "offered fallbacks per turn" at, say, 3 and dedupe across turns.
 3. **L2 synthesis vs registered code-mode call.** Today these are indistinguishable in events (both are `tool_call` for `execute_code`). Phase 2 needs a clean way to discriminate without changing the kernel API. Probably a header in the agent's `execute_code` invocation.
-4. **L3 in `agentkit verify`.** Should the deterministic-only `verify` command grow a `--suggest-relaxation` flag for offline criteria editing? Maybe later; not Phase 3.
+4. **L3 in `wasmagent verify`.** Should the deterministic-only `verify` command grow a `--suggest-relaxation` flag for offline criteria editing? Maybe later; not Phase 3.
 
 ---
 

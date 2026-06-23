@@ -1,4 +1,4 @@
-# 把 agentkit agent 暴露为 MCP server（F1）
+# 把 wasmagent agent 暴露为 MCP server（F1）
 
 `@wasmagent/mcp-server` 包能把任何运行起来像 agent 的对象——`ToolCallingAgent`、`CodeAgent`、自定义 `SubagentRunnable`——包装成 Model Context Protocol server。已经讲 MCP 的宿主（Claude Code、Cursor 2.4+、Copilot、Gemini CLI、Bedrock AgentCore、Microsoft Agent Framework）就能像调用任何 MCP 工具一样调你的 agent ——列举其能力、同步调用、或发起长任务后续轮询。
 

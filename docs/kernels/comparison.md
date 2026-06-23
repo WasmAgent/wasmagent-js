@@ -1,6 +1,6 @@
 # Kernel selection — VmKernel vs QuickJSKernel vs WasmtimeKernel
 
-C2 — agentkit-js ships three execution kernels for `CodeAgent` and
+C2 — wasmagent-js ships three execution kernels for `CodeAgent` and
 `ProgrammaticOrchestrator`. They differ on **isolation strength**, **cold-start
 cost**, and **runtime breadth**. This page is the decision tree, plus a
 quantitative comparison table.

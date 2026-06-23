@@ -6,7 +6,7 @@ Run them yourself:
 
 ```bash
 git clone https://github.com/WasmAgent/wasmagent-js
-cd agentkit-js
+cd wasmagent-js
 bun install
 bun run bench           # all benchmarks
 bun run bench -- ptc    # one specific suite
@@ -123,15 +123,15 @@ Two non-obvious findings the failure pattern reveals:
   same magnitude in absolute input tokens (S6 went 654→200ish on every
   model) but a larger fraction of those models' total budget.
 
-## Same fixture, run via `agentkit evals` (2026-06-12, prompt re-tuned)
+## Same fixture, run via `wasmagent evals` (2026-06-12, prompt re-tuned)
 
-The runner shipped in `@wasmagent/evals-runner@0.1.0` uses a more
+The runner shipped in `@wasmagent/evals-runner@1.0.0` uses a more
 prescriptive system message ("Reply with the answer ONLY — no preamble,
 no explanation. Be concise"). On the same 6-item fixture, T=0, 1 seed,
 the per-model results shifted in a way that's worth recording:
 
 ```bash
-agentkit evals run --suite=multi-turn-memory \
+wasmagent evals run --suite=multi-turn-memory \
   --models="qwen2.5:0.5b,evo-qwen3-1b7-q3km:latest,evomerge-qwen25-1b5:latest,evomerge-qwen3-v2:latest,gemma4-12b:latest" \
   --base-url=http://localhost:11434/v1 --seeds=0
 ```
@@ -159,7 +159,7 @@ agentkit evals run --suite=multi-turn-memory \
 
 The lesson is on prompt sensitivity, not on memory: small accuracy
 swings in this fixture are mostly attributable to instruction
-phrasing, which is the same reason `agentkit evals` reports `σ across
+phrasing, which is the same reason `wasmagent evals` reports `σ across
 seeds` and Wilson CI on every cell — for any single number to be a
 defensible claim, you need ≥3 seeds and the variance across them
 disclosed.
