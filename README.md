@@ -50,6 +50,26 @@ cd my-agent && npm install && npm start
 
 ---
 
+## WasmAgent Ecosystem
+
+WasmAgent is a portable, governable agent runtime for safe code execution, verifiable rollouts, and post-training data loops.
+
+| Repo | Role |
+|---|---|
+| **wasmagent-js** (this repo) | Embedded Agent Runtime / WASM Kernel / policy / verifier / adapters |
+| [bscode](https://github.com/WasmAgent/bscode) | Cloudflare flagship demo and deploy template for safe coding agents |
+| [evomerge](https://github.com/WasmAgent/evomerge) | Public datafactory and eval-trust backend for rollout data |
+
+```text
+Task → Safe Runtime → Verifiable Rollout → Trajectory Export → DPO/PPO Data → Better Models
+```
+
+> **Bring your own agent framework.** wasmagent-js provides the sandboxed runtime, capability
+> policies, build/visual verifiers, rollout ranker, and trace export — without replacing
+> your existing orchestration framework.
+
+---
+
 ## Nine differentiation axes — at a glance
 
 > **What this table is.** The nine surfaces where wasmagent is doing
