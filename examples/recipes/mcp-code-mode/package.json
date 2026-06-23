@@ -1,0 +1,6 @@
+{
+  "name": "wasmagent-recipe-mcp-code-mode",
+  "type": "module",
+  "description": "WasmAgent runtime recipe: MCP code-mode portal",
+  "private": true
+}

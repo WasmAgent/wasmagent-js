@@ -1,0 +1,6 @@
+{
+  "name": "wasmagent-recipe-mastra-sandbox",
+  "type": "module",
+  "description": "WasmAgent runtime recipe: Mastra sandbox provider",
+  "private": true
+}

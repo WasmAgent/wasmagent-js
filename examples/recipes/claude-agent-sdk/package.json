@@ -1,0 +1,6 @@
+{
+  "name": "wasmagent-recipe-claude-agent-sdk",
+  "type": "module",
+  "description": "WasmAgent runtime recipe: Claude Agent SDK",
+  "private": true
+}

@@ -1,0 +1,6 @@
+{
+  "name": "wasmagent-recipe-openai-agents",
+  "type": "module",
+  "description": "WasmAgent runtime recipe: OpenAI Agents JS SDK",
+  "private": true
+}
