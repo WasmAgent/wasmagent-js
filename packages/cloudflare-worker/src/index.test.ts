@@ -421,8 +421,82 @@ describe("POST /run — KV session caching", () => {
   });
 });
 
-// ── A3: POST /resume ─────────────────────────────────────────────────────────
+// ── AG-UI resume (RunAgentInput.resume) ─────────────────────────────────────
 
+describe("POST /run — AG-UI resume from AGENTKIT_SESSIONS", () => {
+  beforeEach(() => {
+    mockAgentEvents = [mockFinalAnswerEvent];
+  });
+
+  it("resume:true with threadId → replays KV-cached events (X-Agentkit-Cache: HIT)", async () => {
+    const cachedEvents: AgentEvent[] = [mockFinalAnswerEvent];
+    const getMock = mock().mockResolvedValue(JSON.stringify(cachedEvents));
+    const mockKV = { get: getMock, put: mock().mockResolvedValue(undefined) };
+
+    const res = await runPost(
+      { threadId: "thread-abc", resume: true },
+      makeEnv({ AGENTKIT_SESSIONS: mockKV })
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("X-Agentkit-Cache")).toBe("HIT");
+    // KV was queried with the threadId as the session key
+    expect(getMock).toHaveBeenCalledWith("thread-abc", "text");
+  });
+
+  it("resume:string → uses that string as the session key", async () => {
+    const cachedEvents: AgentEvent[] = [mockFinalAnswerEvent];
+    const getMock = mock().mockResolvedValue(JSON.stringify(cachedEvents));
+    const mockKV = { get: getMock, put: mock().mockResolvedValue(undefined) };
+
+    const res = await runPost(
+      { threadId: "thread-abc", resume: "explicit-session-id" },
+      makeEnv({ AGENTKIT_SESSIONS: mockKV })
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("X-Agentkit-Cache")).toBe("HIT");
+    expect(getMock).toHaveBeenCalledWith("explicit-session-id", "text");
+  });
+
+  it("resume:true with no KV match → falls through to fresh run (no HIT header)", async () => {
+    const getMock = mock().mockResolvedValue(null);
+    const mockKV = { get: getMock, put: mock().mockResolvedValue(undefined) };
+
+    const res = await runPost(
+      { threadId: "thread-new", resume: true },
+      makeEnv({ AGENTKIT_SESSIONS: mockKV })
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("X-Agentkit-Cache")).toBeNull();
+    const lines = await readSSELines(res);
+    expect(lines.at(-1)).toBe("data: [DONE]");
+  });
+
+  it("resume:true without AGENTKIT_SESSIONS → runs fresh agent normally", async () => {
+    const res = await runPost({ threadId: "thread-xyz", resume: true }, makeEnv());
+    expect(res.status).toBe(200);
+    expect(res.headers.get("X-Agentkit-Cache")).toBeNull();
+    const lines = await readSSELines(res);
+    expect(lines.at(-1)).toBe("data: [DONE]");
+  });
+
+  it("resume:true without threadId and no AGENTKIT_SESSIONS → fresh run", async () => {
+    // resume:true but no threadId — session key is null, skip resume lookup.
+    // KV is still queried for the content-hash cache (one call), but not for resume.
+    const getMock = mock().mockResolvedValue(null);
+    const mockKV = { get: getMock, put: mock().mockResolvedValue(undefined) };
+    const res = await runPost(
+      { resume: true },
+      makeEnv({ AGENTKIT_SESSIONS: mockKV })
+    );
+    // Session key is null (no threadId), so no extra resume KV lookup — only the
+    // content-hash cache lookup fires (one call).  The run should complete normally.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(getMock).toHaveBeenCalledTimes(1); // content-hash cache only, not resume
+    expect(res.status).toBe(200);
+  });
+});
+
+// ── A3: POST /resume ─────────────────────────────────────────────────────────
 describe("POST /resume — HITL persisted resume (A3)", () => {
   /** Build an in-memory KV namespace that satisfies the worker's KV usage. */
   function fakeCheckpointKv() {

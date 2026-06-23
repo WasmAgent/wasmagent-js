@@ -1,5 +1,5 @@
 import type { AgentEvent } from "@wasmagent/core";
-import { toAgUiEvents, toSseString } from "./index.js";
+import { fromRunAgentInput, toAgUiEvents, toSseString } from "./index.js";
 
 function makeEvent<T extends Partial<AgentEvent>>(overrides: T): AgentEvent {
   return {
@@ -42,7 +42,7 @@ describe("toAgUiEvents — AG-UI mapping", () => {
     expect((events[0] as { data: { step: number } }).data.step).toBe(1);
   });
 
-  it("thinking_delta → TEXT_MESSAGE_CHUNK (channel: thinking)", async () => {
+  it("thinking_delta → THINKING_START + TEXT_MESSAGE_CHUNK (channel: thinking)", async () => {
     const events = await collect([
       makeEvent({
         channel: "thinking",
@@ -50,10 +50,85 @@ describe("toAgUiEvents — AG-UI mapping", () => {
         data: { delta: "I'm thinking...", step: 1 },
       }),
     ]);
-    expect(events[0]?.type).toBe("TEXT_MESSAGE_CHUNK");
-    const d = (events[0] as { data: { channel?: string; delta: string } }).data;
+    // First event: THINKING_START boundary marker
+    expect(events).toHaveLength(2);
+    expect(events[0]?.type).toBe("THINKING_START");
+    // Second event: the actual chunk
+    expect(events[1]?.type).toBe("TEXT_MESSAGE_CHUNK");
+    const d = (events[1] as { data: { channel?: string; delta: string } }).data;
     expect(d.channel).toBe("thinking");
     expect(d.delta).toBe("I'm thinking...");
+  });
+
+  it("multiple thinking_deltas emit only one THINKING_START", async () => {
+    const events = await collect([
+      makeEvent({ channel: "thinking", event: "thinking_delta", data: { delta: "first", step: 1 } }),
+      makeEvent({ channel: "thinking", event: "thinking_delta", data: { delta: "second", step: 1 } }),
+      makeEvent({ channel: "thinking", event: "thinking_delta", data: { delta: "third", step: 1 } }),
+    ]);
+    const types = events.map((e) => e.type);
+    expect(types.filter((t) => t === "THINKING_START")).toHaveLength(1);
+    expect(types.filter((t) => t === "TEXT_MESSAGE_CHUNK")).toHaveLength(3);
+    expect(types.indexOf("THINKING_START")).toBe(0);
+  });
+
+  it("THINKING_END emitted before tool_call after thinking_delta", async () => {
+    const events = await collect([
+      makeEvent({ channel: "thinking", event: "thinking_delta", data: { delta: "hmm", step: 1 } }),
+      makeEvent({
+        channel: "tool",
+        event: "tool_call",
+        data: { toolName: "search", args: {}, callId: "c1", batchId: "b1", batchSize: 1, stepIndex: 1 },
+      }),
+    ]);
+    const types = events.map((e) => e.type);
+    expect(types).toContain("THINKING_START");
+    expect(types).toContain("THINKING_END");
+    // THINKING_END must come before TOOL_CALL_START
+    expect(types.indexOf("THINKING_END")).toBeLessThan(types.indexOf("TOOL_CALL_START"));
+  });
+
+  it("THINKING_END emitted before final_answer after thinking_delta", async () => {
+    const events = await collect([
+      makeEvent({ channel: "thinking", event: "thinking_delta", data: { delta: "hmm", step: 1 } }),
+      makeEvent({ channel: "text", event: "final_answer", data: { answer: "42" } }),
+    ]);
+    const types = events.map((e) => e.type);
+    expect(types).toContain("THINKING_START");
+    expect(types).toContain("THINKING_END");
+    expect(types.indexOf("THINKING_END")).toBeLessThan(types.indexOf("TEXT_MESSAGE_START"));
+  });
+
+  it("THINKING_END emitted before step_start when thinking is active", async () => {
+    const events = await collect([
+      makeEvent({ channel: "thinking", event: "thinking_delta", data: { delta: "hmm", step: 1 } }),
+      makeEvent({ channel: "thinking", event: "step_start", data: { step: 2 } }),
+    ]);
+    const types = events.map((e) => e.type);
+    expect(types).toContain("THINKING_START");
+    expect(types).toContain("THINKING_END");
+    expect(types.indexOf("THINKING_END")).toBeLessThan(types.indexOf("STEP_STARTED"));
+  });
+
+  it("THINKING_END emitted before error when thinking is active", async () => {
+    const events = await collect([
+      makeEvent({ channel: "thinking", event: "thinking_delta", data: { delta: "hmm", step: 1 } }),
+      makeEvent({ channel: "text", event: "error", data: { error: "boom", step: 1 } }),
+    ]);
+    const types = events.map((e) => e.type);
+    expect(types).toContain("THINKING_START");
+    expect(types).toContain("THINKING_END");
+    expect(types.indexOf("THINKING_END")).toBeLessThan(types.indexOf("RUN_ERROR"));
+  });
+
+  it("no THINKING_START/END emitted when no thinking_delta events", async () => {
+    const events = await collect([
+      makeEvent({ channel: "text", event: "run_start", data: { task: "t" } }),
+      makeEvent({ channel: "text", event: "final_answer", data: { answer: "done" } }),
+    ]);
+    const types = events.map((e) => e.type);
+    expect(types).not.toContain("THINKING_START");
+    expect(types).not.toContain("THINKING_END");
   });
 
   it("tool_call → TOOL_CALL_START + TOOL_CALL_ARGS (AG1)", async () => {
@@ -277,5 +352,60 @@ describe("toSseString", () => {
     expect(dataLine).toBeDefined();
     const parsed = JSON.parse((dataLine ?? "").replace("data: ", ""));
     expect(parsed.type).toBe("RUN_STARTED");
+  });
+});
+
+describe("fromRunAgentInput — context injection", () => {
+  it("no context → task unchanged", () => {
+    const result = fromRunAgentInput({ task: "hello" });
+    expect(result.task).toBe("hello");
+  });
+
+  it("empty context array → task unchanged", () => {
+    const result = fromRunAgentInput({ task: "hello", context: [] });
+    expect(result.task).toBe("hello");
+  });
+
+  it("single context item → appended as <context> block", () => {
+    const result = fromRunAgentInput({
+      task: "summarise",
+      context: [{ url: "https://example.com", title: "Example" }],
+    });
+    expect(result.task).toContain("summarise");
+    expect(result.task).toContain("<context>");
+    expect(result.task).toContain("</context>");
+    expect(result.task).toContain('"url":"https://example.com"');
+    expect(result.task).toContain('"title":"Example"');
+  });
+
+  it("multiple context items → each serialised on its own line inside <context>", () => {
+    const result = fromRunAgentInput({
+      task: "do something",
+      context: [{ key: "a" }, { key: "b" }],
+    });
+    const contextBlock = result.task.slice(result.task.indexOf("<context>"));
+    const lines = contextBlock
+      .replace("<context>\n", "")
+      .replace("\n</context>", "")
+      .split("\n");
+    expect(lines).toHaveLength(2);
+    expect(JSON.parse(lines[0]!)).toEqual({ key: "a" });
+    expect(JSON.parse(lines[1]!)).toEqual({ key: "b" });
+  });
+
+  it("task derived from last user message still gets context appended", () => {
+    const result = fromRunAgentInput({
+      messages: [{ role: "user", content: "what is 2+2?" }],
+      context: [{ hint: "math" }],
+    });
+    expect(result.task).toMatch(/^what is 2\+2\?/);
+    expect(result.task).toContain("<context>");
+    expect(result.task).toContain('"hint":"math"');
+  });
+
+  it("resume field is passed through unchanged", () => {
+    expect(fromRunAgentInput({ task: "t", resume: true }).resume).toBe(true);
+    expect(fromRunAgentInput({ task: "t", resume: "sess-123" }).resume).toBe("sess-123");
+    expect(fromRunAgentInput({ task: "t" }).resume).toBeUndefined();
   });
 });

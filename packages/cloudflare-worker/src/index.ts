@@ -195,8 +195,8 @@ function isRunAgentInput(v: unknown): v is RunAgentInput {
     typeof v === "object" &&
     v !== null &&
     // Only treat as RunAgentInput if it has AG-UI-specific fields
-    // (messages array, threadId, runId, forwardedProps) but NOT legacy agentType
-    ("messages" in v || "threadId" in v || "runId" in v || "forwardedProps" in v) &&
+    // (messages array, threadId, runId, forwardedProps, resume, context) but NOT legacy agentType
+    ("messages" in v || "threadId" in v || "runId" in v || "forwardedProps" in v || "resume" in v || "context" in v) &&
     !("agentType" in v) // legacy RunBody has agentType, AG-UI doesn't
   );
 }
@@ -310,6 +310,51 @@ async function handleRun(
     agUiRunId = parsed.runId;
     // RunAgentInput defaults to tool-calling for AG-UI frontends
     agentType = "tool-calling";
+
+    // AG-UI resume: when resume is set, try to load prior events from AGENTKIT_SESSIONS
+    // and replay them — resolves the session key from `resume` (string) or `threadId` (true).
+    const resumeField = parsed.resume;
+    if (resumeField && env.AGENTKIT_SESSIONS) {
+      const sessionKey =
+        typeof resumeField === "string"
+          ? resumeField
+          : (parsed.threadId ?? null);
+      if (sessionKey) {
+        let priorCached: string | null = null;
+        try {
+          priorCached = await env.AGENTKIT_SESSIONS.get(sessionKey, "text");
+        } catch {
+          // KV read failure — treat as cache miss, continue with fresh run
+        }
+        if (priorCached) {
+          // Replay cached session events for the resumed thread.
+          if (useAgUiSse) {
+            let events: AgentEvent[];
+            try {
+              events = JSON.parse(priorCached) as AgentEvent[];
+            } catch {
+              return jsonError("Cached session data is corrupted", 500, corsHeaders);
+            }
+            const agUiStream = toAgUiSseStream(
+              (async function* () {
+                yield* events;
+              })(),
+              agUiRunId
+            );
+            return new Response(agUiStream, {
+              headers: {
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                "X-Agentkit-Cache": "HIT",
+                ...corsHeaders,
+              },
+            });
+          }
+          return replayCachedSession(priorCached, corsHeaders, ctx);
+        }
+        // No cached session found — fall through to a fresh run.
+      }
+    }
   } else if (isRunBody(body)) {
     task = body.task;
     agentType = body.agentType ?? "code";

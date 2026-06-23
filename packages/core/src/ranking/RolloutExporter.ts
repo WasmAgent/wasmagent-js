@@ -1,8 +1,17 @@
+import { createHash } from "node:crypto";
 import type { AgentEvent } from "../types/events.js";
 import type { RolloutBranchResult } from "../enhancement/RolloutForkRunner.js";
 import type { RankedBranch } from "./RolloutRanker.js";
 
 // ── Record types ──────────────────────────────────────────────────────────────
+//
+// SCHEMA GOVERNANCE: These types are the single source of truth for the
+// rollout wire format consumed by evomerge/datafactory/exporter.py.
+// Field names use snake_case to match the JSON wire format and Python conventions.
+// When changing these types:
+//   1. Update packages/core/src/ranking/schemas/rollout-wire.schema.json
+//   2. Notify evomerge maintainers to update exporter.py + schema copy
+// See docs/schemas/GOVERNANCE.md for the full change process.
 
 export interface DpoRecord {
   prompt: string;
@@ -11,11 +20,12 @@ export interface DpoRecord {
   tool_call_sequence: AgentEvent[];
   provenance: {
     source: "wasmagent-rollout";
-    rolloutId: string;
-    chosenBranch: number;
-    rejectedBranch: number;
-    objectiveScore: { chosen: 0 | 1; rejected: 0 | 1 };
-    exportedAtMs: number;
+    rollout_id: string;
+    chosen_branch: number;
+    rejected_branch: number;
+    objective_score: { chosen: 0 | 1; rejected: 0 | 1 };
+    exported_at_ms: number;
+    n_gram_hash: string;
   };
 }
 
@@ -26,10 +36,11 @@ export interface PpoRecord {
   tool_call_sequence: AgentEvent[];
   provenance: {
     source: "wasmagent-rollout";
-    rolloutId: string;
-    branchIndex: number;
-    objectiveScore: 0 | 1;
-    exportedAtMs: number;
+    rollout_id: string;
+    branch_index: number;
+    objective_score: 0 | 1;
+    exported_at_ms: number;
+    n_gram_hash: string;
   };
 }
 
@@ -45,6 +56,10 @@ function buildRankedMap(ranked: RankedBranch[]): Map<number, RankedBranch> {
   const m = new Map<number, RankedBranch>();
   for (const r of ranked) m.set(r.branchIndex, r);
   return m;
+}
+
+function ngramHash(task: string): string {
+  return createHash("sha256").update(task, "utf8").digest("hex").slice(0, 16);
 }
 
 // ── Exports ───────────────────────────────────────────────────────────────────
@@ -78,14 +93,15 @@ export function toDpoRecord(
     tool_call_sequence: chosenBranch.toolCallSequence,
     provenance: {
       source: "wasmagent-rollout",
-      rolloutId: chosenBranch.rolloutId,
-      chosenBranch: chosenRanked.branchIndex,
-      rejectedBranch: rejectedRanked.branchIndex,
-      objectiveScore: {
+      rollout_id: chosenBranch.rolloutId,
+      chosen_branch: chosenRanked.branchIndex,
+      rejected_branch: rejectedRanked.branchIndex,
+      objective_score: {
         chosen: chosenRanked.objectiveScore,
         rejected: rejectedRanked.objectiveScore,
       },
-      exportedAtMs,
+      exported_at_ms: exportedAtMs,
+      n_gram_hash: ngramHash(chosenBranch.task),
     },
   };
 }
@@ -115,10 +131,11 @@ export function toPpoRecords(
       tool_call_sequence: b.toolCallSequence,
       provenance: {
         source: "wasmagent-rollout",
-        rolloutId: b.rolloutId,
-        branchIndex: b.branchIndex,
-        objectiveScore: r.objectiveScore,
-        exportedAtMs,
+        rollout_id: b.rolloutId,
+        branch_index: b.branchIndex,
+        objective_score: r.objectiveScore,
+        exported_at_ms: exportedAtMs,
+        n_gram_hash: ngramHash(b.task),
       },
     });
   }

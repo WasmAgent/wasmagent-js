@@ -51,6 +51,12 @@ jobs:
           fi
           echo "OK: no static heavy imports found in packages/core/src"
 
+      # Schema governance — verifies rollout wire format uses snake_case provenance
+      # keys and that the schema JSON files are present and consistent with source.
+      # See docs/schemas/GOVERNANCE.md for the change process.
+      - name: Schema governance check
+        run: node scripts/check-rollout-schema.mjs
+
       - name: Typecheck
         run: bun run typecheck
 

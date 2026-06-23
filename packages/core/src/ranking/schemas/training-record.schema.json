@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wasmagent.dev/schemas/training-record/v1",
+  "title": "Training Record Format",
+  "description": "Final JSONL format produced by evomerge/datafactory/exporter.py. Validated by validate-rlaif.mjs before shipping to training. NOT the intermediate rollout wire format — see rollout-wire.schema.json.",
+  "oneOf": [
+    { "$ref": "#/$defs/DpoTrainingRecord" },
+    { "$ref": "#/$defs/PpoTrainingRecord" }
+  ],
+  "$defs": {
+    "Message": {
+      "type": "object",
+      "required": ["role", "content"],
+      "properties": {
+        "role": { "type": "string", "enum": ["system", "user", "assistant", "tool"] },
+        "content": { "type": "string" },
+        "tool_calls": { "type": "array" },
+        "tool_call_id": { "type": "string" },
+        "is_error": { "type": "boolean" },
+        "final_answer": { "type": "boolean" }
+      }
+    },
+    "Provenance": {
+      "type": "object",
+      "required": ["source", "rollout_id", "n_gram_hash"],
+      "properties": {
+        "source": { "type": "string", "const": "wasmagent-rollout" },
+        "rollout_id": { "type": "string", "minLength": 1 },
+        "n_gram_hash": { "type": "string", "minLength": 1 }
+      }
+    },
+    "LossWeightTokens": {
+      "type": "string",
+      "enum": ["default", "recovery", "state_summary"]
+    },
+    "DpoTrainingRecord": {
+      "type": "object",
+      "required": ["messages", "chosen", "rejected", "loss_weight_tokens", "provenance"],
+      "additionalProperties": true,
+      "properties": {
+        "messages": { "type": "array", "items": { "$ref": "#/$defs/Message" }, "minItems": 1 },
+        "chosen": { "type": "string", "minLength": 1 },
+        "rejected": { "type": "string", "minLength": 1 },
+        "loss_weight_tokens": { "$ref": "#/$defs/LossWeightTokens" },
+        "provenance": { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "PpoTrainingRecord": {
+      "type": "object",
+      "required": ["messages", "reward", "loss_weight_tokens", "provenance"],
+      "additionalProperties": true,
+      "properties": {
+        "messages": { "type": "array", "items": { "$ref": "#/$defs/Message" }, "minItems": 1 },
+        "reward": { "type": "number", "minimum": 0, "maximum": 1 },
+        "loss_weight_tokens": { "$ref": "#/$defs/LossWeightTokens" },
+        "provenance": { "$ref": "#/$defs/Provenance" }
+      }
+    }
+  }
+}

@@ -216,10 +216,10 @@ describe("RLAIF end-to-end pipeline", () => {
       expect(dpo.prompt).toBe("Build and verify my-app");
       expect(dpo.chosen).not.toBe(dpo.rejected);
       expect(dpo.provenance.source).toBe("wasmagent-rollout");
-      expect(dpo.provenance.rolloutId).toBe("rollout-e2e-test");
-      expect(dpo.provenance.exportedAtMs).toBe(exportedAtMs);
-      expect(typeof dpo.provenance.chosenBranch).toBe("number");
-      expect(typeof dpo.provenance.rejectedBranch).toBe("number");
+      expect(dpo.provenance.rollout_id).toBe("rollout-e2e-test");
+      expect(dpo.provenance.exported_at_ms).toBe(exportedAtMs);
+      expect(typeof dpo.provenance.chosen_branch).toBe("number");
+      expect(typeof dpo.provenance.rejected_branch).toBe("number");
     }
 
     // PPO: one record per branch
@@ -228,11 +228,11 @@ describe("RLAIF end-to-end pipeline", () => {
       expect(r.prompt).toBe("Build and verify my-app");
       expect(typeof r.reward).toBe("number");
       expect(r.provenance.source).toBe("wasmagent-rollout");
-      expect(r.provenance.rolloutId).toBe("rollout-e2e-test");
+      expect(r.provenance.rollout_id).toBe("rollout-e2e-test");
     }
     // Branch 0's reward should be highest
-    const branch0Ppo = ppo.find((r) => r.provenance.branchIndex === 0);
-    const branch1Ppo = ppo.find((r) => r.provenance.branchIndex === 1);
+    const branch0Ppo = ppo.find((r) => r.provenance.branch_index === 0);
+    const branch1Ppo = ppo.find((r) => r.provenance.branch_index === 1);
     expect(branch0Ppo!.reward).toBeGreaterThan(branch1Ppo!.reward);
 
     // ── Step 5: JSONL round-trip ──────────────────────────────────────────────

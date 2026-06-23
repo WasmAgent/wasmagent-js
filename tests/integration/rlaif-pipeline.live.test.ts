@@ -196,8 +196,8 @@ describe("RLAIF live pipeline (real API)", () => {
         expect(r.prompt.length).toBeGreaterThan(0);
         expect(typeof r.reward).toBe("number");
         expect(r.provenance.source).toBe("wasmagent-rollout");
-        expect(r.provenance.rolloutId.length).toBeGreaterThan(0);
-        expect(r.provenance.exportedAtMs).toBe(exportedAtMs);
+        expect(r.provenance.rollout_id.length).toBeGreaterThan(0);
+        expect(r.provenance.exported_at_ms).toBe(exportedAtMs);
       }
 
       // JSONL 每行必须是合法 JSON

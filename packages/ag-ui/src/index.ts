@@ -11,13 +11,13 @@
  *
  * AG-UI event mapping:
  *   run_start          → RUN_STARTED
- *   step_start         → STEP_STARTED
- *   thinking_delta     → TEXT_MESSAGE_CHUNK (thinking channel)
- *   tool_call          → TOOL_CALL_START + TOOL_CALL_ARGS
+ *   step_start         → THINKING_END (if active) + STEP_STARTED
+ *   thinking_delta     → THINKING_START (first delta) + TEXT_MESSAGE_CHUNK (thinking channel)
+ *   tool_call          → THINKING_END (if active) + TOOL_CALL_START + TOOL_CALL_ARGS
  *   tool_result        → TOOL_CALL_RESULT + TOOL_CALL_END
  *   planning           → TEXT_MESSAGE_CHUNK (planning)
- *   final_answer       → TEXT_MESSAGE_START + TEXT_MESSAGE_CONTENT + TEXT_MESSAGE_END + RUN_FINISHED
- *   error              → RUN_ERROR
+ *   final_answer       → THINKING_END (if active) + TEXT_MESSAGE_START + TEXT_MESSAGE_CONTENT + TEXT_MESSAGE_END + RUN_FINISHED
+ *   error              → THINKING_END (if active) + RUN_ERROR
  *   await_human_input  → STATE_DELTA (pendingApproval) + STEP_FINISHED
  *   guardrail_tripwire → RUN_ERROR (tripwire)
  *
@@ -45,6 +45,8 @@ export type AgUiEventType =
   | "TOOL_CALL_ARGS"
   | "TOOL_CALL_RESULT"
   | "TOOL_CALL_END"
+  | "THINKING_START"
+  | "THINKING_END"
   | "STATE_SNAPSHOT"
   | "STATE_DELTA"
   | "MESSAGES_SNAPSHOT"
@@ -100,6 +102,8 @@ export type AgUiEvent =
       type: "TOOL_CALL_END";
       data: { toolCallId: string; toolName: string; output: unknown; isError: boolean };
     })
+  | (AgUiBaseEvent & { type: "THINKING_START"; data: Record<string, unknown> })
+  | (AgUiBaseEvent & { type: "THINKING_END"; data: Record<string, unknown> })
   | (AgUiBaseEvent & { type: "STATE_SNAPSHOT"; data: { snapshot: unknown } })
   | (AgUiBaseEvent & { type: "STATE_DELTA"; data: { delta: unknown } })
   | (AgUiBaseEvent & { type: "MESSAGES_SNAPSHOT"; data: { messages: unknown[] } })
@@ -128,6 +132,17 @@ export interface RunAgentInput {
   forwardedProps?: Record<string, unknown>;
   /** The task/prompt to execute. */
   task?: string;
+  /**
+   * Resume a previous session from KV checkpoint.
+   * - `true`: use `threadId` as the session key to look up cached events.
+   * - `string`: use this value as an explicit session key.
+   */
+  resume?: boolean | string;
+  /**
+   * Structured context items injected into the agent task as a <context> block.
+   * Follows the official AG-UI context items format (array of key/value objects).
+   */
+  context?: Record<string, unknown>[];
 }
 
 export interface AgUiMessage {
@@ -149,6 +164,9 @@ export interface AgUiToolDef {
  *
  * Maps `messages` to `ModelMessage[]` and derives the task from the
  * last user message if `task` is not provided.
+ *
+ * When `input.context` is non-empty, the serialized context items are appended
+ * to the task string as a `<context>` block so the agent can reference them.
  */
 export function fromRunAgentInput(input: RunAgentInput): {
   task: string;
@@ -156,6 +174,7 @@ export function fromRunAgentInput(input: RunAgentInput): {
   threadId: string | undefined;
   runId: string | undefined;
   state: unknown;
+  resume: boolean | string | undefined;
 } {
   const agUiMessages = input.messages ?? [];
 
@@ -174,12 +193,19 @@ export function fromRunAgentInput(input: RunAgentInput): {
     task = lastUser?.content ?? "(no task)";
   }
 
+  // Append context items as a <context> block when provided.
+  if (input.context && input.context.length > 0) {
+    const contextLines = input.context.map((item) => JSON.stringify(item)).join("\n");
+    task = `${task}\n<context>\n${contextLines}\n</context>`;
+  }
+
   return {
     task,
     messages,
     threadId: input.threadId,
     runId: input.runId,
     state: input.state,
+    resume: input.resume,
   };
 }
 
@@ -201,6 +227,9 @@ export async function* toAgUiEvents(
   source: AsyncIterable<AgentEvent>,
   runId?: string
 ): AsyncGenerator<AgUiEvent> {
+  let thinkingActive = false;
+  let thinkingRunId = "";
+
   for await (const ev of source) {
     const effectiveRunId = runId ?? ev.traceId;
     const ts = ev.timestampMs;
@@ -216,6 +245,12 @@ export async function* toAgUiEvents(
         break;
 
       case "step_start":
+        // A new step means the previous thinking phase has ended.
+        if (thinkingActive) {
+          yield { type: "THINKING_END", runId: thinkingRunId, timestamp: ts, data: {} };
+          thinkingActive = false;
+          thinkingRunId = "";
+        }
         yield {
           type: "STEP_STARTED",
           runId: effectiveRunId,
@@ -225,6 +260,11 @@ export async function* toAgUiEvents(
         break;
 
       case "thinking_delta":
+        if (!thinkingActive) {
+          yield { type: "THINKING_START", runId: effectiveRunId, timestamp: ts, data: {} };
+          thinkingActive = true;
+          thinkingRunId = effectiveRunId;
+        }
         yield {
           type: "TEXT_MESSAGE_CHUNK",
           runId: effectiveRunId,
@@ -251,6 +291,11 @@ export async function* toAgUiEvents(
         break;
 
       case "tool_call": {
+        if (thinkingActive) {
+          yield { type: "THINKING_END", runId: thinkingRunId, timestamp: ts, data: {} };
+          thinkingActive = false;
+          thinkingRunId = "";
+        }
         const argsJson = JSON.stringify(ev.data.args);
         yield {
           type: "TOOL_CALL_START",
@@ -306,6 +351,11 @@ export async function* toAgUiEvents(
       }
 
       case "final_answer": {
+        if (thinkingActive) {
+          yield { type: "THINKING_END", runId: thinkingRunId, timestamp: ts, data: {} };
+          thinkingActive = false;
+          thinkingRunId = "";
+        }
         const answerStr =
           typeof ev.data.answer === "string"
             ? ev.data.answer
@@ -339,6 +389,11 @@ export async function* toAgUiEvents(
       }
 
       case "error":
+        if (thinkingActive) {
+          yield { type: "THINKING_END", runId: thinkingRunId, timestamp: ts, data: {} };
+          thinkingActive = false;
+          thinkingRunId = "";
+        }
         yield {
           type: "RUN_ERROR",
           runId: effectiveRunId,

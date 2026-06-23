@@ -42,12 +42,13 @@ describe("toDpoRecord", () => {
     expect(record!.chosen).toBe("answer A");
     expect(record!.rejected).toBe("answer B");
     expect(record!.provenance.source).toBe("wasmagent-rollout");
-    expect(record!.provenance.rolloutId).toBe("rollout-1");
-    expect(record!.provenance.chosenBranch).toBe(0);
-    expect(record!.provenance.rejectedBranch).toBe(1);
-    expect(record!.provenance.objectiveScore.chosen).toBe(1);
-    expect(record!.provenance.objectiveScore.rejected).toBe(0);
-    expect(record!.provenance.exportedAtMs).toBe(TS);
+    expect(record!.provenance.rollout_id).toBe("rollout-1");
+    expect(record!.provenance.chosen_branch).toBe(0);
+    expect(record!.provenance.rejected_branch).toBe(1);
+    expect(record!.provenance.objective_score.chosen).toBe(1);
+    expect(record!.provenance.objective_score.rejected).toBe(0);
+    expect(record!.provenance.exported_at_ms).toBe(TS);
+    expect(record!.provenance.n_gram_hash).toMatch(/^[0-9a-f]{16}$/);
   });
 
   test("returns null when chosen.finalAnswer === rejected.finalAnswer", () => {
@@ -118,8 +119,8 @@ describe("toPpoRecords", () => {
     const branches = [makeBranch(0, "A"), makeBranch(1, "B")];
     const ranked = [makeRanked(0, 1, 1, 1.15), makeRanked(1, 2, 0, 0.42)];
     const records = toPpoRecords(branches, ranked, TS);
-    const r0 = records.find((r) => r.provenance.branchIndex === 0)!;
-    const r1 = records.find((r) => r.provenance.branchIndex === 1)!;
+    const r0 = records.find((r) => r.provenance.branch_index === 0)!;
+    const r1 = records.find((r) => r.provenance.branch_index === 1)!;
     expect(r0.reward).toBeCloseTo(1.15);
     expect(r1.reward).toBeCloseTo(0.42);
   });
@@ -131,10 +132,11 @@ describe("toPpoRecords", () => {
     expect(rec!.prompt).toBe("the task");
     expect(rec!.completion).toBe("answer zero");
     expect(rec!.provenance.source).toBe("wasmagent-rollout");
-    expect(rec!.provenance.rolloutId).toBe("rollout-1");
-    expect(rec!.provenance.branchIndex).toBe(0);
-    expect(rec!.provenance.objectiveScore).toBe(1);
-    expect(rec!.provenance.exportedAtMs).toBe(TS);
+    expect(rec!.provenance.rollout_id).toBe("rollout-1");
+    expect(rec!.provenance.branch_index).toBe(0);
+    expect(rec!.provenance.objective_score).toBe(1);
+    expect(rec!.provenance.exported_at_ms).toBe(TS);
+    expect(rec!.provenance.n_gram_hash).toMatch(/^[0-9a-f]{16}$/);
   });
 
   test("returns empty array when no branches match ranked", () => {

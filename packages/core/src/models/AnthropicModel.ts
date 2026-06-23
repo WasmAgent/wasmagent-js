@@ -80,19 +80,30 @@ export type AnthropicModelId =
   | (typeof AnthropicModels)[keyof typeof AnthropicModels]
   | (string & {});
 
-/** Anthropic model IDs that use legacy budget_tokens instead of adaptive thinking. */
+/**
+ * Exhaustive whitelist of Anthropic model IDs that require the legacy
+ * `budget_tokens` parameter instead of adaptive thinking.
+ *
+ * Safety direction: unknown / new models default to adaptive thinking.
+ * Only add a model here if it is confirmed to support ONLY `budget_tokens`
+ * (i.e. it predates the adaptive-thinking API introduced in claude-*-4-7).
+ * Do NOT add Claude 5 or later models here.
+ */
 const _LEGACY_BUDGET_TOKENS_MODELS = new Set([
   "claude-opus-4-5",
   "claude-opus-4-6",
   "claude-sonnet-4-5",
 ]);
 
-/** Minimum Anthropic model version for adaptive thinking (≥4.7). */
+/**
+ * Returns true when the model supports the adaptive-thinking parameter
+ * (i.e. it is NOT in the legacy budget_tokens whitelist).
+ *
+ * Defaults to true for any model not explicitly listed as legacy, so that
+ * Claude 5 and future models are handled correctly without a regex update.
+ */
 function isAdaptiveThinkingModel(modelId: string): boolean {
-  // claude-*-4-7 and later support adaptive thinking.
-  const match = modelId.match(/claude-\w+-4-(\d+)/);
-  if (match) return parseInt(match[1] as string, 10) >= 7;
-  return false;
+  return !_LEGACY_BUDGET_TOKENS_MODELS.has(modelId);
 }
 
 export interface AnthropicModelOptions {
@@ -441,14 +452,15 @@ export class AnthropicModel implements Model {
 
   /**
    * Build the `thinking` parameter for the Anthropic API.
-   * Handles the adaptive (≥4.7) vs legacy budget_tokens (≤4.6) split.
+   * Handles adaptive thinking (default for all models not in _LEGACY_BUDGET_TOKENS_MODELS)
+   * vs legacy budget_tokens (only for models explicitly listed in that whitelist).
    */
   #buildThinkingParam(opts: GenerateOptions): Record<string, unknown> | null {
     const t = opts.thinking;
     if (!t || t.mode === "off") return null;
 
     if (t.mode === "enabled") {
-      // Legacy budget_tokens mode — only valid on ≤4.6 models.
+      // Legacy budget_tokens mode — only valid for models in _LEGACY_BUDGET_TOKENS_MODELS.
       if (isAdaptiveThinkingModel(this.modelId)) {
         throw new Error(
           `[AnthropicModel] thinking.mode="enabled" with budgetTokens is not supported on ` +
