@@ -129,3 +129,13 @@ Runs in CI under the `boundaries` job. Checks:
 and passes it to `trl.GRPOTrainer` via a reward function. LoRA is on by default (rank 16).
 Requires `pip install trl>=0.9 peft transformers torch`.
 
+## Three-repo Data Loop Contract
+
+The full contract including producers, consumers, contamination policy, and
+end-to-end command chain is documented in:
+
+**`WasmAgent/evomerge` → `docs/data-loop-contract.md`**
+
+That document is the binding contract. `GOVERNANCE.md` (this file) covers the
+schema SSOT and field naming conventions for the wasmagent-js side.
+
