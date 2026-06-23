@@ -875,7 +875,7 @@ cd packages/cloudflare-worker && wrangler dev
 | Project | Role | Relation |
 |---|---|---|
 | [bscode](https://github.com/WasmAgent/bscode) | Production coding agent on Cloudflare Workers + Pages | **Reference deployment** — the flagship template that wires every wasmagent-js capability (QuickJS kernel, `BuildPassesVerifier`, `VisualAssertVerifier`, KV checkpoints, multi-agent fan-out) into a real edge product. Fork it to see wasmagent-js end-to-end. |
-| [evomerge](https://github.com/telleroutlook/evomerge) | Evolutionary LLM merge + RL post-training stack | **Downstream consumer** — evomerge's `datafactory/` reads the JSONL that `RolloutForkRunner` + `RolloutRanker` + `toDpoRecord`/`toPpoRecords` produce, and converts it into DPO/PPO training records for `slime`/`veRL`. bscode's B2/C3 build and visual signals feed the `objectiveScore` that drives ranking. The full data-factory chain (wasmagent-js → bscode → evomerge) is smoke-tested in `tests/integration/rlaif-pipeline.live.test.ts`. |
+| [evomerge](https://github.com/WasmAgent/evomerge) | Evolutionary LLM merge + RL post-training stack | **Downstream consumer** — evomerge's `datafactory/` reads the JSONL that `RolloutForkRunner` + `RolloutRanker` + `toDpoRecord`/`toPpoRecords` produce, and converts it into DPO/PPO training records for `slime`/`veRL`. bscode's B2/C3 build and visual signals feed the `objectiveScore` that drives ranking. The full data-factory chain (wasmagent-js → bscode → evomerge) is smoke-tested in `tests/integration/rlaif-pipeline.live.test.ts`. |
 
 ## Acknowledgements
 
