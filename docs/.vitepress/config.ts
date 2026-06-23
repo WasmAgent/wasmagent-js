@@ -125,6 +125,7 @@ const zhSidebar = {
 };
 
 export default defineConfig({
+  base: "/wasmagent-js/",
   title: "wasmagent",
   description:
     "WASM Agent Kernel & Portable Code Executor — three-tier sandboxed execution, prompt-cache optimization, edge-native TypeScript agent runtime.",
