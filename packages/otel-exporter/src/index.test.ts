@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
-import type { ReadableSpan } from "@wasmagent/core";
+import type { ReadableSpan } from "@wasmagent/core/experimental";
 import { OtlpHttpExporter } from "./index.js";
 
 function makeSpan(overrides: Partial<ReadableSpan> = {}): ReadableSpan {

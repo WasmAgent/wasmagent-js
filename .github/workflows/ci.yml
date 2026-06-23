@@ -28,6 +28,12 @@ jobs:
       - name: Lint (Biome)
         run: bun run lint
 
+      - name: Check branding (no @agentkit-js references)
+        run: node scripts/check-branding.mjs
+
+      - name: Check sub-path imports (beta/experimental use correct paths)
+        run: node scripts/check-subpath-imports.mjs
+
       # A1 — Enforce that heavy optional deps are NEVER statically imported in core.
       # Any top-level "import ... from '@anthropic-ai/sdk'" (or the other three) in
       # packages/core/src must be "import type" only; actual value imports must use
