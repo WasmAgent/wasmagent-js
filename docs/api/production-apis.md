@@ -94,7 +94,7 @@ applyHumanResponse(snap, agent.assembler); // injects user_message into history
 // Then continue with `wrapper.run(agent.run(snap.task, traceId), ...)`.
 ```
 
-The reference Cloudflare Worker (`@wasmagent/cloudflare-worker`) wires all of this for you — bind `WASMAGENT_EVENT_LOG` and `WASMAGENT_CHECKPOINTS` in `wrangler.toml` and you get `Last-Event-ID` resume + a `POST /resume` endpoint out of the box. Full guide: [docs/guides/durable-runtime.md](docs/guides/durable-runtime.md).
+The reference Cloudflare Worker (`@wasmagent/cloudflare-worker`) wires all of this for you — bind `WASMAGENT_EVENT_LOG` and `WASMAGENT_CHECKPOINTS` in `wrangler.toml` and you get `Last-Event-ID` resume + a `POST /resume` endpoint out of the box. Full guide: [docs/guides/durable-runtime.md](../guides/durable-runtime.md).
 
 ### React Hook (B2)
 
