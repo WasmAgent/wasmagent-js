@@ -1,6 +1,6 @@
 # 5 分钟上手 wasmagent
 
-这份文档把你从零带到第一个跑起来的 Agent，配套的英文版在 [getting-started](../guides/getting-started.md)。
+这份文档把你从零带到第一个跑起来的 Agent，配套的英文版在 [getting-started](/guides/getting-started.md)。
 
 ## 1. 安装
 
@@ -80,9 +80,9 @@ const agent = new CodeAgent({
 
 ## 接下来
 
-- [Durable runtime](../guides/durable-runtime.md) — checkpoint、SSE 断线重连、Stateless HITL
-- [Skills & lifecycle hooks](../guides/skills-and-hooks.md) — 工具懒加载、post-tool 钩子（−85% token）
-- [DevTools](../guides/devtools.md) — 时间旅行调试器
-- [Evals cookbook](../guides/evals-cookbook.md) — 16 个内置打分器、多准则评委
+- [Durable runtime](/guides/durable-runtime.md) — checkpoint、SSE 断线重连、Stateless HITL
+- [Skills & lifecycle hooks](/guides/skills-and-hooks.md) — 工具懒加载、post-tool 钩子（−85% token）
+- [DevTools](/guides/devtools.md) — 时间旅行调试器
+- [Evals cookbook](/guides/evals-cookbook.md) — 16 个内置打分器、多准则评委
 
 遇到问题可以 [提 issue](https://github.com/WasmAgent/wasmagent-js/issues) — 5 分钟内卡住就是我们要修的 bug。

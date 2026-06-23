@@ -111,5 +111,5 @@ LangSmith 导出支持 OTel 兼容格式，其属性能够干净地映射到 Gen
 
 本页的出发点是：你不需要是 wasmagent-js 用户也能使用 Studio。跨框架问题
 优先处理，因为这正是该包在
-[`docs/strategy/maintenance-tiers.md`](../strategy/maintenance-tiers.md)
+[`docs/strategy/maintenance-tiers.md`](/strategy/maintenance-tiers.md)
 中定位的目标受众（`@wasmagent/devtools` 是 ◆ Narrative 层级）。
