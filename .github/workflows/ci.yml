@@ -28,7 +28,7 @@ jobs:
       - name: Lint (Biome)
         run: bun run lint
 
-      - name: Check branding (no @agentkit-js references)
+      - name: Check branding (no old brand references)
         run: node scripts/check-branding.mjs
 
       - name: Check sub-path imports (beta/experimental use correct paths)
