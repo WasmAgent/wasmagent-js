@@ -968,7 +968,8 @@ function renderStudioHtml(): string {
  * Models string format: `id@baseUrl#modelId` (modelId optional, defaults
  * to id). Comma-separated. Example:
  *   --models=qwen2.5:0.5b@http://localhost:11434/v1,gpt4o@https://api.openai.com/v1#gpt-4o-mini
- *
+ */
+
 // ── goal command (G2 of cli-gap-analysis-2026-06-18.md) ──────────────────────
 
 /**

@@ -7,10 +7,10 @@ compatibility_flags = ["nodejs_compat"]
 WASMAGENT_LOG_LEVEL = "info"
 
 # KV namespace for session state / result caching.
-# Create with: wrangler kv namespace create WASMAGENT_SESSIONS
+# Create with: wrangler kv namespace create AGENTKIT_SESSIONS
 # Then replace YOUR_KV_ID_HERE with the returned id.
 # [[kv_namespaces]]
-# binding = "WASMAGENT_SESSIONS"
+# binding = "AGENTKIT_SESSIONS"
 # id = "YOUR_KV_ID_HERE"
 
 # AI binding for Workers AI inference (optional — can use Anthropic API instead).

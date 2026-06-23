@@ -318,13 +318,14 @@ describe("RLAIF adversarial edge cases", () => {
 
           if (calls <= NUM_TOOL_CALLS) {
             // Emit one tool_call per generate() invocation, NUM_TOOL_CALLS times
+            // Pass branch index so noop_tool can return exit_code:1 for branch 1.
             yield {
               type: "tool_call",
               toolCall: {
                 type: "tool_use",
                 id: `call-${idx}-${calls}`,
                 name: "noop_tool",
-                input: { step: calls },
+                input: { step: calls, branch: idx },
               },
             };
           } else {
@@ -341,14 +342,18 @@ describe("RLAIF adversarial edge cases", () => {
       };
     };
 
+    // Branch 0 (temp≈0.2) gets exit_code:0 on every step; branch 1 (temp≈0.8)
+    // gets exit_code:1, so scoreFromToolOutput() can distinguish the two branches.
     const noopTool: ToolDefinition = {
       name: "noop_tool",
       description: "A no-op tool for testing",
-      inputSchema: z.object({ step: z.number() }),
+      inputSchema: z.object({ step: z.number(), branch: z.number().optional() }),
       readOnly: true,
       idempotent: true,
       async forward(input) {
-        return `exit_code:0\nstep ${(input as { step: number }).step} done`;
+        const inp = input as { step: number; branch?: number };
+        const exitCode = (inp.branch ?? 0) === 0 ? 0 : 1;
+        return `exit_code:${exitCode}\nstep ${inp.step} done`;
       },
     };
 
@@ -389,12 +394,13 @@ describe("RLAIF adversarial edge cases", () => {
       }
     }
 
-    // Build rollout records — branch 0 gets score=1 (it's at temp=0.2)
+    // Build rollout records — derive score from tool output (branch 0 → exit_code:0 → score=1,
+    // branch 1 → exit_code:1 → score=0), consistent with the other adversarial tests.
     const rolloutRecords: RolloutRecord[] = branchResults.map((r) => ({
       rolloutId: r.rolloutId,
       branchIndex: r.branchIndex,
       finalAnswer: r.finalAnswer,
-      objectiveScore: (Math.abs(r.temperature - 0.2) < 0.01 ? 1 : 0) as 0 | 1,
+      objectiveScore: scoreFromToolOutput(r),
       task: r.task,
     }));
 

@@ -79,6 +79,10 @@ export class ProgrammaticOrchestrator {
       );
     }
 
+    if (this.#options.resetKernelPerRun) {
+      await this.#kernel.reset();
+    }
+
     const toolCalls: ToolCallRecord[] = [];
 
     // Inject callTool as a pseudo-synchronous global by wrapping the script

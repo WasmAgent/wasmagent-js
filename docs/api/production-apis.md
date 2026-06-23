@@ -94,7 +94,7 @@ applyHumanResponse(snap, agent.assembler); // injects user_message into history
 // Then continue with `wrapper.run(agent.run(snap.task, traceId), ...)`.
 ```
 
-The reference Cloudflare Worker (`@wasmagent/cloudflare-worker`) wires all of this for you — bind `WASMAGENT_EVENT_LOG` and `WASMAGENT_CHECKPOINTS` in `wrangler.toml` and you get `Last-Event-ID` resume + a `POST /resume` endpoint out of the box. Full guide: [docs/guides/durable-runtime.md](../guides/durable-runtime.md).
+The reference Cloudflare Worker (`@wasmagent/cloudflare-worker`) wires all of this for you — bind `AGENTKIT_EVENT_LOG` and `AGENTKIT_CHECKPOINTS` in `wrangler.toml` and you get `Last-Event-ID` resume + a `POST /resume` endpoint out of the box. Full guide: [docs/guides/durable-runtime.md](../guides/durable-runtime.md).
 
 ### React Hook (B2)
 
@@ -213,10 +213,13 @@ const orchestrator = new ProgrammaticOrchestrator(kernel, registry, {
 });
 
 // Model-generated script — intermediate results never enter the LLM context.
+// NOTE: every callTool() invocation inside an orchestrated script MUST use `await`.
+// Without it, callTool returns Promise.reject("__PTC_PENDING__:...") when the result
+// is not yet cached, the Promise is silently ignored, and finalOutput will be wrong.
 const script = `
-  const results = callTool('search', { query: 'AI news 2026' });
-  const count = callTool('calc', { expr: results.length + ' items' });
-  count + ' found';
+  const results = await callTool('search', { query: 'AI news 2026' });
+  const count = await callTool('calc', { expr: results.length + ' items' });
+  return count + ' found';
 `;
 const { finalOutput, toolCallCount } = await orchestrator.run(script);
 console.log(finalOutput);    // Only this enters the context window.

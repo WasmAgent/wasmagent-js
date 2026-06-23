@@ -138,21 +138,26 @@ describe("three-repo cross-repo data chain", () => {
       expect(dpo.provenance.chosen_branch).toBe(Number(fixtureProv.chosen_branch ?? -1));
       expect(dpo.provenance.rejected_branch).toBe(Number(fixtureProv.rejected_branch ?? -1));
 
+      // ── Current-schema required fields must be present ─────────────────────
+      // n_gram_hash: 16-char hex string
+      expect(typeof fixtureProv.n_gram_hash).toBe("string");
+      expect(String(fixtureProv.n_gram_hash).length).toBe(16);
+      expect(/^[0-9a-f]{16}$/.test(String(fixtureProv.n_gram_hash))).toBe(true);
+      // exported_at_ms: non-negative number
+      expect(typeof fixtureProv.exported_at_ms).toBe("number");
+      expect(Number(fixtureProv.exported_at_ms)).toBeGreaterThanOrEqual(0);
+
+      // ── Removed fields must NOT be present (drift detector) ───────────────
+      expect(fixtureProv.task_hash).toBeUndefined();
+      expect(fixtureProv.schema_version).toBeUndefined();
+      expect(fixtureProv.total_score).toBeUndefined();
+
       // objective_score.chosen must be 1 (fixture branch 0 passes)
       expect(dpo.provenance.objective_score.chosen).toBe(1);
       expect(dpo.provenance.objective_score.rejected).toBe(0);
 
-      // Fixture schema_version must match training-record/v1
+      // Fixture schema_version (top-level) must match training-record/v1
       expect(String(fixtureDpo.schema_version ?? "")).toBe("training-record/v1");
-
-      // The fixture's chosen branch must have higher total_score than rejected
-      const chosenFixtureScore = Number(
-        (fixtureProv.total_score as Record<string, unknown> | undefined)?.chosen ?? 0
-      );
-      const rejectedFixtureScore = Number(
-        (fixtureProv.total_score as Record<string, unknown> | undefined)?.rejected ?? 0
-      );
-      expect(chosenFixtureScore).toBeGreaterThanOrEqual(rejectedFixtureScore);
     }
 
     // ── PPO parity checks ─────────────────────────────────────────────────────

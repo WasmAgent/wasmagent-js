@@ -55,8 +55,19 @@ export function createFetchHandler(
         );
       }
     }
-    const contentLength = Number(request.headers.get("content-length") ?? "0");
-    if (contentLength > maxBodyBytes) {
+    // Read the raw bytes first so the size check applies even when
+    // Content-Length is absent (chunked transfer-encoding, etc.).
+    let buf: ArrayBuffer;
+    try {
+      buf = await request.arrayBuffer();
+    } catch {
+      return jsonResp(
+        { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Invalid JSON" } },
+        400,
+        allowOrigin
+      );
+    }
+    if (buf.byteLength > maxBodyBytes) {
       return jsonResp(
         { jsonrpc: "2.0", id: null, error: { code: -32000, message: "Request body too large" } },
         413,
@@ -65,7 +76,7 @@ export function createFetchHandler(
     }
     let body: unknown;
     try {
-      body = await request.json();
+      body = JSON.parse(new TextDecoder().decode(buf));
     } catch {
       return jsonResp(
         { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Invalid JSON" } },
