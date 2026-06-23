@@ -42,7 +42,7 @@ import {
   type WorkflowRunRecord,
   type WorkflowStateStore,
   type WorkflowStep,
-} from "@wasmagent/core";
+} from "@wasmagent/core/beta";
 
 // `resolveRefs` isn't currently exported from core's public surface.
 // We re-implement the minimal subset we need (string `$<id>` substitution)
@@ -378,7 +378,7 @@ export class CloudflareWorkflowEngine<Params = unknown> {
         }
       },
       events: () => this.#events(instance.id),
-      sendEvent: async (type, payload) => {
+      sendEvent: async (type: string, payload: unknown) => {
         await instance.sendEvent({ type, payload });
       },
     };
