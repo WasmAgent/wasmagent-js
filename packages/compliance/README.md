@@ -102,9 +102,39 @@ Full reports: `benchmarks/ifeval/results-multi-seed-llama/CROSS-MODEL-2026-06-24
 
 - [ ] Larger base models (Llama-3.1-8B-Instruct, Qwen3-14B)
 - [ ] Additional benchmarks (ComplexBench, CFBench, IHEval, JSONSchemaBench)
-- [ ] Align `ComplianceEvalRecord` with `RolloutMemoryStore` JSONL (unblocks EvoMerge loop)
+- [x] Align `ComplianceEvalRecord` with evomerge-framework pipeline — 1050 records
+      imported via `scripts/import_ifeval_runs.py`, 657 training records exported
+      (556 SFT + 67 repair-DPO + 34 cross-mode DPO). See
+      [evomerge-framework](https://github.com/telleroutlook/evomerge-framework) and
+      `benchmarks/ifeval/DATA-MANIFEST.md`.
 - [ ] `forbidden_words` deterministic patch strategy (Phase 1 backlog from cross-model loss analysis)
 - [ ] N=10 seeds with bootstrap CI for paper-grade significance
+
+## Training data loop
+
+The 1050 `ComplianceEvalRecord` files in `benchmarks/ifeval/results*/runs.jsonl`
+feed directly into the evomerge-framework training pipeline:
+
+```bash
+# import into evomerge-framework (run from evomerge-framework repo)
+python scripts/import_ifeval_runs.py \
+  --runs-dir /path/to/wasmagent-js/packages/compliance/benchmarks/ifeval \
+  --out-dir data/training/ifeval
+
+# train router classifier
+python scripts/train_router.py \
+  --runs-dir /path/to/wasmagent-js/packages/compliance/benchmarks/ifeval \
+  --out-dir data/router
+
+# QLoRA SFT
+python scripts/train_sft.py \
+  --train-data data/training/ifeval/compliance_sft.jsonl \
+  --base-model <local-model-path> \
+  --out-dir checkpoints/sft-v1
+```
+
+Router GBDT (trained on 300 real samples): CV accuracy **92.7% ± 2.5%**.
+Top features: `n_hard_violations` (38.5%), `n_violations` (30.8%), `prompt_tokens` (14.2%).
 
 ## License
 
