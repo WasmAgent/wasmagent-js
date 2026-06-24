@@ -11,7 +11,7 @@ Status of WasmAgent integration submissions to external ecosystems.
 | MCP ecosystem | docs/servers | Draft | In progress | examples/recipes/mcp-code-mode/ | createCodeModeServer two-tool surface |
 | Cloudflare Workers | templates | Draft | In progress | examples/cf-production/ | deploy template |
 | Awesome MCP Servers | README.md | Draft | In progress | docs/strategy/upstream-prs/awesome-mcp-servers-frameworks-entry.md | framework entry |
-| elizaOS/eliza | community plugin | [#9087](https://github.com/elizaOS/eliza/issues/9087) | **Pivoted** | docs/strategy/upstream-prs/elizaos-sandboxed-action.md | Per-call sandbox rejected (agent-level sandbox already exists); revised to capability governance + rollout export |
+| elizaOS/eliza | community plugin | [#9235](https://github.com/elizaOS/eliza/pull/9235) | **Revised** | docs/strategy/upstream-prs/elizaos-sandboxed-action.md | Permission governance rejected ("we bypass all permissions anyway"); pivoting to `@wasmagent/eliza-rollout-plugin` — rollout capture + DPO/PPO export, submit to plugin registry not core |
 
 ## How to submit
 

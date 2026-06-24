@@ -1,80 +1,84 @@
-# Upstream: elizaOS/eliza — WasmAgent capability governance plugin
+# Upstream: elizaOS/eliza — WasmAgent rollout data export plugin
 
 **Target repo:** [`elizaOS/eliza`](https://github.com/elizaOS/eliza)
 **Issue:** [elizaOS/eliza#9087](https://github.com/elizaOS/eliza/issues/9087)
-**Status:** 🔴 PIVOTED — original per-call sandbox approach rejected (2026-06-24)
+**PR:** [elizaOS/eliza#9235](https://github.com/elizaOS/eliza/pull/9235)
+**Status:** 🟡 REVISED — permission governance pitch rejected; pivoting to rollout data export as a third-party plugin
 
-## Feedback received
+## Feedback received (PR #9235)
 
-> "Sandboxing individual calls doesn't work with our model, where the whole agent is in a sandbox."
+> "You can register a third party plugin, or make a direct contribution to the project,
+> but we are wary of third party dependencies directly in the application.
+> I don't think that people will correctly configure this and we all just bypass all
+> permissions on our agents already anyways."
 > — lalalune, 2026-06-24
 
-This is correct. elizaOS wraps the entire agent runtime in a **Bun Worker** with
-`RemotePluginPermissions`, providing OS-process-level isolation for the whole agent.
-Nesting a WASM kernel inside that is redundant and adds latency without adding security.
+Two clear signals:
+1. **Third-party plugin format is acceptable** — the elizaOS plugin registry is the right distribution path.
+2. **Permission governance is a non-starter** — elizaOS users already bypass all permissions; a finer-grained permission layer solves a problem they don't have.
+
+## Dropped approach
+
+Option A (capability governance) is dead. elizaOS's `RemotePluginPermissions` is coarse
+by design and the community has accepted that. Adding a WasmAgent approval layer on top
+would be ignored in practice.
 
 ## Revised value proposition
 
-The right integration is **not** the sandbox. What WasmAgent adds on top of elizaOS's
-existing sandbox:
+The only unique value WasmAgent offers that elizaOS cannot replicate internally is the
+**training data loop**: capture multi-branch agent runs, rank them, and export
+`rollout-wire/v1` JSONL for DPO/PPO fine-tuning via evomerge.
 
-| WasmAgent capability | elizaOS gap filled |
-|---|---|
-| `CapabilityManifest` — fine-grained tool permissions (network allowlist, file scope, env vars) | elizaOS `RemotePluginPermissions` is coarse (allow/deny per plugin type, not per tool call) |
-| `RolloutForkRunner` + `RolloutRanker` — multi-branch quality selection | elizaOS has no parallel execution or quality ranking built in |
-| `TrainingDataExporter` (via evomerge) — DPO/PPO export from agent runs | elizaOS has no rollout data loop |
-| `EventLog` + OTel bridge — per-step audit trail | elizaOS has basic logging but no structured trace export |
+elizaOS has no equivalent. This is opt-in, zero-configuration-for-the-default-case,
+and does not touch permissions at all.
 
-## Revised contribution shape
+## Contribution shape: `@wasmagent/eliza-rollout-plugin`
 
-### Option A: `@wasmagent/eliza-capability-plugin` (recommended)
+A standalone third-party plugin (registered in the elizaOS plugin registry).
+Does **not** ship as a dependency inside elizaOS core.
 
-Expose `CapabilityManifest` as a per-plugin permission layer on top of elizaOS's
-`RemotePluginPermissions`:
+### What it does
+
+- Hooks into `runtime.registerAction` post-execution lifecycle
+- Wraps each action run in `RolloutForkRunner` to capture parallel candidates (optional; single-run mode works too)
+- Ranks completions with `RolloutRanker` (heuristic scorer by default; LLM judge opt-in)
+- Emits `rollout-wire/v1` JSONL to a configurable sink (local file, HTTP endpoint, or evomerge)
+
+### Minimal API surface (no config required)
 
 ```ts
-import type { Plugin, Action } from '@elizaos/core';
-import { applyApprovalPolicy, PolicyPresets } from '@wasmagent/core';
+import type { Plugin } from '@elizaos/core';
+import { createRolloutPlugin } from '@wasmagent/eliza-rollout-plugin';
 
-// Wrap any elizaOS action's tool calls with capability governance
-export function withCapabilityGovernance(action: Action, policy = PolicyPresets.balanced()): Action {
-  return {
-    ...action,
-    handler: async (runtime, message, state, options, callback) => {
-      const gatedOptions = { ...options, tools: applyApprovalPolicy(policy, options?.tools ?? []) };
-      return action.handler(runtime, message, state, gatedOptions, callback);
-    },
-  };
-}
+// Zero-config: writes rollout-wire/v1 JSONL to ./rollouts/ locally
+export default {
+  plugins: [createRolloutPlugin()],
+};
 
-export const wasmAgentCapabilityPlugin: Plugin = {
-  name: '@wasmagent/eliza-capability-plugin',
-  description: 'Fine-grained tool capability governance for elizaOS agents',
-  // Wraps existing actions; does not add a sandbox (elizaOS already has one)
+// With evomerge export:
+export default {
+  plugins: [createRolloutPlugin({ sink: 'https://evomerge.example.com/ingest' })],
 };
 ```
 
-### Option B: Rollout data export action
+### Why this survives lalalune's objection
 
-Add an `EXPORT_ROLLOUT_DATA` action that captures elizaOS agent runs as
-`rollout-wire/v1` records and sends them to evomerge for DPO/PPO training:
+- No third-party dep in the core app — it is a community plugin, opt-in
+- No permission configuration — bypasses the "people won't configure this correctly" concern
+- Solves a real gap: elizaOS agents produce no training data today
 
-```ts
-import type { Action } from '@elizaos/core';
-import { toJsonl } from '@wasmagent/core/beta';
+## Next steps
 
-// Intercept elizaOS run completion → emit rollout-wire/v1 JSONL
-const exportRolloutAction: Action = {
-  name: 'EXPORT_ROLLOUT_DATA',
-  description: 'Export this agent run as a WasmAgent rollout record for training data collection',
-  // ...
-};
-```
+1. Implement `packages/eliza-rollout-plugin/` in this repo
+2. Publish as `@wasmagent/eliza-rollout-plugin` on npm
+3. Submit PR to elizaOS plugin registry (not to eliza core)
+4. Reply on PR #9235 acknowledging feedback and linking the community plugin
 
-## Decision
+## Reply to send on PR #9235
 
-Pursue **Option A** as a community plugin. Document the architectural boundary
-clearly: "WasmAgent does not re-sandbox inside elizaOS; it adds capability governance
-and training data export on top of elizaOS's native sandbox."
-
-Update `docs/distribution/upstream-prs.md` when the revised plugin is ready.
+> Thanks for the feedback — you're right that the permission governance layer doesn't fit
+> the elizaOS model. Pivoting: I've reworked this as a standalone community plugin
+> (`@wasmagent/eliza-rollout-plugin`) that adds a training data export loop
+> (rollout capture → ranking → DPO/PPO-ready JSONL) without touching permissions or
+> requiring any mandatory configuration. I'll submit it to the plugin registry instead.
+> Will link here once it's published.
