@@ -46,11 +46,9 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create release PR or publish
+        id: changesets
         uses: changesets/action@v1
         with:
-          # `changeset version` updates package versions + CHANGELOGs and opens a PR.
-          # When that PR is merged, this workflow re-runs and `changeset publish`
-          # actually pushes tarballs to npm.
           version: bun run release:version
           publish: bun run release:publish
           commit: "chore: release"
@@ -59,3 +57,34 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
+
+      - name: Create GitHub Release
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Parse published packages from changesets output
+          PACKAGES='${{ steps.changesets.outputs.publishedPackages }}'
+          # Get the core version (representative of the release)
+          CORE_VERSION=$(echo "$PACKAGES" | python3 -c "
+          import sys, json
+          pkgs = json.load(sys.stdin)
+          core = next((p for p in pkgs if p['name'] == '@wasmagent/core'), pkgs[0] if pkgs else None)
+          print(core['version'] if core else 'unknown')
+          ")
+          TAG="v${CORE_VERSION}"
+          # Extract [Unreleased] section from CHANGELOG for release notes
+          NOTES=$(python3 -c "
+          import re
+          content = open('CHANGELOG.md').read()
+          # Find the first versioned section (just published)
+          m = re.search(r'^## \[' + re.escape('${CORE_VERSION}') + r'\](.*?)(?=^## \[|\Z)', content, re.M | re.S)
+          if m:
+              print(m.group(1).strip()[:10000])
+          else:
+              print('See CHANGELOG.md for details.')
+          ")
+          gh release create "$TAG" \
+            --title "wasmagent $TAG" \
+            --notes "$NOTES" \
+            --latest
