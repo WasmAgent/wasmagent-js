@@ -6,19 +6,28 @@ A lightweight compliance engine for validating, repairing, and exporting evidenc
 agent runs.
 
 `@wasmagent/compliance` lets you define **TaskSpecs**, validate model outputs and tool calls
-against typed **ConstraintIR**, repair violations locally (instead of full retry), and export
-trace records for evaluation and training data.
+against typed **ConstraintIR**, repair violations locally using **Protocol-Constrained Local
+Repair (PCL)** — instead of full retry — and export trace records for evaluation and training data.
 
-## What it is
+## Core concepts
 
 - **TaskSpec → ConstraintIR → Verifier → RepairTrace → EvalRecord.** A 5-step contract for
   turning a natural-language task into a verifiable program.
 - **Built on `@wasmagent/core` Verifier.** `ConstraintIR extends Criterion`. Anything that
   works with `VerificationPipeline` works here, plus violations carry an `evidence_span` for
   local repair targeting.
-- **Local repair, not full retry.** A `RepairPlanner` picks the cheapest patch that resolves
-  each violation: token-span patch, field repair, section repair, region regeneration, full
-  regenerate (last resort).
+- **Protocol-Constrained Local Repair (PCL), not full retry.** The `RepairPlanner` picks the
+  cheapest patch that resolves each violation: token-span patch, field repair, section repair,
+  region regeneration, or full regenerate (last resort). `full_pcl` is the execution mode
+  that invokes PCL; `prompt_retry` simply re-prompts with violation hints appended.
+
+## Execution modes
+
+| Mode | Description |
+|---|---|
+| `direct` | Single-pass generation, no repair |
+| `prompt_retry` | On failure, regenerate up to N times with violation hints appended |
+| `full_pcl` | **Protocol-Constrained Local Repair** — targeted, constraint-by-constraint repair |
 
 ## What it is not
 
@@ -66,28 +75,34 @@ console.log(record.final_pass, record.violations, record.repair_rounds);
 **Phase 0 + Phase 1 P0 complete (2026-06-24).** Multi-seed, two-model
 empirical validation on IFEval.
 
-### Headline results (mean ± stddev across 3 seeds, 50 samples each)
+### Observed results (mean ± stddev across 3 seeds × 50 samples)
 
 | mode | Qwen2.5-1.5B | Llama-3.2-1B |
 |---|---|---|
-| direct       | 41.3% ± 3.1 | 47.3% ± 4.6 |
-| prompt_retry | 46.0% ± 2.0 | 59.3% ± 5.8 |
-| **full_pcl** | **54.7% ± 1.2** | **58.7% ± 1.2** |
+| `direct` | 41.3% ± 3.1 | 47.3% ± 4.6 |
+| `prompt_retry` | 46.0% ± 2.0 | 59.3% ± 5.8 |
+| **`full_pcl`** (Protocol-Constrained Local Repair) | **54.7% ± 1.2** | **58.7% ± 1.2** |
 
-Δ vs prompt_retry: **+8.7 pp (Qwen)** · **−0.7 pp (Llama)** — the PCL win
-is model-dependent. Δ vs direct: **+11 to +13 pp on both models** —
-the repair layer is monotonic.
-
-`full_pcl` is also the **most stable** mode across seeds (stddev 1.2)
-— on Llama prompt_retry's stddev is 5× larger.
+Key findings:
+- PCL Δ vs `prompt_retry`: **+8.7 pp (Qwen)** · **−0.7 pp (Llama)** — win is model-dependent
+- PCL Δ vs `direct`: **+13 pp (Qwen)** / **+11 pp (Llama)** — repair layer is strictly monotonic (0 regressions)
+- `full_pcl` is the **most stable** mode (stddev 1.2 vs prompt_retry 2.0–5.8)
 
 Full reports: `benchmarks/ifeval/results-multi-seed-llama/CROSS-MODEL-2026-06-24.md`.
 
-### What's wired
+### Roadmap (not yet observed)
+
+- [ ] N=10 seeds with bootstrap CI for paper-grade significance
+- [ ] Larger base models (Llama-3.1-8B-Instruct, Qwen3-14B)
+- [ ] Additional benchmarks (ComplexBench, CFBench, IHEval, JSONSchemaBench)
+- [ ] `forbidden_words` deterministic patch strategy
+- [ ] Group A vs C comparison (fine-tuned small model via evomerge-framework)
+
+### What's implemented
 
 - [x] `TaskSpec` / `ConstraintIR` types (extends `@wasmagent/core` `Criterion`)
-- [x] JSON schemas for TaskSpec / ConstraintIR / Violation / RepairTrace / EvalRecord
-- [x] `ConstraintViolation` with `evidence_span` (Zod-validated to always carry ≥1 locator)
+- [x] Versioned JSON schemas (`schema_version: "compliance-eval-record/v1"`)
+- [x] `ConstraintViolation` with `evidence_span` (carries ≥1 location pointer)
 - [x] `ComplianceVerifier` wrapper around `VerificationPipeline`
 - [x] `IFEvalVerifier` covering 15 of IFEval's 25 instruction classes
 - [x] 50-sample curated IFEval subset (deterministic, sha256-pinned)
@@ -97,20 +112,7 @@ Full reports: `benchmarks/ifeval/results-multi-seed-llama/CROSS-MODEL-2026-06-24
 - [x] Multi-seed benchmark CLI with file-lock guard + structured `error` records
 - [x] Multi-seed aggregator (mean ± stddev, pairwise agreement)
 - [x] 113 tests, 0 failures
-
-### Phase 1 backlog
-
-- [ ] Larger base models (Llama-3.1-8B-Instruct, Qwen3-14B)
-- [ ] Additional benchmarks (ComplexBench, CFBench, IHEval, JSONSchemaBench)
-- [x] Align `ComplianceEvalRecord` with evomerge-framework pipeline — 1050 records
-      imported via `scripts/import_ifeval_runs.py`, 657 training records exported
-      (556 SFT + 67 repair-DPO + 34 cross-mode DPO). See
-      [evomerge-framework](https://github.com/telleroutlook/evomerge-framework) and
-      `benchmarks/ifeval/DATA-MANIFEST.md`.
-- [ ] `forbidden_words` deterministic patch strategy (Phase 1 backlog from cross-model loss analysis)
-- [ ] N=10 seeds with bootstrap CI for paper-grade significance
-
-## Training data loop
+- [x] 1050 `ComplianceEvalRecord` instances → 657 evomerge-framework training records
 
 The 1050 `ComplianceEvalRecord` files in `benchmarks/ifeval/results*/runs.jsonl`
 feed directly into the evomerge-framework training pipeline:
