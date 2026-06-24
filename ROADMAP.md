@@ -25,7 +25,7 @@ the same A6 commit; see also the embedded "Why" lines below).
   Agents SDK has a native sandbox 2026-04; Anthropic standardised the
   pattern). The remaining moat is **portable × multi-language × multi-
   isolation-tier × policy-uniform** — none of the single-vendor sandboxes
-  cross all four. agentkit's three-tier kernel matrix (in-process /
+  cross all four. wasmagent's three-tier kernel matrix (in-process /
   WASM / remote) plus real Pyodide already exists. We ship it as a
   *neutral executor that drops into the framework leaders' existing
   sandbox / executor sockets* (Cloudflare codemode `DynamicWorkerExecutor`,
@@ -66,9 +66,9 @@ the same A6 commit; see also the embedded "Why" lines below).
 - **S3 — DevX: a zero-deploy local Studio, not a SaaS.**
   Mastra Studio's metrics tab (cost / token / latency / errors) earns
   its rep. Vercel AI SDK 6 (2026-Q1) added their own DevTools panel
-  with 20M+ monthly downloads of distribution behind it. agentkit
+  with 20M+ monthly downloads of distribution behind it. wasmagent
   already emits all the data; we add the aggregator + a vanilla HTML
-  page served by `agentkit devtools` (A4 — shipped). The differentiator
+  page served by `wasmagent devtools` (A4 — shipped). The differentiator
   collapsed to "no hosting, no account, no telemetry phone-home"
   — narrower but still real.
 
@@ -110,7 +110,7 @@ the same A6 commit; see also the embedded "Why" lines below).
 - **A1 — Code-mode MCP server** (`@wasmagent/mcp-server` ≥ 0.3).
   Two-tool MCP surface (`docs_search` + `execute_code`) collapses N
   downstream tools behind one in-sandbox dispatch. Pairs with any
-  agentkit kernel for unified security policy. Token-savings benchmark
+  wasmagent kernel for unified security policy. Token-savings benchmark
   in CI: code-mode is ≤14% of direct-MCP at N=30 tools, monotonic in N.
   Doc: [`docs/guides/code-mode.md`](docs/guides/code-mode.md).
   *2026-06-17 note:* code-mode itself is now table stakes (Cloudflare
@@ -132,8 +132,8 @@ the same A6 commit; see also the embedded "Why" lines below).
   - [`@wasmagent/aisdk`](packages/aisdk) — `sandboxedJsTool()` and
     `codeModeTool()` factories. AI SDK majors 4–6 supported via
     structural typing.
-    - **`agentkitCodemodeExecutor` (shipped 2026-06-17)** — Cloudflare
-      codemode `Executor` adapter. Drop any agentkit kernel
+    - **`createCodemodeExecutor` (shipped 2026-06-17)** — Cloudflare
+      codemode `Executor` adapter. Drop any wasmagent kernel
       (`QuickJSKernel` / `PyodideKernel` / `RemoteSandboxKernel`) into
       CF codemode's BYO-executor socket; closes the three gaps in CF's
       default `DynamicWorkerExecutor` (platform-binding, JS-only,
@@ -146,7 +146,7 @@ the same A6 commit; see also the embedded "Why" lines below).
     / E2B providers.
 
 - **A4 — devtools as a zero-deploy local Studio.** `RunsAggregator` +
-  `agentkit devtools --events-file <ndjson>`. Serves cost / token /
+  `wasmagent devtools --events-file <ndjson>`. Serves cost / token /
   latency-p95 / error-rate over an inline HTML page. Implementation
   in [`packages/devtools/src/RunsAggregator.ts`](packages/devtools/src/RunsAggregator.ts);
   CLI in [`packages/cli/src/index.ts`](packages/cli/src/index.ts).
@@ -167,7 +167,7 @@ the same A6 commit; see also the embedded "Why" lines below).
   tool-sequence, agent-trajectory, latency-under-budget). Built-in
   paired statistics — McNemar exact / Wilson CI / paired bootstrap /
   G1 gate — match scipy reference values to ±1e-7 across 31 parity
-  tests. CLI: `agentkit evals run --suite=<name> --models=<id@url,...>`.
+  tests. CLI: `wasmagent evals run --suite=<name> --models=<id@url,...>`.
   Doc: [`docs/guides/evals-runner.md`](docs/guides/evals-runner.md).
   All six reference suites use synthetic / hand-built fixtures so
   they don't overlap with public training corpora — a fine-tune on

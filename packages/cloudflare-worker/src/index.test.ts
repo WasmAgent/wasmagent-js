@@ -136,7 +136,7 @@ const TEST_TOKEN = "test-secret-token";
 function makeEnv(overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
   return {
     ANTHROPIC_API_KEY: "sk-test",
-    AGENTKIT_CLIENT_TOKEN: TEST_TOKEN,
+    WASMAGENT_CLIENT_TOKEN: TEST_TOKEN,
     ...overrides,
   };
 }
@@ -272,21 +272,21 @@ describe("POST /run — authentication", () => {
   });
 
   it("Bearer token required but missing → 401", async () => {
-    const res = await runPost({ task: "hi" }, makeEnv({ AGENTKIT_CLIENT_TOKEN: "secret" }));
+    const res = await runPost({ task: "hi" }, makeEnv({ WASMAGENT_CLIENT_TOKEN: "secret" }));
     expect(res.status).toBe(401);
     const json = (await res.json()) as { error: string };
     expect(json.error).toContain("Unauthorized");
   });
 
   it("Bearer token wrong → 401", async () => {
-    const res = await runPost({ task: "hi" }, makeEnv({ AGENTKIT_CLIENT_TOKEN: "secret" }), {
+    const res = await runPost({ task: "hi" }, makeEnv({ WASMAGENT_CLIENT_TOKEN: "secret" }), {
       Authorization: "Bearer wrong",
     });
     expect(res.status).toBe(401);
   });
 
   it("Bearer token correct → 200 SSE stream", async () => {
-    const res = await runPost({ task: "hi" }, makeEnv({ AGENTKIT_CLIENT_TOKEN: "secret" }), {
+    const res = await runPost({ task: "hi" }, makeEnv({ WASMAGENT_CLIENT_TOKEN: "secret" }), {
       Authorization: "Bearer secret",
     });
     expect(res.status).toBe(200);
@@ -387,7 +387,7 @@ describe("POST /run — KV session caching", () => {
       get: mock().mockResolvedValue(JSON.stringify(cachedEvents)),
       put: mock().mockResolvedValue(undefined),
     };
-    const res = await runPost({ task: "cached task" }, makeEnv({ AGENTKIT_SESSIONS: mockKV }));
+    const res = await runPost({ task: "cached task" }, makeEnv({ WASMAGENT_SESSIONS: mockKV }));
     expect(res.status).toBe(200);
     expect(res.headers.get("X-Agentkit-Cache")).toBe("HIT");
     const lines = await readSSELines(res);
@@ -400,7 +400,7 @@ describe("POST /run — KV session caching", () => {
       get: mock().mockResolvedValue(null),
       put: putMock,
     };
-    const res = await runPost({ task: "new task" }, makeEnv({ AGENTKIT_SESSIONS: mockKV }));
+    const res = await runPost({ task: "new task" }, makeEnv({ WASMAGENT_SESSIONS: mockKV }));
     expect(res.status).toBe(200);
     const lines = await readSSELines(res);
     expect(lines.at(-1)).toBe("data: [DONE]");
@@ -414,7 +414,7 @@ describe("POST /run — KV session caching", () => {
       get: mock().mockResolvedValue("not valid json {{{"),
       put: mock(),
     };
-    const res = await runPost({ task: "cached" }, makeEnv({ AGENTKIT_SESSIONS: mockKV }));
+    const res = await runPost({ task: "cached" }, makeEnv({ WASMAGENT_SESSIONS: mockKV }));
     expect(res.status).toBe(500);
     const json = (await res.json()) as { error: string };
     expect(json.error).toContain("corrupted");
@@ -423,7 +423,7 @@ describe("POST /run — KV session caching", () => {
 
 // ── AG-UI resume (RunAgentInput.resume) ─────────────────────────────────────
 
-describe("POST /run — AG-UI resume from AGENTKIT_SESSIONS", () => {
+describe("POST /run — AG-UI resume from WASMAGENT_SESSIONS", () => {
   beforeEach(() => {
     mockAgentEvents = [mockFinalAnswerEvent];
   });
@@ -435,7 +435,7 @@ describe("POST /run — AG-UI resume from AGENTKIT_SESSIONS", () => {
 
     const res = await runPost(
       { threadId: "thread-abc", resume: true },
-      makeEnv({ AGENTKIT_SESSIONS: mockKV })
+      makeEnv({ WASMAGENT_SESSIONS: mockKV })
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("X-Agentkit-Cache")).toBe("HIT");
@@ -450,7 +450,7 @@ describe("POST /run — AG-UI resume from AGENTKIT_SESSIONS", () => {
 
     const res = await runPost(
       { threadId: "thread-abc", resume: "explicit-session-id" },
-      makeEnv({ AGENTKIT_SESSIONS: mockKV })
+      makeEnv({ WASMAGENT_SESSIONS: mockKV })
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("X-Agentkit-Cache")).toBe("HIT");
@@ -463,7 +463,7 @@ describe("POST /run — AG-UI resume from AGENTKIT_SESSIONS", () => {
 
     const res = await runPost(
       { threadId: "thread-new", resume: true },
-      makeEnv({ AGENTKIT_SESSIONS: mockKV })
+      makeEnv({ WASMAGENT_SESSIONS: mockKV })
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("X-Agentkit-Cache")).toBeNull();
@@ -471,7 +471,7 @@ describe("POST /run — AG-UI resume from AGENTKIT_SESSIONS", () => {
     expect(lines.at(-1)).toBe("data: [DONE]");
   });
 
-  it("resume:true without AGENTKIT_SESSIONS → runs fresh agent normally", async () => {
+  it("resume:true without WASMAGENT_SESSIONS → runs fresh agent normally", async () => {
     const res = await runPost({ threadId: "thread-xyz", resume: true }, makeEnv());
     expect(res.status).toBe(200);
     expect(res.headers.get("X-Agentkit-Cache")).toBeNull();
@@ -479,12 +479,12 @@ describe("POST /run — AG-UI resume from AGENTKIT_SESSIONS", () => {
     expect(lines.at(-1)).toBe("data: [DONE]");
   });
 
-  it("resume:true without threadId and no AGENTKIT_SESSIONS → fresh run", async () => {
+  it("resume:true without threadId and no WASMAGENT_SESSIONS → fresh run", async () => {
     // resume:true but no threadId — session key is null, skip resume lookup.
     // KV is still queried for the content-hash cache (one call), but not for resume.
     const getMock = mock().mockResolvedValue(null);
     const mockKV = { get: getMock, put: mock().mockResolvedValue(undefined) };
-    const res = await runPost({ resume: true }, makeEnv({ AGENTKIT_SESSIONS: mockKV }));
+    const res = await runPost({ resume: true }, makeEnv({ WASMAGENT_SESSIONS: mockKV }));
     // Session key is null (no threadId), so no extra resume KV lookup — only the
     // content-hash cache lookup fires (one call).  The run should complete normally.
     await new Promise((r) => setTimeout(r, 50));
@@ -538,14 +538,14 @@ describe("POST /resume — HITL persisted resume (A3)", () => {
     );
   }
 
-  it("503 when AGENTKIT_CHECKPOINTS is not bound", async () => {
+  it("503 when WASMAGENT_CHECKPOINTS is not bound", async () => {
     const res = await postResume({ traceId: "t", promptId: "p", response: "r" }, makeEnv());
     expect(res.status).toBe(503);
   });
 
   it("400 when body is missing required fields", async () => {
     const kv = fakeCheckpointKv();
-    const res = await postResume({ traceId: "t" }, makeEnv({ AGENTKIT_CHECKPOINTS: kv }));
+    const res = await postResume({ traceId: "t" }, makeEnv({ WASMAGENT_CHECKPOINTS: kv }));
     expect(res.status).toBe(400);
   });
 
@@ -553,7 +553,7 @@ describe("POST /resume — HITL persisted resume (A3)", () => {
     const kv = fakeCheckpointKv();
     const res = await postResume(
       { traceId: "missing", promptId: "p", response: "r" },
-      makeEnv({ AGENTKIT_CHECKPOINTS: kv })
+      makeEnv({ WASMAGENT_CHECKPOINTS: kv })
     );
     expect(res.status).toBe(404);
   });
@@ -574,7 +574,7 @@ describe("POST /resume — HITL persisted resume (A3)", () => {
     );
     const res = await postResume(
       { traceId: "trace-paused", promptId: "p1", response: "approve" },
-      makeEnv({ AGENTKIT_CHECKPOINTS: kv })
+      makeEnv({ WASMAGENT_CHECKPOINTS: kv })
     );
     expect(res.status).toBe(200);
     const snapAfter = JSON.parse(kv.map.get("trace-paused") ?? "{}");
@@ -596,16 +596,16 @@ describe("POST /resume — HITL persisted resume (A3)", () => {
     );
     const res = await postResume(
       { traceId: "t", promptId: "wrong", response: "x" },
-      makeEnv({ AGENTKIT_CHECKPOINTS: kv })
+      makeEnv({ WASMAGENT_CHECKPOINTS: kv })
     );
     expect(res.status).toBe(404);
   });
 
-  it("requires Bearer auth when AGENTKIT_CLIENT_TOKEN is set", async () => {
+  it("requires Bearer auth when WASMAGENT_CLIENT_TOKEN is set", async () => {
     const kv = fakeCheckpointKv();
     const res = await postResume(
       { traceId: "t", promptId: "p", response: "r" },
-      makeEnv({ AGENTKIT_CHECKPOINTS: kv, AGENTKIT_CLIENT_TOKEN: "secret" })
+      makeEnv({ WASMAGENT_CHECKPOINTS: kv, WASMAGENT_CLIENT_TOKEN: "secret" })
     );
     expect(res.status).toBe(401);
   });

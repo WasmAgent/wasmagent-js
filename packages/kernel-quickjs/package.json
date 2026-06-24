@@ -58,6 +58,10 @@
     "ai",
     "llm"
   ],
+  "wasmagent": {
+    "tier": "tier-0",
+    "stability": "stable"
+  },
   "publishConfig": {
     "access": "public"
   },

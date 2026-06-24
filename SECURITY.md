@@ -174,7 +174,7 @@ acknowledged in §5 of that document).
 It also includes:
 
 - A side-by-side comparison with Microsoft Agent Governance Toolkit
-  (2026-04, MIT) — agentkit is the **enforcement + isolation**
+  (2026-04, MIT) — wasmagent is the **enforcement + isolation**
   layer, the toolkit is the **policy decision** layer; they
   compose, neither replaces the other.
 - Mapping to EU AI Act Articles 14 / 15 / Annex IV, Colorado AI

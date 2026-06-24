@@ -40,15 +40,15 @@ export function offlineOnly(local: Model): Model {
 }
 
 /**
- * Convenience: read the AGENTKIT_DEV_LOCAL flag and pick the right model
+ * Convenience: read the WASMAGENT_DEV_LOCAL flag and pick the right model
  * for development workflows.
  *
- *   - `AGENTKIT_DEV_LOCAL=1` → return the local model (zero API cost in CI).
+ *   - `WASMAGENT_DEV_LOCAL=1` → return the local model (zero API cost in CI).
  *   - otherwise              → return the cloud model.
  *
  * Use in test setups so the same code path runs on a developer laptop with
  * a tiny GGUF and on CI with a paid endpoint.
  */
 export function devLocalOr(local: Model, cloud: Model): Model {
-  return process.env.AGENTKIT_DEV_LOCAL === "1" ? local : cloud;
+  return process.env.WASMAGENT_DEV_LOCAL === "1" ? local : cloud;
 }

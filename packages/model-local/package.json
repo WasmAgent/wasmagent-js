@@ -64,6 +64,10 @@
     "llm",
     "typescript"
   ],
+  "wasmagent": {
+    "tier": "tier-3",
+    "stability": "experimental"
+  },
   "publishConfig": {
     "access": "public"
   },

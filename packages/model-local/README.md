@@ -50,7 +50,7 @@ const model = localFirst(
 Three resolution layers, high → low precedence:
 
 1. **Programmatic** — `new LocalModel({ source: { model: "qwen2.5-1.5b" }, mirror: "modelscope" })`
-2. **Environment** — `AGENTKIT_MODEL_MIRROR=hf-mirror` (or `modelscope`, or any URL prefix)
+2. **Environment** — `WASMAGENT_MODEL_MIRROR=hf-mirror` (or `modelscope`, or any URL prefix)
 3. **Registry default** — HuggingFace first, then mirrors
 
 Built-in presets:
@@ -62,7 +62,7 @@ Custom CDN: pass any URL prefix as `mirror`, and the downloader will append the 
 
 ```bash
 # One-line CLI override:
-AGENTKIT_MODEL_MIRROR=modelscope npx agentkit model pull qwen2.5-1.5b
+WASMAGENT_MODEL_MIRROR=modelscope npx wasmagent model pull qwen2.5-1.5b
 ```
 
 ⚠️ **Mirror trust model**: every download is sha256-verified against the registry value (which is anchored to the HuggingFace original). Mirrors are *transport channels*, not trust roots.
@@ -84,19 +84,19 @@ Set `enableGrammar: false` to compare A/B against free-form sampling — useful 
 
 ```bash
 # Browse the registry.
-agentkit model list
+wasmagent model list
 
 # Pull (resumable, sha256-verified, multi-mirror).
-agentkit model pull qwen2.5-1.5b
+wasmagent model pull qwen2.5-1.5b
 
 # Force a mirror.
-agentkit model pull qwen2.5-1.5b --mirror modelscope
+wasmagent model pull qwen2.5-1.5b --mirror modelscope
 
 # Verify a cached file's sha256.
-agentkit model verify qwen2.5-1.5b
+wasmagent model verify qwen2.5-1.5b
 
 # Free up disk.
-agentkit model rm qwen2.5-1.5b
+wasmagent model rm qwen2.5-1.5b
 ```
 
 `wasmagent/cli` declares `/model-local` as an **optional peer** — if you don't install this package, the CLI falls back to a clean error message rather than crashing.
@@ -113,7 +113,7 @@ const a = localFirst(localModel, cloudModel);
 // future enforcement).
 const b = offlineOnly(localModel);
 
-// Dev convenience: AGENTKIT_DEV_LOCAL=1 → local; otherwise → cloud.
+// Dev convenience: WASMAGENT_DEV_LOCAL=1 → local; otherwise → cloud.
 const c = devLocalOr(localModel, cloudModel);
 ```
 
@@ -121,7 +121,7 @@ These are documented combinations of the existing `FallbackModel` from `/core` �
 
 ## Recommended models — current registry
 
-> All entries are <1.5 GB at q4_k_m or smaller quantisation. The `recommended` flag flips on once the cert harness publishes a passing score (see L4). Until then you can still `agentkit model pull <alias>` and self-evaluate.
+> All entries are <1.5 GB at q4_k_m or smaller quantisation. The `recommended` flag flips on once the cert harness publishes a passing score (see L4). Until then you can still `wasmagent model pull <alias>` and self-evaluate.
 
 | Alias | Best for | License | Size |
 |---|---|---|---|
