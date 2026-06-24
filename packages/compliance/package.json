@@ -1,0 +1,70 @@
+{
+  "name": "@wasmagent/compliance",
+  "version": "0.1.0-alpha.0",
+  "description": "WasmAgent Compliance Engine — TaskSpec-driven verification, local repair, and evidence export for LLM agent runs.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./schemas/task-spec": "./schemas/task-spec.schema.json",
+    "./schemas/constraint-ir": "./schemas/constraint-ir.schema.json",
+    "./schemas/constraint-violation": "./schemas/constraint-violation.schema.json",
+    "./schemas/repair-trace": "./schemas/repair-trace.schema.json",
+    "./schemas/compliance-eval-record": "./schemas/compliance-eval-record.schema.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@wasmagent/core": "workspace:*",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@wasmagent/model-local": "workspace:*",
+    "typescript": "^5.7.0"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
+    "directory": "packages/compliance"
+  },
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/compliance#readme",
+  "bugs": {
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "wasmagent",
+    "compliance",
+    "constraint",
+    "verifier",
+    "instruction-following",
+    "structured-output",
+    "agent",
+    "llm"
+  ],
+  "wasmagent": {
+    "tier": "tier-2",
+    "stability": "experimental"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "schemas",
+    "LICENSE",
+    "README.md"
+  ],
+  "author": "wasmagent contributors"
+}

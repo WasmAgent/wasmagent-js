@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wasmagent.dev/schemas/compliance/constraint-violation.schema.json",
+  "title": "ConstraintViolation",
+  "description": "A failed constraint plus its location in the artifact. Consumed by RepairPlanner to choose a strategy.",
+  "type": "object",
+  "required": ["constraint_id", "level", "category", "hint", "detected_at"],
+  "properties": {
+    "constraint_id": { "type": "string", "minLength": 1 },
+    "level": { "type": "string", "enum": ["hard", "soft"] },
+    "category": {
+      "type": "string",
+      "enum": ["format", "content", "style", "tool", "state", "security", "semantic"]
+    },
+    "hint": {
+      "type": "string",
+      "description": "Original Verifier hint — kept verbatim for round-trip debugging."
+    },
+    "evidence_span": {
+      "type": "object",
+      "description": "Locator into the artifact. At least one field MUST be set.",
+      "properties": {
+        "region_id": { "type": "string" },
+        "json_pointer": { "type": "string" },
+        "char_range": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "line_range": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "anyOf": [
+        { "required": ["region_id"] },
+        { "required": ["json_pointer"] },
+        { "required": ["char_range"] },
+        { "required": ["line_range"] }
+      ],
+      "additionalProperties": false
+    },
+    "detected_at": {
+      "type": "string",
+      "enum": ["pre_decode", "post_decode", "post_tool_call"]
+    }
+  },
+  "additionalProperties": false
+}

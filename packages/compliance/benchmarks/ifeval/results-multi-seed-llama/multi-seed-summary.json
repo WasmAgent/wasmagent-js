@@ -1,0 +1,156 @@
+{
+  "crossStats": [
+    {
+      "mode": "direct",
+      "seeds": [
+        {
+          "label": "results-llama-3.2-1b-seed42",
+          "mode": "direct",
+          "errors": 0,
+          "n": 50,
+          "pass": 25,
+          "pass_rate": 0.5,
+          "avg_repair_rounds": 0,
+          "avg_total_tokens": 391.18,
+          "avg_latency_ms": 1526.42
+        },
+        {
+          "label": "results-llama-3.2-1b-seed43",
+          "mode": "direct",
+          "errors": 0,
+          "n": 50,
+          "pass": 21,
+          "pass_rate": 0.42,
+          "avg_repair_rounds": 0,
+          "avg_total_tokens": 405.3,
+          "avg_latency_ms": 1616.62
+        },
+        {
+          "label": "results-llama-3.2-1b-seed44",
+          "mode": "direct",
+          "errors": 0,
+          "n": 50,
+          "pass": 25,
+          "pass_rate": 0.5,
+          "avg_repair_rounds": 0,
+          "avg_total_tokens": 387.2,
+          "avg_latency_ms": 1515.78
+        }
+      ],
+      "pass_rate_mean": 0.47333333333333333,
+      "pass_rate_stddev": 0.046188021535170064,
+      "avg_total_tokens_mean": 394.56,
+      "avg_total_tokens_stddev": 9.511613953478147,
+      "avg_latency_ms_mean": 1552.9399999999998,
+      "avg_latency_ms_stddev": 55.40450523197542
+    },
+    {
+      "mode": "prompt_retry",
+      "seeds": [
+        {
+          "label": "results-llama-3.2-1b-seed42",
+          "mode": "prompt_retry",
+          "errors": 0,
+          "n": 50,
+          "pass": 33,
+          "pass_rate": 0.66,
+          "avg_repair_rounds": 0.5,
+          "avg_total_tokens": 752.94,
+          "avg_latency_ms": 3217.16
+        },
+        {
+          "label": "results-llama-3.2-1b-seed43",
+          "mode": "prompt_retry",
+          "errors": 0,
+          "n": 50,
+          "pass": 28,
+          "pass_rate": 0.56,
+          "avg_repair_rounds": 0.58,
+          "avg_total_tokens": 793.7,
+          "avg_latency_ms": 3405.58
+        },
+        {
+          "label": "results-llama-3.2-1b-seed44",
+          "mode": "prompt_retry",
+          "errors": 0,
+          "n": 50,
+          "pass": 28,
+          "pass_rate": 0.56,
+          "avg_repair_rounds": 0.5,
+          "avg_total_tokens": 775.54,
+          "avg_latency_ms": 3287.1
+        }
+      ],
+      "pass_rate_mean": 0.5933333333333334,
+      "pass_rate_stddev": 0.05773502691896256,
+      "avg_total_tokens_mean": 774.0600000000001,
+      "avg_total_tokens_stddev": 20.420264444908632,
+      "avg_latency_ms_mean": 3303.28,
+      "avg_latency_ms_stddev": 95.24635636075539
+    },
+    {
+      "mode": "full_pcl",
+      "seeds": [
+        {
+          "label": "results-llama-3.2-1b-seed42",
+          "mode": "full_pcl",
+          "errors": 0,
+          "n": 50,
+          "pass": 29,
+          "pass_rate": 0.58,
+          "avg_repair_rounds": 1.34,
+          "avg_total_tokens": 734.5,
+          "avg_latency_ms": 2134.28
+        },
+        {
+          "label": "results-llama-3.2-1b-seed43",
+          "mode": "full_pcl",
+          "errors": 0,
+          "n": 50,
+          "pass": 29,
+          "pass_rate": 0.58,
+          "avg_repair_rounds": 1.48,
+          "avg_total_tokens": 765,
+          "avg_latency_ms": 2214.98
+        },
+        {
+          "label": "results-llama-3.2-1b-seed44",
+          "mode": "full_pcl",
+          "errors": 0,
+          "n": 50,
+          "pass": 30,
+          "pass_rate": 0.6,
+          "avg_repair_rounds": 1.36,
+          "avg_total_tokens": 742.36,
+          "avg_latency_ms": 2184.36
+        }
+      ],
+      "pass_rate_mean": 0.5866666666666666,
+      "pass_rate_stddev": 0.011547005383792525,
+      "avg_total_tokens_mean": 747.2866666666667,
+      "avg_total_tokens_stddev": 15.835609660929801,
+      "avg_latency_ms_mean": 2177.8733333333334,
+      "avg_latency_ms_stddev": 40.73917197653048
+    }
+  ],
+  "agreements": [
+    {
+      "mode_a": "full_pcl",
+      "mode_b": "prompt_retry",
+      "a_only": 11,
+      "b_only": 12,
+      "both": 77,
+      "neither": 50,
+      "total": 150
+    },
+    {
+      "mode_a": "full_pcl",
+      "mode_b": "direct",
+      "a_only": 17,
+      "b_only": 0,
+      "both": 71,
+      "neither": 62,
+      "total": 150
+    }
+  ]
+}

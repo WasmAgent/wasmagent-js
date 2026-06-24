@@ -75,3 +75,30 @@ bun test tests/integration/
 | `summarizeToolOutput` | `packages/core/src/agents/ToolOutputSummarizer.ts` |
 | `RemoteSandboxKernel.runCommand` | `packages/kernel-remote/src/RemoteSandboxKernel.ts` |
 
+## Compliance Engine (2026-06-24, Phase 0 + Phase 1 P0)
+
+WasmAgent Compliance Engine — TaskSpec → ConstraintIR → Verifier → RepairTrace
+pipeline. Lives at `packages/compliance/` (`@wasmagent/compliance`).
+
+| Module | Location |
+|---|---|
+| `ConstraintIR` / `TaskSpec` types | `packages/compliance/src/ir/ConstraintIR.ts` |
+| `ComplianceVerifier` | `packages/compliance/src/verifier/ComplianceVerifier.ts` |
+| `IFEvalVerifier` (15 instruction classes) | `packages/compliance/src/verifier/ifeval/IFEvalVerifier.ts` |
+| `RepairPlanner` (escalation + rollback) | `packages/compliance/src/repair/RepairPlanner.ts` |
+| `PatchStrategy` / `InsertSectionStrategy` / `RegenerateRegionStrategy` | `packages/compliance/src/repair/strategies/` |
+| `ComplianceRun` (3 baseline modes) | `packages/compliance/src/runner/ComplianceRun.ts` |
+| IFEval benchmark CLI | `packages/compliance/benchmarks/ifeval/run.ts` |
+| Multi-seed aggregator | `packages/compliance/benchmarks/ifeval/compare-seeds.ts` |
+| Result data (1050 records) | `packages/compliance/benchmarks/ifeval/results*/` |
+| Phase reports | `packages/compliance/benchmarks/ifeval/results-multi-seed*/*.md` |
+
+**Headline empirical result**: on IFEval × Qwen2.5-1.5B-Q4, `full_pcl`
+achieves 54.7% ± 1.2 pass-rate vs `prompt_retry` 46.0% ± 2.0 (+8.7 pp,
+3 seeds × 50 samples). On Llama-3.2-1B, the picture is more complex —
+PCL ties prompt_retry on mean but has 5× smaller variance. See
+`packages/compliance/benchmarks/ifeval/results-multi-seed-llama/CROSS-MODEL-2026-06-24.md`.
+
+Test it: `bun test packages/compliance/` (113 pass / 0 fail).
+Reproduce sweep: `bun packages/compliance/benchmarks/ifeval/run.ts --limit=50 --seed=42`.
+

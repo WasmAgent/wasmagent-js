@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wasmagent.dev/schemas/compliance/repair-trace.schema.json",
+  "title": "RepairTrace",
+  "description": "Per-round repair record. One RepairTrace per repair attempt; multiple per run when escalation occurs.",
+  "type": "object",
+  "required": ["round", "violation_ids", "strategy", "ok"],
+  "properties": {
+    "round": { "type": "integer", "minimum": 1 },
+    "violation_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "constraint_id list this round attempted to repair."
+    },
+    "strategy": {
+      "type": "string",
+      "enum": ["patch", "insert_section", "regenerate_region", "full"]
+    },
+    "target_region": { "type": "string" },
+    "ok": {
+      "type": "boolean",
+      "description": "True iff post-repair re-verification cleared the targeted violations."
+    },
+    "rolled_back": {
+      "type": "boolean",
+      "description": "True when the strategy's artifact re-broke a previously-passing constraint and the planner discarded it. Implies ok=false; artifact state matches pre-round."
+    },
+    "remaining_violation_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Violations still failing after this round (may be subset of input)."
+    },
+    "token_cost": {
+      "type": "object",
+      "properties": {
+        "prompt": { "type": "integer", "minimum": 0 },
+        "generation": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "latency_ms": { "type": "integer", "minimum": 0 }
+  },
+  "additionalProperties": false
+}

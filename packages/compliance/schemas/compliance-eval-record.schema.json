@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wasmagent.dev/schemas/compliance/compliance-eval-record.schema.json",
+  "title": "ComplianceEvalRecord",
+  "description": "One record per compliance run. Designed to be embeddable inside a @wasmagent/core rollout JSONL record (alignment with RolloutMemoryStore is a Phase 1 task — keep this self-contained for Phase 0).",
+  "type": "object",
+  "required": ["task_id", "task_spec_hash", "model", "violations", "repair_trace", "final_pass"],
+  "properties": {
+    "task_id": { "type": "string", "minLength": 1 },
+    "task_spec_hash": {
+      "type": "string",
+      "description": "Stable hash of the TaskSpec JSON (e.g. sha256). Used to group runs of the same spec across models and time."
+    },
+    "model": {
+      "type": "string",
+      "description": "Identifier of the model under test (e.g. 'qwen2.5-14b-instruct')."
+    },
+    "violations": {
+      "type": "array",
+      "items": { "$ref": "constraint-violation.schema.json" },
+      "description": "Initial violation list (before repair). Empty if first generation passed."
+    },
+    "repair_trace": {
+      "type": "array",
+      "items": { "$ref": "repair-trace.schema.json" }
+    },
+    "repair_rounds": { "type": "integer", "minimum": 0 },
+    "final_pass": {
+      "type": "boolean",
+      "description": "True iff all hard constraints passed after repair."
+    },
+    "token_cost": {
+      "type": "object",
+      "properties": {
+        "prompt": { "type": "integer", "minimum": 0 },
+        "generation": { "type": "integer", "minimum": 0 },
+        "repair": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "latency_ms": { "type": "integer", "minimum": 0 },
+    "trace_uri": {
+      "type": "string",
+      "description": "Optional pointer to a fuller trace artifact (e.g. RolloutMemoryStore JSONL line)."
+    },
+    "error": {
+      "type": "object",
+      "description": "Non-null iff the run failed infrastructurally (model error, sandbox crash, sequence-pool exhaustion). When present, final_pass MUST be false and downstream aggregators MUST exclude this record from rate calculations.",
+      "required": ["kind", "message", "stage"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["model_error", "verifier_error", "repair_error", "workspace_error", "unknown"]
+        },
+        "message": {
+          "type": "string",
+          "description": "Original error message, truncated to 1000 chars."
+        },
+        "stage": {
+          "type": "string",
+          "enum": ["generate", "verify", "repair", "write"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
