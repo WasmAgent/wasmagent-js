@@ -268,10 +268,12 @@ describe("T7-S2 · bscode trajectoryExport format → evomerge Python round-trip
 
 describe("T7-S3 · Schema drift detection: wasmagent vs evomerge rollout-wire.schema.json", () => {
   it("both schema copies have the same required fields for RolloutBranchRecord", () => {
-    // Use cwd (repo root) so this works in CI
-    const repoRoot = process.cwd();
+    // Resolve the schema relative to this test file — process.cwd() varies
+    // depending on whether the test is invoked from the repo root or from
+    // tests/integration/ (turbo invokes from the package dir, which broke
+    // the previous cwd-relative path).
     const wasmagentSchemaPath =
-      `${repoRoot}/packages/core/src/ranking/schemas/rollout-wire.schema.json`;
+      `${import.meta.dir}/../../../packages/core/src/ranking/schemas/rollout-wire.schema.json`;
     const evomergeSchemaPath =
       "/tmp/evomerge-public-repo/src/datafactory/rollout-wire.schema.json";
 

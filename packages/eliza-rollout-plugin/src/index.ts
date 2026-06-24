@@ -46,12 +46,7 @@ import type {
   RolloutBranchResult,
   RolloutRecord,
 } from "@wasmagent/core/beta";
-import {
-  RolloutRanker,
-  toDpoRecord,
-  toJsonl,
-  toPpoRecords,
-} from "@wasmagent/core/beta";
+import { RolloutRanker, toDpoRecord, toJsonl, toPpoRecords } from "@wasmagent/core/beta";
 
 // ── elizaOS structural types ─────────────────────────────────────────────────
 //
@@ -73,15 +68,13 @@ export type ElizaState = Record<string, unknown>;
 
 export type ElizaCallback = (response: { text: string }) => Promise<void>;
 
-export interface ElizaActionHandler {
-  (
-    runtime: ElizaRuntime,
-    message: ElizaMessage,
-    state: ElizaState | undefined,
-    options: Record<string, unknown> | undefined,
-    callback: ElizaCallback | undefined
-  ): Promise<unknown>;
-}
+export type ElizaActionHandler = (
+  runtime: ElizaRuntime,
+  message: ElizaMessage,
+  state: ElizaState | undefined,
+  options: Record<string, unknown> | undefined,
+  callback: ElizaCallback | undefined
+) => Promise<unknown>;
 
 export interface ElizaAction {
   name: string;
@@ -348,8 +341,7 @@ export function createRolloutPlugin(opts: RolloutPluginOptions = {}): ElizaPlugi
       const originalRegister = runtime.registerAction.bind(runtime);
       runtime.registerAction = (action: ElizaAction) => {
         const shouldWrap =
-          resolved.includeActions.length === 0 ||
-          resolved.includeActions.includes(action.name);
+          resolved.includeActions.length === 0 || resolved.includeActions.includes(action.name);
 
         originalRegister(shouldWrap ? wrapAction(action, resolved) : action);
       };

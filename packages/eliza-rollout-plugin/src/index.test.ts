@@ -1,6 +1,12 @@
 import { describe, expect, it, mock } from "bun:test";
+import type {
+  ElizaAction,
+  ElizaCallback,
+  ElizaMessage,
+  ElizaRuntime,
+  ElizaState,
+} from "./index.js";
 import { createRolloutPlugin } from "./index.js";
-import type { ElizaAction, ElizaCallback, ElizaMessage, ElizaRuntime, ElizaState } from "./index.js";
 
 // Minimal runtime stub
 function makeRuntime(agentId = "test-agent"): ElizaRuntime & {
