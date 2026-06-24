@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/agent-prompts",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Reusable system prompt templates for wasmagent — code/tool/framework prompts with D2 + Markdown card conventions",
   "type": "module",
   "main": "./dist/index.js",

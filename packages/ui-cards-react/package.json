@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/ui-cards-react",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "React components to render @wasmagent/ui-cards card blocks (Markdown, D2 diagrams, ChatMessage)",
   "type": "module",
   "main": "./dist/index.js",
@@ -33,7 +33,7 @@
     }
   },
   "dependencies": {
-    "@wasmagent/ui-cards": "^1.0.0"
+    "@wasmagent/ui-cards": "^1.0.3"
   },
   "devDependencies": {
     "@terrastruct/d2": "^0.1.33",

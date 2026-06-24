@@ -1,5 +1,15 @@
 # @agentkit-js/integration-tests
 
+## 1.0.3
+
+### Patch Changes
+
+- Updated dependencies [[`ac58faa`](https://github.com/WasmAgent/wasmagent-js/commit/ac58faa7948f91defa979dc1f5e37fa8ee66d847)]:
+  - @wasmagent/core@1.0.3
+  - @wasmagent/kernel-quickjs@1.0.3
+  - @wasmagent/ui-cards@1.0.3
+  - @wasmagent/agent-prompts@1.0.3
+
 ## 1.0.1
 
 ### Patch Changes

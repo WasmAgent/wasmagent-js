@@ -1,6 +1,6 @@
 {
   "name": "mcp-portal",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "D1 — WasmAgent MCP Portal: federate 3 servers (filesystem + GitHub-like + custom memory) behind one two-tool surface.",
   "type": "module",

@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/devtools",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "DevTools for wasmagent — event timeline, step-replay, fork-from-checkpoint",
   "type": "module",
   "main": "./dist/index.js",
@@ -39,7 +39,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@wasmagent/core": "^1.0.0"
+    "@wasmagent/core": "^1.0.3"
   },
   "license": "Apache-2.0",
   "repository": {

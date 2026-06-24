@@ -1,6 +1,6 @@
 {
   "name": "local-offline",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Fully offline agent demo — local LLM + QuickJS kernel + in-memory state. No cloud calls, no API keys.",
   "type": "module",

@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/cli",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "CLI for wasmagent — mirrors smolagents' `smolagent` CLI (D6)",
   "type": "module",
   "bin": {
@@ -15,13 +15,13 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "^1.0.1",
-    "@wasmagent/devtools": "^1.0.0",
-    "@wasmagent/evals-runner": "^1.0.0",
+    "@wasmagent/core": "^1.0.3",
+    "@wasmagent/devtools": "^1.0.3",
+    "@wasmagent/evals-runner": "^1.0.3",
     "zod": "^3.23.0"
   },
   "peerDependencies": {
-    "@wasmagent/model-local": "^1.0.0"
+    "@wasmagent/model-local": "^1.0.3"
   },
   "peerDependenciesMeta": {
     "@wasmagent/model-local": {
@@ -29,7 +29,7 @@
     }
   },
   "devDependencies": {
-    "@wasmagent/model-local": "^1.0.0",
+    "@wasmagent/model-local": "^1.0.3",
     "@anthropic-ai/sdk": "^0.37.0",
     "typescript": "^5.7.0"
   },

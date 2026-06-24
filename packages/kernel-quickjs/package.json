@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/kernel-quickjs",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "QuickJS-in-WASM kernel for wasmagent — safe for Cloudflare Workers and serverless environments that lack node:vm",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "^1.0.0"
+    "@wasmagent/core": "^1.0.3"
   },
   "peerDependencies": {
     "quickjs-emscripten": ">=0.29.0",
