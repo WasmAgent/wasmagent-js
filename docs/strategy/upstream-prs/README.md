@@ -17,8 +17,9 @@ docs is worth more than an in-repo adapter.
 | [`vercel-ai-sdk-mcp-example.md`](vercel-ai-sdk-mcp-example.md) | `vercel/ai` | 🟡 **OPEN** PR [#16318](https://github.com/vercel/ai/pull/16318) — filed 2026-06-23, bot review passed, awaiting maintainer |
 | [`cloudflare-codemode-byo-executor.md`](cloudflare-codemode-byo-executor.md) | `cloudflare/agents` | 🔴 **CLOSED** issue [#1771](https://github.com/cloudflare/agents/issues/1771) — no maintainer action; re-pitch after vercel/ai lands |
 | [`mastra-mcp-overview-link.md`](mastra-mcp-overview-link.md) | `mastra-ai/mastra` | 🔴 **CLOSED** issue [#17884](https://github.com/mastra-ai/mastra/issues/17884) — "no third-party additions at the moment"; re-pitch after benchmark lands |
-| [`elizaos-sandboxed-action.md`](elizaos-sandboxed-action.md) | `elizaOS/eliza` | 🟡 **OPEN** issue filed 2026-06-23 |
-| [`langchainjs-sandboxed-tool-example.md`](langchainjs-sandboxed-tool-example.md) | `langchain-ai/langchainjs` | 🟡 **OPEN** issue filed 2026-06-23 |
+| [`elizaos-sandboxed-action.md`](elizaos-sandboxed-action.md) | `elizaOS/eliza` | 🔴 **CLOSED** issue [#9087](https://github.com/elizaOS/eliza/issues/9087) — sandbox rejected; revised issue [#9235](https://github.com/elizaOS/eliza/issues/9235) filed 2026-06-24 (capability governance) |
+| [`langchainjs-sandboxed-tool-example.md`](langchainjs-sandboxed-tool-example.md) | `langchain-ai/langchainjs` | 🟡 **OPEN** PR [#11104](https://github.com/langchain-ai/langchainjs/pull/11104) — filed 2026-06-24 |
+| *(new)* | `openai/openai-agents-js` | 🟡 **OPEN** issue [#1424](https://github.com/openai/openai-agents-js/issues/1424) — WASM sandbox backend, filed 2026-06-24 |
 
 ## What we learned from researching target repos (2026-06-23)
 
