@@ -3,7 +3,6 @@
 "@wasmagent/aisdk": patch
 "@wasmagent/claude-agent-sdk": patch
 "@wasmagent/cli": patch
-"@wasmagent/cloudflare-worker": patch
 "@wasmagent/devtools": patch
 "@wasmagent/evals-runner": patch
 "@wasmagent/kernel-pyodide": patch
@@ -36,7 +35,7 @@
 
 Brand, schema, tier metadata, adapter quickstarts, security defaults, eval-trust report generator
 
-- Rename all `AGENTKIT_*` env vars → `WASMAGENT_*` (cloudflare-worker, model-local)
+- Rename all `AGENTKIT_*` env vars → `WASMAGENT_*` (model-local)
 - Add `objective_status: 'pass'|'fail'|'unknown'` to rollout-wire schema
 - Add `wasmagent.{tier,stability}` maintenance tier metadata to all 33 packages
 - Add `docs/api/stability-policy.md` and `stable-exports.md` (275 stable exports)
