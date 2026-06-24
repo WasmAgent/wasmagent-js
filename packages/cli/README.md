@@ -1,6 +1,6 @@
 # /cli
 
-`agentkit` command-line interface — run a single agent task from your shell.
+`wasmagent` command-line interface — run a single agent task from your shell.
 
 > Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.
 
@@ -14,7 +14,7 @@ npm install -g /cli
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
-agentkit run "What is 12 * 13?"
+wasmagent run "What is 12 * 13?"
 ```
 
 ## License

@@ -53,5 +53,9 @@
     "llm",
     "typescript"
   ],
+  "wasmagent": {
+    "tier": "tier-0",
+    "stability": "stable"
+  },
   "author": "wasmagent contributors"
 }

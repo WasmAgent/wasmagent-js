@@ -1,6 +1,6 @@
 # GoalDirectedAgent baseline — 2026-06-18
 
-> **TL;DR.** First end-to-end run of `agentkit goal` against a real model.
+> **TL;DR.** First end-to-end run of `wasmagent goal` against a real model.
 > A 718-byte prompt produced a 10,602-byte Chinese OAuth 2.0 introduction
 > that passed all 7 self-synthesised criteria on iteration 1.
 > **Outcome: `verified`. Iterations: 1/5. Tokens: 8,357 in / 8,530 out.**
@@ -15,7 +15,7 @@ the loop **without** the user supplying graders by hand.
 | | |
 |---|---|
 | Date | 2026-06-18 |
-| CLI | `agentkit goal` (built from `packages/cli/dist/index.js`) |
+| CLI | `wasmagent goal` (built from `packages/cli/dist/index.js`) |
 | Model | `claude-sonnet-4-6` (executor + LLM judge + criteria synthesiser) |
 | Tools | `read_file`, `write_file` (auto-wired by CLI) |
 | Workspace | `.tmp/baseline-2026-06-18/` (gitignored) |

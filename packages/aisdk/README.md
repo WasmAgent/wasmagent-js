@@ -13,7 +13,7 @@ to run model-generated code inside a real sandbox on the edge. `node:vm` is
 forbidden on Cloudflare Workers and Vercel Edge; OS-level sandboxes (E2B,
 Daytona, Blaxel) need a server you don't have.
 
-agentkit's WASM kernels run JavaScript inside QuickJS-in-WASM
+wasmagent's WASM kernels run JavaScript inside QuickJS-in-WASM
 (`/kernel-quickjs`) — language-level isolation, no `node:vm`,
 ~2 MB cold start. Perfect fill for that gap.
 
@@ -106,7 +106,7 @@ N times; only the script's return value re-enters the model context.
 
 ## Kernel selection — pick the right tier
 
-`sandboxedJsTool()` and `codeModeTool()` accept any agentkit kernel.
+`sandboxedJsTool()` and `codeModeTool()` accept any wasmagent kernel.
 The choice is independent of the SDK adapter — drop a different kernel
 into the same `kernel:` slot and the rest of your code is unchanged:
 
@@ -167,4 +167,4 @@ backend follows you across them.
 
 `ObservationalMemory` (continuous compression with prompt-cache-stable
 prefix — Mastra OM equivalent) is also re-exported for callers running
-an agentkit `MessageAssembler`.
+an wasmagent `MessageAssembler`.

@@ -30,7 +30,7 @@ const system = composePrompt([
   OUTPUT_CONTRACT_FINAL_ANSWER,// "Return your final answer as …"
 ]);
 
-// Pass `system` to any agentkit Agent / Vercel AI SDK / Claude SDK / etc.
+// Pass `system` to any wasmagent Agent / Vercel AI SDK / Claude SDK / etc.
 ```
 
 ## Where it's used in this repo
@@ -52,7 +52,7 @@ The full surface lives in [`src/fragments.ts`](src/fragments.ts) and [`src/diagr
 
 ## Why these particular fragments
 
-The fragments were extracted from production system prompts that survived contact with real users (bscode in production since 2026-04, agentkit's own examples in CI). Each one solves a recurring failure mode — e.g. `CODE_QUALITY_TYPESCRIPT` exists because models default to writing untyped JS; `SANDBOX_QUICKJS` exists because models attempt `require('fs')` on a kernel that has no `fs`.
+The fragments were extracted from production system prompts that survived contact with real users (bscode in production since 2026-04, wasmagent's own examples in CI). Each one solves a recurring failure mode — e.g. `CODE_QUALITY_TYPESCRIPT` exists because models default to writing untyped JS; `SANDBOX_QUICKJS` exists because models attempt `require('fs')` on a kernel that has no `fs`.
 
 ## License
 

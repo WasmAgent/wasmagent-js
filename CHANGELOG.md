@@ -8,10 +8,16 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 > may ship sooner. Tagged versions on GitHub and npm correspond
 > 1-to-1 with sections in this file.
 >
+> **Stability tiers:** each release section is split into three subsections.
+> `### Stable changes` — exports covered by SemVer guarantees (tier-0 and tier-1
+> packages; see `docs/api/stability-policy.md`). `### Beta changes` — tier-2
+> packages; minor extensions allowed, no silent breaking. `### Experimental changes`
+> — tier-3 packages; may change in a minor release.
+>
 > **Frozen API surface:** see
-> [`docs/strategy/api-stability.md`](docs/strategy/api-stability.md)
-> for which exports are covered by SemVer guarantees. Anything marked
-> `@experimental` may change in a minor release.
+> [`docs/api/stability-policy.md`](docs/api/stability-policy.md)
+> for which exports are covered by SemVer guarantees. Anything in
+> tier-3 / `@experimental` may change in a minor release.
 
 ## [0.3.0] — 2026-06-18
 
@@ -49,7 +55,7 @@ and completes the go-to-market hardening pass.
 
 ## [Unreleased]
 
-### Added
+### Stable changes
 
 - **RLAIF infrastructure — batch rollout sampling + ranking (2026-06-22).**
   Full pipeline for generating RLAIF training data from `@wasmagent/core`:
@@ -111,14 +117,12 @@ and completes the go-to-market hardening pass.
   `exactOptionalPropertyTypes` TypeScript error when passing an
   `AbortSignal | undefined` to `agent.run()`. No behaviour change.
 
-### Added (kernel-remote)
-
 - **`CommandResult` type and `runCommand(cmd, opts?)` method** on
   `RemoteSandboxKernel`. Wraps E2B `sandbox.commands.run()` — returns structured
   `{ stdout, stderr, exitCode }` without the code-harness wrapping that `run()`
   applies to JS/Python snippets. Exported from `@wasmagent/kernel-remote`.
 
- The `CapabilityManifest.env` field is now actually
+- The `CapabilityManifest.env` field is now actually
   consumed by `PyodideKernel`, `WasmtimeKernel`, and `RemoteSandboxKernel`
   in addition to the long-standing `JsKernel` / `QuickJSKernel` paths.
   Each kernel now exposes the per-call frozen env map as a `__env__`
@@ -128,6 +132,7 @@ and completes the go-to-market hardening pass.
   contract tests in each kernel's package: PyodideKernel.test.ts,
   WasmtimeKernel.test.ts (3-call frozen-state assertion),
   RemoteSandboxKernel.test.ts (harness-builder unit tests).
+
 - **Kernel `cpuMs` per-call override — Wasmtime / Remote
   (2026-06-16).** Per-call `capabilities.cpuMs` now takes precedence
   over the constructor-time `opts.timeoutMs` default in
@@ -138,6 +143,7 @@ and completes the go-to-market hardening pass.
   scope for this commit). The capability honouring matrix in
   `packages/core/src/executor/types.ts` now reflects reality
   (Pyodide cpuMs ⚠️ advisory; Wasmtime memoryLimitBytes ⚠️ no native).
+
 - **`@wasmagent/evals-runner` — `multiTurnMemorySuiteOriginal` exposed
   (2026-06-16).** The 6-item original variant of the multi-turn-memory
   suite is now (a) registered in `REFERENCE_SUITES` under the name
@@ -154,7 +160,81 @@ and completes the go-to-market hardening pass.
   Caught by `examples/integration-smoke/edge-evals-runner.mjs` as
   part of the 4-axis audit's full-validation pass.
 
-### Fixed
+- **`@wasmagent/mcp-server` stdio entry point — response to
+  `awesome-mcp-servers#7910`'s Glama listing requirement.** New
+  `packages/mcp-server/src/stdio.ts` wires the existing
+  transport-agnostic `McpAgentServer.handle()` to a
+  spec-conformant MCP stdio transport (newline-delimited JSON
+  per the 2025-11-25 spec § stdio: stdout for responses, stderr
+  for logs, no embedded newlines, notifications get no reply).
+  `package.json` adds the `wasmagent-mcp-server` bin and a
+  `./stdio` subpath export. New `packages/mcp-server/Dockerfile.glama`
+  ships the Glama health-check image. 6 new unit tests
+  (`stdio.test.ts`) cover the framing rules. README rewritten to
+  document the three transports (stdio / HTTP / direct `handle()`).
+  Action queue for follow-up steps (Glama submission, PR
+  amendment) lives at
+  `docs/strategy/upstream-prs/action-queue-2026-06-12.md`.
+
+- **`createCodemodeExecutor` shim — Direction 1 pre-submission
+  gate cleared (2026-06-13).** New
+  `@wasmagent/aisdk` export `createCodemodeExecutor(opts)`
+  conforms to the Cloudflare codemode `Executor` interface
+  (`execute(code, providersOrFns) => Promise<{result, error?, logs?}>`)
+  and runs the LLM-emitted code inside any wasmagent `WasmKernel`
+  (QuickJSKernel / PyodideKernel / WasmtimeKernel / RemoteSandboxKernel).
+  The contract types are reproduced structurally — no
+  `@cloudflare/codemode` import — so consumers keep their bundle
+  clean. Supports both the flat `Record<string, fn>` and the
+  namespaced `ResolvedProvider[]` shapes, plus `positionalArgs`.
+  Implemented as a marker-and-rerun loop parallel to
+  `ProgrammaticOrchestrator` but reshaped for codemode's
+  `await tools.namespace.method(args)` authoring style. Uses a
+  Proxy-based `tools` global so unknown leaves throw a clear
+  message rather than silent `undefined`. Console output is
+  surfaced via each kernel's existing `KernelResult.logs`
+  accumulation, sidestepping per-run console-shim resets in some
+  kernels. 6 new unit tests (14 total in `aisdk`); `bun run
+  typecheck` passes 50/50. Unblocks the `cloudflare/agents`
+  recipe-page PR draft at
+  `docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md`.
+
+- `@wasmagent/claude-agent-sdk` (D1) — wasmagent kernels as Claude
+  Agent SDK tools. `sandboxedJsClaudeTool()` and `codeModeClaudeTool()`
+  emit the Anthropic-shape `{name, description, input_schema, handler}`
+  quadruple, structurally typed so they survive both the v0 and the
+  upcoming v1 line of `@anthropic-ai/sdk`. 7 unit tests.
+
+- `@wasmagent/openai-agents` (D1) — wasmagent kernels as OpenAI
+  Agents JS tools. `sandboxedJsAgentTool()` and `codeModeAgentTool()`
+  emit the `@openai/agents` `Tool<T>` shape (Zod parameters +
+  `execute()`). 6 unit tests.
+
+- `docs/guides/integrate-claude-agent-sdk.md` and
+  `docs/guides/integrate-openai-agents.md` — install + minimal
+  snippets + capability cheat-sheet for each adapter, mirroring the
+  existing Vercel AI SDK guide.
+
+- `evals-runner` warm-up phase — each model is primed before the
+  first eval seed so `p95WallMs` reflects steady-state inference
+  rather than cold model loading. `warmupMs` is reported separately.
+
+- `evals-runner/energy` — `estimateJoulesPerCorrect()` and
+  `renderEnergyTable()` derive a token-throughput × TDP energy
+  estimate; reports can now show J/correct alongside USD/correct.
+
+- `evals-runner` cross-model McNemar comparison rendered in the
+  markdown report, with an explicit `NOT-FOR-CLAIMS` watermark when
+  n < 50 items or seeds < 3.
+
+- `multi-turn-memory` reference suite expanded from 6 hand-crafted
+  items to 54 parametric items across 6 categories (single-session,
+  multi-session, knowledge-update, temporal-reasoning, long-context,
+  preference-update). Same design philosophy as GSM-Symbolic —
+  contamination-resistant by construction.
+
+### Beta changes
+
 - **swe-bench-lite container judge — `runTests` slot filled
   (2026-06-13).** The last unfilled slot in `examples/benchmarks/swe-bench-lite.mjs`
   now ships:
@@ -168,7 +248,7 @@ and completes the go-to-market hardening pass.
     AND every pass_to_pass still passes.
   - `runTests(task, patch, opts?)` in the harness — builds the
     image on first call (or trusts `--skipBuild`), runs
-    `docker run --rm -v $tmp:/work agentkit-swe-judge:latest`,
+    `docker run --rm -v $tmp:/work wasmagent-swe-judge:latest`,
     parses the result back. NEVER touches the host (the brief's
     pre-run-checklist hard gate). On hosts without docker
     (the typical contributor laptop / unprivileged CI runner),
@@ -186,6 +266,30 @@ and completes the go-to-market hardening pass.
   - `--smoke` is now 26 offline checks (was 19): adds 7 runTests
     shape assertions covering well-typed object, boolean fields,
     array shapes, error-on-no-docker fallback path, wallMs sanity.
+
+- **swe-bench-lite harness — `loadTasks` + `dispatchCodemode` (mock-mode)
+  landed (2026-06-13).** `examples/benchmarks/swe-bench-lite.mjs` is no
+  longer pure skeleton:
+  - `loadTasks(count)` fetches from HuggingFace datasets-server
+    (`princeton-nlp/SWE-bench_Lite`), pages at 100 rows/call up to the
+    full 300, caches to `.cache/swe-bench-lite/test.json`. New
+    `--load-tasks=N` flag for live probing. JSON-string-encoded
+    `FAIL_TO_PASS` / `PASS_TO_PASS` columns are parsed; defensive
+    against missing fields so a single malformed row does not abort
+    the load.
+  - `dispatchCodemode(task, answerer)` end-to-end through the
+    stub-answerer path: spins up `JsKernel` + `createCodemodeExecutor`
+    + a fake repo-edit tool surface (`readFile` / `writeFile` /
+    `gitDiff` / `runTestsInRepo`), runs the answerer-supplied codemode
+    script, returns `{ patch, toolCallCount, error?, logs }`. Real-mode
+    Anthropic / OpenAI answerers throw a clear "not wired yet" error
+    referencing the funded-run gate. Containerised judge stays
+    deferred per the brief's pre-run checklist.
+  - `--smoke` is now 12 offline checks (was 1): `normalizeRow` parsing,
+    defensive empty-row handling, end-to-end dispatch through the stub
+    answerer (patch produced, instance_id threaded through, real-mode
+    rejected cleanly).
+
 - **bscode `/recipes` live route — Direction 6 reverse-funnel
   upgraded from docs to live page (2026-06-13).** The first round
   of Direction 6 shipped only `docs/their-framework-our-kernel.md`
@@ -203,83 +307,14 @@ and completes the go-to-market hardening pass.
   reverse-funnel pitch is visible from the very first paint.
   bscode commit
   [`19bc56d`](https://github.com/WasmAgent/bscode/commit/19bc56d).
-- **swe-bench-lite harness — `loadTasks` + `dispatchCodemode` (mock-mode)
-  landed (2026-06-13).** `examples/benchmarks/swe-bench-lite.mjs` is no
-  longer pure skeleton:
-  - `loadTasks(count)` fetches from HuggingFace datasets-server
-    (`princeton-nlp/SWE-bench_Lite`), pages at 100 rows/call up to the
-    full 300, caches to `.cache/swe-bench-lite/test.json`. New
-    `--load-tasks=N` flag for live probing. JSON-string-encoded
-    `FAIL_TO_PASS` / `PASS_TO_PASS` columns are parsed; defensive
-    against missing fields so a single malformed row does not abort
-    the load.
-  - `dispatchCodemode(task, answerer)` end-to-end through the
-    stub-answerer path: spins up `JsKernel` + `agentkitCodemodeExecutor`
-    + a fake repo-edit tool surface (`readFile` / `writeFile` /
-    `gitDiff` / `runTestsInRepo`), runs the answerer-supplied codemode
-    script, returns `{ patch, toolCallCount, error?, logs }`. Real-mode
-    Anthropic / OpenAI answerers throw a clear "not wired yet" error
-    referencing the funded-run gate. Containerised judge stays
-    deferred per the brief's pre-run checklist.
-  - `--smoke` is now 12 offline checks (was 1): `normalizeRow` parsing,
-    defensive empty-row handling, end-to-end dispatch through the stub
-    answerer (patch produced, instance_id threaded through, real-mode
-    rejected cleanly).
-- **`agentkitCodemodeExecutor` shim — Direction 1 pre-submission
-  gate cleared (2026-06-13).** New
-  `@wasmagent/aisdk` export `agentkitCodemodeExecutor(opts)`
-  conforms to the Cloudflare codemode `Executor` interface
-  (`execute(code, providersOrFns) => Promise<{result, error?, logs?}>`)
-  and runs the LLM-emitted code inside any agentkit `WasmKernel`
-  (QuickJSKernel / PyodideKernel / WasmtimeKernel / RemoteSandboxKernel).
-  The contract types are reproduced structurally — no
-  `@cloudflare/codemode` import — so consumers keep their bundle
-  clean. Supports both the flat `Record<string, fn>` and the
-  namespaced `ResolvedProvider[]` shapes, plus `positionalArgs`.
-  Implemented as a marker-and-rerun loop parallel to
-  `ProgrammaticOrchestrator` but reshaped for codemode's
-  `await tools.namespace.method(args)` authoring style. Uses a
-  Proxy-based `tools` global so unknown leaves throw a clear
-  message rather than silent `undefined`. Console output is
-  surfaced via each kernel's existing `KernelResult.logs`
-  accumulation, sidestepping per-run console-shim resets in some
-  kernels. 6 new unit tests (14 total in `aisdk`); `bun run
-  typecheck` passes 50/50. Unblocks the `cloudflare/agents`
-  recipe-page PR draft at
-  `docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md`.
-- **`@wasmagent/mcp-server` stdio entry point — response to
-  `awesome-mcp-servers#7910`'s Glama listing requirement.** New
-  `packages/mcp-server/src/stdio.ts` wires the existing
-  transport-agnostic `McpAgentServer.handle()` to a
-  spec-conformant MCP stdio transport (newline-delimited JSON
-  per the 2025-11-25 spec § stdio: stdout for responses, stderr
-  for logs, no embedded newlines, notifications get no reply).
-  `package.json` adds the `agentkit-mcp-server` bin and a
-  `./stdio` subpath export. New `packages/mcp-server/Dockerfile.glama`
-  ships the Glama health-check image. 6 new unit tests
-  (`stdio.test.ts`) cover the framing rules. README rewritten to
-  document the three transports (stdio / HTTP / direct `handle()`).
-  Action queue for follow-up steps (Glama submission, PR
-  amendment) lives at
-  `docs/strategy/upstream-prs/action-queue-2026-06-12.md`.
-- **Upstream-PR maintainer-response log — first responses in.**
-  `docs/strategy/upstream-prs/README.md` now records the three
-  responses received on 2026-06-12: `awesome-mcp-servers#7910`
-  is conditionally accepted (Glama listing + badge), Mastra
-  `#17884` is **closed** by `@roaminro` with "we're not adding
-  any new third-party projects to that section at the moment"
-  (logged as a falsifiability data point — re-pitch is gated on
-  a public benchmark number per Direction 2, draft is *not*
-  prepared in advance to avoid premature re-open), and
-  `vercel/ai#16063` is open with no response yet (waiting per
-  the 30-day-then-bump-once etiquette).
+
 - **bscode reverse-funnel page — Direction 6 of the 2026-06-12
   optimization brief.** New page in the bscode demo repo,
   `docs/their-framework-our-kernel.md`, documents five recipes
-  for dropping agentkit kernels into the framework the visitor
+  for dropping wasmagent kernels into the framework the visitor
   already uses (Vercel AI SDK 6 + `sandboxedJsTool`, Cloudflare
-  codemode + `agentkitCodemodeExecutor` shim, Mastra +
-  `agentkitMastraSandbox`, Anthropic Claude Agent SDK +
+  codemode + `createCodemodeExecutor` shim, Mastra +
+  `createMastraSandbox`, Anthropic Claude Agent SDK +
   `sandboxedJsClaudeTool`, OpenAI Agents JS +
   `sandboxedJsAgentTool`). Each recipe carries a UTM-tagged
   `?source=bscode-<framework>-recipe` so the strategy memo's
@@ -289,6 +324,7 @@ and completes the go-to-market hardening pass.
   README links the page from the "What this demonstrates"
   section so visitors who arrive expecting a framework demo
   see the runtime pitch alongside.
+
 - **Public-benchmark plan + SWE-bench-lite skeleton — Direction 2
   of the 2026-06-12 optimization brief.** New strategy doc
   `docs/strategy/leaderboard-plan.md` lays out the ordered plan
@@ -302,6 +338,7 @@ and completes the go-to-market hardening pass.
   guard and a fully-documented pre-run checklist; the placeholder
   report lives at `docs/reports/swe-bench-lite-pending.md`. ROADMAP
   promotes the SWE-bench-lite run from "considering" to "in flight."
+
 - **Cloudflare codemode third-party-executor draft — Direction 1
   of the 2026-06-12 optimization brief.** New draft
   `docs/strategy/upstream-prs/cloudflare-codemode-byo-executor.md`
@@ -311,11 +348,12 @@ and completes the go-to-market hardening pass.
   executor that closes the three explicit gaps in the default
   `DynamicWorkerExecutor` (no Workers binding, Python support,
   `needsApproval` lifecycle). Pre-submission gate: ship the
-  `agentkitCodemodeExecutor` shim in `@wasmagent/aisdk` first
+  `createCodemodeExecutor` shim in `@wasmagent/aisdk` first
   so the example runs. The directory's `README.md` was raised
   from "appendix" framing to "Direction 1 priority" with the
   rationale and a contributor pointer that ties co-maintainer
   candidacy to landing one of these upstream entries.
+
 - **DevTools as standalone framework-agnostic Studio — Direction 5
   of the 2026-06-12 optimization brief.** `packages/devtools/README.md`
   rewritten to lead with the cross-framework story (Vercel AI SDK,
@@ -324,11 +362,12 @@ and completes the go-to-market hardening pass.
   `docs/guides/devtools-cross-framework.md` provides per-producer
   capture recipes plus a `devtools:cross-framework` issue label
   for prioritizing producers users actually have. The CLI is
-  reachable via `npx -p @wasmagent/cli agentkit devtools
-  --otel-events-file <path>` so non-agentkit users do not need
+  reachable via `npx -p @wasmagent/cli wasmagent devtools
+  --otel-events-file <path>` so non-wasmagent users do not need
   to install `@wasmagent/core`. The adapter
   (`convertGenAiSpansToEvents`) was already shipped in 2026-06-12;
   this is the discovery surface upgrade.
+
 - **Maintenance tiers — Direction 4 of the 2026-06-12 optimization
   brief.** `docs/strategy/maintenance-tiers.md` classifies all 33
   packages into ★ Core (8) / ◆ Narrative (15) / ▽ Maintenance-mode
@@ -343,6 +382,7 @@ and completes the go-to-market hardening pass.
   banner is the only behavior change. Falsifiability: ▽ packages
   with neither a promote-request nor sustained > 100 d/w by
   2027-Q1 graduate to "deprecated → archive."
+
 - **Governance signals — Direction 3 of the 2026-06-12 optimization
   brief.** `docs/strategy/api-stability.md` now publishes a
   **2026-12-15 1.0-freeze date** for `@wasmagent/core`, with a
@@ -358,19 +398,19 @@ and completes the go-to-market hardening pass.
   `GOVERNANCE.md` link both ledgers; `CONTRIBUTING.md` opens with
   a top-level "looking for a co-maintainer" pointer rather than
   burying it in governance.
-- `@wasmagent/claude-agent-sdk` (D1) — agentkit kernels as Claude
-  Agent SDK tools. `sandboxedJsClaudeTool()` and `codeModeClaudeTool()`
-  emit the Anthropic-shape `{name, description, input_schema, handler}`
-  quadruple, structurally typed so they survive both the v0 and the
-  upcoming v1 line of `@anthropic-ai/sdk`. 7 unit tests.
-- `@wasmagent/openai-agents` (D1) — agentkit kernels as OpenAI
-  Agents JS tools. `sandboxedJsAgentTool()` and `codeModeAgentTool()`
-  emit the `@openai/agents` `Tool<T>` shape (Zod parameters +
-  `execute()`). 6 unit tests.
-- `docs/guides/integrate-claude-agent-sdk.md` and
-  `docs/guides/integrate-openai-agents.md` — install + minimal
-  snippets + capability cheat-sheet for each adapter, mirroring the
-  existing Vercel AI SDK guide.
+
+- **Upstream-PR maintainer-response log — first responses in.**
+  `docs/strategy/upstream-prs/README.md` now records the three
+  responses received on 2026-06-12: `awesome-mcp-servers#7910`
+  is conditionally accepted (Glama listing + badge), Mastra
+  `#17884` is **closed** by `@roaminro` with "we're not adding
+  any new third-party projects to that section at the moment"
+  (logged as a falsifiability data point — re-pitch is gated on
+  a public benchmark number per Direction 2, draft is *not*
+  prepared in advance to avoid premature re-open), and
+  `vercel/ai#16063` is open with no response yet (waiting per
+  the 30-day-then-bump-once etiquette).
+
 - `examples/benchmarks/longmemeval-500.mjs` (D2) — standalone runner
   for the official LongMemEval-500 set with multi-observer
   comparison, per-category breakdown (multi-session row called out
@@ -380,30 +420,22 @@ and completes the go-to-market hardening pass.
   run is funding-dependent (🖥️ in ROADMAP); a placeholder lives at
   `docs/reports/longmemeval-500-pending.md` with the exact CLI
   command that will populate it.
-- `agentkit devtools --otel-events-file <path>` (D5) — point the
+
+- `wasmagent devtools --otel-events-file <path>` (D5) — point the
   zero-deploy local Studio at any GenAI semconv source: NDJSON spans
   or OTLP/JSON. The `convertGenAiSpansToEvents()` adapter (9 tests)
   maps `gen_ai.operation.name = invoke_agent | chat | execute_tool`
   spans to the `LoggedEvent` shape the existing aggregator reads, so
   Vercel AI SDK / Mastra / OpenAI Agents JS / Anthropic SDK traces
-  render in the same Studio view as agentkit's own runs.
-- `evals-runner` warm-up phase — each model is primed before the
-  first eval seed so `p95WallMs` reflects steady-state inference
-  rather than cold model loading. `warmupMs` is reported separately.
-- `evals-runner/energy` — `estimateJoulesPerCorrect()` and
-  `renderEnergyTable()` derive a token-throughput × TDP energy
-  estimate; reports can now show J/correct alongside USD/correct.
-- `evals-runner` cross-model McNemar comparison rendered in the
-  markdown report, with an explicit `NOT-FOR-CLAIMS` watermark when
-  n < 50 items or seeds < 3.
-- `multi-turn-memory` reference suite expanded from 6 hand-crafted
-  items to 54 parametric items across 6 categories (single-session,
-  multi-session, knowledge-update, temporal-reasoning, long-context,
-  preference-update). Same design philosophy as GSM-Symbolic —
-  contamination-resistant by construction.
+  render in the same Studio view as wasmagent's own runs.
+
 - `docs/strategy/2026-06-competitiveness.md` — the strategy memo that
   ROADMAP.md has referenced since 2026-06-12 (previously a dangling
   link).
+
+### Experimental changes
+
+<!-- No experimental changes in this batch. -->
 
 ## [0.2.0] — 2026-06-12
 

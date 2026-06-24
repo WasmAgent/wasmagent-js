@@ -16,7 +16,7 @@ generates code, you have to either trust it (don't), spin up a container
 (latency, ops cost), or write a `node:vm` shim (bans you from edge
 runtimes).
 
-This package gives you a `ClaudeAgentTool` backed by an agentkit kernel
+This package gives you a `ClaudeAgentTool` backed by a wasmagent kernel
 (`QuickJSKernel`, `PyodideKernel`, `WasmtimeKernel`, or `RemoteSandboxKernel`).
 Pick a tier; pick a manifest; the tool drops straight into the agent SDK's
 `tools` array.
@@ -62,7 +62,7 @@ const tool = codeModeClaudeTool({
 
 ## Kernel selection — pick the right tier
 
-`sandboxedJsClaudeTool()` and `codeModeClaudeTool()` accept any agentkit
+`sandboxedJsClaudeTool()` and `codeModeClaudeTool()` accept any wasmagent
 kernel. The choice is independent of the SDK adapter — swap kernels in
 one line, the rest of your code is unchanged:
 
@@ -77,7 +77,7 @@ Swap is a one-liner — `kernel: new QuickJSKernel()` becomes `kernel: new Pyodi
 
 ## Capability manifest
 
-Same `CapabilityManifest` as every other agentkit kernel — see
+Same `CapabilityManifest` as every other wasmagent kernel — see
 [`docs/guides/code-mode.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/code-mode.md#security-policy-face).
 
 ## See also

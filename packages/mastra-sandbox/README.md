@@ -13,14 +13,14 @@ can plug in a custom code-execution backend. The defaults are
 service-backed (Blaxel-hosted, E2B-hosted) — fine if you're already paying
 for one of those, awkward when you're not.
 
-This package ships a Mastra sandbox provider that delegates to any agentkit
+This package ships a Mastra sandbox provider that delegates to any wasmagent
 kernel. WASM kernels (`QuickJSKernel`, `PyodideKernel`, `WasmtimeKernel`) run
 in-process, on every Workers edge, with sub-100ms cold start — no API key,
 no account, no billing.
 
 ## Compared to Blaxel / E2B providers
 
-|              | agentkit kernel | Blaxel / E2B sandbox |
+|              | wasmagent kernel | Blaxel / E2B sandbox |
 | ------------ | --------------- | -------------------- |
 | Cold start   | ~50 ms          | 200–800 ms           |
 | Cost / call  | $0 (in-process) | per-second billing   |
@@ -45,9 +45,9 @@ npm install /mastra-sandbox /kernel-quickjs \
 ```ts
 import { Agent } from "@mastra/core";
 import { QuickJSKernel } from "/kernel-quickjs";
-import { agentkitMastraSandbox } from "/mastra-sandbox";
+import { createMastraSandbox } from "/mastra-sandbox";
 
-const sandbox = agentkitMastraSandbox({
+const sandbox = createMastraSandbox({
   kernel: new QuickJSKernel({ timeoutMs: 5_000 }),
   capabilities: {
     allowedHosts: ["api.example.com"],
@@ -69,7 +69,7 @@ const agent = new Agent({
 
 ## Kernel selection — pick the right tier
 
-`agentkitMastraSandbox()` accepts any agentkit kernel. The choice is
+`createMastraSandbox()` accepts any wasmagent kernel. The choice is
 independent of the Mastra integration — drop a different kernel into the
 same `kernel:` slot and the rest of your code is unchanged:
 

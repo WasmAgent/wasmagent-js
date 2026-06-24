@@ -21,7 +21,7 @@ isolation. It does **not** cover:
 - Workloads where 50 ms is too long for cold start and per-second container
   billing dominates the cost.
 
-The agentkit kernels live below the OS line — QuickJS-in-WASM, Pyodide-in-WASM,
+The wasmagent kernels live below the OS line — QuickJS-in-WASM, Pyodide-in-WASM,
 or Wasmtime — so they run wherever JS runs. This package binds them to the
 Agents JS `Tool` shape.
 
@@ -71,7 +71,7 @@ const agent = new Agent({ name: "ops", tools: [portalTool] });
 
 ## Kernel selection — pick the right tier
 
-`sandboxedJsAgentTool()` and `codeModeAgentTool()` accept any agentkit
+`sandboxedJsAgentTool()` and `codeModeAgentTool()` accept any wasmagent
 kernel. The choice is independent of the SDK adapter — swap kernels in
 one line, the rest of your code is unchanged:
 

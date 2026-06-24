@@ -1,31 +1,46 @@
 # wasmagent
 
-**Embedded Agent Runtime — WASM sandboxing, capability governance, verifiable rollouts**
+**WasmAgent is a framework-neutral execution runtime for code-mode agents.**
 
 [![npm version](https://img.shields.io/npm/v/@wasmagent/core.svg?label=%40wasmagent%2Fcore)](https://www.npmjs.com/package/@wasmagent/core)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![CI](https://github.com/WasmAgent/wasmagent-js/actions/workflows/ci.yml/badge.svg)](https://github.com/WasmAgent/wasmagent-js/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-vitepress-brightgreen.svg)](https://WasmAgent.github.io/wasmagent-js/)
 
-**Bring your own agent framework.** wasmagent-js provides the sandboxed runtime, capability policies, build/visual verifiers, rollout ranker, and trace export — without replacing your existing orchestration.
+## Core Runtime
+`@wasmagent/core` · `@wasmagent/kernel-quickjs` · `@wasmagent/kernel-pyodide` · `@wasmagent/kernel-remote`
+
+## Integrations
+`@wasmagent/aisdk` · `@wasmagent/mastra-sandbox` · `@wasmagent/openai-agents` · `@wasmagent/claude-agent-sdk` · `@wasmagent/mcp-server`
+
+## Trust / Data
+`@wasmagent/evals-runner` · `@wasmagent/devtools` · rollout-wire schema · evomerge datafactory
+
+> Full package list: [docs/packages.md](docs/packages.md)
+
+---
+
+## 60-second quickstart
 
 ```bash
-npm add @wasmagent/core @anthropic-ai/sdk
+npm add @wasmagent/aisdk @wasmagent/kernel-quickjs
 ```
 
 ```ts
-import { ToolCallingAgent, AnthropicModel } from "@wasmagent/core";
-import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+import { createAI } from "ai";
 import { sandboxedJsTool } from "@wasmagent/aisdk";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
-const agent = new ToolCallingAgent({
-  model: new AnthropicModel("claude-haiku-4-5-20251001"),
-  tools: [sandboxedJsTool({ kernel: new QuickJSKernel() })],
+const { generateText } = createAI({ /* your AI SDK provider */ });
+
+const result = await generateText({
+  model: /* your model */,
+  tools: { code: sandboxedJsTool({ kernel: new QuickJSKernel() }) },
+  prompt: "Calculate the first 10 Fibonacci numbers.",
+  maxSteps: 5,
 });
 
-for await (const ev of agent.run("Calculate the first 10 Fibonacci numbers.")) {
-  if (ev.event === "final_answer") console.log(ev.data.answer);
-}
+console.log(result.text);
 ```
 
 📚 **[Docs](https://WasmAgent.github.io/wasmagent-js/)** · [Getting started](./docs/guides/getting-started.md) · [Kernels](./docs/kernels/comparison.md) · [OWASP governance](./docs/security/capability-manifest-owasp.md) · [Security pack](./docs/security-governance-pack/README.md) · [Changelog](./CHANGELOG.md)
@@ -132,6 +147,7 @@ wasmagent export-rollouts --in ranked.jsonl --format dpo --out dpo.jsonl
 | Goal-directed agent with verifiers | [docs/guides/goal-directed.md](./docs/guides/goal-directed.md) |
 | Super-Instruction Set (SI-1~9) — composable agent patterns | [docs/guides/super-instruction-set.md](./docs/guides/super-instruction-set.md) |
 | Production APIs (retry, evals, OTel, React hook, PTC) | [docs/api/production-apis.md](./docs/api/production-apis.md) |
+| API stability policy | [docs/api/stability-policy.md](./docs/api/stability-policy.md) |
 | Kernel selection decision tree | [docs/kernels/comparison.md](./docs/kernels/comparison.md) |
 | Security governance + OWASP Agentic Top 10 | [docs/security-governance-pack/README.md](./docs/security-governance-pack/README.md) |
 | RLAIF data loop (rollout → DPO/PPO) | [docs/schemas/GOVERNANCE.md](./docs/schemas/GOVERNANCE.md) |
@@ -153,12 +169,6 @@ import { LocalModel } from "@wasmagent/model-local";  // node-llama-cpp, multi-m
 ```
 
 Full provider reference and proxy/custom endpoint setup: [docs/guides/openai-compat-recipes.md](./docs/guides/openai-compat-recipes.md)
-
----
-
-## Packages
-
-wasmagent is a 33-package monorepo. See **[docs/packages.md](docs/packages.md)** for the tier-classified list with one-line descriptions and README links.
 
 ---
 

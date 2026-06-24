@@ -119,7 +119,7 @@ const mockCtx = {
 const TEST_TOKEN = "test-secret-token";
 
 function makeEnv(overrides: Record<string, unknown> = {}) {
-  return { ANTHROPIC_API_KEY: "sk-test", AGENTKIT_CLIENT_TOKEN: TEST_TOKEN, ...overrides };
+  return { ANTHROPIC_API_KEY: "sk-test", WASMAGENT_CLIENT_TOKEN: TEST_TOKEN, ...overrides };
 }
 
 async function readBody(res: Response): Promise<string> {
@@ -154,7 +154,7 @@ describe("POST /run — Last-Event-ID SSE resume (A2)", () => {
 
   it("first run persists every event under the trace prefix", async () => {
     const ns = new FakeKVNamespace();
-    const env = makeEnv({ AGENTKIT_EVENT_LOG: ns });
+    const env = makeEnv({ WASMAGENT_EVENT_LOG: ns });
     const res = await runPost(env);
     expect(res.status).toBe(200);
     expect(res.headers.get("X-Agentkit-Trace-Id")).toBeTruthy();
@@ -173,7 +173,7 @@ describe("POST /run — Last-Event-ID SSE resume (A2)", () => {
     mockAgentEvents = [ev(0), ev(1), ev(2)];
     // Note: no final_answer ⇒ purge is NOT called.
     const ns = new FakeKVNamespace();
-    const env = makeEnv({ AGENTKIT_EVENT_LOG: ns });
+    const env = makeEnv({ WASMAGENT_EVENT_LOG: ns });
     const res = await runPost(env);
     expect(res.status).toBe(200);
     await readBody(res);
@@ -216,14 +216,14 @@ describe("POST /run — Last-Event-ID SSE resume (A2)", () => {
 
   it("X-Agentkit-Trace-Id header is always returned so the client can resume", async () => {
     const ns = new FakeKVNamespace();
-    const res = await runPost(makeEnv({ AGENTKIT_EVENT_LOG: ns }));
+    const res = await runPost(makeEnv({ WASMAGENT_EVENT_LOG: ns }));
     const traceId = res.headers.get("X-Agentkit-Trace-Id");
     expect(traceId).toBeTruthy();
     expect(traceId?.length).toBeGreaterThan(0);
   });
 
-  it("missing AGENTKIT_EVENT_LOG binding falls back to passthrough (no resume, but stream works)", async () => {
-    const res = await runPost(makeEnv()); // no AGENTKIT_EVENT_LOG
+  it("missing WASMAGENT_EVENT_LOG binding falls back to passthrough (no resume, but stream works)", async () => {
+    const res = await runPost(makeEnv()); // no WASMAGENT_EVENT_LOG
     expect(res.status).toBe(200);
     const body = await readBody(res);
     // Each event is still framed with id:/event:/data: for SSE clients that want to track ids.

@@ -66,21 +66,21 @@ describe("offlineOnly", () => {
 });
 
 describe("devLocalOr", () => {
-  const orig = process.env.AGENTKIT_DEV_LOCAL;
+  const orig = process.env.WASMAGENT_DEV_LOCAL;
   afterEach(() => {
-    if (orig === undefined) delete process.env.AGENTKIT_DEV_LOCAL;
-    else process.env.AGENTKIT_DEV_LOCAL = orig;
+    if (orig === undefined) delete process.env.WASMAGENT_DEV_LOCAL;
+    else process.env.WASMAGENT_DEV_LOCAL = orig;
   });
 
-  it("returns the local model when AGENTKIT_DEV_LOCAL=1", () => {
-    process.env.AGENTKIT_DEV_LOCAL = "1";
+  it("returns the local model when WASMAGENT_DEV_LOCAL=1", () => {
+    process.env.WASMAGENT_DEV_LOCAL = "1";
     const local = okModel("L", "");
     const cloud = okModel("C", "");
     expect(devLocalOr(local, cloud).providerId).toBe("L");
   });
 
-  it("returns the cloud model when AGENTKIT_DEV_LOCAL is unset", () => {
-    delete process.env.AGENTKIT_DEV_LOCAL;
+  it("returns the cloud model when WASMAGENT_DEV_LOCAL is unset", () => {
+    delete process.env.WASMAGENT_DEV_LOCAL;
     const local = okModel("L", "");
     const cloud = okModel("C", "");
     expect(devLocalOr(local, cloud).providerId).toBe("C");

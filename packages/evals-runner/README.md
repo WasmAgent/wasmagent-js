@@ -4,8 +4,8 @@
 > Framework-neutral: the public interface (`BenchmarkSuite`, `Scorer`,
 > `ModelProvider`) has zero runtime dependency on `@wasmagent/core`.
 > Use it to benchmark Vercel AI SDK agents, Mastra agents, OpenAI Agents JS,
-> or plain `/chat/completions` endpoints — no agentkit runtime required.
-> Built-in reference suites that run agentkit agents are available but
+> or plain `/chat/completions` endpoints — no wasmagent runtime required.
+> Built-in reference suites that run wasmagent agents are available but
 > optional.
 
 wasmagent stays **independent**: this package is the *referee*, not the
@@ -46,10 +46,10 @@ that turn even a small run into a defensible claim:
 ## Install
 
 ```bash
-# With agentkit (for the built-in reference suites):
+# With wasmagent (for the built-in reference suites):
 npm install @wasmagent/evals-runner @wasmagent/core
 
-# Framework-neutral (public interface only — no agentkit runtime):
+# Framework-neutral (public interface only — no wasmagent runtime):
 npm install @wasmagent/evals-runner
 ```
 
@@ -64,7 +64,7 @@ supply its own scorers and suites:
 import { runEvaluation, renderReportMarkdown } from "@wasmagent/evals-runner";
 import type { BenchmarkSuite, Scorer } from "@wasmagent/evals-runner";
 
-// A scorer that checks the answer contains a keyword — no agentkit needed.
+// A scorer that checks the answer contains a keyword — no wasmagent needed.
 const keywordScorer: Scorer = {
   name: "keyword",
   score(trace, sample) {
@@ -101,10 +101,10 @@ console.log(renderReportMarkdown(report));
 
 ```bash
 # List the 6 reference suites:
-agentkit evals list
+wasmagent evals list
 
 # Run multi-turn memory + cost-per-correct against 2 models, 3 seeds:
-agentkit evals run \
+wasmagent evals run \
   --suite=multi-turn-memory,cost-per-correct \
   --models="qwen2.5:0.5b@http://localhost:11434/v1,gpt-4o-mini@https://api.openai.com/v1" \
   --seeds=0,1,2 \
@@ -229,7 +229,7 @@ All primitives have parity tests against scipy reference values
 - [`docs/guides/evals-runner.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/evals-runner.md)
   — full guide with Ollama / OpenRouter / Gateway recipes.
 - [`docs/guides/openai-compat-recipes.md`](https://github.com/WasmAgent/wasmagent-js/blob/main/docs/guides/openai-compat-recipes.md)
-  — same model-spec format used by the rest of agentkit.
+  — same model-spec format used by the rest of wasmagent.
 
 ## Worked example: 2026-06-17 — the referee in action
 

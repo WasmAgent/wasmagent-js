@@ -27,6 +27,11 @@
         "final_answer": { "type": "string" },
         "build_result": { "type": ["object", "null"] },
         "objective_score": { "type": "integer", "enum": [0, 1] },
+        "objective_status": {
+          "type": "string",
+          "enum": ["pass", "fail", "unknown"],
+          "description": "Semantic label for objective_score. unknown = build not triggered (do not use in DPO pairs)."
+        },
         "rank": { "type": "integer", "minimum": 0 },
         "total_score": {
           "type": "number",
