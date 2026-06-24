@@ -2,18 +2,41 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://wasmagent.dev/schemas/compliance/compliance-eval-record.schema.json",
   "title": "ComplianceEvalRecord",
-  "description": "One record per compliance run. Designed to be embeddable inside a @wasmagent/core rollout JSONL record (alignment with RolloutMemoryStore is a Phase 1 task — keep this self-contained for Phase 0).",
+  "description": "One record per compliance run (compliance-eval-record/v1). Single source of truth across wasmagent-js and evomerge-framework.",
   "type": "object",
-  "required": ["task_id", "task_spec_hash", "model", "violations", "repair_trace", "final_pass"],
+  "required": [
+    "schema_version",
+    "task_id",
+    "task_spec_hash",
+    "model",
+    "mode",
+    "violations",
+    "repair_trace",
+    "final_pass",
+    "artifact"
+  ],
   "properties": {
-    "task_id": { "type": "string", "minLength": 1 },
+    "schema_version": {
+      "type": "string",
+      "const": "compliance-eval-record/v1",
+      "description": "Schema version identifier. Always 'compliance-eval-record/v1'."
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
     "task_spec_hash": {
       "type": "string",
-      "description": "Stable hash of the TaskSpec JSON (e.g. sha256). Used to group runs of the same spec across models and time."
+      "description": "Stable hash of the TaskSpec JSON (e.g. sha256). Groups runs of the same spec across models and time."
     },
     "model": {
       "type": "string",
-      "description": "Identifier of the model under test (e.g. 'qwen2.5-14b-instruct')."
+      "description": "Identifier of the model under test (e.g. 'qwen2.5-1.5b')."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["direct", "prompt_retry", "full_pcl"],
+      "description": "Execution mode: direct = single pass; prompt_retry = retry with violation hints; full_pcl = Protocol-Constrained Local Repair."
     },
     "violations": {
       "type": "array",
@@ -24,10 +47,18 @@
       "type": "array",
       "items": { "$ref": "repair-trace.schema.json" }
     },
-    "repair_rounds": { "type": "integer", "minimum": 0 },
+    "repair_rounds": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
     "final_pass": {
       "type": "boolean",
       "description": "True iff all hard constraints passed after repair."
+    },
+    "artifact": {
+      "type": "string",
+      "description": "Final model output text (after all repair rounds)."
     },
     "token_cost": {
       "type": "object",
@@ -38,14 +69,18 @@
       },
       "additionalProperties": false
     },
-    "latency_ms": { "type": "integer", "minimum": 0 },
+    "latency_ms": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Wall-clock latency in milliseconds for the full run."
+    },
     "trace_uri": {
       "type": "string",
       "description": "Optional pointer to a fuller trace artifact (e.g. RolloutMemoryStore JSONL line)."
     },
     "error": {
       "type": "object",
-      "description": "Non-null iff the run failed infrastructurally (model error, sandbox crash, sequence-pool exhaustion). When present, final_pass MUST be false and downstream aggregators MUST exclude this record from rate calculations.",
+      "description": "Non-null iff the run failed infrastructurally. When present, final_pass MUST be false.",
       "required": ["kind", "message", "stage"],
       "properties": {
         "kind": {
