@@ -1,0 +1,15 @@
+{
+  "name": "@wasmagent-examples/openai-agents-quickstart",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@wasmagent/openai-agents": "latest",
+    "@wasmagent/kernel-quickjs": "latest",
+    "quickjs-emscripten": "latest",
+    "@jitl/quickjs-wasmfile-release-sync": "latest",
+    "zod": "latest"
+  }
+}

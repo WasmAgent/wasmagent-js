@@ -1,0 +1,15 @@
+{
+  "name": "@wasmagent-examples/claude-agent-sdk-quickstart",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@wasmagent/claude-agent-sdk": "latest",
+    "@wasmagent/kernel-quickjs": "latest",
+    "quickjs-emscripten": "latest",
+    "@jitl/quickjs-wasmfile-release-sync": "latest",
+    "zod": "latest"
+  }
+}

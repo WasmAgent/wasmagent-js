@@ -1,0 +1,17 @@
+{
+  "name": "@wasmagent-examples/aisdk-quickstart",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@wasmagent/aisdk": "latest",
+    "@wasmagent/kernel-quickjs": "latest",
+    "ai": "latest",
+    "@ai-sdk/openai": "latest",
+    "quickjs-emscripten": "latest",
+    "@jitl/quickjs-wasmfile-release-sync": "latest",
+    "zod": "latest"
+  }
+}

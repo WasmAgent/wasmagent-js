@@ -1,0 +1,15 @@
+{
+  "name": "@wasmagent-examples/mcp-server-quickstart",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@wasmagent/mcp-server": "latest",
+    "@wasmagent/core": "latest",
+    "@wasmagent/kernel-quickjs": "latest",
+    "quickjs-emscripten": "latest",
+    "@jitl/quickjs-wasmfile-release-sync": "latest"
+  }
+}

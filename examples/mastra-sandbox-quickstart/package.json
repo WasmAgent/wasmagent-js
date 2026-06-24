@@ -1,0 +1,14 @@
+{
+  "name": "@wasmagent-examples/mastra-sandbox-quickstart",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@wasmagent/mastra-sandbox": "latest",
+    "@wasmagent/kernel-quickjs": "latest",
+    "quickjs-emscripten": "latest",
+    "@jitl/quickjs-wasmfile-release-sync": "latest"
+  }
+}
