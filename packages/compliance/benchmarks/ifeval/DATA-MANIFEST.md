@@ -6,12 +6,13 @@
 
 ```
 packages/compliance/benchmarks/ifeval/
-├── results/                        150 records  Qwen2.5-1.5B  seed=42
-├── results-seed43/                 150 records  Qwen2.5-1.5B  seed=43
-├── results-seed44/                 150 records  Qwen2.5-1.5B  seed=44
-├── results-llama-3.2-1b-seed42/    150 records  Llama-3.2-1B  seed=42
-├── results-llama-3.2-1b-seed43/    150 records  Llama-3.2-1B  seed=43
-└── results-llama-3.2-1b-seed44/    150 records  Llama-3.2-1B  seed=44
+├── results/                                150 records  Qwen2.5-1.5B  seed=42
+├── results-seed43/                         150 records  Qwen2.5-1.5B  seed=43
+├── results-seed44/                         150 records  Qwen2.5-1.5B  seed=44
+├── results-llama-3.2-1b-seed42/            150 records  Llama-3.2-1B  seed=42
+├── results-llama-3.2-1b-seed43/            150 records  Llama-3.2-1B  seed=43
+├── results-llama-3.2-1b-seed44/            150 records  Llama-3.2-1B  seed=44
+└── results-baseline-unseeded-2026-06-24/   150 records  Qwen2.5-1.5B  unseeded baseline
 ```
 
 Each `runs.jsonl` has 150 lines: 50 × `direct` + 50 × `prompt_retry` + 50 × `full_pcl`.

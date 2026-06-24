@@ -29,17 +29,6 @@ Repair (PCL)** — instead of full retry — and export trace records for evalua
 | `prompt_retry` | On failure, regenerate up to N times with violation hints appended |
 | `full_pcl` | **Protocol-Constrained Local Repair** — targeted, constraint-by-constraint repair |
 
-## What it is not
-
-- Not a new agent framework. It does **not** replace LangGraph, AutoGen, or Microsoft Agent
-  Framework. It is the verification and repair layer used *inside* an agent run.
-- Not a new constrained-decoding engine. It composes with XGrammar / Outlines / llguidance,
-  it does not replace them.
-- Not a generic Guardrails or extraction SDK (Instructor, PydanticAI, Guardrails AI). Those
-  optimize for input-output guard rails on a single LLM call; this optimizes for **agent run
-  compliance evidence** — proof that a multi-step run satisfied its TaskSpec, with traceable
-  violations and repairs.
-
 ## Quick start
 
 ```ts
