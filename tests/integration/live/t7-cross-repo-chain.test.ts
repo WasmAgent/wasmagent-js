@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { writeFileSync, readFileSync } from "node:fs";
+import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -40,12 +40,13 @@ function haiku() {
 // ── Paths ─────────────────────────────────────────────────────────────────────
 
 const EVOMERGE_SRC = "/tmp/evomerge-public-repo/src";
+const EVOMERGE_AVAILABLE = existsSync(EVOMERGE_SRC);
 const LIVE_ROLLOUT_PATH = join(tmpdir(), "t7-live-rollout.jsonl");
 
 // ── S1 — wasmagent-js rollout → JSONL → evomerge ─────────────────────────────
 
 describe("T7-S1 · wasmagent-js rollout → rollout-wire/v1 JSONL → evomerge Python", () => {
-  it.skipIf(!LIVE)(
+  it.skipIf(!LIVE || !EVOMERGE_AVAILABLE)(
     "runs 2-branch Haiku rollout, serializes to rollout-wire/v1, evomerge loads it",
     async () => {
       const runner = new RolloutForkRunner({
@@ -267,10 +268,18 @@ describe("T7-S2 · bscode trajectoryExport format → evomerge Python round-trip
 
 describe("T7-S3 · Schema drift detection: wasmagent vs evomerge rollout-wire.schema.json", () => {
   it("both schema copies have the same required fields for RolloutBranchRecord", () => {
+    // Use cwd (repo root) so this works in CI
+    const repoRoot = process.cwd();
     const wasmagentSchemaPath =
-      "/Users/I041705/github/wasmagent-js/packages/core/src/ranking/schemas/rollout-wire.schema.json";
+      `${repoRoot}/packages/core/src/ranking/schemas/rollout-wire.schema.json`;
     const evomergeSchemaPath =
       "/tmp/evomerge-public-repo/src/datafactory/rollout-wire.schema.json";
+
+    // Skip if local evomerge clone isn't present (CI doesn't have it at /tmp)
+    if (!existsSync(evomergeSchemaPath)) {
+      console.log("T7-S3 SKIP — evomerge schema not found at", evomergeSchemaPath, "(CI environment)");
+      return;
+    }
 
     const wasmagentSchema = JSON.parse(readFileSync(wasmagentSchemaPath, "utf8")) as {
       $defs?: { RolloutBranchRecord?: { required?: string[] } };

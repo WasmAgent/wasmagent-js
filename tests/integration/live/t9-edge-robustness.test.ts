@@ -210,8 +210,12 @@ describe("T9-E4 · QuickJSKernel enforces CPU timeout on infinite loop", () => {
 
 // ── E5 — evomerge: empty JSONL input ─────────────────────────────────────────
 
+// Only runs when the evomerge public repo is present at /tmp/evomerge-public-repo
+import { existsSync } from "node:fs";
+const EVOMERGE_AVAILABLE = existsSync(EVOMERGE_SRC);
+
 describe("T9-E5 · evomerge TrainingDataExporter handles empty JSONL gracefully", () => {
-  it("load_rollouts returns 0 records and export produces empty DPO/PPO", () => {
+  it.skipIf(!EVOMERGE_AVAILABLE)("load_rollouts returns 0 records and export produces empty DPO/PPO", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "t9-edge-"));
     const emptyPath = join(tempDir, "empty.jsonl");
     writeFileSync(emptyPath, "");
