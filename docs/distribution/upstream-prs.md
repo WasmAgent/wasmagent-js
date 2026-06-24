@@ -11,7 +11,7 @@ Status of WasmAgent integration submissions to external ecosystems.
 | MCP ecosystem | docs/servers | Draft | In progress | examples/recipes/mcp-code-mode/ | createCodeModeServer two-tool surface |
 | Cloudflare Workers | templates | Draft | In progress | examples/cf-production/ | deploy template |
 | Awesome MCP Servers | README.md | Draft | In progress | docs/strategy/upstream-prs/awesome-mcp-servers-frameworks-entry.md | framework entry |
-| elizaOS/eliza | community plugin | [#9244](https://github.com/elizaOS/eliza/pull/9244) | **Submitted** | docs/strategy/upstream-prs/elizaos-sandboxed-action.md | `@wasmagent/eliza-rollout-plugin@1.0.3` published to npm; registry PR #9244 open; replied on #9235 |
+| elizaOS/eliza | community plugin | [#9244](https://github.com/elizaOS/eliza/pull/9244) | **Submitted** | docs/strategy/upstream-prs/elizaos-sandboxed-action.md | `@wasmagent/eliza-rollout-plugin@1.0.4` published; registry PR #9244 under review; lalalune merged CapabilityManifest into `@elizaos/core` (6c6011746b) citing #9235 |
 
 ## How to submit
 
