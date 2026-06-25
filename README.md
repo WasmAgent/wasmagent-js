@@ -92,6 +92,7 @@ Nine axes where wasmagent does something other JS frameworks don't — all in on
 | 7 | **Devtools + OTel** — local Studio, `gen_ai.*` semantic conventions (Datadog / Honeycomb / Grafana) | shipped |
 | 8 | **Goal-directed loop** — agent synthesises success criteria, verifies, retries with hints | shipped 2026-06-18 |
 | 9 | **Adaptive execution** — registered fallbacks (L1) → synthesised tool (L2) → relaxed goal (L3) | shipped 2026-06-18 |
+| 10 | **MCP runtime firewall** — `@wasmagent/mcp-firewall`: descriptor snapshot, static vetting (injection / exfiltration / rug-pull / taint), per-call policy, consent ledger | shipped 2026-06-25 |
 
 > Full comparison with Vercel AI SDK, LangGraph.js, OpenAI Agents JS, Mastra, CF Agents SDK: **[docs/compare.md](./docs/compare.md)**
 

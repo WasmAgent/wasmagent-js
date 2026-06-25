@@ -55,9 +55,41 @@ and completes the go-to-market hardening pass.
 
 ## [Unreleased]
 
+### Alpha / new packages
+
+- **`@wasmagent/mcp-firewall` v1.1.0** — Runtime firewall for MCP and tool-augmented agents.
+  Deterministic, no ML. Four layers:
+  - `vetTool()` — static scan of description/inputSchema for injection, exfiltration, invisible chars, sampling abuse.
+  - `evaluatePolicy()` — per-call allow / deny / ask_user / dry_run with pluggable `PolicyRule[]`.
+  - `taintObservation()` + `renderTaintedObservation()` — wrap tool outputs in untrusted XML boundary before prompt assembly.
+  - `InMemoryConsentLedger` — record/query/revoke user approvals scoped to tool snapshot hashes (rug-pull safe).
+  Published to npm as `@wasmagent/mcp-firewall@1.1.0` and to the official MCP Registry as `io.github.telleroutlook/mcp-server`.
+
+- **`@wasmagent/capability-compiler` v0.1.0** — Compile `CapabilityManifest` to three targets:
+  - `compileToMcpSchema()` → JSON Schema fragment + Markdown doc table + capability tags.
+  - `compileToPolicy()` → executable allow/deny/warn rules per tool call.
+  - `compileToTraceValidator()` → ADP trace checker that flags manifest violations.
+  Published to npm as `@wasmagent/capability-compiler@0.1.0`.
+
 ### Stable changes
 
-- **RLAIF infrastructure — batch rollout sampling + ranking (2026-06-22).**
+- **`@wasmagent/mcp-server` v1.1.1** — Added `ToolDescriptorSnapshot`, `detectRugPull()`,
+  `snapshotTool()`, `hashContent()` exports (P0 MCP firewall foundation). Added `mcpName`
+  field and `server.json` for MCP Registry publication.
+
+- **`@wasmagent/compliance`** — New `EvidenceAdmissionContract` + `EvidenceRow` types
+  (`src/ir/EvidenceAdmission.ts`) with Zod schemas. Defines the four evidence row tiers
+  (admitted / smoke / diagnostic / fixture) that gate claim-eligible benchmark numbers.
+
+- **`@wasmagent/evals-runner`** — New `admitRows()` + `gateReport()` functions
+  (`src/evidenceGate.ts`). Runs `AdmissionRule[]` against a batch of `EvidenceRow` objects
+  and renders a Markdown report with watermark when admission rate is low.
+
+- **IFEval N=10 seed sweeps** — Qwen2.5-1.5B (seeds 42-52, N=11): full_pcl 53.8% ± 2.3 pp,
+  +12.5 pp over direct with 0 losses across 550 pairs. Llama-3.2-1B (seeds 42-51, N=10):
+  full_pcl 58.2% ± 2.7 pp, ties prompt_retry (within noise), strict win over direct.
+
+### RLAIF infrastructure — batch rollout sampling + ranking (2026-06-22).
   Full pipeline for generating RLAIF training data from `@wasmagent/core`:
 
   - **`RemoteSandboxKernel.runCommand(cmd)`** (`@wasmagent/kernel-remote`) —
