@@ -1,0 +1,116 @@
+name: "WasmAgent Agent Evidence Gate"
+description: "Scan MCP tools for security risks and enforce policy in CI. Fails if any tool is denied."
+author: "WasmAgent contributors"
+
+branding:
+  icon: "shield"
+  color: "blue"
+
+inputs:
+  policy:
+    description: "Path to wasmagent.policy.yaml (default: wasmagent.policy.yaml)"
+    required: false
+    default: "wasmagent.policy.yaml"
+  tools-file:
+    description: "Path to MCP tools JSON file to scan and guard"
+    required: false
+    default: ""
+  aep-input:
+    description: "Path to AEP evidence JSONL file to validate and export"
+    required: false
+    default: ""
+  evidence-format:
+    description: "Evidence export format: json or html (default: json)"
+    required: false
+    default: "json"
+  evidence-output:
+    description: "Path to write evidence report (default: wasmagent-evidence.$format)"
+    required: false
+    default: ""
+  fail-on-policy-violation:
+    description: "Exit with code 1 if any tool is denied (default: true)"
+    required: false
+    default: "true"
+  node-version:
+    description: "Node.js version to use (default: 20)"
+    required: false
+    default: "20"
+
+outputs:
+  denied-count:
+    description: "Number of tools denied by policy"
+    value: ${{ steps.guard.outputs.denied_count }}
+  evidence-path:
+    description: "Path to the generated evidence report"
+    value: ${{ steps.export.outputs.evidence_path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install wasmagent CLI
+      shell: bash
+      run: npm install -g @wasmagent/cli @wasmagent/mcp-gateway @wasmagent/aep
+
+    - name: Scan MCP tools
+      if: inputs.tools-file != ''
+      shell: bash
+      run: |
+        echo "::group::MCP Security Scan"
+        wasmagent scan-mcp "${{ inputs.tools-file }}" || true
+        echo "::endgroup::"
+
+    - name: Run policy guard
+      id: guard
+      if: inputs.tools-file != ''
+      shell: bash
+      run: |
+        echo "::group::Policy Guard"
+        DENIED=0
+        wasmagent guard \
+          --config "${{ inputs.policy }}" \
+          --upstream "${{ inputs.tools-file }}" \
+          --format json \
+          --out /tmp/guard-report.json || DENIED=$?
+        echo "denied_count=$DENIED" >> "$GITHUB_OUTPUT"
+        if [ -f /tmp/guard-report.json ]; then
+          cat /tmp/guard-report.json
+        fi
+        echo "::endgroup::"
+        if [ "${{ inputs.fail-on-policy-violation }}" = "true" ] && [ "$DENIED" -ne 0 ]; then
+          echo "::error::Policy guard failed: $DENIED tool(s) denied"
+          exit 1
+        fi
+
+    - name: Export evidence report
+      id: export
+      if: inputs.aep-input != ''
+      shell: bash
+      run: |
+        FMT="${{ inputs.evidence-format }}"
+        OUT="${{ inputs.evidence-output }}"
+        if [ -z "$OUT" ]; then
+          OUT="wasmagent-evidence.$FMT"
+        fi
+        echo "::group::Evidence Export"
+        wasmagent evidence export \
+          --input "${{ inputs.aep-input }}" \
+          --format "$FMT" \
+          --out "$OUT"
+        echo "evidence_path=$OUT" >> "$GITHUB_OUTPUT"
+        echo "::endgroup::"
+
+    - name: Validate AEP records
+      if: inputs.aep-input != ''
+      shell: bash
+      run: |
+        echo "::group::AEP Validation"
+        python3 -m evomerge validate-aep \
+          --input "${{ inputs.aep-input }}" \
+          --fail-under 0.9 || echo "::warning::AEP validation below threshold"
+        echo "::endgroup::"
+      continue-on-error: true

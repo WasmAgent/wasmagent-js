@@ -115,3 +115,27 @@ for await (const event of runner.run({ task: "Refactor this function" })) {
 This is the "Runtime → Data Factory" loop that connects wasmagent-js to evomerge.
 
 If anything blocks you, [open an issue](https://github.com/WasmAgent/wasmagent-js/issues) — friction in this guide is the bug we want to hear about.
+
+## 8. Add policy to your MCP server (optional)
+
+Install the guard packages and scan your tools for security risks:
+
+```bash
+npm install @wasmagent/mcp-gateway @wasmagent/aep
+```
+
+```bash
+# Generate a policy config
+wasmagent init --guard
+
+# Scan your MCP server tools for injection/exfiltration risks
+wasmagent scan-mcp ./tools.json
+
+# Enforce policy before tool execution
+wasmagent guard --config wasmagent.policy.yaml --upstream tools.json
+
+# Export evidence after the run
+wasmagent evidence export --input evidence.jsonl --format html --out report.html
+```
+
+Full guide: [docs/guides/mcp-guard.md](./mcp-guard.md).

@@ -19,3 +19,7 @@ node index.mjs
 - ✓ `write_file` — allowed (clean descriptor; state-changing flag recorded in AEP evidence)
 - ? `fetch_url` — ask_user (exfiltration: references api_key and process.env)
 - ✓ Tool result taint tracking (untrusted_tool_output boundary)
+
+## Terminal transcript
+
+See [`transcript.txt`](./transcript.txt) for the full output without running the demo.

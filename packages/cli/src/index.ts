@@ -773,6 +773,12 @@ rank-rollout options:
   --weights <spec>        Comma-separated key=value weights, e.g. objective=1.0,judge=0.3
                           Supported keys: objective (default 1.0)
 
+guard options:
+  --config <path>          Policy YAML file (default: wasmagent.policy.yaml)
+  --upstream <path>        JSON file of MCP tools to vet (default: stdin)
+  --format json            Output machine-readable JSON instead of table
+  --out <file>             Write report to file (default: stdout)
+
 Examples:
   wasmagent run "What is 2+2?"
   wasmagent run "Analyse data" --stream | jq .
@@ -879,6 +885,24 @@ async function guardCommand(
     const reason = vetting.findings[0]?.category ?? decision.reasons[0] ?? "—";
     rows.push({ tool: tool.name, decision: decision.decision, severity, reason });
     if (decision.decision === "deny") denied++;
+  }
+
+  // JSON output path
+  if (opts.format === "json") {
+    const jsonOut = JSON.stringify(
+      { config: configPath, tools: tools.length, denied, rows },
+      null,
+      2
+    );
+    if (typeof opts.out === "string") {
+      const { writeFile: wf } = await import("node:fs/promises");
+      await wf(opts.out as string, jsonOut, "utf8");
+      console.log(`Guard report written to ${opts.out}`);
+    } else {
+      console.log(jsonOut);
+    }
+    if (denied > 0) process.exit(1);
+    return;
   }
 
   // Print report

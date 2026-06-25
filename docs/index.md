@@ -55,6 +55,11 @@ features:
     details: <code>@wasmagent/evals-runner</code> ships six benchmark suites and paired statistics (McNemar / Wilson / bootstrap) — multi-model comparisons surface trade-off fronts, not single-number ranks.
     link: /guides/evals-runner
     linkText: Open guide
+  - icon: 🛡
+    title: MCP Guard + Evidence
+    details: Wrap any MCP server with policy enforcement. Deny injection/exfiltration attacks before tool execution. Export verifiable AEP evidence bundles after every run.
+    link: /guides/mcp-guard
+    linkText: 5-min quickstart
 ---
 
 <div style="text-align: center; margin-top: 3rem; opacity: 0.7;">

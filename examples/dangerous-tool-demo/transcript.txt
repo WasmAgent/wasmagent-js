@@ -1,0 +1,31 @@
+╔═══════════════════════════════════════════════════════╗
+║     WasmAgent MCP Guard Demo — Policy Enforcement    ║
+╚═══════════════════════════════════════════════════════╝
+
+  ✓ ALLOW  read_file        clean
+  ✓ ALLOW  git_status       clean
+  ✗ DENY   rm_rf            Denied by policy: deny-blocked-vetting; User confirmation required: ask-high-risk
+  ✓ ALLOW  write_file       state-changing action
+  ? ASK    fetch_url        User confirmation required: ask-high-risk
+
+── Taint Tracking Demo ──────────────────────────────────
+
+  read_file (safe)     → trust=untrusted, instructionLike=false
+  read_file (injected) → trust=untrusted, instructionLike=true
+
+  ⚠  Injection pattern detected in tool output — wrapped in untrusted boundary.
+  First line: <untrusted_tool_output tool="read_file" trust="untrusted" content_type="text">
+
+── AEP Evidence Bundle ──────────────────────────────────
+
+  run_id          : dangerous-tool-demo-001
+  schema_version  : aep/v0.1
+  actions         : 5
+  policy denies   : 1
+  requires approval: 1
+
+  Export: JSON.stringify(record, null, 2) → evidence.json
+
+╔═══════════════════════════════════════════════════════╗
+║  Demo complete. See evidence bundle above.            ║
+╚═══════════════════════════════════════════════════════╝
