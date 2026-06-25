@@ -1,5 +1,7 @@
 # /kernel-quickjs
 
+> **Maturity: stable** — semver-compatible API; breaking changes require a major bump.
+
 QuickJS-in-WASM kernel — sandboxed JavaScript, edge-safe, no `node:vm` required.
 
 > Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.

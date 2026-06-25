@@ -1,5 +1,7 @@
 # /mastra-sandbox
 
+> **Maturity: beta** — API shape may change in minor versions; changes announced in CHANGELOG.
+
 > A **Mastra** sandbox provider backed by wasmagent kernels. WASM
 > isolation with no external infrastructure — drop-in alternative to
 > Blaxel / E2B / Daytona providers.

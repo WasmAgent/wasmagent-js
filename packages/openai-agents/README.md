@@ -1,5 +1,7 @@
 # /openai-agents
 
+> **Maturity: beta** — API shape may change in minor versions; changes announced in CHANGELOG.
+
 > Drop wasmagent sandbox kernels into the **OpenAI Agents JS SDK** as a
 > native `tool`. Edge-safe code execution, one capability manifest, runs on
 > Cloudflare Workers / Vercel Edge / Node — no E2B sandbox required.

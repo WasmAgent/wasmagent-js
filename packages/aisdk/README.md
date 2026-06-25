@@ -1,5 +1,7 @@
 # /aisdk
 
+> **Maturity: beta** — API shape may change in minor versions; changes announced in CHANGELOG.
+
 > Drop wasmagent sandbox kernels into the **Vercel AI SDK** as a `tool()`.
 > Edge-safe code execution, one capability manifest, no E2B / OS sandbox needed.
 

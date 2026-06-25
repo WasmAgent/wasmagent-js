@@ -1,5 +1,7 @@
 # /otel-exporter
 
+> **Maturity: alpha** — may change without notice; production use at your own risk.
+
 OpenTelemetry exporter — wire wasmagent `EventLog` into Jaeger / Tempo / any OTLP collector.
 
 > Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.

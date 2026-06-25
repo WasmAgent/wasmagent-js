@@ -1,5 +1,7 @@
 # /kernel-remote
 
+> **Maturity: stable** — semver-compatible API; breaking changes require a major bump.
+
 Remote sandbox kernel — execute agent code in E2B, Cloudflare Sandbox, or any HTTP-driven microVM.
 
 > Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.

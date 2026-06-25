@@ -1,5 +1,7 @@
 # /claude-agent-sdk
 
+> **Maturity: beta** — API shape may change in minor versions; changes announced in CHANGELOG.
+
 > Drop wasmagent sandbox kernels into the **Anthropic Claude Agent SDK**
 > as native tools. Edge-safe code execution, one `CapabilityManifest`
 > shared with your MCP servers, no external sandbox provider.

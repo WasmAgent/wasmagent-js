@@ -1,5 +1,7 @@
 # /core
 
+> **Maturity: stable** — semver-compatible API; breaking changes require a major bump.
+
 Agent runtime — agents, kernels, models, tools, quality runners, evals, checkpoints.
 
 > Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.

@@ -1,5 +1,7 @@
 # @wasmagent/mcp-gateway
 
+> **Maturity: alpha** — may change without notice; production use at your own risk.
+
 MCP Gateway — identity propagation, server card validation, policy enforcement, and AEP evidence emission for MCP tool invocations.
 
 Extends `@wasmagent/mcp-firewall` with per-request identity (`RequestIdentity`), server card snapshots (`ServerCard`), and state-changing action approval via `MCPGateway`.

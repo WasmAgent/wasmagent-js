@@ -1,5 +1,7 @@
 # /kernel-pyodide
 
+> **Maturity: stable** — semver-compatible API; breaking changes require a major bump.
+
 CPython-in-WASM kernel (Pyodide) — run real Python code from agents on Node, Bun, and CF Workers.
 
 > Part of [wasmagent](https://github.com/WasmAgent/wasmagent-js) — a TypeScript + WASM agent runtime.

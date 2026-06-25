@@ -1,5 +1,7 @@
 # @wasmagent/aep
 
+> **Maturity: alpha** — may change without notice; production use at your own risk.
+
 Agent Evidence Protocol — runtime action evidence and run provenance types for WasmAgent.
 
 Emit verifiable `AEPRecord` evidence after every agent run. Records are schema-versioned (`aep/v0.1`) and consumable by `evomerge` for audit and training data export.

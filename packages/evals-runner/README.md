@@ -1,5 +1,7 @@
 # /evals-runner
 
+> **Maturity: beta** — API shape may change in minor versions; changes announced in CHANGELOG.
+
 > Multi-model multi-axis evaluation harness for **any** agent runtime.
 > Framework-neutral: the public interface (`BenchmarkSuite`, `Scorer`,
 > `ModelProvider`) has zero runtime dependency on `@wasmagent/core`.

@@ -1,5 +1,7 @@
 # /devtools
 
+> **Maturity: beta** — API shape may change in minor versions; changes announced in CHANGELOG.
+
 **Zero-deploy local Studio for any GenAI-OTel agent trace.**
 
 > 🆕 **Framework-agnostic.** Works on Vercel AI SDK, Mastra, OpenAI Agents JS, Anthropic SDK, LangSmith-instrumented runs, *and* wasmagent's own `EventLog`. If your agent emits [OpenTelemetry GenAI semantic-convention](https://opentelemetry.io/docs/specs/semconv/gen-ai/) spans (NDJSON or OTLP/JSON), this tool renders them. No SaaS. No account. No phone-home.

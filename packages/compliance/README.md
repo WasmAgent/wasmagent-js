@@ -1,5 +1,7 @@
 # @wasmagent/compliance
 
+> **Maturity: alpha** — may change without notice; production use at your own risk.
+>
 > ⚠️ **Status: experimental (`0.1.0-alpha`).** APIs may change without notice.
 >
 > This package is the **runtime compliance source of truth** for the WasmAgent ecosystem.

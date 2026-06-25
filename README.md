@@ -5,50 +5,23 @@
 [![CI](https://github.com/WasmAgent/wasmagent-js/actions/workflows/ci.yml/badge.svg)](https://github.com/WasmAgent/wasmagent-js/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-vitepress-brightgreen.svg)](https://WasmAgent.github.io/wasmagent-js/)
 
-**WasmAgent's runtime compliance source of truth.**
+> **WasmAgent adds a verifiable evidence layer to agent tool use: protect tool calls, record what happened, audit the result, and turn trusted traces into training data.**
 
-Three things, one loop:
+**Protect → Record → Audit → Train**
 
-```
-1. Portable code execution runtime    — sandboxed, framework-neutral
-2. Uniform governance surface         — policy, capability, guardrails
-3. Verifiable rollout and compliance  — ComplianceEvalRecord, data loop
-```
+---
 
-```
-wasmagent-js  ──►  bscode        ──►  trace-pipeline  ──►  better models
-(runtime /         (reference          (measurement /           │
- policy / AEP)      deployment /        training data)           │
-                    evidence)                                     │
-      ◄──────────────────────────────────────────────────────────┘
-```
+## Start in 30 seconds
 
-> This repository is the **first layer** of the WasmAgent Trustworthy Agent Training Loop.
-> Full system diagram: [trace-pipeline/docs/ecosystem-map.md](https://github.com/WasmAgent/trace-pipeline/blob/main/docs/ecosystem-map.md)
+Pick your entry point:
 
-> **WasmAgent 0.1: Evidence Layer for MCP Agents**  
-> Wrap any MCP server, enforce policy before tool execution, and export verifiable evidence after every agent run.
+| Goal | Install |
+|---|---|
+| **Protect tools** — runtime firewall, policy enforcement, taint tracking | `npm add @wasmagent/mcp-firewall` |
+| **Record evidence** — signed AEP records after every agent run | `npm add @wasmagent/aep` |
+| **Train from traces** — compliance scoring + DPO/PPO export | `npm add @wasmagent/aep @wasmagent/compliance` |
 
-```bash
-npm install @wasmagent/mcp-gateway @wasmagent/aep
-```
-
-## Core Runtime
-`@wasmagent/core` · `@wasmagent/kernel-quickjs` · `@wasmagent/kernel-pyodide` · `@wasmagent/kernel-remote`
-
-## Integrations
-`@wasmagent/aisdk` · `@wasmagent/mastra-sandbox` · `@wasmagent/openai-agents` · `@wasmagent/claude-agent-sdk` · `@wasmagent/mcp-server`
-
-## Compliance / Data
-`@wasmagent/compliance` · `@wasmagent/evals-runner` · `@wasmagent/devtools` · rollout-wire schema
-
-## Security & Governance *(alpha)*
-`@wasmagent/mcp-firewall` · `@wasmagent/mcp-gateway` · `@wasmagent/mcp-policy` · `@wasmagent/mcp-attestation` · `@wasmagent/capability-compiler`
-
-## Evidence Protocol *(alpha)*
-`@wasmagent/aep` — Agent Evidence Protocol: AEP records, AEPEmitter, BudgetLedger, run provenance
-
-> Full package list: [docs/packages.md](docs/packages.md)
+**Trust Pack — 30-minute end-to-end: [docs/quickstarts/trust-pack-30min.md](./docs/quickstarts/trust-pack-30min.md)**
 
 ---
 
@@ -56,23 +29,7 @@ npm install @wasmagent/mcp-gateway @wasmagent/aep
 
 Three paths — pick the one that fits your use case:
 
-### Path 1 — Sandboxed code execution
-
-```bash
-npm install @wasmagent/aisdk @wasmagent/kernel-quickjs
-```
-
-```ts
-import { sandboxedJsTool } from "@wasmagent/aisdk";
-import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
-
-// Drop into any AI SDK / LangChain / OpenAI Agents setup
-const codeTool = sandboxedJsTool({ kernel: new QuickJSKernel() });
-```
-
-→ [Kernel comparison](./docs/kernels/comparison.md) · [Getting started](./docs/guides/getting-started.md)
-
-### Path 2 — MCP runtime firewall
+### Path 1 — Protect: MCP runtime firewall
 
 Wrap any MCP server: vet tools before execution, enforce policy per call, track taint across results.
 
@@ -99,7 +56,7 @@ const obs = taintObservation(entry.name, rawResult);  // boundary-tagged, safe t
 
 → [Security pack](./docs/security-governance-pack/README.md) · [OWASP Agentic Top 10](./docs/security/capability-manifest-owasp.md) · [Attack demos](./docs/security/mcp-firewall-attack-demos.md)
 
-### Path 3 — Evidence export (AEP)
+### Path 2 — Record: AEP evidence export
 
 Emit a signed evidence record after every agent run — consumable by trace-pipeline for audit and training.
 
@@ -121,6 +78,24 @@ const record = emitter.build();
 ```
 
 → [AEP schema](./packages/aep/) · [trace-pipeline 10-min tutorial](https://github.com/WasmAgent/trace-pipeline/blob/main/docs/TRACE_TO_TRAINING_10MIN.md)
+
+### Path 3 — Execute: Sandboxed code execution
+
+Run agent-generated code in an isolated WASM kernel — no host-process access.
+
+```bash
+npm install @wasmagent/aisdk @wasmagent/kernel-quickjs
+```
+
+```ts
+import { sandboxedJsTool } from "@wasmagent/aisdk";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+
+// Drop into any AI SDK / LangChain / OpenAI Agents setup
+const codeTool = sandboxedJsTool({ kernel: new QuickJSKernel() });
+```
+
+→ [Kernel comparison](./docs/kernels/comparison.md) · [Getting started](./docs/guides/getting-started.md)
 
 ---
 

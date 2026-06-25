@@ -1,5 +1,7 @@
 # /mcp-server
 
+> **Maturity: beta** — API shape may change in minor versions; changes announced in CHANGELOG.
+
 [![Glama MCP server](https://glama.ai/mcp/servers/WasmAgent/wasmagent-js/badges/score.svg)](https://glama.ai/mcp/servers/WasmAgent/wasmagent-js)
 
 Expose any wasmagent agent as a Model Context Protocol (MCP) server.

@@ -2,6 +2,15 @@ import { defineConfig } from "vitepress";
 
 const enNav = [
   { text: "Guide", link: "/guides/getting-started" },
+  { text: "Trust Pack", link: "/quickstarts/trust-pack-30min" },
+  {
+    text: "Security",
+    items: [
+      { text: "MCP Firewall", link: "/security/mcp-firewall-attack-demos" },
+      { text: "AEP Contract", link: "/aep-contract" },
+      { text: "Security governance pack", link: "/security-governance-pack/README" },
+    ],
+  },
   { text: "Ecosystem", link: "/ecosystem" },
   { text: "Kernels", link: "/kernels/comparison" },
   { text: "Benchmarks", link: "/benchmarks" },
@@ -22,6 +31,7 @@ const enSidebar = {
       text: "Get started",
       items: [
         { text: "Getting started (5 min)", link: "/guides/getting-started" },
+        { text: "Trust Pack (30 min end-to-end)", link: "/quickstarts/trust-pack-30min" },
         { text: "中文：5 分钟上手", link: "/zh/guides/getting-started" },
       ],
     },
@@ -55,6 +65,15 @@ const enSidebar = {
         { text: "Use kernels with Mastra", link: "/guides/integrate-mastra" },
         { text: "Claude Agent SDK", link: "/guides/integrate-claude-agent-sdk" },
         { text: "OpenAI Agents JS", link: "/guides/integrate-openai-agents" },
+      ],
+    },
+    {
+      text: "Security & evidence",
+      items: [
+        { text: "MCP firewall attack demos", link: "/security/mcp-firewall-attack-demos" },
+        { text: "OWASP Agentic mapping", link: "/security/capability-manifest-owasp" },
+        { text: "AEP schema contract", link: "/aep-contract" },
+        { text: "Install footprint", link: "/distribution/install-footprint" },
       ],
     },
     {
@@ -148,7 +167,7 @@ export default defineConfig({
   base: "/wasmagent-js/",
   title: "wasmagent",
   description:
-    "WASM Agent Kernel & Portable Code Executor — three-tier sandboxed execution, prompt-cache optimization, edge-native TypeScript agent runtime.",
+    "WasmAgent adds a verifiable evidence layer to agent tool use: protect tool calls, record what happened, audit the result, and turn trusted traces into training data.",
   cleanUrls: true,
   lastUpdated: true,
 
@@ -161,7 +180,7 @@ export default defineConfig({
       {
         property: "og:description",
         content:
-          "WASM Agent Kernel & Portable Code Executor — three-tier sandboxed execution, prompt-cache optimization, edge-native TypeScript agent runtime.",
+          "WasmAgent adds a verifiable evidence layer to agent tool use: protect tool calls, record what happened, audit the result, and turn trusted traces into training data.",
       },
     ],
   ],
