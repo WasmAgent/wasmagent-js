@@ -1,0 +1,65 @@
+{
+  "name": "@wasmagent/mcp-firewall",
+  "version": "0.1.0",
+  "description": "Runtime firewall for MCP and tool-augmented agents — descriptor integrity, static vetting, per-call policy, taint tracking, consent ledger",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@wasmagent/mcp-server": "^1.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "zod": "^3.22.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "wasmagent",
+    "mcp",
+    "firewall",
+    "security",
+    "tool-poisoning",
+    "rug-pull",
+    "taint",
+    "consent",
+    "agent"
+  ],
+  "wasmagent": {
+    "tier": "tier-1",
+    "stability": "alpha"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
+    "directory": "packages/mcp-firewall"
+  },
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-firewall#readme",
+  "bugs": {
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "author": "wasmagent contributors"
+}

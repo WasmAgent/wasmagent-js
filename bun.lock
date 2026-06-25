@@ -433,7 +433,7 @@
     },
     "packages/eliza-rollout-plugin": {
       "name": "@wasmagent/eliza-rollout-plugin",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "dependencies": {
         "@wasmagent/core": "^1.0.3",
       },
@@ -541,6 +541,18 @@
         "typescript": "^5.7.0",
       },
     },
+    "packages/mcp-firewall": {
+      "name": "@wasmagent/mcp-firewall",
+      "version": "0.1.0",
+      "dependencies": {
+        "@wasmagent/mcp-server": "^1.0.3",
+      },
+      "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.7.0",
+        "zod": "^3.22.0",
+      },
+    },
     "packages/mcp-server": {
       "name": "@wasmagent/mcp-server",
       "version": "1.0.3",
@@ -548,7 +560,7 @@
         "wasmagent-mcp-server": "./dist/stdio.js",
       },
       "dependencies": {
-        "@wasmagent/core": "^1.0.0",
+        "@wasmagent/core": "^1.0.3",
       },
       "devDependencies": {
         "@types/node": "^22.0.0",
@@ -1461,6 +1473,8 @@
     "@wasmagent/kernel-wasmtime": ["@wasmagent/kernel-wasmtime@workspace:packages/kernel-wasmtime"],
 
     "@wasmagent/mastra-sandbox": ["@wasmagent/mastra-sandbox@workspace:packages/mastra-sandbox"],
+
+    "@wasmagent/mcp-firewall": ["@wasmagent/mcp-firewall@workspace:packages/mcp-firewall"],
 
     "@wasmagent/mcp-server": ["@wasmagent/mcp-server@workspace:packages/mcp-server"],
 
@@ -2789,6 +2803,8 @@
     "@wasmagent/evals-runner/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
     "@wasmagent/integration-tests/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
+
+    "@wasmagent/mcp-firewall/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
     "@wasmagent/mcp-server/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
