@@ -64,6 +64,14 @@ jobs:
               continue
             fi
 
+            # Temporarily remove private:true so npm publish proceeds
+            node -e "
+              const fs = require('fs');
+              const p = JSON.parse(fs.readFileSync('$pkg_json', 'utf8'));
+              delete p.private;
+              fs.writeFileSync('$pkg_json', JSON.stringify(p, null, 2) + '\n');
+            "
+
             if [ "$DRY_RUN" = "true" ]; then
               echo "→ DRY RUN: would publish $name@$version"
               (cd "$pkg_dir" && npm publish --access public --dry-run)
