@@ -79,10 +79,14 @@ bun test tests/integration/
 
 | Module | Location |
 |---|---|
-| `AEPRecord` / `AEPEmitter` | `packages/aep/src/` (`@wasmagent/aep`) |
-| `AEP_SPAN_NAMES` / span attr helpers | `packages/otel-exporter/src/aep-span-names.ts` |
+| `AEPRecord` / `AEPEmitter` / `BudgetLedger` | `packages/aep/src/` (`@wasmagent/aep`) |
+| `AEP_SPAN_NAMES` (9 spans) / span attr helpers | `packages/otel-exporter/src/aep-span-names.ts` |
 | `MCPGateway` / `RequestIdentity` / `ServerCard` | `packages/mcp-firewall/src/gateway.ts` |
 | `isStateChangingTool` / `GatewayDecision` | `packages/mcp-firewall/src/gateway.ts` |
+| `GatewayMiddleware` / `composeMiddleware` / `InMemoryAuditLogger` | `packages/mcp-gateway/src/` (`@wasmagent/mcp-gateway`) |
+| `PolicyBundle` / `PolicyBundleMetadata` | `packages/mcp-policy/src/` (`@wasmagent/mcp-policy`) |
+| `CapabilityAttestation` / `AttestationRegistry` | `packages/mcp-attestation/src/` (`@wasmagent/mcp-attestation`) |
+| WASM Component Plugin ABI (WIT) | `packages/wit/wasmagent.wit` |
 
 ## Compliance Engine (2026-06-24, Phase 0 + Phase 1 P0)
 

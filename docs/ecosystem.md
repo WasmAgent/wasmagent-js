@@ -41,13 +41,20 @@ The wasmagent ecosystem spans three repositories that work together as a single 
 bscode runs jobs
   → build result (pass/fail) + visual checks
   → wasmagent-js RolloutForkRunner records trajectories
+  → AEPEmitter emits AEP evidence record (aep/v0.1)
   → RolloutRanker scores branches (objective + judge)
-  → rollout-wire JSONL (Layer 1)
+  → rollout-wire JSONL + AEP bundle (Layer 1 + evidence)
+  → trace-pipeline validate-aep → trust-score → audit-report
   → trace-pipeline TrainingDataExporter
   → DPO/PPO training records (Layer 3)
   → model fine-tune / merge / eval
   → improved model back into bscode defaults
 ```
+
+The **AEP (Agent Evidence Protocol)** is the cross-repo public data contract:
+`@wasmagent/aep` emits records at runtime; `trace-pipeline validate-aep` and
+`audit-report` consume them before training export. This makes every training
+record traceable to a specific agent run with a verified trust score.
 
 This loop is what separates wasmagent from a generic agent framework — it produces
 **training signal from real deployments, not synthetic benchmarks**.

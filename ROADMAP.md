@@ -181,6 +181,20 @@ the same A6 commit; see also the embedded "Why" lines below).
   with the 8B / 12B models at 4× lower p95 latency — exactly the
   insight single-number accuracy benchmarks suppress.
 
+- **P0 Reform — Trustworthy Agent Execution Substrate (2026-06-25).**
+  Full AEP evidence protocol + MCP gateway + benchmark audit infrastructure:
+  `@wasmagent/aep` (AEP record/emitter/BudgetLedger),
+  `@wasmagent/mcp-gateway` (MCPGateway + middleware + audit),
+  `@wasmagent/mcp-policy` (PolicyBundle),
+  `@wasmagent/mcp-attestation` (CapabilityAttestation),
+  `packages/wit/wasmagent.wit` (WASM Component Plugin ABI).
+  OTel 9-span AEP semconv complete. Benchmark adapters for
+  BFCL v4 / MCP-Atlas / Terminal-Bench / τ-bench / ToolSandbox / AgentHarm /
+  OpenAI Agents SDK / LangSmith / MS Agent Framework / Google ADK / A2A.
+  AgentTrustScore (9-dim geometric mean), Evidence Registry, exploit surface taxonomy.
+  Full details: [`CHANGELOG.md`](CHANGELOG.md) and
+  [`docs/strategy/research-public-edition.md`](docs/strategy/research-public-edition.md).
+
 ## In flight (2026-Q3)
 
 - **Public LongMemEval-500 run.** The bundled 6-item fixture is a CI

@@ -28,7 +28,10 @@ Three things, one loop:
 `@wasmagent/compliance` · `@wasmagent/evals-runner` · `@wasmagent/devtools` · rollout-wire schema
 
 ## Security & Governance *(alpha)*
-`@wasmagent/mcp-firewall` · `@wasmagent/capability-compiler`
+`@wasmagent/mcp-firewall` · `@wasmagent/mcp-gateway` · `@wasmagent/mcp-policy` · `@wasmagent/mcp-attestation` · `@wasmagent/capability-compiler`
+
+## Evidence Protocol *(alpha)*
+`@wasmagent/aep` — Agent Evidence Protocol: AEP records, AEPEmitter, BudgetLedger, run provenance
 
 > Full package list: [docs/packages.md](docs/packages.md)
 
