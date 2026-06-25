@@ -37,7 +37,7 @@ export class AEPEmitter {
     action: Omit<ActionEvidence, "action_id" | "timestamp_ms"> & {
       action_id?: string;
       timestamp_ms?: number;
-    },
+    }
   ): void {
     this.#actions.push({
       action_id: action.action_id ?? `action-${this.#actions.length}`,

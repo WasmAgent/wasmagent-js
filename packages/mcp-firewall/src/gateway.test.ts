@@ -30,7 +30,11 @@ describe("createRequestIdentity", () => {
   });
 
   it("propagates parentSessionId when provided", () => {
-    const id = createRequestIdentity({ principal: "agent", sessionId: "s2", parentSessionId: "s1" });
+    const id = createRequestIdentity({
+      principal: "agent",
+      sessionId: "s2",
+      parentSessionId: "s1",
+    });
     expect(id.parentSessionId).toBe("s1");
   });
 });
@@ -59,7 +63,12 @@ describe("MCPGateway.evaluate", () => {
 
   it("allows clean read tool from verified server", () => {
     const gw = new MCPGateway({ serverCards: [card] });
-    const d = gw.evaluate({ identity, serverId: "srv1", tool: SAFE_TOOL, args: { path: "/tmp/x" } });
+    const d = gw.evaluate({
+      identity,
+      serverId: "srv1",
+      tool: SAFE_TOOL,
+      args: { path: "/tmp/x" },
+    });
     expect(d.invocation.decision).toBe("allow");
     expect(d.stateChanging).toBe(false);
     expect(d.resultTrustLevel).toBe("verified");

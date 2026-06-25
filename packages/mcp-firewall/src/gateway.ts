@@ -12,11 +12,11 @@
 import { createHash } from "node:crypto";
 import type { McpToolEntry } from "@wasmagent/mcp-server";
 import type { ConsentRecord, PolicyRule, ToolInvocationDecision } from "./policy.js";
-import type { VettingResult } from "./vetting.js";
-import type { TaintedObservation } from "./taint.js";
 import { DEFAULT_RULES, evaluatePolicy } from "./policy.js";
-import { vetTool } from "./vetting.js";
+import type { TaintedObservation } from "./taint.js";
 import { taintObservation } from "./taint.js";
+import type { VettingResult } from "./vetting.js";
+import { vetTool } from "./vetting.js";
 
 // ── Identity ─────────────────────────────────────────────────────────────────
 
@@ -181,7 +181,7 @@ export class MCPGateway {
       req.args,
       vetting,
       this.#consentRecords,
-      this.#rules,
+      this.#rules
     );
 
     const stateChanging = isStateChangingTool(req.tool);
