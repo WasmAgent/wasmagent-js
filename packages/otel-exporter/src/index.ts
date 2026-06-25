@@ -424,8 +424,11 @@ export { TraceRedactor } from "./TraceRedactor.js";
 export type { AEPSpanName } from "./aep-span-names.js";
 export {
   AEP_SPAN_NAMES,
+  agentRunSpanAttrs,
+  llmGenerateSpanAttrs,
   mcpRequestSpanAttrs,
   policyCheckSpanAttrs,
   sandboxExecSpanAttrs,
+  toolCallSpanAttrs,
   verifierCheckSpanAttrs,
 } from "./aep-span-names.js";

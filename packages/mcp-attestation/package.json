@@ -1,0 +1,16 @@
+{
+  "name": "@wasmagent/mcp-attestation",
+  "version": "0.1.0",
+  "description": "MCP capability attestation for WasmAgent servers",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
+  "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit", "test": "bun test", "clean": "rm -rf dist .turbo" },
+  "dependencies": { "@wasmagent/mcp-firewall": "^1.1.0" },
+  "devDependencies": { "@types/node": "^22.0.0", "typescript": "^5.7.0" },
+  "engines": { "node": ">=20.0.0" },
+  "keywords": ["wasmagent", "mcp", "attestation"],
+  "wasmagent": { "tier": "tier-1", "stability": "alpha" },
+  "license": "Apache-2.0"
+}

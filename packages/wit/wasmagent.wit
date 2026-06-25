@@ -1,0 +1,68 @@
+package wasmagent:runtime@1.0.0;
+
+/// Policy enforcement interface — check whether an action is allowed.
+interface policy {
+  record request {
+    subject: string,
+    action: string,
+    resource: string,
+    context: string,
+  }
+  record decision {
+    allow: bool,
+    reason: string,
+    evidence: string,
+  }
+  /// Evaluate a policy request synchronously.
+  check: func(req: request) -> decision;
+}
+
+/// Verifier interface — check claims against evidence.
+interface verifier {
+  record claim {
+    id: string,
+    text: string,
+    evidence-ref: string,
+  }
+  record verdict {
+    claim-id: string,
+    passed: bool,
+    score: float32,
+    reason: string,
+  }
+  /// Verify a list of claims, returning one verdict per claim.
+  verify: func(claims: list<claim>) -> list<verdict>;
+}
+
+/// Redactor interface — apply a redaction profile to text.
+interface redactor {
+  /// Apply a named redaction profile to the input string.
+  /// Profile names: "pii-redact/v1", "secret-strip/v1", "none"
+  redact: func(input: string, profile: string) -> string;
+}
+
+/// Evidence emitter interface — emit AEP evidence records.
+interface evidence {
+  record action-evidence {
+    action-id: string,
+    tool-name: string,
+    state-changing: bool,
+    result-digest: string,
+  }
+  record verifier-result {
+    verifier-id: string,
+    passed: bool,
+    score: float32,
+  }
+  /// Emit one action evidence record to the AEP stream.
+  emit-action: func(ev: action-evidence) -> _;
+  /// Emit one verifier result to the AEP stream.
+  emit-verifier: func(result: verifier-result) -> _;
+}
+
+world wasmagent-runtime {
+  import policy;
+  import verifier;
+  import redactor;
+  export evidence;
+}

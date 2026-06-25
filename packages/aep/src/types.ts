@@ -61,6 +61,7 @@ export const BudgetLedgerSchema = z.object({
   tool_budget: BudgetEntrySchema.optional(),
   risk_budget: BudgetEntrySchema.optional(),
   retry_budget: BudgetEntrySchema.optional(),
+  human_approval_budget: BudgetEntrySchema.optional(),
 });
 export type BudgetLedger = z.infer<typeof BudgetLedgerSchema>;
 
@@ -76,6 +77,7 @@ export const AEPRecordSchema = z.object({
   model_id: z.string().optional(),
   policy_bundle_digest: z.string().optional(),
   tool_manifest_digest: z.string().optional(),
+  mcp_server_card_digest: z.string().nullish(),
   input_refs: z.array(InputRefSchema).default([]),
   output_refs: z.array(OutputRefSchema).default([]),
   capability_decisions: z.array(CapabilityDecisionSchema).default([]),
@@ -83,5 +85,10 @@ export const AEPRecordSchema = z.object({
   verifier_results: z.array(VerifierResultSchema).default([]),
   budget_ledger: BudgetLedgerSchema.optional(),
   created_at_ms: z.number(),
+  signature: z.object({
+    alg: z.string(),
+    key_id: z.string(),
+    sig: z.string(),
+  }).optional(),
 });
 export type AEPRecord = z.infer<typeof AEPRecordSchema>;

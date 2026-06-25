@@ -55,6 +55,15 @@ and completes the go-to-market hardening pass.
 
 ## [Unreleased]
 
+### Added (2026-06-25 — gap fill)
+
+- **`@wasmagent/aep`** — `mcp_server_card_digest` (nullish) + `signature {alg,key_id,sig}` added to `AEPRecord`; `human_approval_budget` added to `BudgetLedger`. 4 tests pass.
+- **`@wasmagent/otel-exporter`** — `AEP_SPAN_NAMES` 补全 `agent.run` / `llm.generate` / `tool.call`；新增 `agentRunSpanAttrs` / `llmGenerateSpanAttrs` / `toolCallSpanAttrs`。49 tests pass。
+- **`@wasmagent/mcp-policy` v0.1.0** — `PolicyBundle` 命名版本化规则集合，`default()` / `strict()` / `extend()`，SHA-256 digest。3 tests pass。
+- **`@wasmagent/mcp-attestation` v0.1.0** — `CapabilityAttestation`、`AttestationRegistry`、`buildAttestation()`，四级 attestation level（self/community/operator/audited）。2 tests pass。
+- **`packages/wit/wasmagent.wit`** — WASM Component Plugin ABI (P1-1)：`policy` / `verifier` / `redactor` / `evidence` WIT 接口，`wasmagent-runtime` world。
+- **`docs/strategy/research-public-edition.md`** — Research Edition / Public Edition 分层边界文档。
+
 ### Added (2026-06-25 — P2)
 
 - **`docs/packages.md`** — `@wasmagent/mcp-gateway` 加入 Security & Governance 表格和 tier 表。

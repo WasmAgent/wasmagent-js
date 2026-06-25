@@ -34,6 +34,12 @@ export const AEP_SPAN_NAMES = {
   REDACTION_APPLY: "redaction.apply",
   /** Export of a training/eval dataset record (ComplianceEvalRecord, rollout, …). */
   DATASET_EXPORT: "dataset.export",
+  /** A top-level agent execution run. */
+  AGENT_RUN: "agent.run",
+  /** An LLM generation call (single inference request). */
+  LLM_GENERATE: "llm.generate",
+  /** A single tool invocation within an agent step. */
+  TOOL_CALL: "tool.call",
 } as const;
 
 /** Union of all AEP span name string literals. */
@@ -120,5 +126,49 @@ export function verifierCheckSpanAttrs(opts: {
     "verifier.passed": String(opts.passed),
   };
   if (opts.score !== undefined) attrs["verifier.score"] = String(opts.score);
+  return attrs;
+}
+
+/**
+ * Build standard span attributes for an `agent.run` span.
+ *
+ * @param opts.agent_name - Stable name of the agent class or instance.
+ * @param opts.run_id     - Optional unique run identifier.
+ * @param opts.model_id   - Optional model used for this run.
+ */
+export function agentRunSpanAttrs(opts: { agent_name: string; run_id?: string; model_id?: string }): Record<string, string> {
+  const attrs: Record<string, string> = { "agent.name": opts.agent_name };
+  if (opts.run_id !== undefined) attrs["agent.run_id"] = opts.run_id;
+  if (opts.model_id !== undefined) attrs["agent.model_id"] = opts.model_id;
+  return attrs;
+}
+
+/**
+ * Build standard span attributes for an `llm.generate` span.
+ *
+ * @param opts.model_id      - Model identifier used for the generation.
+ * @param opts.provider      - Optional provider name (e.g. "anthropic", "openai").
+ * @param opts.input_tokens  - Optional count of input tokens consumed.
+ * @param opts.output_tokens - Optional count of output tokens produced.
+ */
+export function llmGenerateSpanAttrs(opts: { model_id: string; provider?: string; input_tokens?: number; output_tokens?: number }): Record<string, string> {
+  const attrs: Record<string, string> = { "llm.model_id": opts.model_id };
+  if (opts.provider !== undefined) attrs["llm.provider"] = opts.provider;
+  if (opts.input_tokens !== undefined) attrs["llm.input_tokens"] = String(opts.input_tokens);
+  if (opts.output_tokens !== undefined) attrs["llm.output_tokens"] = String(opts.output_tokens);
+  return attrs;
+}
+
+/**
+ * Build standard span attributes for a `tool.call` span.
+ *
+ * @param opts.tool_name      - Name of the tool being invoked.
+ * @param opts.tool_type      - Optional category of tool (e.g. "bash", "mcp", "builtin").
+ * @param opts.state_changing - Whether the tool mutates external state.
+ */
+export function toolCallSpanAttrs(opts: { tool_name: string; tool_type?: string; state_changing?: boolean }): Record<string, string> {
+  const attrs: Record<string, string> = { "tool.name": opts.tool_name };
+  if (opts.tool_type !== undefined) attrs["tool.type"] = opts.tool_type;
+  if (opts.state_changing !== undefined) attrs["tool.state_changing"] = String(opts.state_changing);
   return attrs;
 }

@@ -564,16 +564,49 @@
         "typescript": "^5.7.0",
       },
     },
+    "packages/mcp-attestation": {
+      "name": "@wasmagent/mcp-attestation",
+      "version": "0.1.0",
+      "dependencies": {
+        "@wasmagent/mcp-firewall": "^1.1.0",
+      },
+      "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.7.0",
+      },
+    },
     "packages/mcp-firewall": {
       "name": "@wasmagent/mcp-firewall",
       "version": "1.1.0",
       "dependencies": {
-        "@wasmagent/mcp-server": "^1.0.3",
+        "@wasmagent/mcp-server": "^1.1.0",
       },
       "devDependencies": {
         "@types/node": "^22.0.0",
         "typescript": "^5.7.0",
         "zod": "^3.22.0",
+      },
+    },
+    "packages/mcp-gateway": {
+      "name": "@wasmagent/mcp-gateway",
+      "version": "0.1.0",
+      "dependencies": {
+        "@wasmagent/mcp-firewall": "^1.1.0",
+      },
+      "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.7.0",
+      },
+    },
+    "packages/mcp-policy": {
+      "name": "@wasmagent/mcp-policy",
+      "version": "0.1.0",
+      "dependencies": {
+        "@wasmagent/mcp-firewall": "^1.1.0",
+      },
+      "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.7.0",
       },
     },
     "packages/mcp-server": {
@@ -1501,7 +1534,13 @@
 
     "@wasmagent/mastra-sandbox": ["@wasmagent/mastra-sandbox@workspace:packages/mastra-sandbox"],
 
+    "@wasmagent/mcp-attestation": ["@wasmagent/mcp-attestation@workspace:packages/mcp-attestation"],
+
     "@wasmagent/mcp-firewall": ["@wasmagent/mcp-firewall@workspace:packages/mcp-firewall"],
+
+    "@wasmagent/mcp-gateway": ["@wasmagent/mcp-gateway@workspace:packages/mcp-gateway"],
+
+    "@wasmagent/mcp-policy": ["@wasmagent/mcp-policy@workspace:packages/mcp-policy"],
 
     "@wasmagent/mcp-server": ["@wasmagent/mcp-server@workspace:packages/mcp-server"],
 

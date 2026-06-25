@@ -1,11 +1,13 @@
 import {
   AEP_SPAN_NAMES,
+  agentRunSpanAttrs,
   AlwaysOffSampler,
   AlwaysOnSampler,
   type Baggage,
   extractBaggage,
   FineGrainedMetrics,
   injectBaggage,
+  llmGenerateSpanAttrs,
   mcpRequestSpanAttrs,
   policyCheckSpanAttrs,
   ProbabilisticSampler,
@@ -13,6 +15,7 @@ import {
   RateLimitingSampler,
   sandboxExecSpanAttrs,
   serializeBaggage,
+  toolCallSpanAttrs,
   TraceRedactor,
   verifierCheckSpanAttrs,
 } from "./index.js";
@@ -245,5 +248,58 @@ describe("AEP span names", () => {
     const attrs = verifierCheckSpanAttrs({ verifier_id: "ScalarLLMJudgeVerifier", passed: false, score: 0.42 });
     expect(attrs["verifier.score"]).toBe("0.42");
     expect(attrs["verifier.passed"]).toBe("false");
+  });
+});
+
+describe("AEP span names — agent/llm/tool", () => {
+  it("AEP_SPAN_NAMES.AGENT_RUN === 'agent.run'", () => {
+    expect(AEP_SPAN_NAMES.AGENT_RUN).toBe("agent.run");
+  });
+
+  it("AEP_SPAN_NAMES.LLM_GENERATE === 'llm.generate'", () => {
+    expect(AEP_SPAN_NAMES.LLM_GENERATE).toBe("llm.generate");
+  });
+
+  it("AEP_SPAN_NAMES.TOOL_CALL === 'tool.call'", () => {
+    expect(AEP_SPAN_NAMES.TOOL_CALL).toBe("tool.call");
+  });
+
+  it("agentRunSpanAttrs maps agent_name to correct key", () => {
+    const attrs = agentRunSpanAttrs({ agent_name: "MyAgent" });
+    expect(attrs["agent.name"]).toBe("MyAgent");
+    expect("agent.run_id" in attrs).toBe(false);
+    expect("agent.model_id" in attrs).toBe(false);
+  });
+
+  it("agentRunSpanAttrs includes optional run_id and model_id when provided", () => {
+    const attrs = agentRunSpanAttrs({ agent_name: "MyAgent", run_id: "run-1", model_id: "claude-3" });
+    expect(attrs["agent.run_id"]).toBe("run-1");
+    expect(attrs["agent.model_id"]).toBe("claude-3");
+  });
+
+  it("llmGenerateSpanAttrs maps model_id to correct key", () => {
+    const attrs = llmGenerateSpanAttrs({ model_id: "gpt-4o" });
+    expect(attrs["llm.model_id"]).toBe("gpt-4o");
+    expect("llm.provider" in attrs).toBe(false);
+  });
+
+  it("llmGenerateSpanAttrs includes optional token counts as strings", () => {
+    const attrs = llmGenerateSpanAttrs({ model_id: "gpt-4o", provider: "openai", input_tokens: 100, output_tokens: 50 });
+    expect(attrs["llm.provider"]).toBe("openai");
+    expect(attrs["llm.input_tokens"]).toBe("100");
+    expect(attrs["llm.output_tokens"]).toBe("50");
+  });
+
+  it("toolCallSpanAttrs maps tool_name and state_changing to correct keys", () => {
+    const attrs = toolCallSpanAttrs({ tool_name: "bash", state_changing: true });
+    expect(attrs["tool.name"]).toBe("bash");
+    expect(attrs["tool.state_changing"]).toBe("true");
+    expect("tool.type" in attrs).toBe(false);
+  });
+
+  it("toolCallSpanAttrs includes optional tool_type when provided", () => {
+    const attrs = toolCallSpanAttrs({ tool_name: "read_file", tool_type: "mcp", state_changing: false });
+    expect(attrs["tool.type"]).toBe("mcp");
+    expect(attrs["tool.state_changing"]).toBe("false");
   });
 });
