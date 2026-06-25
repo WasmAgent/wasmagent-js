@@ -15,8 +15,16 @@ Three things, one loop:
 3. Verifiable rollout and compliance  — ComplianceEvalRecord, data loop
 ```
 
-> This repository is the first layer of the WasmAgent Trustworthy Agent Training Loop.
-> See [trace-pipeline/docs/ecosystem-map.md](https://github.com/WasmAgent/trace-pipeline/blob/main/docs/ecosystem-map.md) for the full system diagram.
+```
+wasmagent-js  ──►  bscode        ──►  trace-pipeline  ──►  better models
+(runtime /         (reference          (measurement /           │
+ policy / AEP)      deployment /        training data)           │
+                    evidence)                                     │
+      ◄──────────────────────────────────────────────────────────┘
+```
+
+> This repository is the **first layer** of the WasmAgent Trustworthy Agent Training Loop.
+> Full system diagram: [trace-pipeline/docs/ecosystem-map.md](https://github.com/WasmAgent/trace-pipeline/blob/main/docs/ecosystem-map.md)
 
 > **WasmAgent 0.1: Evidence Layer for MCP Agents**  
 > Wrap any MCP server, enforce policy before tool execution, and export verifiable evidence after every agent run.
@@ -44,28 +52,77 @@ npm install @wasmagent/mcp-gateway @wasmagent/aep
 
 ---
 
-## 60-second quickstart
+## Quickstart
+
+Three paths — pick the one that fits your use case:
+
+### Path 1 — Sandboxed code execution
 
 ```bash
-npm add @wasmagent/aisdk @wasmagent/kernel-quickjs
+npm install @wasmagent/aisdk @wasmagent/kernel-quickjs
 ```
 
 ```ts
-import { createAI } from "ai";
 import { sandboxedJsTool } from "@wasmagent/aisdk";
 import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 
-const { generateText } = createAI({ /* your AI SDK provider */ });
-
-const result = await generateText({
-  model: /* your model */,
-  tools: { code: sandboxedJsTool({ kernel: new QuickJSKernel() }) },
-  prompt: "Calculate the first 10 Fibonacci numbers.",
-  maxSteps: 5,
-});
-
-console.log(result.text);
+// Drop into any AI SDK / LangChain / OpenAI Agents setup
+const codeTool = sandboxedJsTool({ kernel: new QuickJSKernel() });
 ```
+
+→ [Kernel comparison](./docs/kernels/comparison.md) · [Getting started](./docs/guides/getting-started.md)
+
+### Path 2 — MCP runtime firewall
+
+Wrap any MCP server: vet tools before execution, enforce policy per call, track taint across results.
+
+```bash
+npm install @wasmagent/mcp-firewall
+```
+
+```ts
+import { vetTool, evaluatePolicy, taintObservation, snapshotTool } from "@wasmagent/mcp-firewall";
+
+// Before calling a tool
+const snap     = snapshotTool(entry, "my-server");   // hash descriptor at registration
+const vetting  = vetTool(entry);                     // static scan: injection / exfil / rug-pull
+const decision = evaluatePolicy(entry.name, args, vetting, consentRecords);
+
+if (decision.decision === "deny")   throw new Error(`Blocked: ${decision.reason}`);
+if (decision.decision === "ask_user") {
+  // surface consent UI, then call recordConsent(...)
+}
+
+// After receiving result
+const obs = taintObservation(entry.name, rawResult);  // boundary-tagged, safe to assemble into prompt
+```
+
+→ [Security pack](./docs/security-governance-pack/README.md) · [OWASP Agentic Top 10](./docs/security/capability-manifest-owasp.md) · [Attack demos](./docs/security/mcp-firewall-attack-demos.md)
+
+### Path 3 — Evidence export (AEP)
+
+Emit a signed evidence record after every agent run — consumable by trace-pipeline for audit and training.
+
+```bash
+npm install @wasmagent/aep
+```
+
+```ts
+import { AEPEmitter } from "@wasmagent/aep";
+
+const emitter = new AEPEmitter({ run_id: "run-001", model_id: "claude-sonnet-4-6" });
+
+// During the run — add tool call evidence
+emitter.addAction({ tool_name: "bash", outcome: "pass", exit_code: 0 });
+
+// At the end — emit the record
+const record = emitter.build();
+// record satisfies aep/v0.1 JSON Schema — ready for evomerge validate-aep
+```
+
+→ [AEP schema](./packages/aep/) · [trace-pipeline 10-min tutorial](https://github.com/WasmAgent/trace-pipeline/blob/main/docs/TRACE_TO_TRAINING_10MIN.md)
+
+---
 
 📚 **[Docs](https://WasmAgent.github.io/wasmagent-js/)** · [Getting started](./docs/guides/getting-started.md) · [Kernels](./docs/kernels/comparison.md) · [OWASP governance](./docs/security/capability-manifest-owasp.md) · [Security pack](./docs/security-governance-pack/README.md) · [Changelog](./CHANGELOG.md)
 

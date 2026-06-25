@@ -9,15 +9,30 @@
  *   node scripts/verify-claims.mjs --update  # stamp today on per-pr claims
  */
 
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
 const CLAIMS_FILE = resolve(ROOT, "docs/claims/claims.yaml");
+const DOCS_DIR = resolve(ROOT, "docs");
 const README_FILE = resolve(ROOT, "README.md");
+
+/** Recursively collect all .md files under a directory. */
+function collectMarkdownFiles(dir) {
+  const results = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) {
+      results.push(...collectMarkdownFiles(full));
+    } else if (entry.endsWith(".md")) {
+      results.push(full);
+    }
+  }
+  return results;
+}
 
 const args = process.argv.slice(2);
 const STRICT = args.includes("--strict");
@@ -80,7 +95,7 @@ function parseClaims(text) {
       }
 
       // Match a field line: `  key: value`
-      const fieldMatch = line.match(/^  (\w[\w_-]*):\s*(.*)/);
+      const fieldMatch = line.match(/^ {2}(\w[\w_-]*):\s*(.*)/);
       if (!fieldMatch) {
         i++;
         continue;
@@ -96,7 +111,10 @@ function parseClaims(text) {
         while (i < block.length) {
           const cont = block[i];
           // Continuation lines are indented with >= 4 spaces
-          if (/^    /.test(cont) || (cont.trim() === "" && i + 1 < block.length && /^    /.test(block[i + 1]))) {
+          if (
+            /^ {4}/.test(cont) ||
+            (cont.trim() === "" && i + 1 < block.length && /^ {4}/.test(block[i + 1]))
+          ) {
             parts.push(cont.trim());
             i++;
           } else {
@@ -108,8 +126,10 @@ function parseClaims(text) {
       }
 
       // Quoted string — strip surrounding quotes
-      if ((value.startsWith('"') && value.endsWith('"')) ||
-          (value.startsWith("'") && value.endsWith("'"))) {
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
         value = value.slice(1, -1);
       }
 
@@ -141,7 +161,7 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-// ─── README numeric-claim cross-check ──────────────────────────────────────
+// ─── README / docs numeric-claim cross-check ───────────────────────────────
 
 /**
  * Extract numeric tokens from README that look like performance claims.
@@ -149,10 +169,8 @@ function todayISO() {
  */
 function extractReadmeNumerics(text) {
   const found = new Set();
-  // Match numbers followed by % or ms (standalone claims, not inside code blocks)
   const re = /\b(\d+(?:\.\d+)?)(ms|%)/g;
-  let m;
-  while ((m = re.exec(text)) !== null) {
+  for (const m of text.matchAll(re)) {
     found.add(m[1] + m[2]);
   }
   return found;
@@ -176,9 +194,7 @@ function updatePerPrClaims(rawText, claims, today) {
     // Replace the last_verified line for this claim's id block
     // Strategy: replace `last_verified: "YYYY-MM-DD"` that follows `id: <id>`
     const escapedId = claim.id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(
-      `(- id:\\s*${escapedId}[\\s\\S]*?  last_verified:\\s*)"[^"]*"`,
-    );
+    const re = new RegExp(`(- id:\\s*${escapedId}[\\s\\S]*?  last_verified:\\s*)"[^"]*"`);
     const replacement = `$1"${today}"`;
     const before = updated;
     updated = updated.replace(re, replacement);
@@ -224,7 +240,10 @@ if (UPDATE) {
 // ── --list mode ─────────────────────────────────────────────────────────────
 if (LIST) {
   const colWidths = { id: 38, ci_mode: 8, last_verified: 13, claim: 60 };
-  const pad = (s, n) => String(s ?? "").slice(0, n).padEnd(n);
+  const pad = (s, n) =>
+    String(s ?? "")
+      .slice(0, n)
+      .padEnd(n);
   const header =
     pad("ID", colWidths.id) +
     "  " +
@@ -245,7 +264,7 @@ if (LIST) {
         "  " +
         pad(c.last_verified, colWidths.last_verified) +
         "  " +
-        String(c.claim ?? "").slice(0, colWidths.claim),
+        String(c.claim ?? "").slice(0, colWidths.claim)
     );
   }
   console.log(sep);
@@ -284,7 +303,7 @@ for (const claim of claims) {
   // ci_mode values
   if (claim.ci_mode && !VALID_CI_MODES.includes(claim.ci_mode)) {
     errors.push(
-      `${label}: ci_mode '${claim.ci_mode}' is invalid — must be one of: ${VALID_CI_MODES.join(", ")}`,
+      `${label}: ci_mode '${claim.ci_mode}' is invalid — must be one of: ${VALID_CI_MODES.join(", ")}`
     );
   }
 
@@ -303,31 +322,51 @@ for (const claim of claims) {
       const age = daysSince(claim.last_verified);
       if (age > maxDays) {
         warnings.push(
-          `${label}: last_verified is ${age} day(s) old (ci_mode='${claim.ci_mode}', threshold=${maxDays}d) — re-verify and update last_verified`,
+          `${label}: last_verified is ${age} day(s) old (ci_mode='${claim.ci_mode}', threshold=${maxDays}d) — re-verify and update last_verified`
         );
       }
     }
   }
 }
 
-// ── README numeric cross-check ───────────────────────────────────────────────
+// ── Docs numeric cross-check (README + all docs/**/*.md) ─────────────────────
 
-let readmeText = "";
-try {
-  readmeText = readFileSync(README_FILE, "utf8");
-} catch {
-  warnings.push("README.md not found — skipping numeric-claim cross-check");
+const NUMERIC_ALLOWLIST = new Set(["0%", "0.0%", "100%", "100.0%", "50%", "0ms", "1ms"]);
+
+const docsToScan = [];
+if (existsSync(README_FILE)) docsToScan.push(README_FILE);
+if (existsSync(DOCS_DIR)) docsToScan.push(...collectMarkdownFiles(DOCS_DIR));
+
+if (docsToScan.length === 0) {
+  warnings.push("No markdown files found — skipping numeric-claim cross-check");
 }
 
-if (readmeText) {
-  const numerics = extractReadmeNumerics(readmeText);
+const allNumerics = new Map();
+for (const docPath of docsToScan) {
+  let text = "";
+  try {
+    text = readFileSync(docPath, "utf8");
+  } catch {
+    continue;
+  }
+  const relPath = docPath.replace(ROOT + "/", "");
+  if (relPath.startsWith("docs/claims/")) continue;
+  const numerics = extractReadmeNumerics(text);
   for (const num of numerics) {
-    const covered = claims.some((c) => claimReferencesNumeric(c, num));
-    if (!covered) {
-      warnings.push(
-        `README mentions '${num}' but no claim entry references it — add a claim or update an existing one`,
-      );
-    }
+    if (!allNumerics.has(num)) allNumerics.set(num, new Set());
+    allNumerics.get(num).add(relPath);
+  }
+}
+
+const scannedCount = docsToScan.length;
+for (const [num, files] of allNumerics) {
+  if (NUMERIC_ALLOWLIST.has(num)) continue;
+  const covered = claims.some((c) => claimReferencesNumeric(c, num));
+  if (!covered) {
+    const locations = [...files].join(", ");
+    warnings.push(
+      `Docs mention '${num}' (in: ${locations}) but no claim entry references it — add a claim or update an existing one`
+    );
   }
 }
 
@@ -337,8 +376,11 @@ const effectiveErrors = STRICT ? [...errors, ...warnings] : errors;
 
 console.log(`\nClaim registry: ${CLAIMS_FILE}`);
 console.log(`Claims parsed : ${claims.length}`);
+console.log(`Docs scanned  : ${scannedCount} markdown files (README + docs/**/*.md)`);
 console.log(`Errors        : ${errors.length}`);
-console.log(`Warnings      : ${warnings.length}${STRICT ? " (treated as errors in --strict mode)" : ""}`);
+console.log(
+  `Warnings      : ${warnings.length}${STRICT ? " (treated as errors in --strict mode)" : ""}`
+);
 console.log();
 
 if (errors.length > 0) {

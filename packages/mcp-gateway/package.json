@@ -41,5 +41,17 @@
     "stability": "alpha"
   },
   "license": "Apache-2.0",
-  "private": true
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WasmAgent/wasmagent-js.git",
+    "directory": "packages/mcp-gateway"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ]
 }
