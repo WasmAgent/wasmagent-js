@@ -55,6 +55,12 @@ const budgets = [
     limit: 6 * MB,
     note: "Full worker bundle including WASM. Target: below 5 MB CF limit after asset externalisation.",
   },
+  {
+    label: "@wasmagent/mcp-server dist/",
+    path: resolve(root, "packages/mcp-server/dist"),
+    limit: 1 * MB,
+    note: "MCP server must stay lean — consumers install it alongside a Worker. Keep below 1 MB.",
+  },
 ];
 
 let failed = 0;
