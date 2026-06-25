@@ -1,11 +1,22 @@
-# wasmagent
-
-**WasmAgent is a framework-neutral execution runtime for code-mode agents.**
+# wasmagent-js
 
 [![npm version](https://img.shields.io/npm/v/@wasmagent/core.svg?label=%40wasmagent%2Fcore)](https://www.npmjs.com/package/@wasmagent/core)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![CI](https://github.com/WasmAgent/wasmagent-js/actions/workflows/ci.yml/badge.svg)](https://github.com/WasmAgent/wasmagent-js/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-vitepress-brightgreen.svg)](https://WasmAgent.github.io/wasmagent-js/)
+
+**WasmAgent's runtime compliance source of truth.**
+
+Three things, one loop:
+
+```
+1. Portable code execution runtime    — sandboxed, framework-neutral
+2. Uniform governance surface         — policy, capability, guardrails
+3. Verifiable rollout and compliance  — ComplianceEvalRecord, data loop
+```
+
+> This repository is the first layer of the WasmAgent Trustworthy Agent Training Loop.
+> See [evomerge-framework/docs/ecosystem-map.md](https://github.com/telleroutlook/evomerge-framework/blob/main/docs/ecosystem-map.md) for the full system diagram.
 
 ## Core Runtime
 `@wasmagent/core` · `@wasmagent/kernel-quickjs` · `@wasmagent/kernel-pyodide` · `@wasmagent/kernel-remote`
@@ -13,8 +24,8 @@
 ## Integrations
 `@wasmagent/aisdk` · `@wasmagent/mastra-sandbox` · `@wasmagent/openai-agents` · `@wasmagent/claude-agent-sdk` · `@wasmagent/mcp-server`
 
-## Trust / Data
-`@wasmagent/evals-runner` · `@wasmagent/devtools` · rollout-wire schema · evomerge datafactory
+## Compliance / Data
+`@wasmagent/compliance` · `@wasmagent/evals-runner` · `@wasmagent/devtools` · rollout-wire schema
 
 > Full package list: [docs/packages.md](docs/packages.md)
 
