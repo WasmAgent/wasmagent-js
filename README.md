@@ -79,7 +79,16 @@ Task → Safe Runtime → Verifiable Rollout → Trajectory Export → DPO/PPO D
 
 ## What makes wasmagent different
 
-Nine axes where wasmagent does something other JS frameworks don't — all in one package:
+Three wedges where wasmagent stands apart from generic agent frameworks:
+
+| Wedge | What it means |
+|---|---|
+| **Sandboxed execution** | Three isolation tiers — VmKernel / WASM (QuickJS·Pyodide·Wasmtime) / microVM — with a single `CapabilityManifest` and MCP runtime firewall across all |
+| **Runtime compliance** | `TaskSpec` → `ConstraintIR` → `ComplianceEvalRecord` — every run produces an auditable, cross-repo training contract, not just a log |
+| **Trace-to-training contract** | Verifiable rollout branching, objective scoring, DPO/PPO export — the loop from runtime evidence to training data is first-class, not an afterthought |
+
+<details>
+<summary>Full feature axis table (10 axes vs. other JS agent frameworks)</summary>
 
 | # | Axis | Status |
 |---|---|---|
@@ -93,6 +102,8 @@ Nine axes where wasmagent does something other JS frameworks don't — all in on
 | 8 | **Goal-directed loop** — agent synthesises success criteria, verifies, retries with hints | shipped 2026-06-18 |
 | 9 | **Adaptive execution** — registered fallbacks (L1) → synthesised tool (L2) → relaxed goal (L3) | shipped 2026-06-18 |
 | 10 | **MCP runtime firewall** — `@wasmagent/mcp-firewall`: descriptor snapshot, static vetting (injection / exfiltration / rug-pull / taint), per-call policy, consent ledger | shipped 2026-06-25 |
+
+</details>
 
 > Full comparison with Vercel AI SDK, LangGraph.js, OpenAI Agents JS, Mastra, CF Agents SDK: **[docs/compare.md](./docs/compare.md)**
 
