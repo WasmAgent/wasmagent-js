@@ -20,6 +20,24 @@ export const ActionEvidenceSchema = z.object({
   evidence_refs: z.array(z.string()).default([]),
   capability_decision: CapabilityDecisionSchema.optional(),
   timestamp_ms: z.number(),
+  // v0.2 causal chain fields
+  parent_action_id: z.string().optional(),
+  causal_chain_id: z.string().optional(),
+  // v0.2 tool/server provenance
+  tool_descriptor_digest: z.string().optional(),
+  server_card_digest: z.string().optional(),
+  // v0.2 scope & approval
+  scope_lease_id: z.string().optional(),
+  approval_context_hash: z.string().optional(),
+  // v0.2 taint tracking
+  input_taint_labels: z.array(z.string()).optional(),
+  output_taint_labels: z.array(z.string()).optional(),
+  // v0.2 memory provenance
+  memory_read_refs: z.array(z.string()).optional(),
+  memory_write_refs: z.array(z.string()).optional(),
+  // v0.2 state digests
+  pre_state_digest: z.string().optional(),
+  post_state_digest: z.string().optional(),
 });
 export type ActionEvidence = z.infer<typeof ActionEvidenceSchema>;
 
@@ -65,9 +83,20 @@ export const BudgetLedgerSchema = z.object({
 });
 export type BudgetLedger = z.infer<typeof BudgetLedgerSchema>;
 
+// RunContext — execution environment and delegation metadata (v0.2)
+export const RunContextSchema = z.object({
+  agent_id: z.string().optional(),
+  agent_version: z.string().optional(),
+  subagent_id: z.string().optional(),
+  delegation_chain: z.array(z.string()).default([]),
+  environment_digest: z.string().optional(),
+  dependency_lock_digest: z.string().optional(),
+});
+export type RunContext = z.infer<typeof RunContextSchema>;
+
 // AEPRecord — the top-level Agent Evidence Protocol record
 export const AEPRecordSchema = z.object({
-  schema_version: z.literal("aep/v0.1"),
+  schema_version: z.enum(["aep/v0.1", "aep/v0.2"]),
   run_id: z.string(),
   trace_id: z.string().optional(),
   parent_trace_id: z.string().nullish(),
@@ -85,11 +114,14 @@ export const AEPRecordSchema = z.object({
   verifier_results: z.array(VerifierResultSchema).default([]),
   budget_ledger: BudgetLedgerSchema.optional(),
   created_at_ms: z.number(),
+  run_context: RunContextSchema.optional(),
   signature: z
     .object({
       alg: z.string(),
       key_id: z.string(),
       sig: z.string(),
+      bundle: z.record(z.unknown()).optional(),
+      transparency_log_ref: z.string().optional(),
     })
     .optional(),
 });

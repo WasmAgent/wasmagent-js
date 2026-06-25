@@ -1,0 +1,509 @@
+# WasmAgent Security Standards Crosswalk
+# Maps industry security standards to WasmAgent primitives, AEP fields,
+# example demos, tests, and trace-pipeline checks.
+#
+# Sections:
+#   1. owasp_mcp_top10       — OWASP MCP Top 10 (all 10 risks)
+#   2. owasp_agentic_top10   — OWASP Agentic Top 10 (5 most relevant)
+#   3. otel_genai_semconv    — OTel GenAI semantic conventions alignment
+#
+# Last updated: 2026-06-26
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Section 1: OWASP MCP Top 10
+# ──────────────────────────────────────────────────────────────────────────────
+owasp_mcp_top10:
+
+  - id: owasp-mcp-01-prompt-injection
+    external_standard: "OWASP MCP Top 10"
+    risk: "Prompt Injection / Tool Poisoning"
+    description: >
+      Malicious content embedded in a tool's name, description, or inputSchema
+      attempts to hijack agent instructions (e.g. "ignore previous instructions").
+    wasmagent_primitives:
+      - "packages/mcp-firewall/src/vetting.ts: vetTool(), vetTools() — scans tool descriptor fields for INJECTION_PATTERNS"
+      - "packages/mcp-firewall/src/vetting.ts: RiskCategory='tool_poisoning' — category emitted on match"
+      - "packages/mcp-firewall/src/policy.ts: DENY_BLOCKED_RULE — denies any tool vetTool() marks blocked"
+      - "packages/core/src/guardrails/index.ts: classifierGuardrail() — model-based input/output classifier (S1)"
+      - "packages/core/src/guardrails/index.ts: forbiddenPhrases() — deterministic output guardrail"
+      - "packages/mcp-firewall/src/gateway.ts: MCPGateway.evaluate() — orchestrates vetting + policy per request"
+    aep_fields:
+      - "actions[].input_taint_labels — propagates 'tool_poisoning' label on suspicious tool call"
+      - "capability_decisions[].reason_code — records 'deny-blocked-vetting' when tool is blocked"
+      - "actions[].tool_descriptor_digest — snapshot hash used to detect descriptor tampering"
+      - "verifier_results[] — records classifierGuardrail verdict"
+    bscode_demos:
+      - "examples/owasp-demo/owasp-demo.mjs"
+      - "examples/owasp-demo/index.mjs"
+    tests:
+      - "packages/mcp-firewall/src/prompt-injection-smoke.test.ts"
+      - "packages/mcp-firewall/src/firewall.test.ts"
+      - "packages/core/src/guardrails/index.test.ts"
+    trace_pipeline_checks:
+      - "packages/compliance/benchmarks/ifeval/curate.py — filters records with tool_poisoning findings"
+
+  - id: owasp-mcp-02-excessive-privilege
+    external_standard: "OWASP MCP Top 10"
+    risk: "Excessive Privilege / Scope Creep"
+    description: >
+      An agent or tool is granted capabilities beyond what the current task requires,
+      allowing unintended reads, writes, or network calls.
+    wasmagent_primitives:
+      - "packages/core/src/executor/capabilities.ts: buildCapabilityGlobals() — injects only explicitly granted capabilities"
+      - "packages/core/src/executor/capabilities.ts: buildSandboxFetch() — deny-all by default; allowedHosts must be non-empty"
+      - "packages/core/src/executor/capabilities.ts: assertPathAllowed() — enforces read/write path allow-lists with traversal protection"
+      - "packages/mcp-policy/src/bundle.ts: PolicyBundle — versioned, digested rule collection scoping allowed actions"
+      - "packages/mcp-attestation/src/attestation.ts: CapabilityAttestation / AttestationRegistry — per-server capability scope attestation"
+      - "packages/mcp-firewall/src/policy.ts: evaluatePolicy() / requiredCapabilities — derives minimum-required capabilities from vetting findings"
+    aep_fields:
+      - "actions[].capability_decision — per-action allow/deny/ask_user with reason_code"
+      - "capability_decisions[] — full list of capability decisions for the run"
+      - "actions[].scope_lease_id — ties each action to a time-bounded scope grant"
+      - "policy_bundle_digest — digest of the active PolicyBundle for auditability"
+      - "budget_ledger.risk_budget — tracks cumulative risk spend across the run"
+    bscode_demos:
+      - "examples/dangerous-tool-demo/index.mjs"
+    tests:
+      - "packages/mcp-attestation/src/index.test.ts"
+      - "packages/mcp-policy/src/index.test.ts"
+      - "packages/mcp-firewall/src/gateway.test.ts"
+    trace_pipeline_checks:
+      - "scripts/verify-claims.mjs — validates capability_decisions field in AEP records"
+
+  - id: owasp-mcp-03-rug-pull
+    external_standard: "OWASP MCP Top 10"
+    risk: "Rug Pull (Tool Descriptor Drift)"
+    description: >
+      A tool's description or schema changes after user consent was granted,
+      so the agent executes different behavior than what the user approved.
+    wasmagent_primitives:
+      - "packages/mcp-firewall/src/gateway.ts: ServerCard.toolManifestDigest — SHA-256 of tool manifest at registration"
+      - "packages/mcp-firewall/src/gateway.ts: buildServerCard() — captures manifest digest at registration time"
+      - "packages/mcp-firewall/src/consent.ts: ConsentEvent.toolSnapshotHash — ties consent to exact descriptor snapshot"
+      - "packages/mcp-firewall/src/consent.ts: InMemoryConsentLedger.hasConsent() — validates toolSnapshotHash before re-using consent"
+      - "packages/mcp-firewall/src/vetting.ts: RiskCategory='rug_pull' — category for descriptor drift findings"
+      - "packages/mcp-attestation/src/attestation.ts: isAttestationValid() — expiry check prevents stale attestations"
+    aep_fields:
+      - "actions[].tool_descriptor_digest — per-action snapshot of descriptor at call time"
+      - "actions[].server_card_digest — SHA-256 of ServerCard used for this invocation"
+      - "tool_manifest_digest — run-level digest of the full tool manifest"
+      - "mcp_server_card_digest — run-level digest of server card"
+    bscode_demos:
+      - "examples/owasp-demo/owasp-demo.mjs"
+    tests:
+      - "packages/mcp-firewall/src/firewall.test.ts"
+      - "packages/mcp-attestation/src/index.test.ts"
+    trace_pipeline_checks:
+      - "scripts/check-rollout-schema.mjs — detects tool_manifest_digest drift between rollout records"
+
+  - id: owasp-mcp-04-confused-deputy-ssrf
+    external_standard: "OWASP MCP Top 10"
+    risk: "Confused Deputy / SSRF"
+    description: >
+      An agent acting on behalf of a user is tricked into making requests to
+      internal or privileged endpoints (SSRF) by supplying attacker-controlled URLs.
+    wasmagent_primitives:
+      - "packages/core/src/executor/capabilities.ts: buildSandboxFetch() — hostname allow-list with glob matching"
+      - "packages/core/src/executor/capabilities.ts: matchGlob() — single-label wildcard prevents *.internal bypass"
+      - "packages/core/src/executor/capabilities.ts: MAX_REDIRECT_HOPS (5) — redirect chain limit"
+      - "packages/core/src/executor/capabilities.ts: redirect host re-validation — each Location header validated against allowedHosts"
+      - "packages/core/src/executor/capabilities.ts: protocol downgrade guard — http→https upgrade enforced on redirect"
+      - "packages/mcp-firewall/src/vetting.ts: EXFILTRATION_PATTERNS — flags tool descriptions requesting env vars or credentials"
+    aep_fields:
+      - "actions[].capability_decision.resource — records the URL/host requested"
+      - "actions[].input_taint_labels — 'exfiltration' label propagated when EXFILTRATION_PATTERNS match"
+      - "capability_decisions[].decision — 'deny' when fetch target not in allowedHosts"
+      - "run_context.agent_id — principal making the confused-deputy request"
+    bscode_demos:
+      - "examples/dangerous-tool-demo/index.mjs"
+    tests:
+      - "packages/mcp-firewall/src/firewall.test.ts"
+      - "packages/mcp-gateway/src/index.test.ts"
+    trace_pipeline_checks:
+      - "scripts/verify-claims.mjs — asserts no 'exfiltration' taint labels in approved runs"
+
+  - id: owasp-mcp-05-taint-untrusted-result
+    external_standard: "OWASP MCP Top 10"
+    risk: "Taint / Untrusted Tool Result as Instruction"
+    description: >
+      A tool's output containing instruction-like text is fed back into the
+      agent's prompt without sanitization, causing secondary prompt injection.
+    wasmagent_primitives:
+      - "packages/mcp-firewall/src/taint.ts: taintObservation() — wraps raw tool output in TaintedObservation (default trust='untrusted')"
+      - "packages/mcp-firewall/src/taint.ts: renderTaintedObservation() — emits <untrusted_tool_output> boundary tag preventing model re-interpretation"
+      - "packages/mcp-firewall/src/taint.ts: TaintedObservation.instructionLikeTextDetected — boolean flag for INSTRUCTION_LIKE_PATTERNS"
+      - "packages/mcp-firewall/src/taint.ts: detectContentType() — tags html/markdown for downstream sanitization"
+      - "packages/mcp-firewall/src/gateway.ts: MCPGateway.wrapResult() — applies taintObservation() using resultTrustLevel from ServerCard"
+    aep_fields:
+      - "actions[].input_taint_labels — taint labels on inputs consumed by this action"
+      - "actions[].output_taint_labels — taint labels on outputs produced by this action"
+      - "actions[].result_digest — SHA-256 of raw tool output (integrity anchor)"
+    bscode_demos:
+      - "examples/owasp-demo/owasp-demo.mjs"
+    tests:
+      - "packages/mcp-firewall/src/firewall.test.ts"
+      - "packages/mcp-firewall/src/prompt-injection-smoke.test.ts"
+    trace_pipeline_checks:
+      - "packages/compliance/benchmarks/ifeval/curate.py — filters records with output_taint_labels present"
+
+  - id: owasp-mcp-06-sampling-abuse
+    external_standard: "OWASP MCP Top 10"
+    risk: "Sampling Abuse"
+    description: >
+      A malicious tool description instructs the host to perform additional LLM
+      sampling requests, enabling token theft, exfiltration, or recursive injection.
+    wasmagent_primitives:
+      - "packages/mcp-firewall/src/vetting.ts: SAMPLING_PATTERNS — detects 'call the llm', 'sampling request', etc. in tool descriptors"
+      - "packages/mcp-firewall/src/vetting.ts: RiskCategory='sampling_abuse' — emitted with severity='high', recommendation='ask'"
+      - "packages/mcp-firewall/src/policy.ts: ASK_HIGH_RISK_RULE — escalates to ask_user for high-severity findings including sampling_abuse"
+      - "packages/mcp-firewall/src/consent.ts: ConsentAction='approve_sampling' — explicit separate consent action for sampling requests"
+      - "packages/aep/src/types.ts: BudgetLedger.token_budget — tracks cumulative token spend to detect sampling abuse"
+    aep_fields:
+      - "actions[].capability_decision.decision — 'ask_user' when sampling_abuse detected"
+      - "budget_ledger.token_budget — spend vs limit; anomalous growth signals sampling loops"
+      - "budget_ledger.retry_budget — elevated retries may indicate recursive sampling"
+      - "verifier_results[] — ScalarLLMJudgeVerifier score records model call frequency"
+    bscode_demos:
+      - "examples/owasp-demo/owasp-demo.mjs"
+    tests:
+      - "packages/mcp-firewall/src/firewall.test.ts"
+    trace_pipeline_checks:
+      - "scripts/verify-claims.mjs — detects sampling_abuse risk category in AEP records"
+
+  - id: owasp-mcp-07-supply-chain-tampering
+    external_standard: "OWASP MCP Top 10"
+    risk: "Supply Chain Tampering"
+    description: >
+      A malicious actor substitutes a tool package, model, or MCP server
+      between build-time and runtime, running untrusted code under a trusted identity.
+    wasmagent_primitives:
+      - "packages/mcp-attestation/src/attestation.ts: buildAttestation() — ties CapabilityAttestation to toolManifestDigest"
+      - "packages/mcp-attestation/src/attestation.ts: AttestationRegistry.hasAttestation() — enforces minimum attestation level before use"
+      - "packages/mcp-attestation/src/attestation.ts: AttestationLevel enum — 'self' | 'community' | 'operator' | 'audited'"
+      - "packages/mcp-firewall/src/gateway.ts: ServerCard.operatorVerified — operator sign-off flag; false → resultTrustLevel='untrusted'"
+      - "packages/mcp-policy/src/bundle.ts: PolicyBundle.digest — SHA-256 of rule IDs; tampered bundle produces different digest"
+      - "packages/aep/src/types.ts: RunContext.dependency_lock_digest — digest of lock file (e.g. bun.lock)"
+    aep_fields:
+      - "run_context.dependency_lock_digest — detects lock file mutation between runs"
+      - "run_context.repo_commit — ties the run to a specific commit SHA"
+      - "policy_bundle_digest — tampered PolicyBundle produces digest mismatch"
+      - "tool_manifest_digest — drift vs registered ServerCard.toolManifestDigest signals supply chain change"
+      - "signature — optional Sigstore-compatible bundle for run record signing"
+    bscode_demos:
+      - "examples/owasp-demo/owasp-demo.mjs"
+    tests:
+      - "packages/mcp-attestation/src/index.test.ts"
+      - "packages/mcp-policy/src/index.test.ts"
+    trace_pipeline_checks:
+      - "scripts/check-rollout-schema.mjs — detects dependency_lock_digest or repo_commit drift"
+      - "scripts/verify-claims.mjs — validates signature.sig field when present"
+
+  - id: owasp-mcp-08-invisible-characters
+    external_standard: "OWASP MCP Top 10"
+    risk: "Invisible Characters / Steganography"
+    description: >
+      Zero-width or control Unicode characters embedded in tool descriptors or
+      outputs carry hidden instructions invisible to human reviewers.
+    wasmagent_primitives:
+      - "packages/mcp-firewall/src/vetting.ts: INVISIBLE_CHAR_RE — regex covers soft-hyphen, zero-width spaces, directional overrides (U+00AD, U+200B–U+200F, U+202A–U+202E, U+2060–U+206F, U+FEFF)"
+      - "packages/mcp-firewall/src/vetting.ts: RiskCategory='invisible_chars' — emitted with severity='medium'"
+      - "packages/mcp-firewall/src/vetting.ts: vetTool() — scans all three fields: name, description, inputSchema"
+      - "packages/otel-exporter/src/TraceRedactor.ts: TraceRedactor — strips sensitive / anomalous content from trace attributes before export"
+    aep_fields:
+      - "actions[].input_taint_labels — 'invisible_chars' label when finding is present"
+      - "actions[].tool_descriptor_digest — content-addressed digest detects any byte-level mutation including invisible chars"
+      - "capability_decisions[].reason_code — 'ask-high-risk' on invisible_chars finding"
+    bscode_demos:
+      - "examples/owasp-demo/owasp-demo.mjs"
+    tests:
+      - "packages/mcp-firewall/src/firewall.test.ts"
+      - "packages/mcp-firewall/src/prompt-injection-smoke.test.ts"
+    trace_pipeline_checks:
+      - "packages/compliance/benchmarks/ifeval/curate.py — rejects records where invisible_chars category appears in findings"
+
+  - id: owasp-mcp-09-insufficient-authn-authz
+    external_standard: "OWASP MCP Top 10"
+    risk: "Insufficient AuthN/AuthZ"
+    description: >
+      An MCP server or gateway fails to authenticate callers or enforce
+      per-principal authorization, allowing unauthenticated or cross-tenant access.
+    wasmagent_primitives:
+      - "packages/mcp-firewall/src/gateway.ts: RequestIdentity — principalHash + sessionId mandatory on every GatewayRequest"
+      - "packages/mcp-firewall/src/gateway.ts: createRequestIdentity() — SHA-256 principal hash, parentSessionId for delegation chains"
+      - "packages/mcp-firewall/src/consent.ts: ConsentLedger.hasConsent() — validates userIdHash + toolSnapshotHash before granting consent"
+      - "packages/mcp-attestation/src/attestation.ts: AttestationRegistry.hasAttestation() — checks attestation level before server use"
+      - "packages/mcp-gateway/src/audit.ts: InMemoryAuditLogger — logs principalHash + sessionId on every gateway decision"
+      - "packages/mcp-gateway/src/middleware.ts: GatewayMiddleware / composeMiddleware() — pluggable authn/authz middleware chain"
+      - "packages/aep/src/types.ts: RunContext.delegation_chain — full chain of agent IDs for multi-agent delegation audits"
+    aep_fields:
+      - "run_context.agent_id — identity of the top-level agent"
+      - "run_context.subagent_id — identity of the sub-agent when delegation is used"
+      - "run_context.delegation_chain — ordered list of principal IDs in the call chain"
+      - "capability_decisions[].subject — per-decision principal identifier"
+      - "actions[].approval_context_hash — hash of the UI/API context at approval time"
+    bscode_demos:
+      - "examples/dangerous-tool-demo/index.mjs"
+    tests:
+      - "packages/mcp-firewall/src/gateway.test.ts"
+      - "packages/mcp-gateway/src/index.test.ts"
+      - "packages/mcp-attestation/src/index.test.ts"
+    trace_pipeline_checks:
+      - "scripts/verify-claims.mjs — asserts delegation_chain is non-empty for sub-agent runs"
+
+  - id: owasp-mcp-10-intent-flow-subversion
+    external_standard: "OWASP MCP Top 10"
+    risk: "Intent Flow Subversion / Objective Drift"
+    description: >
+      Multi-step agent interaction gradually shifts the agent's goal away from
+      the user's original intent through accumulated prompt manipulations.
+    wasmagent_primitives:
+      - "packages/core/src/agents/verifiers/types.ts: DeterministicVerifier — mechanically checks post-step goal criteria to detect drift"
+      - "packages/core/src/agents/verifiers/LLMJudgeVerifier.ts: LLMJudgeVerifier — adversarial binary judge with k≥3 voting, default-fail semantics"
+      - "packages/core/src/agents/verifiers/ScalarLLMJudgeVerifier.ts: ScalarLLMJudgeVerifier — scalar alignment score per step"
+      - "packages/core/src/agents/verifiers/VerificationPipeline.ts: VerificationPipeline — aggregates N criteria into a single goal-aligned verdict"
+      - "packages/compliance/src/verifier/ComplianceVerifier.ts: ComplianceVerifier — checks ConstraintIR constraints at each step"
+      - "packages/compliance/src/runner/ComplianceRun.ts: ComplianceRun — full_pcl mode adds repair loop when compliance fails"
+      - "packages/core/src/checkpoint/index.ts: CheckpointableRun / resumeFromHuman() — HITL pause points for intent confirmation"
+      - "packages/core/src/guardrails/index.ts: classifierGuardrail() — output classifier detects goal-divergent responses"
+    aep_fields:
+      - "verifier_results[] — per-step verifier pass/fail with score for drift detection"
+      - "actions[].causal_chain_id — groups causally related actions to detect orphaned action chains"
+      - "actions[].parent_action_id — per-action parent link for causal graph reconstruction"
+      - "budget_ledger.human_approval_budget — tracks how many HITL confirmations were used"
+      - "run_context.agent_version — version pinning to detect agent substitution mid-run"
+    bscode_demos:
+      - "examples/owasp-demo/owasp-demo.mjs"
+      - "examples/integration-smoke/edge-codemode-adversarial.mjs"
+    tests:
+      - "packages/core/src/agents/verifiers/verifiers.test.ts"
+      - "packages/compliance/src/runner/ComplianceRun.test.ts"
+      - "packages/core/src/checkpoint/hitl.test.ts"
+      - "tests/integration/rlaif-adversarial.test.ts"
+    trace_pipeline_checks:
+      - "packages/compliance/benchmarks/ifeval/curate.py — flags runs where verifier_results show declining pass-rate across steps"
+      - "scripts/p16_experience_axis_compare.mjs — compares intent alignment scores across rollout variants"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Section 2: OWASP Agentic Top 10 (5 most relevant entries)
+# ──────────────────────────────────────────────────────────────────────────────
+owasp_agentic_top10:
+
+  - id: owasp-agentic-a01-prompt-injection
+    external_standard: "OWASP Agentic Top 10"
+    risk: "Prompt Injection in Agentic Systems"
+    description: >
+      Attacker-controlled content in any context source (user input, tool output,
+      memory retrieval) hijacks the agent's instructions or goal.
+    wasmagent_primitives:
+      - "packages/mcp-firewall/src/vetting.ts: vetTool() — static scan of tool descriptor before first invocation"
+      - "packages/core/src/guardrails/index.ts: classifierGuardrail() — isolation-principle classifier (sees only the content, not full agent context)"
+      - "packages/mcp-firewall/src/taint.ts: taintObservation() / renderTaintedObservation() — tagged boundary prevents re-interpretation"
+      - "packages/core/src/memory/Retriever.ts — memory items should be rendered through taint boundary"
+    aep_fields:
+      - "actions[].input_taint_labels"
+      - "verifier_results[] — classifierGuardrail verdict"
+    bscode_demos:
+      - "examples/owasp-demo/owasp-demo.mjs"
+    tests:
+      - "packages/mcp-firewall/src/prompt-injection-smoke.test.ts"
+      - "packages/core/src/guardrails/index.test.ts"
+    trace_pipeline_checks:
+      - "packages/compliance/benchmarks/ifeval/curate.py"
+
+  - id: owasp-agentic-a02-tool-misuse
+    external_standard: "OWASP Agentic Top 10"
+    risk: "Tool Misuse / Unauthorized Tool Invocation"
+    description: >
+      Agent invokes tools it was not authorized to use, or invokes authorized
+      tools with parameters that exceed the granted scope.
+    wasmagent_primitives:
+      - "packages/mcp-firewall/src/policy.ts: evaluatePolicy() — first-class tool allowlist/denylist enforcement"
+      - "packages/mcp-attestation/src/attestation.ts: AttestationRegistry — capability scope gating per server"
+      - "packages/core/src/executor/capabilities.ts: buildCapabilityGlobals() — sandbox deny-all by default"
+      - "packages/mcp-gateway/src/audit.ts: InMemoryAuditLogger.denied() — query all denied tool calls"
+    aep_fields:
+      - "capability_decisions[] — complete per-tool allow/deny log"
+      - "actions[].state_changing — flags writes/deploys for elevated scrutiny"
+    bscode_demos:
+      - "examples/dangerous-tool-demo/index.mjs"
+    tests:
+      - "packages/mcp-firewall/src/gateway.test.ts"
+      - "packages/mcp-policy/src/index.test.ts"
+    trace_pipeline_checks:
+      - "scripts/verify-claims.mjs"
+
+  - id: owasp-agentic-a05-insecure-memory
+    external_standard: "OWASP Agentic Top 10"
+    risk: "Insecure Agent Memory"
+    description: >
+      Persistent memory stores (vector DBs, KV) accept and later replay
+      attacker-injected content, causing stored prompt injection across sessions.
+    wasmagent_primitives:
+      - "packages/mcp-firewall/src/taint.ts: taintObservation() — all tool results tainted before memory write"
+      - "packages/aep/src/types.ts: ActionEvidence.memory_read_refs / memory_write_refs — tracks which memory cells were accessed"
+      - "packages/otel-exporter/src/TraceRedactor.ts: TraceRedactor — scrubs PII/secrets from trace attributes before persistence"
+      - "packages/core/src/enhancement/RolloutMemoryStore.ts — rollout memory uses content-addressed keys"
+    aep_fields:
+      - "actions[].memory_read_refs — identifiers of memory cells read (for audit)"
+      - "actions[].memory_write_refs — identifiers of memory cells written"
+      - "actions[].output_taint_labels — 'untrusted' label prevents blind replay"
+    bscode_demos:
+      - "examples/integration-smoke/a1-codemode.mjs"
+    tests:
+      - "packages/mcp-firewall/src/firewall.test.ts"
+    trace_pipeline_checks:
+      - "scripts/verify-claims.mjs — validates memory_read_refs integrity"
+
+  - id: owasp-agentic-a07-supply-chain
+    external_standard: "OWASP Agentic Top 10"
+    risk: "Agent Supply Chain Attacks"
+    description: >
+      Compromised model weights, tool packages, or plugin registries introduce
+      malicious behavior into agents at install or load time.
+    wasmagent_primitives:
+      - "packages/mcp-attestation/src/attestation.ts: buildAttestation() / AttestationLevel — 'audited' level requires external review"
+      - "packages/mcp-firewall/src/gateway.ts: ServerCard.toolManifestDigest — content-addressed manifest pinning"
+      - "packages/aep/src/types.ts: RunContext.dependency_lock_digest — lock file digest anchors dependency tree"
+      - "packages/aep/src/types.ts: AEPRecord.signature — optional Sigstore-compatible record signing"
+    aep_fields:
+      - "run_context.dependency_lock_digest"
+      - "run_context.repo_commit"
+      - "signature.transparency_log_ref — Rekor log entry for transparency"
+    bscode_demos:
+      - "examples/owasp-demo/owasp-demo.mjs"
+    tests:
+      - "packages/mcp-attestation/src/index.test.ts"
+    trace_pipeline_checks:
+      - "scripts/check-rollout-schema.mjs"
+
+  - id: owasp-agentic-a09-resource-exhaustion
+    external_standard: "OWASP Agentic Top 10"
+    risk: "Resource Exhaustion / Uncontrolled Agent Execution"
+    description: >
+      An agent loops indefinitely, burns unbounded tokens, or opens unlimited
+      parallel sub-agents, causing denial of service or runaway cost.
+    wasmagent_primitives:
+      - "packages/aep/src/types.ts: BudgetLedger — token_budget, latency_budget, tool_budget, retry_budget, risk_budget"
+      - "packages/aep/src/emitter.ts: AEPEmitter — emits budget_ledger into every AEPRecord"
+      - "packages/core/src/agents/verifiers/VerificationPipeline.ts: VerificationPipeline — halts iteration when all criteria pass"
+      - "packages/core/src/checkpoint/index.ts: CheckpointableRun — exposes HITL pause for budget confirmation"
+      - "packages/core/src/executor/KernelPool.ts: KernelPool — bounded pool of sandbox kernels prevents runaway spawning"
+    aep_fields:
+      - "budget_ledger.token_budget.limit / .spent"
+      - "budget_ledger.tool_budget.limit / .spent"
+      - "budget_ledger.latency_budget.limit_ms / .actual_ms"
+      - "budget_ledger.retry_budget"
+      - "budget_ledger.human_approval_budget"
+    bscode_demos:
+      - "examples/integration-smoke/a1-codemode.mjs"
+    tests:
+      - "packages/core/src/executor/KernelPool.test.ts"
+      - "packages/core/src/checkpoint/checkpoint.test.ts"
+    trace_pipeline_checks:
+      - "scripts/verify-claims.mjs — asserts budget_ledger.token_budget.spent <= limit"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Section 3: OTel GenAI Semantic Conventions Alignment
+# ──────────────────────────────────────────────────────────────────────────────
+otel_genai_semconv:
+  version: "genai-semconv-v1.29.0"
+  description: >
+    WasmAgent emits OTel spans that align with the GenAI semantic conventions
+    (https://opentelemetry.io/docs/specs/semconv/gen-ai/) and extends them with
+    AEP-specific security attributes via AEP_SPAN_NAMES.
+
+  span_mappings:
+    - wasmagent_span: "agent.run"
+      aep_span_name: "AEP_SPAN_NAMES.AGENT_RUN"
+      genai_semconv_span: "invoke_agent"
+      attribute_helpers: "agentRunSpanAttrs()"
+      key_attributes:
+        - "agent.name"
+        - "agent.run_id"
+        - "agent.model_id"
+      security_extensions:
+        - "AEPRecord.run_id links this span to the full evidence record"
+        - "run_context.delegation_chain enables multi-agent audit chains"
+
+    - wasmagent_span: "llm.generate"
+      aep_span_name: "AEP_SPAN_NAMES.LLM_GENERATE"
+      genai_semconv_span: "gen_ai.client.operation / gen_ai.server.request"
+      attribute_helpers: "llmGenerateSpanAttrs()"
+      key_attributes:
+        - "llm.model_id (→ gen_ai.request.model)"
+        - "llm.provider (→ gen_ai.system)"
+        - "llm.input_tokens (→ gen_ai.usage.input_tokens)"
+        - "llm.output_tokens (→ gen_ai.usage.output_tokens)"
+      security_extensions:
+        - "budget_ledger.token_budget tracks cumulative token spend across all llm.generate spans"
+
+    - wasmagent_span: "tool.call"
+      aep_span_name: "AEP_SPAN_NAMES.TOOL_CALL"
+      genai_semconv_span: "execute_tool / agent.step.<N>"
+      attribute_helpers: "toolCallSpanAttrs()"
+      key_attributes:
+        - "tool.name (→ gen_ai.tool.name)"
+        - "tool.type"
+        - "tool.state_changing — WasmAgent extension; true triggers approval gate"
+      security_extensions:
+        - "actions[].tool_descriptor_digest pins descriptor at call time"
+        - "actions[].input_taint_labels / output_taint_labels propagate taint"
+
+    - wasmagent_span: "mcp.request"
+      aep_span_name: "AEP_SPAN_NAMES.MCP_REQUEST"
+      genai_semconv_span: "No direct semconv equivalent (WasmAgent extension)"
+      attribute_helpers: "mcpRequestSpanAttrs()"
+      key_attributes:
+        - "mcp.server_id"
+        - "mcp.tool_name"
+        - "mcp.request_id"
+      security_extensions:
+        - "Tied to ServerCard.toolManifestDigest for rug-pull detection"
+        - "GatewayDecision.resultTrustLevel recorded as span event"
+
+    - wasmagent_span: "policy.check"
+      aep_span_name: "AEP_SPAN_NAMES.POLICY_CHECK"
+      genai_semconv_span: "No direct semconv equivalent (WasmAgent extension)"
+      attribute_helpers: "policyCheckSpanAttrs()"
+      key_attributes:
+        - "policy.policy_id"
+        - "policy.subject"
+        - "policy.resource"
+        - "policy.decision"
+      security_extensions:
+        - "policy_bundle_digest anchors which PolicyBundle version was active"
+        - "CapabilityDecision.reason_code provides machine-readable denial cause"
+
+    - wasmagent_span: "sandbox.exec"
+      aep_span_name: "AEP_SPAN_NAMES.SANDBOX_EXEC"
+      genai_semconv_span: "No direct semconv equivalent (WasmAgent extension)"
+      attribute_helpers: "sandboxExecSpanAttrs()"
+      key_attributes:
+        - "sandbox.kernel_type"
+        - "sandbox.session_id"
+        - "sandbox.exit_code"
+      security_extensions:
+        - "buildCapabilityGlobals() controls which globals (fetch, __fs__, __env__) are injected"
+        - "KernelPool bounds concurrent kernel instances"
+
+    - wasmagent_span: "verifier.check"
+      aep_span_name: "AEP_SPAN_NAMES.VERIFIER_CHECK"
+      genai_semconv_span: "No direct semconv equivalent (WasmAgent extension)"
+      attribute_helpers: "verifierCheckSpanAttrs()"
+      key_attributes:
+        - "verifier.verifier_id"
+        - "verifier.passed"
+        - "verifier.score"
+      security_extensions:
+        - "verifier_results[] in AEPRecord provides cross-span aggregate verdicts"
+        - "DeterministicVerifier preferred over LLMJudgeVerifier to avoid reward-hacking"
+
+    - wasmagent_span: "redaction.apply"
+      aep_span_name: "AEP_SPAN_NAMES.REDACTION_APPLY"
+      genai_semconv_span: "No direct semconv equivalent (WasmAgent extension)"
+      attribute_helpers: "TraceRedactor (packages/otel-exporter/src/TraceRedactor.ts)"
+      key_attributes:
+        - "redaction.profile — which redaction ruleset was applied"
+      security_extensions:
+        - "Prevents PII / credentials from appearing in exported trace attributes"
+        - "output_refs[].redaction_profile in AEPRecord records which profile was used"

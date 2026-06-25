@@ -161,6 +161,9 @@ if (isMain) {
       input: { type: "string" },
       "fail-under": { type: "string" },
       guard: { type: "boolean", default: false },
+      // standards command (2026-06-26)
+      profile: { type: "string" },
+      crosswalk: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
       version: { type: "boolean", short: "v", default: false },
     },
@@ -235,6 +238,9 @@ if (isMain) {
       break;
     case "evidence":
       await evidenceCommand(rest, values);
+      break;
+    case "standards":
+      await standardsCommand(rest, values);
       break;
     case "version":
     case "--version":
@@ -2336,4 +2342,322 @@ export async function rankRolloutCommand(
     }
   }
   console.error(summary.join("\n"));
+}
+
+// ── standards command ──────────────────────────────────────────────────────────
+
+/**
+ * wasmagent standards check [--profile owasp-mcp-top10] [--input <aep.jsonl>] [--crosswalk <path>]
+ * wasmagent standards list
+ *
+ * Standards crosswalk: docs/security/standards-crosswalk.yaml
+ * When --input is provided, checks each AEP record for evidence of coverage
+ * against OWASP MCP Top 10 risks and prints a coverage table.
+ * Exits 0 if all P0 risks have evidence; exits 1 if any P0 risk has gaps.
+ */
+export async function standardsCommand(
+  subArgs: string[],
+  opts: Record<string, string | boolean | undefined>
+): Promise<void> {
+  const sub = subArgs[0] ?? "list";
+
+  // ── locate crosswalk file ────────────────────────────────────────────────
+  async function findCrosswalk(): Promise<string | null> {
+    const { access } = await import("node:fs/promises");
+    const path = await import("node:path");
+
+    // 1. Explicit --crosswalk flag
+    if (typeof opts.crosswalk === "string") {
+      return opts.crosswalk;
+    }
+
+    // 2. Search upward from cwd for docs/security/standards-crosswalk.yaml
+    let dir = process.cwd();
+    for (let i = 0; i < 8; i++) {
+      const candidate = path.join(dir, "docs", "security", "standards-crosswalk.yaml");
+      try {
+        await access(candidate);
+        return candidate;
+      } catch {
+        // not found here; try parent
+      }
+      const parent = path.dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+    return null;
+  }
+
+  // ── basic YAML line-parser: extract id/risk/priority lines ──────────────
+  type CrosswalkEntry = { id: string; risk: string; priority: string };
+
+  function parseCrosswalkYaml(text: string): CrosswalkEntry[] {
+    const entries: CrosswalkEntry[] = [];
+    let current: Partial<CrosswalkEntry> = {};
+    for (const raw of text.split("\n")) {
+      const line = raw.trim();
+      if (line.startsWith("- id:")) {
+        if (current.id) entries.push(current as CrosswalkEntry);
+        current = {
+          id: line
+            .replace(/^-\s*id:\s*/, "")
+            .replace(/['"]/g, "")
+            .trim(),
+        };
+      } else if (line.startsWith("id:")) {
+        current.id = line
+          .replace(/^id:\s*/, "")
+          .replace(/['"]/g, "")
+          .trim();
+      } else if (line.startsWith("risk:")) {
+        current.risk = line
+          .replace(/^risk:\s*/, "")
+          .replace(/['"]/g, "")
+          .trim();
+      } else if (line.startsWith("priority:")) {
+        current.priority = line
+          .replace(/^priority:\s*/, "")
+          .replace(/['"]/g, "")
+          .trim();
+      }
+    }
+    if (current.id) entries.push(current as CrosswalkEntry);
+    return entries;
+  }
+
+  // ── "list" subcommand ────────────────────────────────────────────────────
+  if (sub === "list") {
+    const crosswalkPath = await findCrosswalk();
+    if (!crosswalkPath) {
+      console.log(
+        "Standards crosswalk file not found. Expected: docs/security/standards-crosswalk.yaml"
+      );
+      console.log("Use --crosswalk <path> to specify its location.");
+      return;
+    }
+    const { readFile } = await import("node:fs/promises");
+    const text = await readFile(crosswalkPath, "utf8");
+    const entries = parseCrosswalkYaml(text);
+    console.log(`\nStandards crosswalk: ${crosswalkPath}`);
+    console.log(`Covers OWASP MCP Top 10 and related security standards.\n`);
+    if (entries.length === 0) {
+      console.log("(no structured entries parsed — check the YAML format)");
+    } else {
+      const colW = Math.max(12, ...entries.map((e) => e.id?.length ?? 0)) + 2;
+      console.log(`${"ID".padEnd(colW)}${"Priority".padEnd(10)}Risk`);
+      console.log("─".repeat(colW + 10 + 40));
+      for (const e of entries) {
+        console.log(
+          `${(e.id ?? "—").padEnd(colW)}${(e.priority ?? "—").padEnd(10)}${e.risk ?? "—"}`
+        );
+      }
+    }
+    return;
+  }
+
+  // ── "check" subcommand ───────────────────────────────────────────────────
+  if (sub !== "check") {
+    console.error(`Unknown standards subcommand: ${sub}. Use 'check' or 'list'.`);
+    process.exit(1);
+  }
+
+  const crosswalkPath = await findCrosswalk();
+  if (crosswalkPath) {
+    console.log(`Using crosswalk: ${crosswalkPath}`);
+  } else {
+    console.log(
+      "Note: standards-crosswalk.yaml not found — using built-in OWASP MCP Top 10 risks."
+    );
+  }
+
+  // ── built-in OWASP MCP Top 10 risk definitions (P0 = must have evidence) ─
+  type RiskDef = {
+    id: string;
+    risk: string;
+    priority: "P0" | "P1";
+    evidenceField: string;
+    description: string;
+  };
+  const OWASP_MCP_RISKS: RiskDef[] = [
+    {
+      id: "MCP-01",
+      risk: "Tool Poisoning",
+      priority: "P0",
+      evidenceField: "tool_manifest_digest",
+      description: "AEP record must have tool_manifest_digest to prove tool integrity was checked",
+    },
+    {
+      id: "MCP-02",
+      risk: "Privilege Escalation",
+      priority: "P0",
+      evidenceField: "capability_decisions",
+      description:
+        "AEP record must have capability_decisions showing privilege boundaries enforced",
+    },
+    {
+      id: "MCP-03",
+      risk: "Taint Propagation",
+      priority: "P0",
+      evidenceField: "input_taint_labels",
+      description: "Actions must have input_taint_labels tracking untrusted data flows",
+    },
+    {
+      id: "MCP-04",
+      risk: "Supply Chain Compromise",
+      priority: "P0",
+      evidenceField: "signature",
+      description: "AEP record must have signature for supply-chain provenance",
+    },
+    {
+      id: "MCP-05",
+      risk: "Excessive Permissions",
+      priority: "P1",
+      evidenceField: "capability_decisions",
+      description: "capability_decisions shows least-privilege enforcement",
+    },
+  ];
+
+  // If crosswalk YAML was found, load any additional entries from it
+  let crosswalkEntries: CrosswalkEntry[] = [];
+  if (crosswalkPath) {
+    const { readFile } = await import("node:fs/promises");
+    try {
+      const text = await readFile(crosswalkPath, "utf8");
+      crosswalkEntries = parseCrosswalkYaml(text);
+    } catch {
+      // non-fatal; fall back to built-in list
+    }
+  }
+
+  const inputPath = typeof opts.input === "string" ? opts.input : undefined;
+  if (!inputPath) {
+    // No --input: just print what coverage dimensions we check
+    console.log(`\nOWASP MCP Top 10 — coverage dimensions checked by wasmagent standards check:\n`);
+    const colW = 10;
+    console.log(
+      `${"Risk ID".padEnd(colW)}${"Priority".padEnd(10)}${"Evidence field".padEnd(28)}Risk`
+    );
+    console.log("─".repeat(colW + 10 + 28 + 32));
+    for (const r of OWASP_MCP_RISKS) {
+      console.log(
+        `${r.id.padEnd(colW)}${r.priority.padEnd(10)}${r.evidenceField.padEnd(28)}${r.risk}`
+      );
+    }
+    if (crosswalkEntries.length > 0) {
+      console.log(`\nCrosswalk has ${crosswalkEntries.length} entries (${crosswalkPath}).`);
+    }
+    console.log("\nProvide --input <aep.jsonl> to check actual AEP records for coverage.");
+    return;
+  }
+
+  // ── load and parse AEP JSONL ─────────────────────────────────────────────
+  const { readFile } = await import("node:fs/promises");
+  let rawText: string;
+  try {
+    rawText = await readFile(inputPath, "utf8");
+  } catch (e) {
+    console.error(`Error: cannot read ${inputPath}: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+    return;
+  }
+
+  const records: Record<string, unknown>[] = [];
+  for (const line of rawText.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      records.push(JSON.parse(trimmed) as Record<string, unknown>);
+    } catch {
+      process.stderr.write(`Warning: skipping malformed JSONL line\n`);
+    }
+  }
+
+  if (records.length === 0) {
+    console.error(`Error: no valid JSON lines found in ${inputPath}`);
+    process.exit(1);
+    return;
+  }
+
+  console.log(`\nChecking ${records.length} AEP record(s) against OWASP MCP Top 10...\n`);
+
+  // ── per-risk coverage check ──────────────────────────────────────────────
+  type CoverageResult = {
+    risk: RiskDef;
+    evidenceCount: number;
+    gapCount: number;
+    hasEvidence: boolean;
+  };
+
+  const results: CoverageResult[] = OWASP_MCP_RISKS.map((risk) => {
+    let evidenceCount = 0;
+    let gapCount = 0;
+
+    for (const rec of records) {
+      let hasFieldEvidence: boolean;
+      if (risk.evidenceField === "input_taint_labels") {
+        // Check actions array for input_taint_labels on each action
+        const actions = Array.isArray(rec.actions) ? rec.actions : [];
+        const anyTaintLabel = (actions as Record<string, unknown>[]).some(
+          (a) => a.input_taint_labels !== undefined && a.input_taint_labels !== null
+        );
+        hasFieldEvidence = anyTaintLabel || actions.length === 0;
+      } else {
+        hasFieldEvidence =
+          rec[risk.evidenceField] !== undefined && rec[risk.evidenceField] !== null;
+      }
+
+      if (hasFieldEvidence) {
+        evidenceCount++;
+      } else {
+        gapCount++;
+      }
+    }
+
+    return {
+      risk,
+      evidenceCount,
+      gapCount,
+      hasEvidence: evidenceCount === records.length,
+    };
+  });
+
+  // ── print coverage table ─────────────────────────────────────────────────
+  const colId = 10;
+  const colPri = 6;
+  const colStatus = 8;
+  const colCounts = 18;
+  console.log(
+    `${"Risk ID".padEnd(colId)}${"Pri".padEnd(colPri)}${"Status".padEnd(colStatus)}${"Coverage".padEnd(colCounts)}Risk`
+  );
+  console.log("─".repeat(colId + colPri + colStatus + colCounts + 32));
+
+  let p0Gaps = 0;
+  for (const result of results) {
+    const icon = result.hasEvidence ? "✓" : "✗";
+    const status = result.hasEvidence ? "PASS" : "GAP";
+    const counts = `${result.evidenceCount}/${records.length} records`;
+    console.log(
+      `${result.risk.id.padEnd(colId)}${result.risk.priority.padEnd(colPri)}${(icon + " " + status).padEnd(colStatus)}${counts.padEnd(colCounts)}${result.risk.risk}`
+    );
+    if (!result.hasEvidence && result.risk.priority === "P0") p0Gaps++;
+  }
+
+  console.log("─".repeat(colId + colPri + colStatus + colCounts + 32));
+
+  const p0Results = results.filter((r) => r.risk.priority === "P0");
+  const p0Pass = p0Results.filter((r) => r.hasEvidence).length;
+  console.log(`\nP0 risks: ${p0Pass}/${p0Results.length} covered`);
+
+  if (p0Gaps > 0) {
+    console.error(`\n✗ Standards check failed: ${p0Gaps} P0 risk(s) have coverage gaps.`);
+    for (const r of results.filter((x) => !x.hasEvidence && x.risk.priority === "P0")) {
+      console.error(
+        `  ${r.risk.id} (${r.risk.risk}): add "${r.risk.evidenceField}" to AEP records`
+      );
+      console.error(`    ${r.risk.description}`);
+    }
+    process.exit(1);
+  } else {
+    console.log("\n✓ All P0 risks have evidence coverage.");
+  }
 }

@@ -52,17 +52,22 @@ export type {
   ConsentLedger,
 } from "./consent.js";
 export { hashUiText, InMemoryConsentLedger } from "./consent.js";
-// Gateway layer — identity, server card, state-changing action approval
+// Gateway layer — identity, server card, scope lease, approval receipt, state-changing action approval
 export type {
+  ApprovalReceipt,
   GatewayDecision,
   GatewayRequest,
   MCPGatewayOptions,
   RequestIdentity,
+  ScopeLease,
   ServerCard,
 } from "./gateway.js";
 export {
   buildServerCard,
+  createApprovalReceipt,
   createRequestIdentity,
+  createScopeLease,
+  isScopeLeaseValid,
   isStateChangingTool,
   MCPGateway,
 } from "./gateway.js";

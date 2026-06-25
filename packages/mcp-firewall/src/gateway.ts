@@ -79,6 +79,108 @@ export function buildServerCard(opts: {
   };
 }
 
+// ── Scope Lease ───────────────────────────────────────────────────────────────
+
+/**
+ * ScopeLease — a time-bounded permission grant for state-changing tools.
+ * Prevents indefinite privilege accumulation.
+ */
+export interface ScopeLease {
+  leaseId: string;
+  principalHash: string;
+  serverId: string;
+  /** List of tool names covered by this lease. */
+  grantedTools: string[];
+  /** ISO-8601 expiry time. */
+  expiresAt: string;
+  /** Whether this lease covers state-changing tools. */
+  stateChanging: boolean;
+  /** Optional: max number of invocations allowed. */
+  maxInvocations?: number;
+  /** Current invocation count. */
+  invocationCount: number;
+}
+
+export function createScopeLease(opts: {
+  principalHash: string;
+  serverId: string;
+  grantedTools: string[];
+  ttlSeconds?: number;
+  stateChanging?: boolean;
+  maxInvocations?: number;
+}): ScopeLease {
+  const ttl = opts.ttlSeconds ?? 300;
+  const expiry = new Date(Date.now() + ttl * 1000).toISOString();
+  return {
+    leaseId: createHash("sha256")
+      .update(opts.principalHash + opts.serverId + expiry)
+      .digest("hex")
+      .slice(0, 16),
+    principalHash: opts.principalHash,
+    serverId: opts.serverId,
+    grantedTools: opts.grantedTools,
+    expiresAt: expiry,
+    stateChanging: opts.stateChanging ?? false,
+    ...(opts.maxInvocations !== undefined ? { maxInvocations: opts.maxInvocations } : {}),
+    invocationCount: 0,
+  };
+}
+
+export function isScopeLeaseValid(lease: ScopeLease): boolean {
+  if (new Date(lease.expiresAt) <= new Date()) return false;
+  if (lease.maxInvocations !== undefined && lease.invocationCount >= lease.maxInvocations)
+    return false;
+  return true;
+}
+
+// ── Approval Receipt ──────────────────────────────────────────────────────────
+
+/**
+ * ApprovalReceipt — immutable record of a user approving a state-changing action.
+ */
+export interface ApprovalReceipt {
+  receiptId: string;
+  leaseId?: string;
+  principalHash: string;
+  toolName: string;
+  /** SHA-256 of the approval UI text shown to user. */
+  uiTextHash: string;
+  /** SHA-256 of the tool descriptor at approval time. */
+  toolDescriptorHash: string;
+  /** SHA-256 digest of the tool call arguments. */
+  argsDigest: string;
+  approvedAt: string;
+  expiresAt: string;
+}
+
+export function createApprovalReceipt(opts: {
+  leaseId?: string;
+  principalHash: string;
+  toolName: string;
+  uiText: string;
+  toolDescriptor: string;
+  args: unknown;
+  ttlSeconds?: number;
+}): ApprovalReceipt {
+  const ttl = opts.ttlSeconds ?? 60;
+  const now = new Date().toISOString();
+  const expiry = new Date(Date.now() + ttl * 1000).toISOString();
+  return {
+    receiptId: createHash("sha256")
+      .update(opts.principalHash + opts.toolName + now)
+      .digest("hex")
+      .slice(0, 16),
+    ...(opts.leaseId !== undefined ? { leaseId: opts.leaseId } : {}),
+    principalHash: opts.principalHash,
+    toolName: opts.toolName,
+    uiTextHash: createHash("sha256").update(opts.uiText).digest("hex").slice(0, 16),
+    toolDescriptorHash: createHash("sha256").update(opts.toolDescriptor).digest("hex").slice(0, 16),
+    argsDigest: createHash("sha256").update(JSON.stringify(opts.args)).digest("hex").slice(0, 16),
+    approvedAt: now,
+    expiresAt: expiry,
+  };
+}
+
 // ── State-changing heuristic ──────────────────────────────────────────────────
 
 const STATE_CHANGING_PATTERNS = [

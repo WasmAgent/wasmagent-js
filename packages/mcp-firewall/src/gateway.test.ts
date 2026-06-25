@@ -1,7 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import {
   buildServerCard,
+  createApprovalReceipt,
   createRequestIdentity,
+  createScopeLease,
+  isScopeLeaseValid,
   isStateChangingTool,
   MCPGateway,
 } from "./gateway.js";
@@ -98,5 +101,81 @@ describe("MCPGateway.evaluate", () => {
     const obs = gw.wrapResult("read_file", "file contents here", d);
     expect(obs.sourceTool).toBe("read_file");
     expect(obs.trust).toBe("verified");
+  });
+});
+
+describe("ScopeLease", () => {
+  it("creates a valid lease", () => {
+    const identity = createRequestIdentity({ principal: "user-123", sessionId: "s1" });
+    const lease = createScopeLease({
+      principalHash: identity.principalHash,
+      serverId: "srv1",
+      grantedTools: ["write_file", "delete_file"],
+      ttlSeconds: 300,
+      stateChanging: true,
+      maxInvocations: 5,
+    });
+    expect(lease.leaseId).toHaveLength(16);
+    expect(lease.leaseId).toMatch(/^[0-9a-f]+$/);
+    expect(lease.principalHash).toBe(identity.principalHash);
+    expect(lease.serverId).toBe("srv1");
+    expect(lease.grantedTools).toEqual(["write_file", "delete_file"]);
+    expect(lease.stateChanging).toBe(true);
+    expect(lease.maxInvocations).toBe(5);
+    expect(lease.invocationCount).toBe(0);
+    expect(isScopeLeaseValid(lease)).toBe(true);
+  });
+
+  it("detects expired lease", () => {
+    const lease = createScopeLease({
+      principalHash: "abc",
+      serverId: "srv1",
+      grantedTools: ["write_file"],
+      ttlSeconds: -1,
+    });
+    expect(isScopeLeaseValid(lease)).toBe(false);
+  });
+
+  it("detects exhausted invocation count", () => {
+    const lease = createScopeLease({
+      principalHash: "abc",
+      serverId: "srv1",
+      grantedTools: ["write_file"],
+      ttlSeconds: 300,
+      maxInvocations: 2,
+    });
+    lease.invocationCount = 2;
+    expect(isScopeLeaseValid(lease)).toBe(false);
+  });
+});
+
+describe("ApprovalReceipt", () => {
+  it("creates receipt with expected fields", () => {
+    const identity = createRequestIdentity({ principal: "user-456", sessionId: "s2" });
+    const lease = createScopeLease({
+      principalHash: identity.principalHash,
+      serverId: "srv2",
+      grantedTools: ["deploy"],
+      ttlSeconds: 120,
+    });
+    const receipt = createApprovalReceipt({
+      leaseId: lease.leaseId,
+      principalHash: identity.principalHash,
+      toolName: "deploy",
+      uiText: "Allow deploy to production?",
+      toolDescriptor: JSON.stringify({ name: "deploy", description: "Deploy to production" }),
+      args: { env: "prod", version: "1.2.3" },
+      ttlSeconds: 60,
+    });
+    expect(receipt.receiptId).toHaveLength(16);
+    expect(receipt.receiptId).toMatch(/^[0-9a-f]+$/);
+    expect(receipt.leaseId).toBe(lease.leaseId);
+    expect(receipt.principalHash).toBe(identity.principalHash);
+    expect(receipt.toolName).toBe("deploy");
+    expect(receipt.uiTextHash).toHaveLength(16);
+    expect(receipt.toolDescriptorHash).toHaveLength(16);
+    expect(receipt.argsDigest).toHaveLength(16);
+    expect(receipt.approvedAt).toBeTruthy();
+    expect(new Date(receipt.expiresAt) > new Date(receipt.approvedAt)).toBe(true);
   });
 });
