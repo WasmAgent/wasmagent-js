@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/mcp-gateway",
   "version": "0.1.0",
-  "description": "MCP Gateway — identity propagation, server card validation, policy enforcement, AEP evidence emission for MCP tool invocations",
+  "description": "MCP Gateway \u2014 identity propagation, server card validation, policy enforcement, AEP evidence emission for MCP tool invocations",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -40,5 +40,6 @@
     "tier": "tier-1",
     "stability": "alpha"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "private": true
 }

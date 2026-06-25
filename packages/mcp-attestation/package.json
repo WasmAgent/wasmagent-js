@@ -36,5 +36,6 @@
     "tier": "tier-1",
     "stability": "alpha"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "private": true
 }
