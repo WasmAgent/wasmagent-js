@@ -1,7 +1,7 @@
 # Upstream PR Tracking
 
-> Source of truth. Detailed drafts and per-submission notes live in
-> [`docs/strategy/upstream-prs/`](../strategy/upstream-prs/).
+> Detailed drafts and per-submission notes live in
+> [`docs/strategy/upstream-prs/README.md`](../strategy/upstream-prs/README.md).
 >
 > Last updated: 2026-06-25
 
