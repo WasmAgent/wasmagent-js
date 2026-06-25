@@ -418,9 +418,10 @@ async function main() {
 
   // Load model once.
   // Support direct GGUF path (starts with / or ./) in addition to registry aliases.
-  const modelSource = args.model.startsWith("/") || args.model.startsWith("./")
-    ? { path: args.model }
-    : { model: args.model };
+  const modelSource =
+    args.model.startsWith("/") || args.model.startsWith("./")
+      ? { path: args.model }
+      : { model: args.model };
   const model = new LocalModel({ source: modelSource });
   const t_load_0 = performance.now();
   await model.load();
