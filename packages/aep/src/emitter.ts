@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type {
   ActionEvidence,
   AEPRecord,
+  BudgetLedger,
   CapabilityDecision,
   InputRef,
   OutputRef,
@@ -28,6 +29,7 @@ export class AEPEmitter {
   readonly #inputRefs: InputRef[] = [];
   readonly #outputRefs: OutputRef[] = [];
   readonly #verifierResults: VerifierResult[] = [];
+  #budgetLedger: BudgetLedger | undefined;
 
   constructor(opts: AEPEmitterOptions) {
     this.#opts = opts;
@@ -62,6 +64,10 @@ export class AEPEmitter {
     this.#verifierResults.push(result);
   }
 
+  setBudgetLedger(ledger: BudgetLedger): void {
+    this.#budgetLedger = ledger;
+  }
+
   build(createdAtMs?: number): AEPRecord {
     return AEPRecordSchema.parse({
       schema_version: "aep/v0.1",
@@ -71,6 +77,7 @@ export class AEPEmitter {
       capability_decisions: this.#capabilityDecisions,
       actions: this.#actions,
       verifier_results: this.#verifierResults,
+      budget_ledger: this.#budgetLedger,
       created_at_ms: createdAtMs ?? performance.now(),
     });
   }

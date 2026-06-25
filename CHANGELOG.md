@@ -55,6 +55,13 @@ and completes the go-to-market hardening pass.
 
 ## [Unreleased]
 
+### Added (2026-06-25 — P1-5 Budget Ledger)
+
+- **`@wasmagent/aep` — `BudgetLedger`** (`packages/aep/src/types.ts`). Per-run budget
+  consumption tracking: `token_budget`, `latency_budget`, `tool_budget`, `risk_budget`,
+  `retry_budget`. Optional `budget_ledger` field added to `AEPRecord`. `AEPEmitter.setBudgetLedger()`
+  for fluent assembly. 4 tests pass.
+
 ### Added (2026-06-25 — Day 61-90)
 
 - **`@wasmagent/mcp-gateway` v0.1.0** (`packages/mcp-gateway/`) — Alpha standalone gateway package.

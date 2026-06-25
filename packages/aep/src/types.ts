@@ -47,6 +47,23 @@ export const VerifierResultSchema = z.object({
 });
 export type VerifierResult = z.infer<typeof VerifierResultSchema>;
 
+// BudgetEntry — one budget dimension
+export const BudgetEntrySchema = z.object({
+  limit: z.number().optional(),
+  spent: z.number(),
+});
+export type BudgetEntry = z.infer<typeof BudgetEntrySchema>;
+
+// BudgetLedger — per-run budget consumption
+export const BudgetLedgerSchema = z.object({
+  token_budget: BudgetEntrySchema.optional(),
+  latency_budget: z.object({ limit_ms: z.number().optional(), actual_ms: z.number() }).optional(),
+  tool_budget: BudgetEntrySchema.optional(),
+  risk_budget: BudgetEntrySchema.optional(),
+  retry_budget: BudgetEntrySchema.optional(),
+});
+export type BudgetLedger = z.infer<typeof BudgetLedgerSchema>;
+
 // AEPRecord — the top-level Agent Evidence Protocol record
 export const AEPRecordSchema = z.object({
   schema_version: z.literal("aep/v0.1"),
@@ -64,6 +81,7 @@ export const AEPRecordSchema = z.object({
   capability_decisions: z.array(CapabilityDecisionSchema).default([]),
   actions: z.array(ActionEvidenceSchema).default([]),
   verifier_results: z.array(VerifierResultSchema).default([]),
+  budget_ledger: BudgetLedgerSchema.optional(),
   created_at_ms: z.number(),
 });
 export type AEPRecord = z.infer<typeof AEPRecordSchema>;

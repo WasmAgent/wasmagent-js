@@ -52,4 +52,15 @@ describe("AEPEmitter", () => {
     expect(action?.action_id).toBe("action-0");
     expect(typeof action?.timestamp_ms).toBe("number");
   });
+
+  it("setBudgetLedger records budget consumption in the built AEPRecord", () => {
+    const emitter = new AEPEmitter({ run_id: "run-budget-001" });
+    emitter.setBudgetLedger({
+      token_budget: { limit: 1000, spent: 450 },
+    });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.budget_ledger).toBeDefined();
+    expect(record.budget_ledger?.token_budget?.spent).toBe(450);
+    expect(record.budget_ledger?.token_budget?.limit).toBe(1000);
+  });
 });
