@@ -1,6 +1,6 @@
 # Packages
 
-wasmagent-js is a 33-package monorepo published under the `@wasmagent/*` scope on npm.
+wasmagent-js is a 37-package monorepo published under the `@wasmagent/*` scope on npm.
 
 ## Runtime
 
@@ -77,6 +77,13 @@ See the [kernel decision tree](/kernels/comparison) for picking the right one.
 | Package | What |
 |---|---|
 | [`@wasmagent/otel-exporter`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/otel-exporter) | OTLP exporter for `EventLog` |
+
+## Security & Governance (alpha)
+
+| Package | What it is |
+|---|---|
+| [`@wasmagent/mcp-firewall`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-firewall) | Runtime firewall for MCP: descriptor snapshot, static vetting (injection/exfiltration/sampling), per-call policy, taint tracking, consent ledger |
+| [`@wasmagent/capability-compiler`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/capability-compiler) | Compile `CapabilityManifest` → MCP schema fragment, runtime policy rules, trace validator spec |
 
 ## Internal (not on npm)
 

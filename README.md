@@ -27,6 +27,9 @@ Three things, one loop:
 ## Compliance / Data
 `@wasmagent/compliance` · `@wasmagent/evals-runner` · `@wasmagent/devtools` · rollout-wire schema
 
+## Security & Governance *(alpha)*
+`@wasmagent/mcp-firewall` · `@wasmagent/capability-compiler`
+
 > Full package list: [docs/packages.md](docs/packages.md)
 
 ---
