@@ -1,0 +1,387 @@
+{
+  "crossStats": [
+    {
+      "mode": "direct",
+      "seeds": [
+        {
+          "label": "results-llama-3.2-1b-seed42",
+          "mode": "direct",
+          "errors": 0,
+          "n": 50,
+          "pass": 25,
+          "pass_rate": 0.5,
+          "avg_repair_rounds": 0,
+          "avg_total_tokens": 391.18,
+          "avg_latency_ms": 1526.42
+        },
+        {
+          "label": "results-llama-3.2-1b-seed43",
+          "mode": "direct",
+          "errors": 0,
+          "n": 50,
+          "pass": 21,
+          "pass_rate": 0.42,
+          "avg_repair_rounds": 0,
+          "avg_total_tokens": 405.3,
+          "avg_latency_ms": 1616.62
+        },
+        {
+          "label": "results-llama-3.2-1b-seed44",
+          "mode": "direct",
+          "errors": 0,
+          "n": 50,
+          "pass": 25,
+          "pass_rate": 0.5,
+          "avg_repair_rounds": 0,
+          "avg_total_tokens": 387.2,
+          "avg_latency_ms": 1515.78
+        },
+        {
+          "label": "results-llama-3.2-1b-seed45",
+          "mode": "direct",
+          "errors": 0,
+          "n": 50,
+          "pass": 23,
+          "pass_rate": 0.46,
+          "avg_repair_rounds": 0,
+          "avg_total_tokens": 396.56,
+          "avg_latency_ms": 1540.46
+        },
+        {
+          "label": "results-llama-3.2-1b-seed46",
+          "mode": "direct",
+          "errors": 0,
+          "n": 50,
+          "pass": 24,
+          "pass_rate": 0.48,
+          "avg_repair_rounds": 0,
+          "avg_total_tokens": 372.56,
+          "avg_latency_ms": 1456.7
+        },
+        {
+          "label": "results-llama-3.2-1b-seed47",
+          "mode": "direct",
+          "errors": 0,
+          "n": 50,
+          "pass": 22,
+          "pass_rate": 0.44,
+          "avg_repair_rounds": 0,
+          "avg_total_tokens": 372.88,
+          "avg_latency_ms": 1457.94
+        },
+        {
+          "label": "results-llama-3.2-1b-seed48",
+          "mode": "direct",
+          "errors": 0,
+          "n": 50,
+          "pass": 24,
+          "pass_rate": 0.48,
+          "avg_repair_rounds": 0,
+          "avg_total_tokens": 373.5,
+          "avg_latency_ms": 1460
+        },
+        {
+          "label": "results-llama-3.2-1b-seed49",
+          "mode": "direct",
+          "errors": 0,
+          "n": 50,
+          "pass": 21,
+          "pass_rate": 0.42,
+          "avg_repair_rounds": 0,
+          "avg_total_tokens": 374.34,
+          "avg_latency_ms": 1465.46
+        },
+        {
+          "label": "results-llama-3.2-1b-seed50",
+          "mode": "direct",
+          "errors": 0,
+          "n": 50,
+          "pass": 23,
+          "pass_rate": 0.46,
+          "avg_repair_rounds": 0,
+          "avg_total_tokens": 370.46,
+          "avg_latency_ms": 1439.08
+        },
+        {
+          "label": "results-llama-3.2-1b-seed51",
+          "mode": "direct",
+          "errors": 0,
+          "n": 50,
+          "pass": 24,
+          "pass_rate": 0.48,
+          "avg_repair_rounds": 0,
+          "avg_total_tokens": 357.34,
+          "avg_latency_ms": 1378.66
+        }
+      ],
+      "pass_rate_mean": 0.4640000000000001,
+      "pass_rate_stddev": 0.029514591494904874,
+      "avg_total_tokens_mean": 380.132,
+      "avg_total_tokens_stddev": 14.436845454138068,
+      "avg_latency_ms_mean": 1485.712,
+      "avg_latency_ms_stddev": 65.84019252030713
+    },
+    {
+      "mode": "prompt_retry",
+      "seeds": [
+        {
+          "label": "results-llama-3.2-1b-seed42",
+          "mode": "prompt_retry",
+          "errors": 0,
+          "n": 50,
+          "pass": 33,
+          "pass_rate": 0.66,
+          "avg_repair_rounds": 0.5,
+          "avg_total_tokens": 752.94,
+          "avg_latency_ms": 3217.16
+        },
+        {
+          "label": "results-llama-3.2-1b-seed43",
+          "mode": "prompt_retry",
+          "errors": 0,
+          "n": 50,
+          "pass": 28,
+          "pass_rate": 0.56,
+          "avg_repair_rounds": 0.58,
+          "avg_total_tokens": 793.7,
+          "avg_latency_ms": 3405.58
+        },
+        {
+          "label": "results-llama-3.2-1b-seed44",
+          "mode": "prompt_retry",
+          "errors": 0,
+          "n": 50,
+          "pass": 28,
+          "pass_rate": 0.56,
+          "avg_repair_rounds": 0.5,
+          "avg_total_tokens": 775.54,
+          "avg_latency_ms": 3287.1
+        },
+        {
+          "label": "results-llama-3.2-1b-seed45",
+          "mode": "prompt_retry",
+          "errors": 0,
+          "n": 50,
+          "pass": 26,
+          "pass_rate": 0.52,
+          "avg_repair_rounds": 0.54,
+          "avg_total_tokens": 885.76,
+          "avg_latency_ms": 3687.58
+        },
+        {
+          "label": "results-llama-3.2-1b-seed46",
+          "mode": "prompt_retry",
+          "errors": 0,
+          "n": 50,
+          "pass": 29,
+          "pass_rate": 0.58,
+          "avg_repair_rounds": 0.52,
+          "avg_total_tokens": 791.44,
+          "avg_latency_ms": 3389.52
+        },
+        {
+          "label": "results-llama-3.2-1b-seed47",
+          "mode": "prompt_retry",
+          "errors": 0,
+          "n": 50,
+          "pass": 31,
+          "pass_rate": 0.62,
+          "avg_repair_rounds": 0.56,
+          "avg_total_tokens": 776.3,
+          "avg_latency_ms": 3295.08
+        },
+        {
+          "label": "results-llama-3.2-1b-seed48",
+          "mode": "prompt_retry",
+          "errors": 0,
+          "n": 50,
+          "pass": 29,
+          "pass_rate": 0.58,
+          "avg_repair_rounds": 0.52,
+          "avg_total_tokens": 784.96,
+          "avg_latency_ms": 3339.66
+        },
+        {
+          "label": "results-llama-3.2-1b-seed49",
+          "mode": "prompt_retry",
+          "errors": 0,
+          "n": 50,
+          "pass": 28,
+          "pass_rate": 0.56,
+          "avg_repair_rounds": 0.58,
+          "avg_total_tokens": 806.62,
+          "avg_latency_ms": 3370.74
+        },
+        {
+          "label": "results-llama-3.2-1b-seed50",
+          "mode": "prompt_retry",
+          "errors": 0,
+          "n": 50,
+          "pass": 27,
+          "pass_rate": 0.54,
+          "avg_repair_rounds": 0.54,
+          "avg_total_tokens": 819.34,
+          "avg_latency_ms": 3417.52
+        },
+        {
+          "label": "results-llama-3.2-1b-seed51",
+          "mode": "prompt_retry",
+          "errors": 0,
+          "n": 50,
+          "pass": 28,
+          "pass_rate": 0.56,
+          "avg_repair_rounds": 0.52,
+          "avg_total_tokens": 779.68,
+          "avg_latency_ms": 3257.26
+        }
+      ],
+      "pass_rate_mean": 0.5740000000000001,
+      "pass_rate_stddev": 0.04005551702879947,
+      "avg_total_tokens_mean": 796.628,
+      "avg_total_tokens_stddev": 36.18720854421106,
+      "avg_latency_ms_mean": 3366.72,
+      "avg_latency_ms_stddev": 130.86525827056707
+    },
+    {
+      "mode": "full_pcl",
+      "seeds": [
+        {
+          "label": "results-llama-3.2-1b-seed42",
+          "mode": "full_pcl",
+          "errors": 0,
+          "n": 50,
+          "pass": 29,
+          "pass_rate": 0.58,
+          "avg_repair_rounds": 1.34,
+          "avg_total_tokens": 734.5,
+          "avg_latency_ms": 2134.28
+        },
+        {
+          "label": "results-llama-3.2-1b-seed43",
+          "mode": "full_pcl",
+          "errors": 0,
+          "n": 50,
+          "pass": 29,
+          "pass_rate": 0.58,
+          "avg_repair_rounds": 1.48,
+          "avg_total_tokens": 765,
+          "avg_latency_ms": 2214.98
+        },
+        {
+          "label": "results-llama-3.2-1b-seed44",
+          "mode": "full_pcl",
+          "errors": 0,
+          "n": 50,
+          "pass": 30,
+          "pass_rate": 0.6,
+          "avg_repair_rounds": 1.36,
+          "avg_total_tokens": 742.36,
+          "avg_latency_ms": 2184.36
+        },
+        {
+          "label": "results-llama-3.2-1b-seed45",
+          "mode": "full_pcl",
+          "errors": 0,
+          "n": 50,
+          "pass": 30,
+          "pass_rate": 0.6,
+          "avg_repair_rounds": 1.4,
+          "avg_total_tokens": 744.96,
+          "avg_latency_ms": 2124.42
+        },
+        {
+          "label": "results-llama-3.2-1b-seed46",
+          "mode": "full_pcl",
+          "errors": 0,
+          "n": 50,
+          "pass": 29,
+          "pass_rate": 0.58,
+          "avg_repair_rounds": 1.42,
+          "avg_total_tokens": 679.78,
+          "avg_latency_ms": 1980.18
+        },
+        {
+          "label": "results-llama-3.2-1b-seed47",
+          "mode": "full_pcl",
+          "errors": 0,
+          "n": 50,
+          "pass": 27,
+          "pass_rate": 0.54,
+          "avg_repair_rounds": 1.52,
+          "avg_total_tokens": 758.56,
+          "avg_latency_ms": 2162.32
+        },
+        {
+          "label": "results-llama-3.2-1b-seed48",
+          "mode": "full_pcl",
+          "errors": 0,
+          "n": 50,
+          "pass": 29,
+          "pass_rate": 0.58,
+          "avg_repair_rounds": 1.42,
+          "avg_total_tokens": 701.92,
+          "avg_latency_ms": 2065.68
+        },
+        {
+          "label": "results-llama-3.2-1b-seed49",
+          "mode": "full_pcl",
+          "errors": 0,
+          "n": 50,
+          "pass": 28,
+          "pass_rate": 0.56,
+          "avg_repair_rounds": 1.52,
+          "avg_total_tokens": 767.12,
+          "avg_latency_ms": 2166.6
+        },
+        {
+          "label": "results-llama-3.2-1b-seed50",
+          "mode": "full_pcl",
+          "errors": 0,
+          "n": 50,
+          "pass": 28,
+          "pass_rate": 0.56,
+          "avg_repair_rounds": 1.44,
+          "avg_total_tokens": 769.18,
+          "avg_latency_ms": 2167.72
+        },
+        {
+          "label": "results-llama-3.2-1b-seed51",
+          "mode": "full_pcl",
+          "errors": 0,
+          "n": 50,
+          "pass": 32,
+          "pass_rate": 0.64,
+          "avg_repair_rounds": 1.3,
+          "avg_total_tokens": 623.7,
+          "avg_latency_ms": 1805.96
+        }
+      ],
+      "pass_rate_mean": 0.582,
+      "pass_rate_stddev": 0.027406406388125942,
+      "avg_total_tokens_mean": 728.708,
+      "avg_total_tokens_stddev": 47.074401819531026,
+      "avg_latency_ms_mean": 2100.65,
+      "avg_latency_ms_stddev": 123.3800798796593
+    }
+  ],
+  "agreements": [
+    {
+      "mode_a": "full_pcl",
+      "mode_b": "prompt_retry",
+      "a_only": 39,
+      "b_only": 35,
+      "both": 252,
+      "neither": 174,
+      "total": 500
+    },
+    {
+      "mode_a": "full_pcl",
+      "mode_b": "direct",
+      "a_only": 59,
+      "b_only": 0,
+      "both": 232,
+      "neither": 209,
+      "total": 500
+    }
+  ]
+}
