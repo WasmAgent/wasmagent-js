@@ -195,25 +195,6 @@ export const MODEL_REGISTRY: Record<string, RegisteredModel> = {
     recommended: false,
     note: "Llama 许可对再分发有附加条款。sha256 pinned 2026-06-13 (V3, hf-mirror via lmstudio-community).",
   },
-  "evomerge-sft-compliance-v1": {
-    alias: "evomerge-sft-compliance-v1",
-    description:
-      "Qwen2.5-1.5B + QLoRA SFT on 616 IFEval ComplianceEvalRecords. " +
-      "Phase 1 experiment model. Use --model=/path/to/sft_compliance_q4km.gguf to load directly.",
-    sources: [
-      {
-        kind: "huggingface",
-        url: "https://huggingface.co/placeholder/evomerge-sft-compliance-v1",
-      },
-    ],
-    sha256: "",
-    sizeBytes: 979_369_056,
-    license: "Apache-2.0",
-    minFreeMemGB: 2,
-    contextWindow: 32_768,
-    recommended: false,
-    note: "Local research model — load via absolute path, not download. 2026-06-25.",
-  },
 };
 
 /**
