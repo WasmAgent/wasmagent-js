@@ -381,13 +381,9 @@
         "typescript": "^5.7.0",
       },
       "peerDependencies": {
-        "@wasmagent/aep": "^0.1.0",
-        "@wasmagent/mcp-gateway": "^0.1.0",
         "@wasmagent/model-local": "^1.0.3",
       },
       "optionalPeers": [
-        "@wasmagent/aep",
-        "@wasmagent/mcp-gateway",
         "@wasmagent/model-local",
       ],
     },
