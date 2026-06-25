@@ -19,8 +19,6 @@
   "ignore": [
     "@wasmagent/cloudflare-worker",
     "dangerous-tool-demo",
-    "@wasmagent/aep",
-    "@wasmagent/mcp-gateway",
     "@wasmagent/mcp-policy",
     "@wasmagent/mcp-attestation"
   ]

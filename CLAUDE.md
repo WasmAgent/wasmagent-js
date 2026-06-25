@@ -135,3 +135,35 @@ PCL ties prompt_retry on mean but has 5× smaller variance. See
 Test it: `bun test packages/compliance/` (113 pass / 0 fail).
 Reproduce sweep: `bun packages/compliance/benchmarks/ifeval/run.ts --limit=50 --seed=42`.
 
+## Publishing new npm packages (MUST READ before adding new public packages)
+
+**The Release workflow (`changeset publish`) fails with E404 on brand-new scoped packages
+that have never existed on npm.** `changeset`'s `ignore` list only affects version bumping,
+NOT publishing — it will still attempt to publish any un-published version.
+
+### Correct procedure for first-time publishing a new package
+
+1. Add all required package.json fields (checked by `publish-check.mjs`):
+   - `homepage`, `repository`, `publishConfig: { access: "public" }`, `files`, `license`
+   - `wasmagent.tier` and `wasmagent.stability` must be `"stable"` or `"experimental"` (not `"alpha"`)
+   - `README.md` and `LICENSE` must exist in the package directory
+
+2. Keep `"private": true` in package.json to prevent changeset from attempting publish.
+
+3. Add the package to `.changeset/config.json` `ignore` list.
+
+4. **First publish: use the `publish-alpha` workflow** (Actions → Publish Alpha Packages):
+   - Set `packages` to the package directory name (e.g. `aep mcp-gateway`)
+   - Set `dry_run: false`
+   - The workflow removes `private: true` temporarily, publishes, then the local file change is not committed
+   - **OR** publish locally: `cd packages/<name> && npm publish --access public` (after removing `private: true` from package.json)
+   - After successful publish, E403 "cannot publish over previously published" confirms it worked
+
+5. After first publish succeeds (verify with `npm view @wasmagent/<name>`):
+   - Remove `"private": true` from package.json
+   - Remove the package from `.changeset/config.json` ignore list
+   - Commit and push → subsequent Release workflow runs will manage versions via changeset normally
+
+6. **npm CDN propagation can take 2–5 minutes** after publish. E404 immediately after
+   a successful publish (`+ @wasmagent/xxx@0.1.0` in output) is normal — wait and retry.
+
