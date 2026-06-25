@@ -108,7 +108,7 @@ jobs:
           }
           console.log(fail === 0 ? '✓ ' + ok + ' fixture hashes verified' : '✗ ' + fail + ' fixture(s) drifted');
           process.exit(fail > 0 ? 1 : 0);
-          " 2>&1 || echo "[skip] fixtures.lock.json not present in this repo — check evomerge-framework"
+          " 2>&1 || echo "[skip] fixtures.lock.json not present in this repo — check trace-pipeline"
 
       # D2 follow-up — the LongMemEval-500 multi-observer harness is funded-run
       # gated (🖥️ in ROADMAP), but its --smoke path runs offline against a

@@ -20,7 +20,7 @@ Each `runs.jsonl` has 150 lines: 50 × `direct` + 50 × `prompt_retry` + 50 × `
 ## Schema
 
 Every record is a `ComplianceEvalRecord` matching:
-`evomerge-framework/schemas/compliance-eval-record.schema.json`
+`trace-pipeline/schemas/compliance-eval-record.schema.json`
 
 Key results (Phase 0 + Phase 1 P0 + multi-seed × 2 models, 2026-06-24):
 
@@ -34,7 +34,7 @@ Key results (Phase 0 + Phase 1 P0 + multi-seed × 2 models, 2026-06-24):
 - PCL Δ over direct: **+13.3pp** (Qwen) / **+11.3pp** (Llama). Strictly dominant: 0 losses across 300 (seed × sample) pairs on either model.
 - Full cross-model analysis: `results-multi-seed-llama/CROSS-MODEL-2026-06-24.md`.
 
-## Import into evomerge-framework
+## Import into trace-pipeline
 
 ```bash
 python scripts/import_ifeval_runs.py \

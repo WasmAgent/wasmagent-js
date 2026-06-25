@@ -91,7 +91,7 @@ Two non-obvious findings the failure pattern reveals:
 
 1. **The 0.94 GB Qwen3-1.7B + LoRA-v3 Q3_K_M matches the 4.12 GB and
    6.78 GB models on this benchmark**, despite [evomerge's own quality
-   gate](https://github.com/telleroutlook/evomerge-framework/blob/main/PHASE14_FINAL_REPORT.md)
+   gate](https://github.com/WasmAgent/trace-pipeline/blob/main/PHASE14_FINAL_REPORT.md)
    marking that quant as ❌-fail (–14.5 pp on GSM8K, –22.8 pp on MMLU
    vs fp16). **Compression-task degradation does not predict
    memory-task degradation.** A model that is 25 % worse at math word

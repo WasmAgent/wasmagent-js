@@ -3,7 +3,7 @@
 > ⚠️ **Status: experimental (`0.1.0-alpha`).** APIs may change without notice.
 >
 > This package is the **runtime compliance source of truth** for the WasmAgent ecosystem.
-> See the [ecosystem map](https://github.com/telleroutlook/evomerge-framework/blob/main/docs/ecosystem-map.md) for how it fits into the Trustworthy Agent Training Loop.
+> See the [ecosystem map](https://github.com/WasmAgent/trace-pipeline/blob/main/docs/ecosystem-map.md) for how it fits into the Trustworthy Agent Training Loop.
 
 A lightweight compliance engine for validating, repairing, and exporting evidence from LLM
 agent runs.
@@ -88,7 +88,7 @@ Full reports: `benchmarks/ifeval/results-multi-seed-llama/CROSS-MODEL-2026-06-24
 - [ ] Larger base models (Llama-3.1-8B-Instruct, Qwen3-14B)
 - [ ] Additional benchmarks (ComplexBench, CFBench, IHEval, JSONSchemaBench)
 - [ ] `forbidden_words` deterministic patch strategy
-- [ ] Group A vs C comparison (fine-tuned small model via evomerge-framework)
+- [ ] Group A vs C comparison (fine-tuned small model via trace-pipeline)
 
 ### What's implemented
 
@@ -104,13 +104,13 @@ Full reports: `benchmarks/ifeval/results-multi-seed-llama/CROSS-MODEL-2026-06-24
 - [x] Multi-seed benchmark CLI with file-lock guard + structured `error` records
 - [x] Multi-seed aggregator (mean ± stddev, pairwise agreement)
 - [x] 113 tests, 0 failures
-- [x] 1050 `ComplianceEvalRecord` instances → 657 evomerge-framework training records
+- [x] 1050 `ComplianceEvalRecord` instances → 657 trace-pipeline training records
 
 The 1050 `ComplianceEvalRecord` files in `benchmarks/ifeval/results*/runs.jsonl`
-feed directly into the evomerge-framework training pipeline:
+feed directly into the trace-pipeline training pipeline:
 
 ```bash
-# import into evomerge-framework (run from evomerge-framework repo)
+# import into trace-pipeline (run from trace-pipeline repo)
 python scripts/import_ifeval_runs.py \
   --runs-dir /path/to/wasmagent-js/packages/compliance/benchmarks/ifeval \
   --out-dir data/training/ifeval

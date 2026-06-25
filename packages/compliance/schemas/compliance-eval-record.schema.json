@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://wasmagent.dev/schemas/compliance/compliance-eval-record.schema.json",
   "title": "ComplianceEvalRecord",
-  "description": "One record per compliance run (compliance-eval-record/v1). Single source of truth across wasmagent-js and evomerge-framework.",
+  "description": "One record per compliance run (compliance-eval-record/v1). Single source of truth across wasmagent-js and trace-pipeline.",
   "type": "object",
   "required": [
     "schema_version",

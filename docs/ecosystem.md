@@ -66,4 +66,4 @@ This loop is what separates wasmagent from a generic agent framework — it prod
 |---|---|---|
 | [`wasmagent-js`](https://github.com/WasmAgent/wasmagent-js) | Agent runtime, npm packages | This site |
 | [`bscode`](https://github.com/WasmAgent/bscode) | Cloudflare coding agent | `bscode/README.md` |
-| [`evomerge-framework`](https://github.com/telleroutlook/evomerge-framework) | Model merge + RLAIF factory | `evomerge-framework/docs/` |
+| [`trace-pipeline`](https://github.com/WasmAgent/trace-pipeline) | Model merge + RLAIF factory | `trace-pipeline/docs/` |
