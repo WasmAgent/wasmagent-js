@@ -27,7 +27,7 @@ wasmagent-js is a 37-package monorepo published under the `@wasmagent/*` scope o
 | `@wasmagent/tools-web` · `@wasmagent/tools-rag` · `@wasmagent/tools-browser` | Beta |
 | `@wasmagent/compliance` | Alpha (schema contract frozen; repair API evolving) |
 | `@wasmagent/aep` | Alpha (schema versioned `aep/v0.1`; emitter API evolving) |
-| `@wasmagent/mcp-firewall` · `@wasmagent/capability-compiler` | Alpha |
+| `@wasmagent/mcp-firewall` · `@wasmagent/mcp-gateway` · `@wasmagent/capability-compiler` | Alpha |
 | `@wasmagent/eliza-rollout-plugin` | Experimental |
 | `@wasmagent/cloudflare-worker` | Internal |
 
@@ -112,6 +112,7 @@ See the [kernel decision tree](/kernels/comparison) for picking the right one.
 | Package | What it is |
 |---|---|
 | [`@wasmagent/mcp-firewall`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-firewall) | Runtime firewall + gateway for MCP: descriptor snapshot, static vetting, per-call policy, taint tracking, consent ledger; **gateway layer**: identity propagation (`RequestIdentity`), server card (`ServerCard`/`buildServerCard`), state-changing action classification (`isStateChangingTool`), `MCPGateway` with AEP evidence refs |
+| [`@wasmagent/mcp-gateway`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-gateway) | MCP Gateway — identity propagation, server card validation, policy enforcement, AEP evidence emission for MCP tool invocations |
 | [`@wasmagent/aep`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/aep) | Agent Evidence Protocol — `AEPRecord` / `ActionEvidence` / `CapabilityDecision` types + `AEPEmitter`. Cross-repo public data contract for trace-pipeline training export and compliance audit. Schema: `aep/v0.1` |
 | [`@wasmagent/capability-compiler`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/capability-compiler) | Compile `CapabilityManifest` → MCP schema fragment, runtime policy rules, trace validator spec |
 | [`@wasmagent/compliance`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/compliance) | TaskSpec-driven verification + local repair for LLM runs; `ComplianceEvalRecord` emitter; IFEval benchmark harness |

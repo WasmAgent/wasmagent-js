@@ -55,6 +55,10 @@ and completes the go-to-market hardening pass.
 
 ## [Unreleased]
 
+### Added (2026-06-25 — P2)
+
+- **`docs/packages.md`** — `@wasmagent/mcp-gateway` 加入 Security & Governance 表格和 tier 表。
+
 ### Added (2026-06-25 — P1-5 Budget Ledger)
 
 - **`@wasmagent/aep` — `BudgetLedger`** (`packages/aep/src/types.ts`). Per-run budget
