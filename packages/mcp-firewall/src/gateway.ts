@@ -39,7 +39,7 @@ export function createRequestIdentity(opts: {
   return {
     principalHash: createHash("sha256").update(opts.principal).digest("hex").slice(0, 16),
     sessionId: opts.sessionId,
-    parentSessionId: opts.parentSessionId,
+    ...(opts.parentSessionId !== undefined ? { parentSessionId: opts.parentSessionId } : {}),
     issuedAt: new Date().toISOString(),
   };
 }
@@ -69,10 +69,10 @@ export function buildServerCard(opts: {
   const manifest = JSON.stringify(opts.tools.map((t) => ({ name: t.name, schema: t.inputSchema })));
   return {
     serverId: opts.serverId,
-    displayName: opts.displayName,
+    ...(opts.displayName !== undefined ? { displayName: opts.displayName } : {}),
     toolManifestDigest: createHash("sha256").update(manifest).digest("hex"),
     registeredAt: new Date().toISOString(),
-    declaredCapabilities: opts.declaredCapabilities,
+    ...(opts.declaredCapabilities !== undefined ? { declaredCapabilities: opts.declaredCapabilities } : {}),
     operatorVerified: opts.operatorVerified ?? false,
   };
 }
@@ -116,7 +116,6 @@ export interface GatewayDecision {
   invocation: ToolInvocationDecision;
   stateChanging: boolean;
   serverCard?: ServerCard;
-  /** Taint wrapper to apply to the result after the call. */
   resultTrustLevel: "untrusted" | "verified" | "system";
   /** AEP evidence fields for this decision. */
   evidenceRef: {
@@ -193,12 +192,14 @@ export class MCPGateway {
     return {
       invocation,
       stateChanging,
-      serverCard,
+      ...(serverCard !== undefined ? { serverCard } : {}),
       resultTrustLevel,
       evidenceRef: {
         principalHash: req.identity.principalHash,
         sessionId: req.identity.sessionId,
-        toolManifestDigest: serverCard?.toolManifestDigest,
+        ...(serverCard?.toolManifestDigest !== undefined
+          ? { toolManifestDigest: serverCard.toolManifestDigest }
+          : {}),
         policyDecision: invocation.decision,
       },
     };
