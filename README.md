@@ -221,12 +221,33 @@ for await (const ev of agent.run("What is 42 * 1337?")) {
 ```bash
 npm install -g @wasmagent/cli
 
+# Agent runs
 wasmagent run "What is the square root of 144?"
 wasmagent run "Summarise AI news" --stream | jq .
+
+# Rollout / training data
 wasmagent rank-rollout rollouts.jsonl --out ranked.jsonl
 wasmagent validate-rollouts ranked.jsonl
 wasmagent export-rollouts --in ranked.jsonl --format dpo --out dpo.jsonl
+
+# MCP security (scan → guard → evidence)
+wasmagent init --guard               # generate wasmagent.policy.yaml
+wasmagent scan-mcp tools.json        # static risk scan, exits 1 on critical findings
+wasmagent guard --config wasmagent.policy.yaml --upstream tools.json
+wasmagent evidence export --input aep-records.jsonl --format json
 ```
+
+**GitHub Action** — enforce policy in CI:
+
+```yaml
+- uses: WasmAgent/wasmagent-js/.github/actions/agent-evidence-gate@main
+  with:
+    policy: wasmagent.policy.yaml
+    tools-file: mcp-tools.json
+    fail-on-policy-violation: "true"
+```
+
+→ [MCP Guard guide](./docs/guides/mcp-guard.md) · [Attack demos](./docs/security/mcp-firewall-attack-demos.md)
 
 ---
 
