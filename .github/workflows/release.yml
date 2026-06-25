@@ -42,29 +42,6 @@ jobs:
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Pre-publish new packages (first-time npm registration)
-        run: |
-          # Publish any package that has never been on npm before.
-          # changeset publish fails with E404 on brand-new scoped packages;
-          # a direct `npm publish` on those packages first creates the registry entry.
-          for pkg_dir in packages/*/; do
-            pkg_json="$pkg_dir/package.json"
-            [ -f "$pkg_json" ] || continue
-            private=$(node -e "const p=require('./$pkg_json');process.stdout.write(String(p.private||false))")
-            [ "$private" = "true" ] && continue
-            name=$(node -e "const p=require('./$pkg_json');process.stdout.write(p.name)")
-            version=$(node -e "const p=require('./$pkg_json');process.stdout.write(p.version)")
-            # Check if this version already exists on npm
-            if npm view "${name}@${version}" version 2>/dev/null | grep -q "$version"; then
-              echo "✓ $name@$version already on npm — skipping"
-            else
-              echo "→ First publish: $name@$version"
-              (cd "$pkg_dir" && npm publish --access public) || echo "⚠ $name@$version publish failed (may be expected for alpha packages)"
-            fi
-          done
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Create release PR or publish
         id: changesets
         uses: changesets/action@v1
