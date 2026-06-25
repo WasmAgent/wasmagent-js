@@ -55,6 +55,13 @@ and completes the go-to-market hardening pass.
 
 ## [Unreleased]
 
+### Added (2026-06-25 — Day 31-60)
+
+- **AgentDojo-style prompt injection smoke tests** (`packages/mcp-firewall/src/prompt-injection-smoke.test.ts`).
+  8 regression baseline tests covering: direct injection in tool descriptor (vetTool/evaluatePolicy/MCPGateway all
+  block), indirect injection via tool result (taintObservation detects `instructionLikeTextDetected=true`),
+  exfiltration attempt detection. These serve as the WasmAgent anti-injection regression suite.
+
 ### Added (2026-06-25 — AEP P0 reform)
 
 - **`@wasmagent/aep` v0.1.0** (`packages/aep/`) — Agent Evidence Protocol.
