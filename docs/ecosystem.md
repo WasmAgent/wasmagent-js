@@ -17,13 +17,13 @@ The wasmagent ecosystem spans three repositories that work together as a single 
 └──────────────────────┬─────────────────────┬───────────────────┘
                        │ npm packages        │ rollout JSONL
           ┌────────────▼──────────┐  ┌───────▼────────────────────┐
-          │       bscode          │  │        evomerge             │
+          │       bscode          │  │        trace-pipeline       │
           │  Edge-native coding   │  │  Model merge / eval /       │
           │  agent template       │  │  RLAIF data factory         │
           │  • Cloudflare Worker  │  │  • TrainingDataExporter     │
           │  • React/Next.js UI   │  │  • DPO/PPO generation       │
           │  • build + visual     │  │  • Eval harness             │
-          │    verification       │  │  • evomerge optimizer       │
+          │    verification       │  │  • trace-pipeline optimizer │
           └───────────────────────┘  └────────────────────────────┘
 ```
 
@@ -33,7 +33,7 @@ The wasmagent ecosystem spans three repositories that work together as a single 
 |---|---|---|
 | **Runtime** | `wasmagent-js` | Secure portable agent runtime: WASM isolation, tool governance, model adapters, observability, rollout ranking |
 | **Reference App** | `bscode` | One-click deployable coding agent on Cloudflare Workers — proves the runtime works end-to-end |
-| **Data Factory** | `evomerge` | Converts real agent runs into DPO/PPO training data, closes the improvement loop |
+| **Data Factory** | `trace-pipeline` | Converts real agent runs into DPO/PPO training data, closes the improvement loop |
 
 ## How the loop closes
 
@@ -43,7 +43,7 @@ bscode runs jobs
   → wasmagent-js RolloutForkRunner records trajectories
   → RolloutRanker scores branches (objective + judge)
   → rollout-wire JSONL (Layer 1)
-  → evomerge TrainingDataExporter
+  → trace-pipeline TrainingDataExporter
   → DPO/PPO training records (Layer 3)
   → model fine-tune / merge / eval
   → improved model back into bscode defaults
@@ -58,7 +58,7 @@ This loop is what separates wasmagent from a generic agent framework — it prod
 - **Deploying bscode** → [bscode README](https://github.com/WasmAgent/bscode)
 - **Running the data pipeline** → [Data Pipeline guide](./data-pipeline.md)
 - **Schema contract between repos** → [Schema Governance](./schemas/GOVERNANCE.md)
-- **Integration smoke test** → `evomerge/tests/test_three_repo_smoke.py`
+- **Integration smoke test** → `trace-pipeline/tests/test_three_repo_smoke.py`
 
 ## Repository links
 

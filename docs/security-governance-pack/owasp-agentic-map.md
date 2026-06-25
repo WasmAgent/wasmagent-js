@@ -243,7 +243,7 @@ RLAIF training pipeline, corrupting model fine-tuning.
   a `provenance.source: "wasmagent-rollout"` field and a `session_id`. Records
   without valid provenance are rejected by `evomerge/datafactory/exporter.py`.
 - **Schema CI enforcement** — `scripts/check-rollout-schema.mjs` (wasmagent-js)
-  and `scripts/check-schema-fields.py` (evomerge) verify wire format
+  and `scripts/check-schema-fields.py` (trace-pipeline) verify wire format
   consistency on every commit.
 
 ---

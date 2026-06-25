@@ -42,7 +42,7 @@ features:
     linkText: Architecture
   - icon: 🔄
     title: RLAIF data flywheel
-    details: RolloutForkRunner + RolloutRanker export real build-verified trajectories as DPO/PPO training records. bscode collects the signal; evomerge trains on it.
+    details: RolloutForkRunner + RolloutRanker export real build-verified trajectories as DPO/PPO training records. bscode collects the signal; trace-pipeline trains on it.
     link: /data-pipeline
     linkText: Pipeline guide
   - icon: 🧪

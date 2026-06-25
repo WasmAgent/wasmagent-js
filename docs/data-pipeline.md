@@ -1,18 +1,18 @@
 ---
 title: Data Pipeline
-description: Complete guide to the wasmagent → evomerge RLAIF training data pipeline.
+description: Complete guide to the wasmagent → trace-pipeline RLAIF training data pipeline.
 ---
 
 # Data Pipeline: Runtime → Data Factory
 
 This page explains the full pipeline from agent execution in wasmagent-js to
-DPO/PPO training records in evomerge. No LLM calls are required to understand
+DPO/PPO training records in trace-pipeline. No LLM calls are required to understand
 or test this pipeline — all contracts are verifiable with fixtures.
 
 ## Pipeline layers
 
 ```
-wasmagent-js                          evomerge
+wasmagent-js                          trace-pipeline
 ─────────────────────────────────     ─────────────────────────────
 RolloutForkRunner.run()               datafactory/exporter.py
   branches: N independent agents  ─▶  load_rollouts(path)
@@ -120,7 +120,7 @@ python -m datafactory --input rollouts.jsonl --allow-missing-g3
 A fixture-based smoke test validates the full pipeline without any LLM calls:
 
 ```bash
-# From evomerge repo root
+# From trace-pipeline repo root
 python3 tests/test_three_repo_smoke.py
 ```
 
@@ -129,7 +129,7 @@ This test:
 2. Calls `load_rollouts()` and validates field parsing
 3. Calls `export()` to produce DPO + PPO records
 4. Validates all required fields and reward ordering
-5. Checks that `rollout-wire.schema.json` is identical between wasmagent-js and evomerge
+5. Checks that `rollout-wire.schema.json` is identical between wasmagent-js and trace-pipeline
 
 The TypeScript side of the pipeline is tested in:
 `wasmagent-js/tests/integration/rlaif-pipeline.test.ts`
@@ -140,8 +140,8 @@ The canonical schema owner is `wasmagent-js`. When fields change:
 
 1. Update `packages/core/src/ranking/schemas/rollout-wire.schema.json`
 2. Update `packages/core/src/ranking/RolloutExporter.ts` types
-3. Copy schema to `evomerge/src/datafactory/rollout-wire.schema.json`
-4. Update `evomerge/src/datafactory/exporter.py` to match
+3. Copy schema to `trace-pipeline/src/datafactory/rollout-wire.schema.json`
+4. Update `trace-pipeline/src/datafactory/exporter.py` to match
 5. Run `python3 tests/test_three_repo_smoke.py` — the cross-repo diff step will catch any drift
 
 See [Schema Governance](./schemas/GOVERNANCE.md) for the full change process.
