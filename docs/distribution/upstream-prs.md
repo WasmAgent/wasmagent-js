@@ -13,6 +13,8 @@ Status of WasmAgent integration submissions to external ecosystems.
 | `vercel/ai` | PR | [#16318](https://github.com/vercel/ai/pull/16318) | 🟡 **OPEN** | Filed 2026-06-23; bot review passed; awaiting maintainer |
 | `langchain-ai/langchainjs` | PR | [#11104](https://github.com/langchain-ai/langchainjs/pull/11104) | 🟡 **OPEN** | Filed 2026-06-24 |
 | `openai/openai-agents-js` | Issue | [#1424](https://github.com/openai/openai-agents-js/issues/1424) | 🟡 **OPEN** | WASM sandbox backend; filed 2026-06-24 |
+| `ag-ui-protocol/ag-ui` | Issue (required first) | — | 📋 **DRAFT** | Issue-first required by CONTRIBUTING.md; draft at `docs/strategy/upstream-prs/agui-integration.md` |
+| `modelcontextprotocol/registry` | CLI publish (`mcp-publisher`) | — | 📋 **READY** | Mechanical steps only; guide at `docs/strategy/upstream-prs/mcp-registry-publish.md` |
 | `elizaOS/eliza` | PR | [#9244](https://github.com/elizaOS/eliza/pull/9244) | 🟡 **OPEN** | Registry PR; #9235 pivoted to capability governance (CapabilityManifest landed in `@elizaos/core`); awaiting review |
 | `cloudflare/agents` | Issue | [#1771](https://github.com/cloudflare/agents/issues/1771) | 🔴 **CLOSED** | No maintainer action. **Do not re-open.** Re-pitch after vercel/ai #16318 merges |
 | `mastra-ai/mastra` | Issue | [#17884](https://github.com/mastra-ai/mastra/issues/17884) | 🔴 **CLOSED** | Explicitly declined: "no third-party additions at the moment." **Do not re-open.** Re-pitch after public benchmark lands |

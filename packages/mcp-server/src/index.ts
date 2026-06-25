@@ -66,6 +66,13 @@ export { createPortalServer } from "./portal.js";
 // Glama deployment without re-implementing the wire framing.
 export { runStdio } from "./stdio.js";
 export { InMemoryTaskStore } from "./taskStore.js";
+// P0 MCP Firewall — descriptor snapshot + rug-pull detection
+export type {
+  ToolDescriptorSnapshot,
+  ToolRugPullEvent,
+  TrustTier,
+} from "./toolDescriptorSnapshot.js";
+export { detectRugPull, hashContent, snapshotTool } from "./toolDescriptorSnapshot.js";
 export type {
   McpAgentServerOptions,
   McpHandleResult,

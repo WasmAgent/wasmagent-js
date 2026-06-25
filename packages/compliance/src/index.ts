@@ -18,6 +18,24 @@
 
 // IR
 export type {
+  AdmissionEvaluator,
+  AdmissionRule,
+  EvidenceAdmissionContract,
+  EvidenceRow,
+  EvidenceRowType,
+  RedactionPolicy,
+  ReplayPolicy,
+  RuntimeSetting,
+} from "./ir/EvidenceAdmission.js";
+export {
+  EvidenceAdmissionContractSchema,
+  EvidenceRowSchema,
+  EvidenceRowTypeSchema,
+  RedactionPolicySchema,
+  ReplayPolicySchema,
+  RuntimeSettingSchema,
+} from "./ir/EvidenceAdmission.js";
+export type {
   ConstraintCategory,
   ConstraintIR,
   ConstraintLevel,
