@@ -18,6 +18,13 @@ Three things, one loop:
 > This repository is the first layer of the WasmAgent Trustworthy Agent Training Loop.
 > See [trace-pipeline/docs/ecosystem-map.md](https://github.com/WasmAgent/trace-pipeline/blob/main/docs/ecosystem-map.md) for the full system diagram.
 
+> **WasmAgent 0.1: Evidence Layer for MCP Agents**  
+> Wrap any MCP server, enforce policy before tool execution, and export verifiable evidence after every agent run.
+
+```bash
+npm install @wasmagent/mcp-gateway @wasmagent/aep
+```
+
 ## Core Runtime
 `@wasmagent/core` · `@wasmagent/kernel-quickjs` · `@wasmagent/kernel-pyodide` · `@wasmagent/kernel-remote`
 

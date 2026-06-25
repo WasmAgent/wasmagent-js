@@ -155,6 +155,12 @@ if (isMain) {
       format: { type: "string" },
       out: { type: "string" },
       weights: { type: "string" },
+      // guard / scan-mcp / evidence commands (2026-06-25)
+      config: { type: "string" },
+      upstream: { type: "string" },
+      input: { type: "string" },
+      "fail-under": { type: "string" },
+      guard: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
       version: { type: "boolean", short: "v", default: false },
     },
@@ -189,6 +195,10 @@ if (isMain) {
         await initProjectCommand(rest[0] as string, values);
         break;
       }
+      if (values.guard) {
+        await initGuardCommand(values);
+        break;
+      }
     // falls through
     case "init-tool":
       await initToolCommand(values);
@@ -216,6 +226,15 @@ if (isMain) {
       break;
     case "rank-rollout":
       await rankRolloutCommand(positionals[1] as string | undefined, values);
+      break;
+    case "guard":
+      await guardCommand(rest, values);
+      break;
+    case "scan-mcp":
+      await scanMcpCommand(rest[0] as string | undefined, values);
+      break;
+    case "evidence":
+      await evidenceCommand(rest, values);
       break;
     case "version":
     case "--version":
@@ -661,6 +680,10 @@ Usage:
   wasmagent validate-rollouts <path.jsonl>
   wasmagent export-rollouts --in <path.jsonl> --format dpo|ppo [--out <output.jsonl>]
   wasmagent rank-rollout <path.jsonl> [--out <output.jsonl>] [--weights objective=1.0]
+  wasmagent guard [--config <policy.yaml>] [--upstream <tools.json>]
+  wasmagent scan-mcp <tools.json>
+  wasmagent evidence export --input <aep.jsonl> [--format json|html] [--out <file>]
+  wasmagent init --guard
 
 Commands:
   run "<task>"              Run a single-shot CodeAgent loop on a task
@@ -681,6 +704,10 @@ Commands:
   export-rollouts           Convert rollout branch records to DPO or PPO training records
   rank-rollout              Rank rollout branches by objective score and optional
                             judge weights. Enriches records with rank + total_score.
+  guard                     Vet MCP tools against a policy YAML and print allow/deny report
+  scan-mcp <path>           Static risk scan of a MCP tools JSON file
+  evidence export           Export AEP evidence bundle as JSON summary or HTML report
+  init --guard              Generate a wasmagent.policy.yaml starter file
 
 run options:
   --model <id>             Model ID (default: claude-sonnet-4-6)
@@ -763,7 +790,371 @@ Examples:
   wasmagent rank-rollout ./rollouts.jsonl
   wasmagent rank-rollout ./rollouts.jsonl --out ranked.jsonl
   wasmagent rank-rollout ./rollouts.jsonl --weights objective=1.0
+  wasmagent init --guard
+  wasmagent scan-mcp ./tools.json
+  wasmagent guard --config wasmagent.policy.yaml --upstream ./tools.json
+  wasmagent evidence export --input evidence.jsonl --format html --out evidence.html
 `);
+}
+
+// ── guard command ─────────────────────────────────────────────────────────────
+/**
+ * wasmagent guard --config <policy.yaml> [--upstream <cmd>]
+ *
+ * Reads a policy YAML (or defaults to wasmagent.policy.yaml), then vets
+ * all tools from --upstream or from stdin JSON.  Prints allow/deny report.
+ * If any tool is denied and --fail-under is not set, exits 1.
+ */
+async function guardCommand(
+  _rest: string[],
+  opts: Record<string, string | boolean | undefined>
+): Promise<void> {
+  const configPath = typeof opts.config === "string" ? opts.config : "wasmagent.policy.yaml";
+  const upstream = typeof opts.upstream === "string" ? opts.upstream : undefined;
+
+  // Load vetting + policy from @wasmagent/mcp-gateway (dynamic import)
+  type McpGatewayVetResult = {
+    blocked: boolean;
+    recommendation: string;
+    findings: Array<{ severity: string; category: string }>;
+  };
+  type McpGatewayPolicyResult = { decision: string; reasons: string[] };
+  let vetTools: (tool: unknown) => McpGatewayVetResult;
+  let evaluatePolicy: (
+    name: string,
+    args: unknown,
+    vetting: unknown,
+    consent: unknown[]
+  ) => McpGatewayPolicyResult;
+  try {
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic peer dep — no types available at compile time
+    const gw = (await import("@wasmagent/mcp-gateway" as string)) as any;
+    vetTools = (tool: unknown) => gw.vetTool(tool) as McpGatewayVetResult;
+    evaluatePolicy = (name, args, vetting, consent) =>
+      gw.evaluatePolicy(name, args, vetting, consent) as McpGatewayPolicyResult;
+  } catch {
+    console.error("Error: @wasmagent/mcp-gateway is required for wasmagent guard.");
+    console.error("  npm install @wasmagent/mcp-gateway");
+    process.exit(1);
+  }
+
+  // Load tools: from --upstream file (JSON array) or stdin
+  let tools: Array<{ name: string; description: string; inputSchema: unknown }> = [];
+  if (upstream) {
+    const { readFile } = await import("node:fs/promises");
+    try {
+      const raw = await readFile(upstream, "utf8");
+      tools = JSON.parse(raw);
+    } catch {
+      console.error(`Error: could not read upstream tools from ${upstream}`);
+      process.exit(1);
+    }
+  } else {
+    // Try to read from stdin
+    try {
+      const chunks: Buffer[] = [];
+      for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+      const raw = Buffer.concat(chunks).toString("utf8").trim();
+      if (raw) tools = JSON.parse(raw);
+    } catch {
+      // no stdin — show usage
+      console.error("Usage: wasmagent guard --config <policy.yaml> [--upstream <tools.json>]");
+      console.error("       wasmagent guard < tools.json");
+      process.exit(1);
+    }
+  }
+
+  if (tools.length === 0) {
+    console.log("No tools to vet.");
+    process.exit(0);
+  }
+
+  let denied = 0;
+  const rows: Array<{ tool: string; decision: string; severity: string; reason: string }> = [];
+
+  for (const tool of tools) {
+    const vetting = vetTools(tool);
+    const decision = evaluatePolicy(tool.name, {}, vetting, []);
+    const severity = vetting.findings[0]?.severity ?? "none";
+    const reason = vetting.findings[0]?.category ?? decision.reasons[0] ?? "—";
+    rows.push({ tool: tool.name, decision: decision.decision, severity, reason });
+    if (decision.decision === "deny") denied++;
+  }
+
+  // Print report
+  const colW = Math.max(12, ...rows.map((r) => r.tool.length)) + 2;
+  console.log(`\nMCP Tool Guard Report — ${configPath}`);
+  console.log("─".repeat(colW + 40));
+  console.log(`${"Tool".padEnd(colW)}${"Decision".padEnd(12)}${"Severity".padEnd(12)}Reason`);
+  console.log("─".repeat(colW + 40));
+  for (const row of rows) {
+    const icon = row.decision === "deny" ? "✗" : row.decision === "ask_user" ? "?" : "✓";
+    console.log(
+      `${row.tool.padEnd(colW)}${(icon + " " + row.decision).padEnd(12)}${row.severity.padEnd(12)}${row.reason}`
+    );
+  }
+  console.log("─".repeat(colW + 40));
+  console.log(`\n${tools.length} tools scanned. ${denied} denied.`);
+
+  if (denied > 0) {
+    console.error(`\n✗ Guard failed: ${denied} tool(s) blocked by policy.`);
+    process.exit(1);
+  }
+  console.log("\n✓ All tools passed policy check.");
+}
+
+// ── scan-mcp command ───────────────────────────────────────────────────────────
+/**
+ * wasmagent scan-mcp <tools.json>
+ *
+ * Static risk scan of a tools JSON file (MCP tools/list response or array).
+ * Prints a risk report with severity, category, and recommendation.
+ */
+async function scanMcpCommand(
+  toolsPath: string | undefined,
+  _opts: Record<string, string | boolean | undefined>
+): Promise<void> {
+  if (!toolsPath) {
+    console.error("Usage: wasmagent scan-mcp <tools.json>");
+    process.exit(1);
+  }
+
+  let vetTool: (t: unknown) => {
+    blocked: boolean;
+    recommendation: string;
+    findings: Array<{
+      severity: string;
+      category: string;
+      field: string;
+      evidenceExcerpt: string;
+      recommendation: string;
+    }>;
+  };
+  try {
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic peer dep — no types available at compile time
+    const gw = (await import("@wasmagent/mcp-gateway" as string)) as any;
+    vetTool = gw.vetTool as typeof vetTool;
+  } catch {
+    console.error("Error: @wasmagent/mcp-gateway is required for wasmagent scan-mcp.");
+    console.error("  npm install @wasmagent/mcp-gateway");
+    process.exit(1);
+  }
+
+  const { readFile } = await import("node:fs/promises");
+  let tools: Array<{ name: string; description: string; inputSchema: unknown }>;
+  try {
+    const raw = await readFile(toolsPath, "utf8");
+    const parsed = JSON.parse(raw);
+    tools = Array.isArray(parsed) ? parsed : (parsed.tools ?? []);
+  } catch {
+    console.error(`Error: could not parse ${toolsPath} as JSON tool list`);
+    process.exit(1);
+  }
+
+  let riskCount = 0;
+  console.log(`\nMCP Security Scan — ${toolsPath}`);
+  console.log(`${tools.length} tool(s) found\n`);
+
+  for (const tool of tools) {
+    const result = vetTool(tool);
+    if (result.findings.length === 0) {
+      console.log(`  ✓ ${tool.name} — clean`);
+    } else {
+      riskCount++;
+      console.log(`  ✗ ${tool.name} — ${result.recommendation.toUpperCase()}`);
+      for (const f of result.findings) {
+        console.log(
+          `      [${f.severity.toUpperCase()}] ${f.category} in ${f.field}: ${f.evidenceExcerpt.slice(0, 80)}`
+        );
+      }
+    }
+  }
+
+  console.log(`\n${riskCount} tool(s) with findings out of ${tools.length}.`);
+  if (riskCount > 0) process.exit(1);
+  process.exit(0);
+}
+
+// ── evidence command ───────────────────────────────────────────────────────────
+/**
+ * wasmagent evidence export --input <aep.jsonl> [--format json|html] [--out <file>]
+ *
+ * Exports an AEP evidence bundle as a human-readable summary.
+ */
+async function evidenceCommand(
+  subArgs: string[],
+  opts: Record<string, string | boolean | undefined>
+): Promise<void> {
+  const [sub] = subArgs;
+  if (sub !== "export") {
+    console.error("Usage: wasmagent evidence export --input <aep.jsonl> [--format json|html]");
+    process.exit(1);
+  }
+
+  const inputPath = typeof opts.input === "string" ? opts.input : undefined;
+  if (!inputPath) {
+    console.error("Error: --input <aep.jsonl> is required");
+    process.exit(1);
+  }
+
+  const outputFmt = typeof opts.format === "string" ? opts.format : "json";
+  const outPath = typeof opts.out === "string" ? opts.out : undefined;
+
+  const { readFile, writeFile: wf } = await import("node:fs/promises");
+  const raw = await readFile(inputPath, "utf8");
+  const records = raw
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
+
+  if (outputFmt === "html") {
+    const html = buildEvidenceHtml(records);
+    if (outPath) {
+      await wf(outPath, html, "utf8");
+      console.log(`Evidence report written to ${outPath}`);
+    } else {
+      process.stdout.write(html);
+    }
+  } else {
+    // JSON summary
+    const summary = records.map((r: Record<string, unknown>) => ({
+      run_id: r.run_id,
+      model_id: r.model_id,
+      actions: Array.isArray(r.actions) ? r.actions.length : 0,
+      state_changing: Array.isArray(r.actions)
+        ? r.actions.filter((a: Record<string, unknown>) => a.state_changing).length
+        : 0,
+      verifiers_passed: Array.isArray(r.verifier_results)
+        ? r.verifier_results.filter((v: Record<string, unknown>) => v.passed).length
+        : 0,
+      verifiers_total: Array.isArray(r.verifier_results) ? r.verifier_results.length : 0,
+      policy_denies: Array.isArray(r.capability_decisions)
+        ? r.capability_decisions.filter((d: Record<string, unknown>) => d.decision === "deny")
+            .length
+        : 0,
+      schema_version: r.schema_version,
+    }));
+    const out = JSON.stringify(summary, null, 2);
+    if (outPath) {
+      await wf(outPath, out, "utf8");
+      console.log(`Evidence summary written to ${outPath}`);
+    } else {
+      console.log(out);
+    }
+  }
+}
+
+function buildEvidenceHtml(records: Record<string, unknown>[]): string {
+  const rows = records
+    .map((r) => {
+      const actions = Array.isArray(r.actions) ? r.actions : [];
+      const verifiers = Array.isArray(r.verifier_results) ? r.verifier_results : [];
+      const decisions = Array.isArray(r.capability_decisions) ? r.capability_decisions : [];
+      const denies = decisions.filter((d: Record<string, unknown>) => d.decision === "deny").length;
+      const passed = verifiers.filter((v: Record<string, unknown>) => v.passed).length;
+      const statusIcon = denies > 0 ? "🔴" : passed === verifiers.length ? "🟢" : "🟡";
+      return `
+    <tr>
+      <td>${statusIcon}</td>
+      <td><code>${r.run_id ?? "—"}</code></td>
+      <td>${r.model_id ?? "—"}</td>
+      <td>${actions.length} (${actions.filter((a: Record<string, unknown>) => a.state_changing).length} state-changing)</td>
+      <td>${passed}/${verifiers.length}</td>
+      <td>${denies === 0 ? "✓ none" : `<strong>✗ ${denies} denied</strong>`}</td>
+    </tr>`;
+    })
+    .join("\n");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>WasmAgent Evidence Report</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { color: #1a1a2e; } table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+  th { background: #1a1a2e; color: white; padding: 0.5rem 0.75rem; text-align: left; }
+  td { padding: 0.4rem 0.75rem; border-bottom: 1px solid #eee; }
+  tr:hover td { background: #f5f5ff; }
+  code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.85em; }
+  strong { color: #c00; }
+</style></head>
+<body>
+<h1>WasmAgent Evidence Report</h1>
+<p>Generated ${new Date().toISOString()} · ${records.length} run(s)</p>
+<table>
+<thead><tr><th></th><th>Run ID</th><th>Model</th><th>Actions</th><th>Verifiers</th><th>Policy</th></tr></thead>
+<tbody>${rows}</tbody>
+</table>
+</body></html>`;
+}
+
+// ── init --guard command ───────────────────────────────────────────────────────
+/**
+ * wasmagent init --guard
+ *
+ * Generates a wasmagent.policy.yaml starter file in the current directory.
+ */
+async function initGuardCommand(
+  _opts: Record<string, string | boolean | undefined>
+): Promise<void> {
+  const { writeFile: wf } = await import("node:fs/promises");
+  const policyYaml = `# wasmagent.policy.yaml — generated by wasmagent init --guard
+# Edit this file to customize your MCP tool policy.
+# Reference: https://github.com/WasmAgent/wasmagent-js/docs/guides/mcp-guard.md
+
+version: 1
+mode: enforce   # enforce | audit | dry_run
+
+defaults:
+  tool_output_trust: untrusted
+  require_evidence_for_state_change: true
+  redact_secrets: true
+
+# Tools explicitly allowed (read-only operations)
+allow:
+  - filesystem.read
+  - git.diff
+  - git.status
+  - test.run
+  - search
+
+# Tools that require human approval before execution
+require_approval:
+  - filesystem.write
+  - filesystem.delete
+  - shell.exec
+  - git.commit
+  - git.push
+  - network.post
+
+# Tools always denied (high-risk, no approval path)
+deny:
+  - shell.rm_rf
+  - network.post_external_untrusted
+
+budgets:
+  max_tool_calls: 30
+  max_shell_seconds: 120
+
+redaction:
+  patterns:
+    - api_key
+    - token
+    - password
+    - private_key
+    - secret
+`;
+
+  try {
+    await wf("wasmagent.policy.yaml", policyYaml, "utf8");
+    console.log("✓ Created wasmagent.policy.yaml");
+    console.log("\nNext steps:");
+    console.log("  wasmagent scan-mcp <your-tools.json>   # scan for risks");
+    console.log("  wasmagent guard --config wasmagent.policy.yaml < tools.json  # enforce policy");
+  } catch {
+    console.error("Error: could not write wasmagent.policy.yaml");
+    process.exit(1);
+  }
 }
 
 // ── A4: devtools command — local Studio, zero-deploy ─────────────────────────

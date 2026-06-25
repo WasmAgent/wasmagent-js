@@ -1,0 +1,13 @@
+{
+  "name": "dangerous-tool-demo",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "WasmAgent MCP Guard demo — policy enforcement and taint tracking",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@wasmagent/mcp-gateway": "workspace:*",
+    "@wasmagent/aep": "workspace:*"
+  }
+}

@@ -21,10 +21,18 @@
     "zod": "^3.23.0"
   },
   "peerDependencies": {
-    "@wasmagent/model-local": "^1.0.3"
+    "@wasmagent/model-local": "^1.0.3",
+    "@wasmagent/mcp-gateway": "^0.1.0",
+    "@wasmagent/aep": "^0.1.0"
   },
   "peerDependenciesMeta": {
     "@wasmagent/model-local": {
+      "optional": true
+    },
+    "@wasmagent/mcp-gateway": {
+      "optional": true
+    },
+    "@wasmagent/aep": {
       "optional": true
     }
   },

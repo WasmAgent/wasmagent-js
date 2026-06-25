@@ -55,6 +55,24 @@ and completes the go-to-market hardening pass.
 
 ## [Unreleased]
 
+### Added (2026-06-25 — Phase 0 + Phase 1 product)
+
+- **`wasmagent guard`** — MCP tool policy enforcement CLI. Reads `wasmagent.policy.yaml`,
+  vets each tool via `@wasmagent/mcp-gateway`, prints allow/deny table with reason codes,
+  exits 1 on any denial.
+- **`wasmagent scan-mcp <tools.json>`** — Static risk scan: injection / exfiltration / sampling
+  abuse / invisible chars / rug-pull. Prints per-tool findings with severity and category.
+- **`wasmagent evidence export --input <aep.jsonl> [--format json|html] [--out <file>]`** —
+  Exports AEP evidence bundle as a JSON summary or self-contained HTML report.
+- **`wasmagent init --guard`** — Generates a starter `wasmagent.policy.yaml` in the current
+  directory with allow/deny/approval/budget/redaction sections.
+- **`examples/dangerous-tool-demo/`** — Runnable demo: 5 mock MCP tools scanned by MCPGateway
+  (1 denied, 1 ask_user, 1 taint-tracked), AEP evidence bundle emitted. No API key required.
+- **`docs/guides/mcp-guard.md`** — 5-minute quickstart, policy YAML reference, programmatic
+  usage, threat model.
+- **`README.md`** — Added "WasmAgent 0.1: Evidence Layer for MCP Agents" positioning above
+  the package list.
+
 ### Added (2026-06-25 — gap fill)
 
 - **`@wasmagent/aep`** — `mcp_server_card_digest` (nullish) + `signature {alg,key_id,sig}` added to `AEPRecord`; `human_approval_budget` added to `BudgetLedger`. 4 tests pass.

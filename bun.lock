@@ -111,6 +111,14 @@
         "zod": "latest",
       },
     },
+    "examples/dangerous-tool-demo": {
+      "name": "dangerous-tool-demo",
+      "version": "0.1.0",
+      "dependencies": {
+        "@wasmagent/aep": "workspace:*",
+        "@wasmagent/mcp-gateway": "workspace:*",
+      },
+    },
     "examples/devtools-replay": {
       "name": "wasmagent-example-devtools-replay",
       "dependencies": {
@@ -373,9 +381,13 @@
         "typescript": "^5.7.0",
       },
       "peerDependencies": {
+        "@wasmagent/aep": "^0.1.0",
+        "@wasmagent/mcp-gateway": "^0.1.0",
         "@wasmagent/model-local": "^1.0.3",
       },
       "optionalPeers": [
+        "@wasmagent/aep",
+        "@wasmagent/mcp-gateway",
         "@wasmagent/model-local",
       ],
     },
@@ -1787,6 +1799,8 @@
     "css-tree": ["css-tree@3.2.1", "https://registry.npmmirror.com/css-tree/-/css-tree-3.2.1.tgz", { "dependencies": { "mdn-data": "2.27.1", "source-map-js": "^1.2.1" } }, "sha512-X7sjQzceUhu1u7Y/ylrRZFU2FS6LRiFVp6rKLPg23y3x3c3DOKAwuXGDp+PAGjh6CSnCjYeAul8pcT8bAl+lSA=="],
 
     "csstype": ["csstype@3.2.3", "https://registry.npmmirror.com/csstype/-/csstype-3.2.3.tgz", {}, "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ=="],
+
+    "dangerous-tool-demo": ["dangerous-tool-demo@workspace:examples/dangerous-tool-demo"],
 
     "data-uri-to-buffer": ["data-uri-to-buffer@2.0.2", "https://registry.npmmirror.com/data-uri-to-buffer/-/data-uri-to-buffer-2.0.2.tgz", {}, "sha512-ND9qDTLc6diwj+Xe5cdAgVTbLVdXbtxTJRXRhli8Mowuaan+0EJOtdqJ0QCHNSSPyoXGx9HX2/VMnKeC34AChA=="],
 
