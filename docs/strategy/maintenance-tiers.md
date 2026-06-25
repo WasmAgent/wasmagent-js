@@ -1,13 +1,13 @@
 # Maintenance Tiers — 33-Package Classification
 
-> Last refreshed: **2026-06-12**.
+> Last refreshed: **2026-06-25**.
 > Direction 4 of the 2026-06 optimization brief. The strategy memo
 > ([`2026-06-competitiveness.md`](2026-06-competitiveness.md)) made
 > the case in prose; this file makes it actionable.
 
 ## Why this file exists
 
-Single maintainer + 33 packages + an 80-kLOC flagship demo
+Single maintainer + 37 packages + an 80-kLOC flagship demo
 (`bscode`) is a load-bearing problem disguised as an inventory
 problem. Every package implies a release cadence, an issue queue,
 a CHANGELOG row, and a slot on the 1.0-freeze checklist
@@ -49,6 +49,9 @@ thesis, not by code size or test count.
 | `@wasmagent/mcp-server`                | ★    | The two-tool code-mode MCP shape. Direct competitor to Cloudflare Code Mode MCP.                      |
 | `@wasmagent/evals-runner`              | ★    | Public-leaderboard play (Direction 2). Statistics axis is the differentiator vs Mastra.               |
 | `@wasmagent/cli`                       | ★    | Single binary surface for `WasmAgent run / devtools / evals / model`. Discovery entry for newcomers.   |
+| `@wasmagent/compliance`                | ★    | Runtime compliance + `ComplianceEvalRecord` emitter. Core of the verifiable training loop.            |
+| `@wasmagent/mcp-firewall`              | ★    | Runtime MCP policy + consent ledger. Core of the governance / security narrative.                     |
+| `@wasmagent/capability-compiler`       | ◆    | Compile `CapabilityManifest` → runtime policy rules. Companion to mcp-firewall.                       |
 | `@wasmagent/aisdk`                     | ◆    | Vercel AI SDK adapter. Primary contributor pipeline; in flight upstream (issue #16063).               |
 | `@wasmagent/mastra-sandbox`            | ◆    | Mastra sandbox provider; in flight upstream (issue #17884).                                           |
 | `@wasmagent/claude-agent-sdk`          | ◆    | Anthropic Claude Agent SDK adapter. Tracks v0/v1 SDK type evolution.                                  |
@@ -74,8 +77,9 @@ thesis, not by code size or test count.
 | `@wasmagent/ag-ui`                     | ▽    | AG-UI protocol adapter. Same shape as a2a — re-tier when the upstream protocol stabilizes.            |
 | `@wasmagent/ui-cards`                  | ▽    | Card-block parser. Useful, but not on the embedded-runtime path.                                      |
 | `@wasmagent/ui-cards-react`            | ▽    | React renderer for ui-cards. Will move with `ui-cards` — re-tier if either gets external traction.    |
+| `@wasmagent/eliza-rollout-plugin`      | ▽    | elizaOS community plugin — emit rollout-wire/v1 records from elizaOS runs. Re-tier on community demand. |
 
-**Tier counts (2026-06-12):** 8 ★ · 15 ◆ · 10 ▽.
+**Tier counts (2026-06-25):** 10 ★ · 15 ◆ · 11 ▽.
 
 ## What "maintenance-mode" means in practice
 

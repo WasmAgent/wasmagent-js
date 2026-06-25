@@ -1,0 +1,32 @@
+{
+  "fixtures": [
+    {
+      "fixture": "fixtures/data-loop/dpo-training.v1.jsonl",
+      "sha256": "af8df77422ea7ae4e7eded683368a990d74de3638e546a798328d04426ca6ed4"
+    },
+    {
+      "fixture": "fixtures/data-loop/eval-items.v1.jsonl",
+      "sha256": "3e09b913dd4067d7b7f5ae6944fd18d9d08d3ce972c4ade8e1ef25b12cecd1a3"
+    },
+    {
+      "fixture": "fixtures/data-loop/manifest.json",
+      "sha256": "27563a49f1298e9de42202818f3a5f46bdb5c0dc589d78fd4161618b57d59bf3"
+    },
+    {
+      "fixture": "fixtures/data-loop/ppo-training.v1.jsonl",
+      "sha256": "446ad94fd6fc6a8674a9a9a184342e6e7580df8880c68ea000681849e5969522"
+    },
+    {
+      "fixture": "fixtures/data-loop/ranked-rollouts.v1.jsonl",
+      "sha256": "8989025ae09a9af07b4be429015d26e5e4cced96973ec40f269c532570d7c1b6"
+    },
+    {
+      "fixture": "fixtures/data-loop/rollout-branches.v1.jsonl",
+      "sha256": "8989025ae09a9af07b4be429015d26e5e4cced96973ec40f269c532570d7c1b6"
+    },
+    {
+      "fixture": "fixtures/data-loop/smoke.test.ts",
+      "sha256": "d526a1bf57d957e4ca94199bef72d520fcf74beceb40e00b84f329dbbe4f4a91"
+    }
+  ]
+}

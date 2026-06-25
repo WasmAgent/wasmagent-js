@@ -1,10 +1,8 @@
 name: Notify bscode of wasmagent-js changes
 
 # When wasmagent-js main branch updates, dispatch a repository_dispatch
-# event to bscode so it can run its CI against the latest wasmagent-js.
-# This is a lightweight alternative to publishing to npm — bscode uses
-# workspace:* protocol pointing at sibling wasmagent-js checkout, so it
-# automatically picks up changes when its own CI runs.
+# event to bscode so it can run its CI against the latest wasmagent-js
+# published packages from npm.
 
 on:
   push:
@@ -46,12 +44,9 @@ jobs:
   bump-bscode-deps:
     name: Auto-bump bscode dependency versions (placeholder)
     runs-on: ubuntu-latest
-    # This job will activate when wasmagent-js starts publishing to npm.
-    # For now (workspace:* protocol, no published versions yet), it's a
-    # no-op. When publishing begins:
-    #   1. Trigger on tag push or release event
-    #   2. Read new version from packages/*/package.json
-    #   3. Checkout bscode, run bump script, open PR
+    # Activates when a tag push or release event publishes new versions to npm.
+    # Steps: read new version from packages/*/package.json → checkout bscode
+    # → run bump script → open PR.
     if: false
     steps:
-      - run: echo "Placeholder — activate when wasmagent-js publishes to npm"
+      - run: echo "Placeholder — activate on release tag push"

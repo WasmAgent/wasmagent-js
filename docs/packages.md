@@ -2,6 +2,34 @@
 
 wasmagent-js is a 37-package monorepo published under the `@wasmagent/*` scope on npm.
 
+## Maintenance tiers
+
+| Tier | Meaning | Semver guarantee |
+|---|---|---|
+| **Stable** | Public API frozen; breaking changes require major version | ✅ Full semver |
+| **Beta** | API largely stable; minor breaking changes possible with a CHANGELOG entry | Semver best-effort |
+| **Alpha** | Schema may gain fields; runtime repair API evolving; schema contract frozen | Schema stable, API in flux |
+| **Experimental** | May change or be removed without notice | None |
+| **Internal** | Not published to npm | n/a |
+
+| Package | Tier |
+|---|---|
+| `@wasmagent/core` | Stable |
+| `@wasmagent/kernel-quickjs` · `@wasmagent/kernel-pyodide` · `@wasmagent/kernel-wasmtime` · `@wasmagent/kernel-remote` | Stable |
+| `@wasmagent/cli` | Stable |
+| `@wasmagent/aisdk` · `@wasmagent/mastra-sandbox` · `@wasmagent/mcp-server` | Beta |
+| `@wasmagent/model-anthropic` · `@wasmagent/model-openai` · `@wasmagent/model-local` | Beta |
+| `@wasmagent/model-doubao` · `@wasmagent/model-deepseek` · `@wasmagent/model-moonshot` · `@wasmagent/model-qwen` · `@wasmagent/model-zhipu` · `@wasmagent/model-minimax` | Beta (best-effort, tied to provider API stability) |
+| `@wasmagent/devtools` · `@wasmagent/evals-runner` | Beta |
+| `@wasmagent/react` · `@wasmagent/ui-cards` · `@wasmagent/ui-cards-react` | Beta |
+| `@wasmagent/otel-exporter` · `@wasmagent/agent-prompts` | Beta |
+| `@wasmagent/claude-agent-sdk` · `@wasmagent/openai-agents` · `@wasmagent/a2a` · `@wasmagent/ag-ui` | Beta |
+| `@wasmagent/tools-web` · `@wasmagent/tools-rag` · `@wasmagent/tools-browser` | Beta |
+| `@wasmagent/compliance` | Alpha (schema contract frozen; repair API evolving) |
+| `@wasmagent/mcp-firewall` · `@wasmagent/capability-compiler` | Alpha |
+| `@wasmagent/eliza-rollout-plugin` | Experimental |
+| `@wasmagent/cloudflare-worker` | Internal |
+
 ## Runtime
 
 | Package | What it is |

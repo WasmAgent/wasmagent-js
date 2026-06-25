@@ -2,8 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://wasmagent.dev/schemas/rollout-wire/v1",
   "title": "Rollout Wire Format",
-  "description": "Intermediate JSONL formats in the wasmagent → evomerge data pipeline. Contains three related record types at different pipeline stages. NOT the final training record format — see training-record.schema.json.",
-  "$defs": {
+  "description": "Intermediate JSONL formats in the wasmagent → evomerge data pipeline. Contains three related record types at different pipeline stages. NOT the final training record format — see training-record.schema.json. Validate individual records against the named entry schemas below: rollout-wire/v1/branch, rollout-wire/v1/dpo, rollout-wire/v1/ppo.",
+  "oneOf": [
+    { "$ref": "#/$defs/RolloutBranchRecord" },
+    { "$ref": "#/$defs/DpoRecord" },
+    { "$ref": "#/$defs/PpoRecord" }
+  ],  "$defs": {
     "RolloutBranchRecord": {
       "description": "Layer 1: RolloutBranchResult serialized to JSONL by RolloutForkRunner. Consumed by evomerge load_rollouts().",
       "type": "object",
