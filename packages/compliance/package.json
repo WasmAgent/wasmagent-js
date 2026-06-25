@@ -23,11 +23,11 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "workspace:*",
+    "@wasmagent/core": "^1.0.3",
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@wasmagent/model-local": "workspace:*",
+    "@wasmagent/model-local": "^1.0.3",
     "typescript": "^5.7.0"
   },
   "license": "Apache-2.0",

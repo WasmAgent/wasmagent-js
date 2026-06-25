@@ -73,3 +73,6 @@ export type {
   RunResult,
   SuiteAggregate,
 } from "./types.js";
+// Evidence gate — admit/reject EvidenceRows and produce claim-eligible report
+export type { GateDecision, GateResult } from "./evidenceGate.js";
+export { admitRows, gateReport } from "./evidenceGate.js";

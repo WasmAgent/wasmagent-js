@@ -140,6 +140,6 @@ export function evaluatePolicy(
     reasons,
     requiredCapabilities,
     matchedPolicyIds,
-    userConsentRef: validConsent?.toolSnapshotHash,
+    ...(validConsent ? { userConsentRef: validConsent.toolSnapshotHash } : {}),
   };
 }
