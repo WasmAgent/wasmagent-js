@@ -72,7 +72,9 @@ export function buildServerCard(opts: {
     ...(opts.displayName !== undefined ? { displayName: opts.displayName } : {}),
     toolManifestDigest: createHash("sha256").update(manifest).digest("hex"),
     registeredAt: new Date().toISOString(),
-    ...(opts.declaredCapabilities !== undefined ? { declaredCapabilities: opts.declaredCapabilities } : {}),
+    ...(opts.declaredCapabilities !== undefined
+      ? { declaredCapabilities: opts.declaredCapabilities }
+      : {}),
     operatorVerified: opts.operatorVerified ?? false,
   };
 }
