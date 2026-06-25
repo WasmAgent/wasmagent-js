@@ -82,7 +82,7 @@ pipeline. Lives at `packages/compliance/` (`@wasmagent/compliance`).
 
 **Runtime compliance source of truth.** `ComplianceEvalRecord` is the canonical
 cross-repo data contract consumed by evomerge for SFT/DPO/router training.
-See [ecosystem-map](https://github.com/WasmAgent/evomerge/blob/main/docs/ecosystem-map.md).
+See [ecosystem-map](https://github.com/telleroutlook/evomerge-framework/blob/main/docs/ecosystem-map.md).
 
 ### Package maturity
 

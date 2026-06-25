@@ -16,7 +16,7 @@ Three things, one loop:
 ```
 
 > This repository is the first layer of the WasmAgent Trustworthy Agent Training Loop.
-> See [evomerge/docs/ecosystem-map.md](https://github.com/WasmAgent/evomerge/blob/main/docs/ecosystem-map.md) for the full system diagram.
+> See [evomerge-framework/docs/ecosystem-map.md](https://github.com/telleroutlook/evomerge-framework/blob/main/docs/ecosystem-map.md) for the full system diagram.
 
 ## Core Runtime
 `@wasmagent/core` · `@wasmagent/kernel-quickjs` · `@wasmagent/kernel-pyodide` · `@wasmagent/kernel-remote`
@@ -66,7 +66,7 @@ WasmAgent is a portable, governable agent runtime for safe code execution, verif
 |---|---|
 | **wasmagent-js** (this repo) | Embedded Agent Runtime / WASM Kernel / policy / verifier / adapters |
 | [bscode](https://github.com/WasmAgent/bscode) | Cloudflare flagship demo and deploy template for safe coding agents |
-| [evomerge](https://github.com/WasmAgent/evomerge) | Public datafactory and eval-trust backend for rollout data |
+| [evomerge-framework](https://github.com/telleroutlook/evomerge-framework) | Public datafactory and eval-trust backend for rollout data |
 
 ```text
 Task → Safe Runtime → Verifiable Rollout → Trajectory Export → DPO/PPO Data → Better Models
@@ -188,7 +188,7 @@ Full provider reference and proxy/custom endpoint setup: [docs/guides/openai-com
 | Project | Role |
 |---|---|
 | [bscode](https://github.com/WasmAgent/bscode) | Flagship Cloudflare deploy template — wires every wasmagent-js capability into a real edge product |
-| [evomerge](https://github.com/WasmAgent/evomerge) | Training data factory — converts ranked rollouts into DPO/PPO datasets |
+| [evomerge-framework](https://github.com/telleroutlook/evomerge-framework) | Training data factory — converts ranked rollouts into DPO/PPO datasets |
 
 ---
 

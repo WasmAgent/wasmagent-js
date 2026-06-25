@@ -134,7 +134,7 @@ Requires `pip install trl>=0.9 peft transformers torch`.
 The full contract including producers, consumers, contamination policy, and
 end-to-end command chain is documented in:
 
-**`WasmAgent/evomerge` → `docs/data-loop-contract.md`**
+**`telleroutlook/evomerge-framework` → `docs/data-loop-contract.md`**
 
 That document is the binding contract. `GOVERNANCE.md` (this file) covers the
 schema SSOT and field naming conventions for the wasmagent-js side.
