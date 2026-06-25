@@ -55,6 +55,13 @@ and completes the go-to-market hardening pass.
 
 ## [Unreleased]
 
+### Added (2026-06-25 — Day 61-90)
+
+- **`@wasmagent/mcp-gateway` v0.1.0** (`packages/mcp-gateway/`) — Alpha standalone gateway package.
+  Re-exports all of `@wasmagent/mcp-firewall`; adds `GatewayMiddleware` + `composeMiddleware()` for
+  composable request/response middleware chains; `InMemoryAuditLogger` + `buildAuditEvent()` for
+  per-invocation audit trails with `denied()` / `stateChanging()` filters. 5 tests pass.
+
 ### Added (2026-06-25 — Day 31-60)
 
 - **AgentDojo-style prompt injection smoke tests** (`packages/mcp-firewall/src/prompt-injection-smoke.test.ts`).
