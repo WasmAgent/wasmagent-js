@@ -84,6 +84,13 @@ See the [kernel decision tree](/kernels/comparison) for picking the right one.
 |---|---|
 | [`@wasmagent/mcp-firewall`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-firewall) | Runtime firewall for MCP: descriptor snapshot, static vetting (injection/exfiltration/sampling), per-call policy, taint tracking, consent ledger |
 | [`@wasmagent/capability-compiler`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/capability-compiler) | Compile `CapabilityManifest` → MCP schema fragment, runtime policy rules, trace validator spec |
+| [`@wasmagent/compliance`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/compliance) | TaskSpec-driven verification + local repair for LLM runs; `ComplianceEvalRecord` emitter; IFEval benchmark harness |
+
+## Ecosystem integrations (beta)
+
+| Package | What it is |
+|---|---|
+| [`@wasmagent/eliza-rollout-plugin`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/eliza-rollout-plugin) | elizaOS community plugin — emit `rollout-wire/v1` training records from elizaOS agent runs |
 
 ## Internal (not on npm)
 
