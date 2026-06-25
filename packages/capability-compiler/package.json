@@ -1,0 +1,40 @@
+{
+  "name": "@wasmagent/capability-compiler",
+  "version": "0.1.0",
+  "description": "Compile CapabilityManifest to MCP tool schema, runtime policy rules, and trace validator specs",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@wasmagent/core": "^1.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "zod": "^3.22.0"
+  },
+  "engines": { "node": ">=20.0.0" },
+  "keywords": ["wasmagent", "capability", "manifest", "compiler", "mcp", "policy"],
+  "wasmagent": { "tier": "tier-2", "stability": "alpha" },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
+    "directory": "packages/capability-compiler"
+  },
+  "publishConfig": { "access": "public" },
+  "files": ["dist", "LICENSE", "README.md"],
+  "author": "wasmagent contributors"
+}
