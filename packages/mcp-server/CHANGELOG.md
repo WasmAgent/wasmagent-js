@@ -1,5 +1,11 @@
 # @agentkit-js/mcp-server
 
+## 1.1.1
+
+### Patch Changes
+
+- chore: add mcpName field for MCP Registry publication (io.github.telleroutlook/mcp-server)
+
 ## 1.1.0
 
 ### Patch Changes
