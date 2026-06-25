@@ -1,15 +1,20 @@
 import {
+  AEP_SPAN_NAMES,
   AlwaysOffSampler,
   AlwaysOnSampler,
   type Baggage,
   extractBaggage,
   FineGrainedMetrics,
   injectBaggage,
+  mcpRequestSpanAttrs,
+  policyCheckSpanAttrs,
   ProbabilisticSampler,
   parseBaggageHeader,
   RateLimitingSampler,
+  sandboxExecSpanAttrs,
   serializeBaggage,
   TraceRedactor,
+  verifierCheckSpanAttrs,
 } from "./index.js";
 
 describe("Sampler implementations", () => {
@@ -185,5 +190,60 @@ describe("FineGrainedMetrics", () => {
     m.recordStep({ stepIndex: 0, durationMs: 1, inputTokens: 1, outputTokens: 1, costUsd: 0 });
     m.reset();
     expect(m.snapshot().steps).toEqual([]);
+  });
+});
+
+describe("AEP span names", () => {
+  it("AEP_SPAN_NAMES constants match expected string values", () => {
+    expect(AEP_SPAN_NAMES.MCP_REQUEST).toBe("mcp.request");
+    expect(AEP_SPAN_NAMES.POLICY_CHECK).toBe("policy.check");
+    expect(AEP_SPAN_NAMES.SANDBOX_EXEC).toBe("sandbox.exec");
+    expect(AEP_SPAN_NAMES.VERIFIER_CHECK).toBe("verifier.check");
+    expect(AEP_SPAN_NAMES.REDACTION_APPLY).toBe("redaction.apply");
+    expect(AEP_SPAN_NAMES.DATASET_EXPORT).toBe("dataset.export");
+  });
+
+  it("mcpRequestSpanAttrs maps server_id and tool_name to correct keys", () => {
+    const attrs = mcpRequestSpanAttrs({ server_id: "s1", tool_name: "bash" });
+    expect(attrs["mcp.server_id"]).toBe("s1");
+    expect(attrs["mcp.tool_name"]).toBe("bash");
+    expect("mcp.request_id" in attrs).toBe(false);
+  });
+
+  it("mcpRequestSpanAttrs includes optional request_id when provided", () => {
+    const attrs = mcpRequestSpanAttrs({ server_id: "s2", tool_name: "read_file", request_id: "req-42" });
+    expect(attrs["mcp.request_id"]).toBe("req-42");
+  });
+
+  it("policyCheckSpanAttrs maps all four fields", () => {
+    const attrs = policyCheckSpanAttrs({ policy_id: "p1", subject: "agent:x", resource: "file:/tmp/foo", decision: "allow" });
+    expect(attrs["policy.policy_id"]).toBe("p1");
+    expect(attrs["policy.subject"]).toBe("agent:x");
+    expect(attrs["policy.resource"]).toBe("file:/tmp/foo");
+    expect(attrs["policy.decision"]).toBe("allow");
+  });
+
+  it("sandboxExecSpanAttrs includes kernel_type and optional fields", () => {
+    const minimal = sandboxExecSpanAttrs({ kernel_type: "quickjs" });
+    expect(minimal["sandbox.kernel_type"]).toBe("quickjs");
+    expect("sandbox.session_id" in minimal).toBe(false);
+    expect("sandbox.exit_code" in minimal).toBe(false);
+
+    const full = sandboxExecSpanAttrs({ kernel_type: "remote", session_id: "sess-1", exit_code: 0 });
+    expect(full["sandbox.session_id"]).toBe("sess-1");
+    expect(full["sandbox.exit_code"]).toBe("0");
+  });
+
+  it("verifierCheckSpanAttrs maps passed as a string and omits score when absent", () => {
+    const attrs = verifierCheckSpanAttrs({ verifier_id: "DeterministicVerifier", passed: true });
+    expect(attrs["verifier.verifier_id"]).toBe("DeterministicVerifier");
+    expect(attrs["verifier.passed"]).toBe("true");
+    expect("verifier.score" in attrs).toBe(false);
+  });
+
+  it("verifierCheckSpanAttrs includes score when provided", () => {
+    const attrs = verifierCheckSpanAttrs({ verifier_id: "ScalarLLMJudgeVerifier", passed: false, score: 0.42 });
+    expect(attrs["verifier.score"]).toBe("0.42");
+    expect(attrs["verifier.passed"]).toBe("false");
   });
 });

@@ -55,6 +55,28 @@ and completes the go-to-market hardening pass.
 
 ## [Unreleased]
 
+### Added (2026-06-25 — AEP P0 reform)
+
+- **`@wasmagent/aep` v0.1.0** (`packages/aep/`) — Agent Evidence Protocol.
+  `AEPRecord` / `ActionEvidence` / `CapabilityDecision` / `InputRef` / `OutputRef` /
+  `VerifierResult` types (Zod-validated). `AEPEmitter` collects runtime decisions and
+  builds signed-ready evidence bundles. `AEPEmitter.digestContent()` for SHA-256 artifact
+  hashing. This is the cross-repo public data contract consumed by trace-pipeline for
+  training export and audit. Schema version: `aep/v0.1`.
+
+- **`@wasmagent/mcp-firewall` v1.1.0 — Gateway layer** (`packages/mcp-firewall/src/gateway.ts`).
+  Extends the existing firewall with: `RequestIdentity` + `createRequestIdentity()` (principal
+  hash + session propagation for multi-agent chains); `ServerCard` + `buildServerCard()` (tool
+  manifest digest + operator-verified flag); `isStateChangingTool()` (regex heuristic for
+  mutation-risk classification); `MCPGateway` class that wraps vetting + policy + consent and
+  emits `GatewayDecision` with `evidenceRef` fields wired to AEP.
+
+- **`@wasmagent/otel-exporter` — AEP span names** (`packages/otel-exporter/src/aep-span-names.ts`).
+  `AEP_SPAN_NAMES` constants: `mcp.request`, `policy.check`, `sandbox.exec`, `verifier.check`,
+  `redaction.apply`, `dataset.export`. Four span-attribute helpers:
+  `mcpRequestSpanAttrs`, `policyCheckSpanAttrs`, `sandboxExecSpanAttrs`, `verifierCheckSpanAttrs`.
+  All exported from package root.
+
 ### Alpha / new packages
 
 - **`@wasmagent/mcp-firewall` v1.1.0** — Runtime firewall for MCP and tool-augmented agents.

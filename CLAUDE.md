@@ -75,6 +75,15 @@ bun test tests/integration/
 | `summarizeToolOutput` | `packages/core/src/agents/ToolOutputSummarizer.ts` |
 | `RemoteSandboxKernel.runCommand` | `packages/kernel-remote/src/RemoteSandboxKernel.ts` |
 
+## AEP + Gateway (2026-06-25 P0 reform)
+
+| Module | Location |
+|---|---|
+| `AEPRecord` / `AEPEmitter` | `packages/aep/src/` (`@wasmagent/aep`) |
+| `AEP_SPAN_NAMES` / span attr helpers | `packages/otel-exporter/src/aep-span-names.ts` |
+| `MCPGateway` / `RequestIdentity` / `ServerCard` | `packages/mcp-firewall/src/gateway.ts` |
+| `isStateChangingTool` / `GatewayDecision` | `packages/mcp-firewall/src/gateway.ts` |
+
 ## Compliance Engine (2026-06-24, Phase 0 + Phase 1 P0)
 
 WasmAgent Compliance Engine — TaskSpec → ConstraintIR → Verifier → RepairTrace

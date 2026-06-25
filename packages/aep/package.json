@@ -1,0 +1,31 @@
+{
+  "name": "@wasmagent/aep",
+  "version": "0.1.0",
+  "description": "Agent Evidence Protocol — runtime action evidence and run provenance types for WasmAgent",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": { "node": ">=20.0.0" },
+  "keywords": ["wasmagent", "aep", "evidence", "provenance", "compliance"],
+  "wasmagent": { "tier": "tier-1", "stability": "alpha" },
+  "license": "Apache-2.0"
+}

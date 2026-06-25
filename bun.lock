@@ -134,7 +134,7 @@
     },
     "examples/integration-smoke": {
       "name": "wasmagent-integration-smoke",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "dependencies": {
         "@wasmagent/aisdk": "workspace:*",
         "@wasmagent/cli": "workspace:*",
@@ -193,7 +193,7 @@
     },
     "examples/mcp-memory-server": {
       "name": "@wasmagent-example/mcp-memory-server",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/mcp-server": "workspace:*",
@@ -201,7 +201,7 @@
     },
     "examples/mcp-portal": {
       "name": "mcp-portal",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/mcp-server": "workspace:*",
@@ -274,6 +274,17 @@
         "@types/node": "^22.0.0",
         "typescript": "^5.7.0",
         "zod": "^3.22.0",
+      },
+    },
+    "packages/aep": {
+      "name": "@wasmagent/aep",
+      "version": "0.1.0",
+      "dependencies": {
+        "zod": "^3.23.0",
+      },
+      "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.7.0",
       },
     },
     "packages/ag-ui": {
@@ -567,7 +578,7 @@
     },
     "packages/mcp-server": {
       "name": "@wasmagent/mcp-server",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "bin": {
         "wasmagent-mcp-server": "./dist/stdio.js",
       },
@@ -1451,6 +1462,8 @@
     "@wasmagent-examples/openai-agents-quickstart": ["@wasmagent-examples/openai-agents-quickstart@workspace:examples/openai-agents-quickstart"],
 
     "@wasmagent/a2a": ["@wasmagent/a2a@workspace:packages/a2a"],
+
+    "@wasmagent/aep": ["@wasmagent/aep@workspace:packages/aep"],
 
     "@wasmagent/ag-ui": ["@wasmagent/ag-ui@workspace:packages/ag-ui"],
 
@@ -2799,6 +2812,8 @@
     "@wasmagent-examples/openai-agents-quickstart/@wasmagent/openai-agents": ["@wasmagent/openai-agents@1.0.0", "https://registry.npmmirror.com/@wasmagent/openai-agents/-/openai-agents-1.0.0.tgz", { "dependencies": { "@wasmagent/core": "^1.0.0" }, "peerDependencies": { "@openai/agents": ">=0.1.0", "zod": "^3.22.0 || ^4.0.0" }, "optionalPeers": ["@openai/agents"] }, "sha512-y54Jeq+L9FPvL/6tHzVWS5d8zyWU9Guqtzy80Uwtf2evFZcf4kiYcnOem4gps+pj68vGwTsqloLIGpurr0Gwqw=="],
 
     "@wasmagent/a2a/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
+
+    "@wasmagent/aep/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
     "@wasmagent/aisdk/ai": ["ai@4.3.19", "https://registry.npmmirror.com/ai/-/ai-4.3.19.tgz", { "dependencies": { "@ai-sdk/provider": "1.1.3", "@ai-sdk/provider-utils": "2.2.8", "@ai-sdk/react": "1.2.12", "@ai-sdk/ui-utils": "1.2.11", "@opentelemetry/api": "1.9.0", "jsondiffpatch": "0.6.0" }, "peerDependencies": { "react": "^18 || ^19 || ^19.0.0-rc", "zod": "^3.23.8" }, "optionalPeers": ["react"] }, "sha512-dIE2bfNpqHN3r6IINp9znguYdhIOheKW2LDigAMrgt/upT3B8eBGPSCblENvaZGoq+hxaN9fSMzjWpbqloP+7Q=="],
 

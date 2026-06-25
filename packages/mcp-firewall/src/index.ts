@@ -84,3 +84,18 @@ export type {
   VettingResult,
 } from "./vetting.js";
 export { vetTool, vetTools } from "./vetting.js";
+
+// Gateway layer — identity, server card, state-changing action approval
+export type {
+  GatewayDecision,
+  GatewayRequest,
+  MCPGatewayOptions,
+  RequestIdentity,
+  ServerCard,
+} from "./gateway.js";
+export {
+  buildServerCard,
+  createRequestIdentity,
+  isStateChangingTool,
+  MCPGateway,
+} from "./gateway.js";

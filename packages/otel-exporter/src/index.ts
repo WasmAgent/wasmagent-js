@@ -419,3 +419,13 @@ export {
 } from "./Sampler.js";
 export type { TraceRedactorOpts } from "./TraceRedactor.js";
 export { TraceRedactor } from "./TraceRedactor.js";
+
+// ── AEP span names + attribute helpers ────────────────────────────────────────
+export type { AEPSpanName } from "./aep-span-names.js";
+export {
+  AEP_SPAN_NAMES,
+  mcpRequestSpanAttrs,
+  policyCheckSpanAttrs,
+  sandboxExecSpanAttrs,
+  verifierCheckSpanAttrs,
+} from "./aep-span-names.js";
