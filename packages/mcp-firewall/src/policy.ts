@@ -6,7 +6,7 @@
  * to produce a binding `ToolInvocationDecision`.
  */
 
-import type { ToolRiskFinding, VettingResult } from "./vetting.js";
+import type { VettingResult } from "./vetting.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,7 +26,7 @@ export interface PolicyRule {
   evaluate(
     toolName: string,
     args: Record<string, unknown>,
-    vetting: VettingResult | null,
+    vetting: VettingResult | null
   ): InvocationDecision | undefined;
 }
 
@@ -81,9 +81,7 @@ const DECISION_ORDER: Record<InvocationDecision, number> = {
 
 function worstDecision(decisions: InvocationDecision[]): InvocationDecision {
   if (decisions.length === 0) return "allow";
-  return decisions.reduce((w, d) =>
-    DECISION_ORDER[d] > DECISION_ORDER[w] ? d : w,
-  );
+  return decisions.reduce((w, d) => (DECISION_ORDER[d] > DECISION_ORDER[w] ? d : w));
 }
 
 /**
@@ -100,7 +98,7 @@ export function evaluatePolicy(
   args: Record<string, unknown>,
   vetting: VettingResult | null,
   consent: ConsentRecord[],
-  rules: PolicyRule[] = DEFAULT_RULES,
+  rules: PolicyRule[] = DEFAULT_RULES
 ): ToolInvocationDecision {
   const decisions: InvocationDecision[] = [];
   const matchedPolicyIds: string[] = [];
@@ -118,9 +116,7 @@ export function evaluatePolicy(
 
   // Check consent records — if valid consent exists, downgrade ask_user → allow
   const validConsent = consent.find(
-    (c) =>
-      c.toolName === toolName &&
-      (!c.expiresAt || new Date(c.expiresAt) > new Date()),
+    (c) => c.toolName === toolName && (!c.expiresAt || new Date(c.expiresAt) > new Date())
   );
   if (validConsent) {
     const idx = decisions.indexOf("ask_user");
@@ -131,9 +127,9 @@ export function evaluatePolicy(
   const decision = worstDecision(decisions.length > 0 ? decisions : ["allow"]);
 
   // Required capabilities from vetting findings
-  const requiredCapabilities = vetting?.findings
-    .filter((f) => f.category === "exfiltration")
-    .map((f) => `read:${f.field}`) ?? [];
+  const requiredCapabilities =
+    vetting?.findings.filter((f) => f.category === "exfiltration").map((f) => `read:${f.field}`) ??
+    [];
 
   return {
     decision,

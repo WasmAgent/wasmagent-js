@@ -69,7 +69,7 @@ export function hashContent(content: string): string {
 export function snapshotTool(
   entry: McpToolEntry,
   serverId: string,
-  opts?: { trustTier?: TrustTier; nowMs?: number },
+  opts?: { trustTier?: TrustTier; nowMs?: number }
 ): ToolDescriptorSnapshot {
   return {
     serverId,
@@ -92,7 +92,7 @@ export function snapshotTool(
  */
 export function detectRugPull(
   prev: ToolDescriptorSnapshot,
-  curr: McpToolEntry,
+  curr: McpToolEntry
 ): ToolRugPullEvent | null {
   const descHash = hashContent(curr.description);
   if (descHash !== prev.descriptionHash) {

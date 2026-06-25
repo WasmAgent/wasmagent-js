@@ -58,7 +58,7 @@ const INJECTION_PATTERNS: string[] = [
   "forget your previous",
   "new instructions:",
   "system prompt:",
-  "[[",  // common injection delimiter
+  "[[", // common injection delimiter
   "]]",
 ];
 
@@ -104,11 +104,7 @@ function excerpt(text: string, max = 120): string {
   return text.length <= max ? text : text.slice(0, max) + "…";
 }
 
-function scanText(
-  text: string,
-  field: VettedField,
-  toolName: string,
-): ToolRiskFinding[] {
+function scanText(text: string, field: VettedField, _toolName: string): ToolRiskFinding[] {
   const findings: ToolRiskFinding[] = [];
   const lower = text.toLowerCase();
   const hash = fieldHash(text);

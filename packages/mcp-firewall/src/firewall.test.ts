@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { evaluatePolicy, DEFAULT_RULES } from "./policy.js";
+import { hashUiText, InMemoryConsentLedger } from "./consent.js";
+import { evaluatePolicy } from "./policy.js";
+import { renderTaintedObservation, taintObservation } from "./taint.js";
 import { vetTool } from "./vetting.js";
-import { taintObservation, renderTaintedObservation } from "./taint.js";
-import { InMemoryConsentLedger, hashUiText } from "./consent.js";
 
 // ── vetting ──────────────────────────────────────────────────────────────────
 
@@ -34,7 +34,7 @@ describe("vetTool — prompt injection", () => {
 describe("vetTool — exfiltration", () => {
   it("detects API key reference", () => {
     const r = vetTool({ ...SAFE_TOOL, description: "reads the api key from environment" });
-    const f = r.findings.find(f => f.category === "exfiltration");
+    const f = r.findings.find((f) => f.category === "exfiltration");
     expect(f).toBeDefined();
     expect(r.recommendation).toBe("ask");
   });
@@ -43,7 +43,7 @@ describe("vetTool — exfiltration", () => {
 describe("vetTool — invisible chars", () => {
   it("detects zero-width space", () => {
     const r = vetTool({ ...SAFE_TOOL, description: "safe​tool" });
-    const f = r.findings.find(f => f.category === "invisible_chars");
+    const f = r.findings.find((f) => f.category === "invisible_chars");
     expect(f).toBeDefined();
   });
 });
@@ -51,7 +51,7 @@ describe("vetTool — invisible chars", () => {
 describe("vetTool — sampling abuse", () => {
   it("detects 'call the llm'", () => {
     const r = vetTool({ ...SAFE_TOOL, description: "will call the llm on your behalf" });
-    const f = r.findings.find(f => f.category === "sampling_abuse");
+    const f = r.findings.find((f) => f.category === "sampling_abuse");
     expect(f).toBeDefined();
   });
 });
@@ -83,12 +83,14 @@ describe("evaluatePolicy", () => {
   it("downgrades ask_user to allow when valid consent exists", () => {
     const risky = { ...SAFE_TOOL, description: "reads the api key from environment" };
     const vetting = vetTool(risky);
-    const consent = [{
-      userIdHash: "user1",
-      toolName: "run_code",
-      toolSnapshotHash: "abc123",
-      expiresAt: new Date(Date.now() + 60_000).toISOString(),
-    }];
+    const consent = [
+      {
+        userIdHash: "user1",
+        toolName: "run_code",
+        toolSnapshotHash: "abc123",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      },
+    ];
     const d = evaluatePolicy("run_code", {}, vetting, consent);
     expect(d.decision).toBe("allow");
     expect(d.userConsentRef).toBe("abc123");

@@ -58,7 +58,11 @@ export function compileToPolicy(manifest: CapabilityManifest): CompiledPolicy {
       description: "Manifest allows no outbound network — deny any call with a host argument",
       check(call) {
         if (call.resolvedHost) {
-          return { ruleId: "network:deny-all", outcome: "deny", reason: `Network access denied by manifest (host: ${call.resolvedHost})` };
+          return {
+            ruleId: "network:deny-all",
+            outcome: "deny",
+            reason: `Network access denied by manifest (host: ${call.resolvedHost})`,
+          };
         }
         return { ruleId: "network:deny-all", outcome: "allow" };
       },
@@ -70,7 +74,11 @@ export function compileToPolicy(manifest: CapabilityManifest): CompiledPolicy {
       description: `Only allow connections to: ${manifest.allowedHosts.join(", ")}`,
       check(call) {
         if (call.resolvedHost && !allowed.has(call.resolvedHost)) {
-          return { ruleId: "network:allowlist", outcome: "deny", reason: `Host ${call.resolvedHost} not in manifest allowedHosts` };
+          return {
+            ruleId: "network:allowlist",
+            outcome: "deny",
+            reason: `Host ${call.resolvedHost} not in manifest allowedHosts`,
+          };
         }
         return { ruleId: "network:allowlist", outcome: "allow" };
       },
@@ -83,8 +91,15 @@ export function compileToPolicy(manifest: CapabilityManifest): CompiledPolicy {
       ruleId: "fs:deny-read",
       description: "Manifest allows no filesystem reads",
       check(call) {
-        if (call.resolvedPath && (call.toolName.includes("read") || call.toolName.includes("list"))) {
-          return { ruleId: "fs:deny-read", outcome: "deny", reason: `Filesystem read denied by manifest (path: ${call.resolvedPath})` };
+        if (
+          call.resolvedPath &&
+          (call.toolName.includes("read") || call.toolName.includes("list"))
+        ) {
+          return {
+            ruleId: "fs:deny-read",
+            outcome: "deny",
+            reason: `Filesystem read denied by manifest (path: ${call.resolvedPath})`,
+          };
         }
         return { ruleId: "fs:deny-read", outcome: "allow" };
       },
@@ -95,10 +110,17 @@ export function compileToPolicy(manifest: CapabilityManifest): CompiledPolicy {
       ruleId: "fs:read-allowlist",
       description: `Read allowed under: ${readPaths.join(", ")}`,
       check(call) {
-        if (call.resolvedPath && (call.toolName.includes("read") || call.toolName.includes("list"))) {
-          const allowed = readPaths.some((p) => call.resolvedPath!.startsWith(p));
+        if (
+          call.resolvedPath &&
+          (call.toolName.includes("read") || call.toolName.includes("list"))
+        ) {
+          const allowed = readPaths.some((p) => call.resolvedPath?.startsWith(p));
           if (!allowed) {
-            return { ruleId: "fs:read-allowlist", outcome: "deny", reason: `Path ${call.resolvedPath} outside allowedReadPaths` };
+            return {
+              ruleId: "fs:read-allowlist",
+              outcome: "deny",
+              reason: `Path ${call.resolvedPath} outside allowedReadPaths`,
+            };
           }
         }
         return { ruleId: "fs:read-allowlist", outcome: "allow" };
@@ -112,8 +134,17 @@ export function compileToPolicy(manifest: CapabilityManifest): CompiledPolicy {
       ruleId: "fs:deny-write",
       description: "Manifest allows no filesystem writes",
       check(call) {
-        if (call.resolvedPath && (call.toolName.includes("write") || call.toolName.includes("delete") || call.toolName.includes("patch"))) {
-          return { ruleId: "fs:deny-write", outcome: "deny", reason: `Filesystem write denied by manifest (path: ${call.resolvedPath})` };
+        if (
+          call.resolvedPath &&
+          (call.toolName.includes("write") ||
+            call.toolName.includes("delete") ||
+            call.toolName.includes("patch"))
+        ) {
+          return {
+            ruleId: "fs:deny-write",
+            outcome: "deny",
+            reason: `Filesystem write denied by manifest (path: ${call.resolvedPath})`,
+          };
         }
         return { ruleId: "fs:deny-write", outcome: "allow" };
       },
@@ -124,10 +155,19 @@ export function compileToPolicy(manifest: CapabilityManifest): CompiledPolicy {
       ruleId: "fs:write-allowlist",
       description: `Write allowed under: ${writePaths.join(", ")}`,
       check(call) {
-        if (call.resolvedPath && (call.toolName.includes("write") || call.toolName.includes("delete") || call.toolName.includes("patch"))) {
-          const allowed = writePaths.some((p) => call.resolvedPath!.startsWith(p));
+        if (
+          call.resolvedPath &&
+          (call.toolName.includes("write") ||
+            call.toolName.includes("delete") ||
+            call.toolName.includes("patch"))
+        ) {
+          const allowed = writePaths.some((p) => call.resolvedPath?.startsWith(p));
           if (!allowed) {
-            return { ruleId: "fs:write-allowlist", outcome: "deny", reason: `Path ${call.resolvedPath} outside allowedWritePaths` };
+            return {
+              ruleId: "fs:write-allowlist",
+              outcome: "deny",
+              reason: `Path ${call.resolvedPath} outside allowedWritePaths`,
+            };
           }
         }
         return { ruleId: "fs:write-allowlist", outcome: "allow" };
@@ -142,9 +182,14 @@ export function compileToPolicy(manifest: CapabilityManifest): CompiledPolicy {
       ruleId: "cpu:budget-warn",
       description: `Warn if estimated CPU > ${limit}ms`,
       check(call) {
-        const est = typeof call.args["_estimated_cpu_ms"] === "number" ? call.args["_estimated_cpu_ms"] : 0;
+        const est =
+          typeof call.args._estimated_cpu_ms === "number" ? call.args._estimated_cpu_ms : 0;
         if (est > limit) {
-          return { ruleId: "cpu:budget-warn", outcome: "warn", reason: `Estimated ${est}ms exceeds manifest cpuMs=${limit}` };
+          return {
+            ruleId: "cpu:budget-warn",
+            outcome: "warn",
+            reason: `Estimated ${est}ms exceeds manifest cpuMs=${limit}`,
+          };
         }
         return { ruleId: "cpu:budget-warn", outcome: "allow" };
       },
@@ -156,8 +201,12 @@ export function compileToPolicy(manifest: CapabilityManifest): CompiledPolicy {
     `read:${manifest.allowedReadPaths.length === 0 ? "none" : manifest.allowedReadPaths.join(",")}`,
     `write:${manifest.allowedWritePaths.length === 0 ? "none" : manifest.allowedWritePaths.join(",")}`,
     manifest.cpuMs !== undefined ? `cpu:${manifest.cpuMs}ms` : null,
-    manifest.memoryLimitBytes !== undefined ? `mem:${Math.round(manifest.memoryLimitBytes / 1048576)}mb` : null,
-  ].filter(Boolean).join(" | ");
+    manifest.memoryLimitBytes !== undefined
+      ? `mem:${Math.round(manifest.memoryLimitBytes / 1048576)}mb`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" | ");
 
   return {
     manifestSummary,

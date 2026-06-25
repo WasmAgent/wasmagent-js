@@ -29,7 +29,7 @@ export interface McpCapabilitySchema {
  */
 export function compileToMcpSchema(
   manifest: CapabilityManifest,
-  toolName = "tool",
+  toolName = "tool"
 ): McpCapabilitySchema {
   const properties: Record<string, unknown> = {};
   const required: string[] = [];
@@ -43,9 +43,9 @@ export function compileToMcpSchema(
   } else {
     tags.push("network:restricted");
     tableRows.push(
-      `| Network | Allowed | Hosts: ${manifest.allowedHosts.slice(0, 3).join(", ")}${manifest.allowedHosts.length > 3 ? ` +${manifest.allowedHosts.length - 3} more` : ""} |`,
+      `| Network | Allowed | Hosts: ${manifest.allowedHosts.slice(0, 3).join(", ")}${manifest.allowedHosts.length > 3 ? ` +${manifest.allowedHosts.length - 3} more` : ""} |`
     );
-    properties["_allowed_hosts"] = {
+    properties._allowed_hosts = {
       type: "array",
       items: { type: "string", enum: manifest.allowedHosts },
       description: `Outbound network restricted to: ${manifest.allowedHosts.join(", ")}`,
@@ -59,7 +59,7 @@ export function compileToMcpSchema(
   } else {
     tags.push("fs:restricted-read");
     tableRows.push(
-      `| Filesystem read | Allowed | Paths: ${manifest.allowedReadPaths.slice(0, 2).join(", ")}${manifest.allowedReadPaths.length > 2 ? "…" : ""} |`,
+      `| Filesystem read | Allowed | Paths: ${manifest.allowedReadPaths.slice(0, 2).join(", ")}${manifest.allowedReadPaths.length > 2 ? "…" : ""} |`
     );
   }
 
@@ -70,7 +70,7 @@ export function compileToMcpSchema(
   } else {
     tags.push("fs:restricted-write");
     tableRows.push(
-      `| Filesystem write | Allowed | Paths: ${manifest.allowedWritePaths.slice(0, 2).join(", ")}${manifest.allowedWritePaths.length > 2 ? "…" : ""} |`,
+      `| Filesystem write | Allowed | Paths: ${manifest.allowedWritePaths.slice(0, 2).join(", ")}${manifest.allowedWritePaths.length > 2 ? "…" : ""} |`
     );
   }
 

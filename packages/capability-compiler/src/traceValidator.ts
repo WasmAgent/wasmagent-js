@@ -75,7 +75,10 @@ export function compileToTraceValidator(manifest: CapabilityManifest): TraceVali
 
       // Write path check
       const pathArg = findPathArg(args);
-      if (pathArg && (toolLower.includes("write") || toolLower.includes("delete") || toolLower.includes("patch"))) {
+      if (
+        pathArg &&
+        (toolLower.includes("write") || toolLower.includes("delete") || toolLower.includes("patch"))
+      ) {
         if (manifest.allowedWritePaths.length === 0) {
           violations.push({
             ruleId: "fs:deny-write",

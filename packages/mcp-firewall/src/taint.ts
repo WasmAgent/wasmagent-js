@@ -54,7 +54,7 @@ function detectContentType(content: string): ContentType {
 export function taintObservation(
   sourceTool: string,
   rawContent: string,
-  opts?: { trust?: TrustLevel; sanitizers?: string[] },
+  opts?: { trust?: TrustLevel; sanitizers?: string[] }
 ): TaintedObservation {
   const hash = createHash("sha256").update(rawContent, "utf8").digest("hex").slice(0, 64);
   return {
@@ -71,10 +71,7 @@ export function taintObservation(
  * Render a `TaintedObservation` as a tagged string for prompt assembly.
  * The tag boundary prevents the model from treating tool output as instructions.
  */
-export function renderTaintedObservation(
-  obs: TaintedObservation,
-  rawContent: string,
-): string {
+export function renderTaintedObservation(obs: TaintedObservation, rawContent: string): string {
   return [
     `<untrusted_tool_output tool="${obs.sourceTool}" trust="${obs.trust}" content_type="${obs.contentType}">`,
     rawContent,

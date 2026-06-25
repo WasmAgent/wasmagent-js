@@ -7,22 +7,19 @@
 
 import { createHash } from "node:crypto";
 
-export type ConsentAction =
-  | "approve_tool"
-  | "approve_call"
-  | "approve_sampling";
+export type ConsentAction = "approve_tool" | "approve_call" | "approve_sampling";
 
 export interface ConsentEvent {
   userIdHash: string;
   action: ConsentAction;
   toolName: string;
   scope: string[];
-  expiresAt?: string;      // ISO-8601
+  expiresAt?: string; // ISO-8601
   /** Hash of the ToolDescriptorSnapshot at consent time — ties consent to exact descriptor. */
   toolSnapshotHash: string;
   /** Hash of the UI text shown to the user when they approved. */
   uiTextHash: string;
-  recordedAt: string;      // ISO-8601
+  recordedAt: string; // ISO-8601
 }
 
 export interface ConsentLedger {
@@ -51,7 +48,7 @@ export class InMemoryConsentLedger implements ConsentLedger {
       (e) =>
         e.toolName === toolName &&
         e.toolSnapshotHash === toolSnapshotHash &&
-        (!e.expiresAt || new Date(e.expiresAt) > now),
+        (!e.expiresAt || new Date(e.expiresAt) > now)
     );
   }
 

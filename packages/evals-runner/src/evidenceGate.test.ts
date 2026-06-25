@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { admitRows, gateReport } from "./evidenceGate.js";
 import type { EvidenceAdmissionContract, EvidenceRow } from "./evidenceGate.js";
+import { admitRows, gateReport } from "./evidenceGate.js";
 
 const ALWAYS_PASS_CONTRACT: EvidenceAdmissionContract = {
   workloadId: "test-workload",
@@ -29,11 +29,7 @@ function row(id: string, type: EvidenceRow["type"], admittedAt?: number): Eviden
 
 describe("admitRows — no rules", () => {
   it("counts admitted rows correctly", () => {
-    const rows = [
-      row("r1", "admitted", 1000),
-      row("r2", "admitted", 2000),
-      row("r3", "smoke"),
-    ];
+    const rows = [row("r1", "admitted", 1000), row("r2", "admitted", 2000), row("r3", "smoke")];
     const result = admitRows(ALWAYS_PASS_CONTRACT, rows);
     expect(result.admitted).toBe(2);
     expect(result.smoke).toBe(1);
@@ -54,8 +50,8 @@ describe("admitRows — no rules", () => {
 describe("admitRows — with deny rule", () => {
   it("downgrades admitted row that fails rule", () => {
     const rows = [
-      row("r1", "admitted"),        // no admittedAt — should fail rule
-      row("r2", "admitted", 1000),  // has admittedAt — should pass
+      row("r1", "admitted"), // no admittedAt — should fail rule
+      row("r2", "admitted", 1000), // has admittedAt — should pass
     ];
     const result = admitRows(DENY_RULE_CONTRACT, rows);
     expect(result.admitted).toBe(1);

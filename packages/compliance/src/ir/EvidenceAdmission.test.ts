@@ -39,11 +39,13 @@ describe("EvidenceRowSchema", () => {
   });
 
   it("rejects row with invalid type", () => {
-    expect(() => EvidenceRowSchema.parse({
-      rowId: "r3",
-      type: "INVALID",
-      evidenceRef: "x",
-    })).toThrow();
+    expect(() =>
+      EvidenceRowSchema.parse({
+        rowId: "r3",
+        type: "INVALID",
+        evidenceRef: "x",
+      })
+    ).toThrow();
   });
 });
 
@@ -54,9 +56,7 @@ describe("EvidenceAdmissionContractSchema", () => {
     runtimeSetting: "sandbox",
     schemaVersion: "evidence-admission/v1",
     replayPolicy: "deterministic",
-    admissionRules: [
-      { ruleId: "build-must-pass", description: "Build exit code must be 0" },
-    ],
+    admissionRules: [{ ruleId: "build-must-pass", description: "Build exit code must be 0" }],
     redactionPolicy: "none",
   };
 
@@ -67,8 +67,11 @@ describe("EvidenceAdmissionContractSchema", () => {
   });
 
   it("rejects invalid runtimeSetting", () => {
-    expect(() => EvidenceAdmissionContractSchema.parse({
-      ...valid, runtimeSetting: "cloud",
-    })).toThrow();
+    expect(() =>
+      EvidenceAdmissionContractSchema.parse({
+        ...valid,
+        runtimeSetting: "cloud",
+      })
+    ).toThrow();
   });
 });

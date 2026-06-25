@@ -16,25 +16,6 @@
  * already created so they can be added without restructuring exports.
  */
 
-// IR
-export type {
-  AdmissionEvaluator,
-  AdmissionRule,
-  EvidenceAdmissionContract,
-  EvidenceRow,
-  EvidenceRowType,
-  RedactionPolicy,
-  ReplayPolicy,
-  RuntimeSetting,
-} from "./ir/EvidenceAdmission.js";
-export {
-  EvidenceAdmissionContractSchema,
-  EvidenceRowSchema,
-  EvidenceRowTypeSchema,
-  RedactionPolicySchema,
-  ReplayPolicySchema,
-  RuntimeSettingSchema,
-} from "./ir/EvidenceAdmission.js";
 export type {
   ConstraintCategory,
   ConstraintIR,
@@ -61,6 +42,25 @@ export {
   TaskSpecTraceConfigSchema,
   ToolPolicySchema,
 } from "./ir/ConstraintIR.js";
+// IR
+export type {
+  AdmissionEvaluator,
+  AdmissionRule,
+  EvidenceAdmissionContract,
+  EvidenceRow,
+  EvidenceRowType,
+  RedactionPolicy,
+  ReplayPolicy,
+  RuntimeSetting,
+} from "./ir/EvidenceAdmission.js";
+export {
+  EvidenceAdmissionContractSchema,
+  EvidenceRowSchema,
+  EvidenceRowTypeSchema,
+  RedactionPolicySchema,
+  ReplayPolicySchema,
+  RuntimeSettingSchema,
+} from "./ir/EvidenceAdmission.js";
 // Repair layer
 export type {
   FakeRepairLLMRule,

@@ -103,9 +103,11 @@ export const EvidenceAdmissionContractSchema = z.object({
   runtimeSetting: RuntimeSettingSchema,
   schemaVersion: z.string().min(1),
   replayPolicy: ReplayPolicySchema,
-  admissionRules: z.array(z.object({
-    ruleId: z.string().min(1),
-    description: z.string(),
-  })),
+  admissionRules: z.array(
+    z.object({
+      ruleId: z.string().min(1),
+      description: z.string(),
+    })
+  ),
   redactionPolicy: RedactionPolicySchema,
 });

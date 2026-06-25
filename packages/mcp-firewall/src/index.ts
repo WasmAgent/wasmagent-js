@@ -45,17 +45,13 @@ export type {
   TrustTier,
 } from "@wasmagent/mcp-server";
 export { detectRugPull, hashContent, snapshotTool } from "@wasmagent/mcp-server";
-
-// Static vetting
+// Consent ledger
 export type {
-  RiskCategory,
-  RiskRecommendation,
-  RiskSeverity,
-  ToolRiskFinding,
-  VettedField,
-  VettingResult,
-} from "./vetting.js";
-export { vetTool, vetTools } from "./vetting.js";
+  ConsentAction,
+  ConsentEvent,
+  ConsentLedger,
+} from "./consent.js";
+export { hashUiText, InMemoryConsentLedger } from "./consent.js";
 
 // Per-call policy
 export type {
@@ -78,11 +74,13 @@ export type {
   TrustLevel,
 } from "./taint.js";
 export { renderTaintedObservation, taintObservation } from "./taint.js";
-
-// Consent ledger
+// Static vetting
 export type {
-  ConsentAction,
-  ConsentEvent,
-  ConsentLedger,
-} from "./consent.js";
-export { hashUiText, InMemoryConsentLedger } from "./consent.js";
+  RiskCategory,
+  RiskRecommendation,
+  RiskSeverity,
+  ToolRiskFinding,
+  VettedField,
+  VettingResult,
+} from "./vetting.js";
+export { vetTool, vetTools } from "./vetting.js";
