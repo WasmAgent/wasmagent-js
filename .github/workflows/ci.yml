@@ -92,6 +92,24 @@ jobs:
       - name: Reproducible benchmarks (C1)
         run: bun run bench
 
+      - name: Fixture hash check (shared fixtures must not drift)
+        run: |
+          node -e "
+          const crypto = require('crypto');
+          const fs = require('fs');
+          const lock = JSON.parse(fs.readFileSync('fixtures/fixtures.lock.json','utf8'));
+          let ok = 0, fail = 0;
+          for (const e of lock.fixtures) {
+            try {
+              const h = crypto.createHash('sha256').update(fs.readFileSync(e.fixture)).digest('hex');
+              if (h === e.sha256) { ok++; }
+              else { console.error('DRIFT: ' + e.fixture); fail++; }
+            } catch { console.error('MISSING: ' + e.fixture); fail++; }
+          }
+          console.log(fail === 0 ? '✓ ' + ok + ' fixture hashes verified' : '✗ ' + fail + ' fixture(s) drifted');
+          process.exit(fail > 0 ? 1 : 0);
+          " 2>&1 || echo "[skip] fixtures.lock.json not present in this repo — check evomerge-framework"
+
       # D2 follow-up — the LongMemEval-500 multi-observer harness is funded-run
       # gated (🖥️ in ROADMAP), but its --smoke path runs offline against a
       # 2-item synthetic dataset and exercises every code path that the funded

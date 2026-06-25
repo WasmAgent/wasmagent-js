@@ -1,6 +1,9 @@
 # @wasmagent/compliance
 
 > ⚠️ **Status: experimental (`0.1.0-alpha`).** APIs may change without notice.
+>
+> This package is the **runtime compliance source of truth** for the WasmAgent ecosystem.
+> See the [ecosystem map](https://github.com/telleroutlook/evomerge-framework/blob/main/docs/ecosystem-map.md) for how it fits into the Trustworthy Agent Training Loop.
 
 A lightweight compliance engine for validating, repairing, and exporting evidence from LLM
 agent runs.
