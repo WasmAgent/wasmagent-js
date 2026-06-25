@@ -1,6 +1,10 @@
 # Upstream PR drafts
 
-> Last refreshed: **2026-06-23**.
+> Last refreshed: **2026-06-25**.
+>
+> **Canonical status table**: [`docs/distribution/upstream-prs.md`](../../distribution/upstream-prs.md)
+> — single source of truth for filed/open/closed/merged status.
+> This directory holds per-submission drafts and strategic analysis only.
 
 This directory holds drafts and filed records for upstream contributions.
 
@@ -15,9 +19,9 @@ docs is worth more than an in-repo adapter.
 |-------|-------------|--------|
 | [`awesome-mcp-servers-frameworks-entry.md`](awesome-mcp-servers-frameworks-entry.md) | `punkpeye/awesome-mcp-servers` | ✅ **MERGED** PR [#7910](https://github.com/punkpeye/awesome-mcp-servers/pull/7910) |
 | [`vercel-ai-sdk-mcp-example.md`](vercel-ai-sdk-mcp-example.md) | `vercel/ai` | 🟡 **OPEN** PR [#16318](https://github.com/vercel/ai/pull/16318) — filed 2026-06-23, bot review passed, awaiting maintainer |
-| [`cloudflare-codemode-byo-executor.md`](cloudflare-codemode-byo-executor.md) | `cloudflare/agents` | 🔴 **CLOSED** issue [#1771](https://github.com/cloudflare/agents/issues/1771) — no maintainer action; re-pitch after vercel/ai lands |
-| [`mastra-mcp-overview-link.md`](mastra-mcp-overview-link.md) | `mastra-ai/mastra` | 🔴 **CLOSED** issue [#17884](https://github.com/mastra-ai/mastra/issues/17884) — "no third-party additions at the moment"; re-pitch after benchmark lands |
-| [`elizaos-sandboxed-action.md`](elizaos-sandboxed-action.md) | `elizaOS/eliza` | 🔴 **CLOSED** issue [#9087](https://github.com/elizaOS/eliza/issues/9087) — sandbox rejected; revised issue [#9235](https://github.com/elizaOS/eliza/issues/9235) filed 2026-06-24 (capability governance) |
+| [`cloudflare-codemode-byo-executor.md`](cloudflare-codemode-byo-executor.md) | `cloudflare/agents` | 🔴 **CLOSED** issue [#1771](https://github.com/cloudflare/agents/issues/1771) — no maintainer action; **do not re-open**; re-pitch after vercel/ai #16318 merges |
+| [`mastra-mcp-overview-link.md`](mastra-mcp-overview-link.md) | `mastra-ai/mastra` | 🔴 **CLOSED** issue [#17884](https://github.com/mastra-ai/mastra/issues/17884) — "no third-party additions at the moment"; **do not re-open**; re-pitch after benchmark lands |
+| [`elizaos-sandboxed-action.md`](elizaos-sandboxed-action.md) | `elizaOS/eliza` | 🟡 **OPEN** PR [#9244](https://github.com/elizaOS/eliza/pull/9244) — registry PR under review; CapabilityManifest merged into `@elizaos/core` via #9235 |
 | [`langchainjs-sandboxed-tool-example.md`](langchainjs-sandboxed-tool-example.md) | `langchain-ai/langchainjs` | 🟡 **OPEN** PR [#11104](https://github.com/langchain-ai/langchainjs/pull/11104) — filed 2026-06-24 |
 | *(new)* | `openai/openai-agents-js` | 🟡 **OPEN** issue [#1424](https://github.com/openai/openai-agents-js/issues/1424) — WASM sandbox backend, filed 2026-06-24 |
 
