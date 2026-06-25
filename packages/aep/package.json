@@ -36,8 +36,9 @@
   ],
   "wasmagent": {
     "tier": "tier-1",
-    "stability": "alpha"
+    "stability": "experimental"
   },
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/aep#readme",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
