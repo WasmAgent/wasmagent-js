@@ -16,7 +16,7 @@ Three things, one loop:
 ```
 
 > This repository is the first layer of the WasmAgent Trustworthy Agent Training Loop.
-> See [evomerge-framework/docs/ecosystem-map.md](https://github.com/telleroutlook/evomerge-framework/blob/main/docs/ecosystem-map.md) for the full system diagram.
+> See [evomerge/docs/ecosystem-map.md](https://github.com/WasmAgent/evomerge/blob/main/docs/ecosystem-map.md) for the full system diagram.
 
 ## Core Runtime
 `@wasmagent/core` · `@wasmagent/kernel-quickjs` · `@wasmagent/kernel-pyodide` · `@wasmagent/kernel-remote`

@@ -1,7 +1,7 @@
 # IFEval Compliance Sweep — Results
 
-- Model: `/Users/I041705/github/evomerge-framework/checkpoints/sft-v1/sft_compliance_q4km.gguf`
-- Samples: 50 (from `/Users/I041705/github/wasmagent-js/packages/compliance/benchmarks/ifeval/samples.jsonl`)
+- Model: `evomerge/checkpoints/sft-v1/sft_compliance_q4km.gguf`
+- Samples: 50 (from `packages/compliance/benchmarks/ifeval/samples.jsonl`)
 - Modes: direct, full_pcl
 - Wall-clock: 363.0s
 

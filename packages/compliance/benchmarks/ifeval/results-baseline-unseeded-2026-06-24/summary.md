@@ -1,7 +1,7 @@
 # IFEval Compliance Sweep — Results
 
 - Model: `qwen2.5-1.5b`
-- Samples: 50 (from `/Users/I041705/github/wasmagent-js/packages/compliance/benchmarks/ifeval/samples.jsonl`)
+- Samples: 50 (from `packages/compliance/benchmarks/ifeval/samples.jsonl`)
 - Modes: direct, prompt_retry, full_pcl
 - Wall-clock: 45.5s
 

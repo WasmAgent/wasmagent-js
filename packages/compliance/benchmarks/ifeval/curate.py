@@ -18,8 +18,11 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
 SRC = Path(
-    "/Users/I041705/.cache/huggingface/hub/datasets--google--IFEval/"
-    "snapshots/966cd89545d6b6acfd7638bc708b98261ca58e84/ifeval_input_data.jsonl"
+    os.environ.get(
+        "IFEVAL_SRC",
+        str(Path.home() / ".cache/huggingface/hub/datasets--google--IFEval/"
+            "snapshots/966cd89545d6b6acfd7638bc708b98261ca58e84/ifeval_input_data.jsonl")
+    )
 )
 OUT = REPO / "packages/compliance/benchmarks/ifeval/samples.jsonl"
 README = REPO / "packages/compliance/benchmarks/ifeval/README.md"
