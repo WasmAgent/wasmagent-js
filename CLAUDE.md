@@ -80,15 +80,35 @@ bun test tests/integration/
 WasmAgent Compliance Engine — TaskSpec → ConstraintIR → Verifier → RepairTrace
 pipeline. Lives at `packages/compliance/` (`@wasmagent/compliance`).
 
+**Runtime compliance source of truth.** `ComplianceEvalRecord` is the canonical
+cross-repo data contract consumed by evomerge-framework for SFT/DPO/router training.
+See [ecosystem-map](https://github.com/telleroutlook/evomerge-framework/blob/main/docs/ecosystem-map.md).
+
+### Package maturity
+
+| Package | Maturity | Notes |
+|---|---|---|
+| `@wasmagent/core` | **Stable** | Public API; semver guaranteed |
+| `@wasmagent/kernel-quickjs` | **Stable** | |
+| `@wasmagent/kernel-remote` | **Stable** | |
+| `@wasmagent/aisdk` / `@wasmagent/mastra-sandbox` | **Growth** | API stable, may add fields |
+| `@wasmagent/compliance` | **Alpha** | Schema versioned; may add fields without breaking |
+| `@wasmagent/evals-runner` | **Growth** | |
+| `@wasmagent/devtools` | **Growth** | |
+
+### Compliance modules
+
 | Module | Location |
 |---|---|
 | `ConstraintIR` / `TaskSpec` types | `packages/compliance/src/ir/ConstraintIR.ts` |
 | `ComplianceVerifier` | `packages/compliance/src/verifier/ComplianceVerifier.ts` |
 | `IFEvalVerifier` (15 instruction classes) | `packages/compliance/src/verifier/ifeval/IFEvalVerifier.ts` |
+| `DeterministicVerifier` (7 built-in checks) | `packages/core/src/agents/verifiers/DeterministicVerifier.ts` |
+| `LLMJudgeVerifier` (adversarial binary) | `packages/core/src/agents/verifiers/LLMJudgeVerifier.ts` |
 | `RepairPlanner` (escalation + rollback) | `packages/compliance/src/repair/RepairPlanner.ts` |
 | `PatchStrategy` / `InsertSectionStrategy` / `RegenerateRegionStrategy` | `packages/compliance/src/repair/strategies/` |
-| `ComplianceRun` (3 baseline modes) | `packages/compliance/src/runner/ComplianceRun.ts` |
-| IFEval benchmark CLI | `packages/compliance/benchmarks/ifeval/run.ts` |
+| `ComplianceRun` (direct / prompt_retry / full_pcl) | `packages/compliance/src/runner/ComplianceRun.ts` |
+| IFEval benchmark CLI (9 seeds complete) | `packages/compliance/benchmarks/ifeval/run.ts` |
 | Multi-seed aggregator | `packages/compliance/benchmarks/ifeval/compare-seeds.ts` |
 | Result data (1050 records) | `packages/compliance/benchmarks/ifeval/results*/` |
 | Phase reports | `packages/compliance/benchmarks/ifeval/results-multi-seed*/*.md` |
