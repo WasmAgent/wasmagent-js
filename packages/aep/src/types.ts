@@ -85,10 +85,12 @@ export const AEPRecordSchema = z.object({
   verifier_results: z.array(VerifierResultSchema).default([]),
   budget_ledger: BudgetLedgerSchema.optional(),
   created_at_ms: z.number(),
-  signature: z.object({
-    alg: z.string(),
-    key_id: z.string(),
-    sig: z.string(),
-  }).optional(),
+  signature: z
+    .object({
+      alg: z.string(),
+      key_id: z.string(),
+      sig: z.string(),
+    })
+    .optional(),
 });
 export type AEPRecord = z.infer<typeof AEPRecordSchema>;

@@ -7,7 +7,8 @@
     { "$ref": "#/$defs/RolloutBranchRecord" },
     { "$ref": "#/$defs/DpoRecord" },
     { "$ref": "#/$defs/PpoRecord" }
-  ],  "$defs": {
+  ],
+  "$defs": {
     "RolloutBranchRecord": {
       "description": "Layer 1: RolloutBranchResult serialized to JSONL by RolloutForkRunner. Consumed by evomerge load_rollouts().",
       "type": "object",

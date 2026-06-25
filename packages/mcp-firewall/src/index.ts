@@ -52,7 +52,20 @@ export type {
   ConsentLedger,
 } from "./consent.js";
 export { hashUiText, InMemoryConsentLedger } from "./consent.js";
-
+// Gateway layer — identity, server card, state-changing action approval
+export type {
+  GatewayDecision,
+  GatewayRequest,
+  MCPGatewayOptions,
+  RequestIdentity,
+  ServerCard,
+} from "./gateway.js";
+export {
+  buildServerCard,
+  createRequestIdentity,
+  isStateChangingTool,
+  MCPGateway,
+} from "./gateway.js";
 // Per-call policy
 export type {
   ConsentRecord,
@@ -66,7 +79,6 @@ export {
   DENY_BLOCKED_RULE,
   evaluatePolicy,
 } from "./policy.js";
-
 // Taint tracking
 export type {
   ContentType,
@@ -84,18 +96,3 @@ export type {
   VettingResult,
 } from "./vetting.js";
 export { vetTool, vetTools } from "./vetting.js";
-
-// Gateway layer — identity, server card, state-changing action approval
-export type {
-  GatewayDecision,
-  GatewayRequest,
-  MCPGatewayOptions,
-  RequestIdentity,
-  ServerCard,
-} from "./gateway.js";
-export {
-  buildServerCard,
-  createRequestIdentity,
-  isStateChangingTool,
-  MCPGateway,
-} from "./gateway.js";

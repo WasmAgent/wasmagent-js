@@ -401,6 +401,18 @@ function attributesToOtlp(attrs: SpanAttributes): OtlpKeyValue[] {
 
 // ── M5.3 — sampler / redactor / baggage / fine-grained metrics ──
 
+// ── AEP span names + attribute helpers ────────────────────────────────────────
+export type { AEPSpanName } from "./aep-span-names.js";
+export {
+  AEP_SPAN_NAMES,
+  agentRunSpanAttrs,
+  llmGenerateSpanAttrs,
+  mcpRequestSpanAttrs,
+  policyCheckSpanAttrs,
+  sandboxExecSpanAttrs,
+  toolCallSpanAttrs,
+  verifierCheckSpanAttrs,
+} from "./aep-span-names.js";
 export type { Baggage } from "./BaggagePropagator.js";
 export {
   extractBaggage,
@@ -419,16 +431,3 @@ export {
 } from "./Sampler.js";
 export type { TraceRedactorOpts } from "./TraceRedactor.js";
 export { TraceRedactor } from "./TraceRedactor.js";
-
-// ── AEP span names + attribute helpers ────────────────────────────────────────
-export type { AEPSpanName } from "./aep-span-names.js";
-export {
-  AEP_SPAN_NAMES,
-  agentRunSpanAttrs,
-  llmGenerateSpanAttrs,
-  mcpRequestSpanAttrs,
-  policyCheckSpanAttrs,
-  sandboxExecSpanAttrs,
-  toolCallSpanAttrs,
-  verifierCheckSpanAttrs,
-} from "./aep-span-names.js";

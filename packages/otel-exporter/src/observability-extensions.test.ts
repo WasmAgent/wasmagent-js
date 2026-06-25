@@ -1,22 +1,22 @@
 import {
   AEP_SPAN_NAMES,
-  agentRunSpanAttrs,
   AlwaysOffSampler,
   AlwaysOnSampler,
+  agentRunSpanAttrs,
   type Baggage,
   extractBaggage,
   FineGrainedMetrics,
   injectBaggage,
   llmGenerateSpanAttrs,
   mcpRequestSpanAttrs,
-  policyCheckSpanAttrs,
   ProbabilisticSampler,
   parseBaggageHeader,
+  policyCheckSpanAttrs,
   RateLimitingSampler,
   sandboxExecSpanAttrs,
   serializeBaggage,
-  toolCallSpanAttrs,
   TraceRedactor,
+  toolCallSpanAttrs,
   verifierCheckSpanAttrs,
 } from "./index.js";
 
@@ -214,12 +214,21 @@ describe("AEP span names", () => {
   });
 
   it("mcpRequestSpanAttrs includes optional request_id when provided", () => {
-    const attrs = mcpRequestSpanAttrs({ server_id: "s2", tool_name: "read_file", request_id: "req-42" });
+    const attrs = mcpRequestSpanAttrs({
+      server_id: "s2",
+      tool_name: "read_file",
+      request_id: "req-42",
+    });
     expect(attrs["mcp.request_id"]).toBe("req-42");
   });
 
   it("policyCheckSpanAttrs maps all four fields", () => {
-    const attrs = policyCheckSpanAttrs({ policy_id: "p1", subject: "agent:x", resource: "file:/tmp/foo", decision: "allow" });
+    const attrs = policyCheckSpanAttrs({
+      policy_id: "p1",
+      subject: "agent:x",
+      resource: "file:/tmp/foo",
+      decision: "allow",
+    });
     expect(attrs["policy.policy_id"]).toBe("p1");
     expect(attrs["policy.subject"]).toBe("agent:x");
     expect(attrs["policy.resource"]).toBe("file:/tmp/foo");
@@ -232,7 +241,11 @@ describe("AEP span names", () => {
     expect("sandbox.session_id" in minimal).toBe(false);
     expect("sandbox.exit_code" in minimal).toBe(false);
 
-    const full = sandboxExecSpanAttrs({ kernel_type: "remote", session_id: "sess-1", exit_code: 0 });
+    const full = sandboxExecSpanAttrs({
+      kernel_type: "remote",
+      session_id: "sess-1",
+      exit_code: 0,
+    });
     expect(full["sandbox.session_id"]).toBe("sess-1");
     expect(full["sandbox.exit_code"]).toBe("0");
   });
@@ -245,7 +258,11 @@ describe("AEP span names", () => {
   });
 
   it("verifierCheckSpanAttrs includes score when provided", () => {
-    const attrs = verifierCheckSpanAttrs({ verifier_id: "ScalarLLMJudgeVerifier", passed: false, score: 0.42 });
+    const attrs = verifierCheckSpanAttrs({
+      verifier_id: "ScalarLLMJudgeVerifier",
+      passed: false,
+      score: 0.42,
+    });
     expect(attrs["verifier.score"]).toBe("0.42");
     expect(attrs["verifier.passed"]).toBe("false");
   });
@@ -272,7 +289,11 @@ describe("AEP span names — agent/llm/tool", () => {
   });
 
   it("agentRunSpanAttrs includes optional run_id and model_id when provided", () => {
-    const attrs = agentRunSpanAttrs({ agent_name: "MyAgent", run_id: "run-1", model_id: "claude-3" });
+    const attrs = agentRunSpanAttrs({
+      agent_name: "MyAgent",
+      run_id: "run-1",
+      model_id: "claude-3",
+    });
     expect(attrs["agent.run_id"]).toBe("run-1");
     expect(attrs["agent.model_id"]).toBe("claude-3");
   });
@@ -284,7 +305,12 @@ describe("AEP span names — agent/llm/tool", () => {
   });
 
   it("llmGenerateSpanAttrs includes optional token counts as strings", () => {
-    const attrs = llmGenerateSpanAttrs({ model_id: "gpt-4o", provider: "openai", input_tokens: 100, output_tokens: 50 });
+    const attrs = llmGenerateSpanAttrs({
+      model_id: "gpt-4o",
+      provider: "openai",
+      input_tokens: 100,
+      output_tokens: 50,
+    });
     expect(attrs["llm.provider"]).toBe("openai");
     expect(attrs["llm.input_tokens"]).toBe("100");
     expect(attrs["llm.output_tokens"]).toBe("50");
@@ -298,7 +324,11 @@ describe("AEP span names — agent/llm/tool", () => {
   });
 
   it("toolCallSpanAttrs includes optional tool_type when provided", () => {
-    const attrs = toolCallSpanAttrs({ tool_name: "read_file", tool_type: "mcp", state_changing: false });
+    const attrs = toolCallSpanAttrs({
+      tool_name: "read_file",
+      tool_type: "mcp",
+      state_changing: false,
+    });
     expect(attrs["tool.type"]).toBe("mcp");
     expect(attrs["tool.state_changing"]).toBe("false");
   });

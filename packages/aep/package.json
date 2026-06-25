@@ -24,8 +24,19 @@
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
   },
-  "engines": { "node": ">=20.0.0" },
-  "keywords": ["wasmagent", "aep", "evidence", "provenance", "compliance"],
-  "wasmagent": { "tier": "tier-1", "stability": "alpha" },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "wasmagent",
+    "aep",
+    "evidence",
+    "provenance",
+    "compliance"
+  ],
+  "wasmagent": {
+    "tier": "tier-1",
+    "stability": "alpha"
+  },
   "license": "Apache-2.0"
 }
