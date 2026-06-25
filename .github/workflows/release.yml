@@ -36,9 +36,6 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Publish-readiness check
-        run: bun run publish:check
-
       - name: Set npm registry
         run: |
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
@@ -57,6 +54,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
+
+      - name: Publish-readiness check (only when packages were published)
+        if: steps.changesets.outputs.published == 'true'
+        run: bun run publish:check
 
       - name: Create GitHub Release
         if: steps.changesets.outputs.published == 'true'
