@@ -668,12 +668,22 @@ function extractCode(response: string): string | null {
     /```(?:js|javascript|python|py|ts|typescript)?\n([\s\S]*?)(?:^|\n)```/m.exec(response) ??
     // Unlabelled code block as fallback
     /```\n([\s\S]*?)(?:^|\n)```/m.exec(response);
-  if (!match) {
-    // Log a truncated snippet to aid debugging without flooding output with large responses.
-    const snippet = response.length > 200 ? `${response.slice(0, 200)}…` : response;
-    console.debug(`[CodeAgent] extractCode: no code block found in response: ${snippet}`);
+  if (match?.[1]) return match[1].trim();
+
+  // Fallback: bare __finalAnswer__ assignment without code fences.
+  // Models sometimes write the sentinel directly in prose; extract all code-like
+  // lines so the kernel can execute them and resolve the value.
+  const sentinelMatch = /^.*__(?:finalAnswer|final_answer)__\s*=\s*.+/m.exec(response);
+  if (sentinelMatch) {
+    const codeLines = response
+      .split("\n")
+      .filter((l) => /^\s*(?:\/\/|const |let |var |__|\w+\s*=)/.test(l) || /;\s*$/.test(l));
+    if (codeLines.length > 0) return codeLines.join("\n");
   }
-  return match?.[1]?.trim() ?? null;
+
+  const snippet = response.length > 200 ? `${response.slice(0, 200)}…` : response;
+  console.debug(`[CodeAgent] extractCode: no code block found in response: ${snippet}`);
+  return null;
 }
 
 function extractFinalAnswer(response: string): string | null {
