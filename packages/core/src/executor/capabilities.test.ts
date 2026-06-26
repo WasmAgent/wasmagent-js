@@ -269,7 +269,10 @@ describe("JsKernel __fs__ real I/O (A2)", () => {
       const secret = join(outsideDir, "secret.txt");
       await nodeWriteFileP(secret, "TOP SECRET", "utf8");
 
-      const allowedSub = join(tmpdir(), `wasmagent-allowed-${Date.now()}-${Math.floor(Math.random() * 1e9)}`);
+      const allowedSub = join(
+        tmpdir(),
+        `wasmagent-allowed-${Date.now()}-${Math.floor(Math.random() * 1e9)}`
+      );
       await mkdir(allowedSub, { recursive: true });
       const link = join(allowedSub, "link.txt");
       try {
@@ -299,7 +302,10 @@ describe("JsKernel __fs__ real I/O (A2)", () => {
     const { symlink, mkdir } = await import("node:fs/promises");
     const outsideDir = await mkdtemp(join(tmpdir(), "wasmagent-outside-"));
     try {
-      const allowedSub = join(tmpdir(), `wasmagent-allowed-${Date.now()}-${Math.floor(Math.random() * 1e9)}`);
+      const allowedSub = join(
+        tmpdir(),
+        `wasmagent-allowed-${Date.now()}-${Math.floor(Math.random() * 1e9)}`
+      );
       await mkdir(allowedSub, { recursive: true });
       const linkDir = join(allowedSub, "subdir");
       try {
