@@ -1,5 +1,13 @@
 # @agentkit-js/kernel-wasmtime
 
+## 1.3.2
+
+### Patch Changes
+
+- aab9574: Use fileURLToPath for cross-platform path resolution in WasmtimeKernel.test.ts. Previous implementation used manual replace("file://", "") which produced invalid /C:/... paths on Windows.
+- Updated dependencies [f4c450d]
+  - @wasmagent/core@1.3.2
+
 ## 1.2.0
 
 ### Minor Changes

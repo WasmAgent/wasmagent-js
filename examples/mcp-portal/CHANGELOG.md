@@ -1,5 +1,12 @@
 # mcp-portal
 
+## 0.1.8
+
+### Patch Changes
+
+- Updated dependencies [f4c450d]
+  - @wasmagent/core@1.3.2
+
 ## 0.1.7
 
 ### Patch Changes

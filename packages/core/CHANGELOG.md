@@ -1,5 +1,11 @@
 # @agentkit-js/core
 
+## 1.3.2
+
+### Patch Changes
+
+- f4c450d: Use realpath-aware containment in assertPathAllowed to prevent symlink escape from allowed read/write paths. Previous lexical-only check could be bypassed by a symlink inside an allowed prefix pointing outside.
+
 ## 1.3.1
 
 ### Patch Changes

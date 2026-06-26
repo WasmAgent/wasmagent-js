@@ -1,5 +1,13 @@
 # @agentkit-js/cli
 
+## 1.3.2
+
+### Patch Changes
+
+- 9eb9790: Handle Bun 1.3.11 mkdir(".") EEXIST behavior on Windows by guarding with existsSync before mkdir, and switch tests to use mkdtempSync to avoid the divergence.
+- Updated dependencies [f4c450d]
+  - @wasmagent/core@1.3.2
+
 ## 1.0.3
 
 ### Patch Changes
