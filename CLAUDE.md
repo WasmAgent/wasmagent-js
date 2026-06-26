@@ -100,21 +100,28 @@ See [ecosystem-map](https://github.com/WasmAgent/trace-pipeline/blob/main/docs/e
 
 ### Package maturity
 
+Five-tier scale: **stable** | **beta** | **alpha** | **demo** | **research**
+- **stable**: public API locked; breaking changes require a major-version bump; semver guaranteed.
+- **beta**: functional and production-used, but a specific documented limitation applies (e.g. first-line filter only, or a contract field still evolving).
+- **alpha**: schema versioned; fields may be added without a breaking-change bump.
+- **demo**: demonstration/example code; not hardened for production.
+- **research**: research-grade prototype; interfaces may change without notice.
+
 | Package | Maturity | Notes |
 |---|---|---|
-| `@wasmagent/core` | **Stable** | Public API; semver guaranteed |
-| `@wasmagent/kernel-quickjs` | **Stable** | |
-| `@wasmagent/kernel-remote` | **Stable** | |
-| `@wasmagent/aep` | **Stable** | AEP v0.1/v0.2; schema versioned |
-| `@wasmagent/mcp-firewall` | **Stable** | ScopeLease, ApprovalReceipt, vetTool |
-| `@wasmagent/mcp-gateway` | **Stable** | Published 0.1.0 |
-| `@wasmagent/otel-exporter` | **Growth** | GENAI_SEMCONV, AEP↔OTel bridge |
-| `@wasmagent/aisdk` / `@wasmagent/mastra-sandbox` | **Growth** | API stable, may add fields |
-| `@wasmagent/compliance` | **Alpha** | Schema versioned; may add fields without breaking |
-| `@wasmagent/mcp-policy` | **Alpha — private** | Not yet published to npm |
-| `@wasmagent/mcp-attestation` | **Alpha — private** | Not yet published to npm |
-| `@wasmagent/evals-runner` | **Growth** | |
-| `@wasmagent/devtools` | **Growth** | |
+| `@wasmagent/core` | **stable** | Public API; semver guaranteed |
+| `@wasmagent/kernel-quickjs` | **stable** | |
+| `@wasmagent/kernel-remote` | **stable** | |
+| `@wasmagent/mcp-gateway` | **stable** | Published 0.1.0; composes all firewall layers |
+| `@wasmagent/mcp-firewall` | **beta** | First-line filter, not adversarial-grade — keyword bag + lightweight n-gram classifier; use defence-in-depth; ScopeLease, ApprovalReceipt, vetTool |
+| `@wasmagent/aep` | **beta** | v0.2 Ed25519 signature contract shipped; schema versioned (v0.1/v0.2) |
+| `@wasmagent/otel-exporter` | **alpha** | GENAI_SEMCONV, AEP↔OTel bridge |
+| `@wasmagent/aisdk` / `@wasmagent/mastra-sandbox` | **alpha** | API stable, may add fields |
+| `@wasmagent/compliance` | **alpha** | Schema versioned; may add fields without breaking |
+| `@wasmagent/mcp-policy` | **alpha — private** | Not yet published to npm |
+| `@wasmagent/mcp-attestation` | **alpha — private** | Not yet published to npm |
+| `@wasmagent/evals-runner` | **alpha** | |
+| `@wasmagent/devtools` | **alpha** | |
 
 ### Compliance modules
 
@@ -152,7 +159,7 @@ NOT publishing — it will still attempt to publish any un-published version.
 
 1. Add all required package.json fields (checked by `publish-check.mjs`):
    - `homepage`, `repository`, `publishConfig: { access: "public" }`, `files`, `license`
-   - `wasmagent.tier` and `wasmagent.stability` must be `"stable"` or `"experimental"` (not `"alpha"`)
+   - `wasmagent.tier` and `wasmagent.stability` must be one of `"stable"`, `"beta"`, `"alpha"`, `"demo"`, or `"research"` (five-tier scale; `"experimental"` is no longer a valid value)
    - `README.md` and `LICENSE` must exist in the package directory
 
 2. Keep `"private": true` in package.json to prevent changeset from attempting publish.

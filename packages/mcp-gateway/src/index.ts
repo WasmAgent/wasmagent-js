@@ -10,6 +10,7 @@
 // Re-export everything from @wasmagent/mcp-firewall
 export type {
   ConsentAction,
+  ConsentCacheKey,
   ConsentEvent,
   ConsentLedger,
   ConsentRecord,
@@ -19,6 +20,7 @@ export type {
   InvocationDecision,
   MCPGatewayOptions,
   PolicyRule,
+  RenderedTaintedObservation,
   RequestIdentity,
   RiskCategory,
   RiskRecommendation,
@@ -37,12 +39,14 @@ export type {
 export {
   ASK_HIGH_RISK_RULE,
   buildServerCard,
+  buildVettingCacheKey,
   createRequestIdentity,
   DEFAULT_RULES,
   DENY_BLOCKED_RULE,
   detectRugPull,
   evaluatePolicy,
   hashContent,
+  hashField,
   hashUiText,
   InMemoryConsentLedger,
   isStateChangingTool,

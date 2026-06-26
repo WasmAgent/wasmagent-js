@@ -16,7 +16,7 @@ import { DEFAULT_RULES, evaluatePolicy } from "./policy.js";
 import type { TaintedObservation } from "./taint.js";
 import { taintObservation } from "./taint.js";
 import type { VettingResult } from "./vetting.js";
-import { vetTool } from "./vetting.js";
+import { buildVettingCacheKey, vetTool } from "./vetting.js";
 
 // ── Identity ─────────────────────────────────────────────────────────────────
 
@@ -272,7 +272,7 @@ export class MCPGateway {
   }
 
   evaluate(req: GatewayRequest): GatewayDecision {
-    const cacheKey = req.serverId + "/" + req.tool.name;
+    const cacheKey = buildVettingCacheKey(req.tool, req.serverId);
     let vetting = this.#vettingCache.get(cacheKey);
     if (!vetting) {
       vetting = vetTool(req.tool);

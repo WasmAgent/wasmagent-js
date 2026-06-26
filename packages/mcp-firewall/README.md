@@ -1,6 +1,6 @@
 # @wasmagent/mcp-firewall
 
-> **Maturity: alpha (v1.1.0)** — 5 deterministic enforcement layers, no ML required. Shipped and production-used in bscode; public API subject to minor changes before v1.0 stable.
+> **Maturity: beta** — 5 deterministic enforcement layers plus a lightweight two-stage adversarial classifier. Shipped and production-used in bscode. **Limitation:** the keyword bag and n-gram classifier are a first-line filter, not adversarial-grade ML defense; determined attackers with novel obfuscation can bypass them. Use defence-in-depth. Public API stable; minor changes possible before v2.0.
 
 Runtime firewall for MCP agents — protect tool calls before execution.
 
@@ -27,6 +27,15 @@ no model inference, no network calls.
 | 5 | **Consent ledger** | `InMemoryConsentLedger`, `hashUiText` | Approvals surviving a descriptor change (rug-pull) |
 
 The `MCPGateway` class composes all five layers into a single stateful object.
+
+## Two-stage vetting (Layer 2)
+
+The static vetting layer uses a **two-stage detection pipeline**:
+
+- **Stage 1 — keyword bag**: fast, deterministic scan for known English injection strings, exfiltration keywords, invisible characters, and sampling-abuse patterns.
+- **Stage 2 — n-gram logistic regression**: lightweight token n-gram classifier (n=1..3) with hand-tuned weights covering multilingual adversarial patterns (Chinese, Russian, base64-encoded payloads, full-width homoglyphs, zero-width obfuscation, URL-encoding, hex-escape, and jailbreak prompts). Non-adversarial-grade ML defense — complements Stage 1, does not replace it.
+
+`evaluateAdversarial(text)` is exposed as a standalone API for custom pipelines.
 
 ## Quick start
 

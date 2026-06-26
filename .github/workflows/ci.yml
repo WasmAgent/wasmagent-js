@@ -31,6 +31,9 @@ jobs:
       - name: Check branding (no old brand references)
         run: node scripts/check-branding.mjs
 
+      - name: Check version coherence (core-four packages + workspace dep ranges)
+        run: node scripts/check-version-coherence.mjs
+
       - name: Check release cadence (warn if [Unreleased] stale > 14 days)
         run: node scripts/check-release-cadence.mjs --warn-only
 

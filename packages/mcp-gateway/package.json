@@ -38,7 +38,7 @@
   ],
   "wasmagent": {
     "tier": "tier-1",
-    "stability": "experimental"
+    "stability": "stable"
   },
   "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-gateway#readme",
   "license": "Apache-2.0",

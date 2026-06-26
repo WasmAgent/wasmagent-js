@@ -67,7 +67,7 @@
   ],
   "wasmagent": {
     "tier": "tier-1",
-    "stability": "stable"
+    "stability": "alpha"
   },
   "publishConfig": {
     "access": "public"

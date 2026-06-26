@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { hashUiText, InMemoryConsentLedger } from "./consent.js";
+import { hashField, hashUiText, InMemoryConsentLedger } from "./consent.js";
 import { evaluatePolicy } from "./policy.js";
 import { renderTaintedObservation, taintObservation } from "./taint.js";
 import { vetTool } from "./vetting.js";
@@ -116,12 +116,12 @@ describe("taintObservation", () => {
     expect(obs.instructionLikeTextDetected).toBe(false);
   });
 
-  it("renders with XML boundary tags", () => {
+  it("renders as JSON with trust, tool, and base64 content", () => {
     const obs = taintObservation("web_fetch", "hello");
     const rendered = renderTaintedObservation(obs, "hello");
-    expect(rendered).toContain('<untrusted_tool_output tool="web_fetch"');
-    expect(rendered).toContain("hello");
-    expect(rendered).toContain("</untrusted_tool_output>");
+    expect(rendered.trust).toBe("untrusted");
+    expect(rendered.tool).toBe("web_fetch");
+    expect(rendered.content_b64).toBe(Buffer.from("hello", "utf8").toString("base64"));
   });
 
   it("detects JSON content type", () => {
@@ -132,8 +132,16 @@ describe("taintObservation", () => {
 
 // ── consent ledger ───────────────────────────────────────────────────────────
 
+const CONSENT_KEY = {
+  name: "run_code",
+  descriptionHash: hashField("Execute sandboxed JavaScript safely"),
+  inputSchemaHash: hashField(JSON.stringify({ type: "object" })),
+  serverIdentity: "srv1",
+  toolSnapshotHash: "snap1",
+};
+
 describe("InMemoryConsentLedger", () => {
-  it("records and queries consent", () => {
+  it("records and queries consent with composite cache key", () => {
     const ledger = new InMemoryConsentLedger();
     ledger.record({
       userIdHash: "u1",
@@ -141,11 +149,17 @@ describe("InMemoryConsentLedger", () => {
       toolName: "run_code",
       scope: [],
       toolSnapshotHash: "snap1",
+      descriptionHash: CONSENT_KEY.descriptionHash,
+      inputSchemaHash: CONSENT_KEY.inputSchemaHash,
+      serverIdentity: "srv1",
       uiTextHash: hashUiText("Allow run_code?"),
       recordedAt: new Date().toISOString(),
     });
-    expect(ledger.hasConsent("run_code", "snap1")).toBe(true);
-    expect(ledger.hasConsent("run_code", "other_snap")).toBe(false);
+    expect(ledger.hasConsent(CONSENT_KEY)).toBe(true);
+    // Different snapshot hash → cache miss
+    expect(ledger.hasConsent({ ...CONSENT_KEY, toolSnapshotHash: "other_snap" })).toBe(false);
+    // Changed description hash → cache miss
+    expect(ledger.hasConsent({ ...CONSENT_KEY, descriptionHash: "changed" })).toBe(false);
   });
 
   it("revoke expires consent immediately", () => {
@@ -156,11 +170,14 @@ describe("InMemoryConsentLedger", () => {
       toolName: "run_code",
       scope: [],
       toolSnapshotHash: "snap1",
+      descriptionHash: CONSENT_KEY.descriptionHash,
+      inputSchemaHash: CONSENT_KEY.inputSchemaHash,
+      serverIdentity: "srv1",
       uiTextHash: "x",
       recordedAt: new Date().toISOString(),
     });
     ledger.revoke("run_code");
-    expect(ledger.hasConsent("run_code", "snap1")).toBe(false);
+    expect(ledger.hasConsent(CONSENT_KEY)).toBe(false);
   });
 
   it("expired consent returns false", () => {
@@ -171,10 +188,31 @@ describe("InMemoryConsentLedger", () => {
       toolName: "run_code",
       scope: [],
       toolSnapshotHash: "snap1",
+      descriptionHash: CONSENT_KEY.descriptionHash,
+      inputSchemaHash: CONSENT_KEY.inputSchemaHash,
+      serverIdentity: "srv1",
       uiTextHash: "x",
       recordedAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() - 1000).toISOString(), // already expired
     });
-    expect(ledger.hasConsent("run_code", "snap1")).toBe(false);
+    expect(ledger.hasConsent(CONSENT_KEY)).toBe(false);
+  });
+
+  it("hasConsentLegacy (deprecated) still works for backward compatibility", () => {
+    const ledger = new InMemoryConsentLedger();
+    ledger.record({
+      userIdHash: "u1",
+      action: "approve_tool",
+      toolName: "run_code",
+      scope: [],
+      toolSnapshotHash: "snap1",
+      descriptionHash: CONSENT_KEY.descriptionHash,
+      inputSchemaHash: CONSENT_KEY.inputSchemaHash,
+      serverIdentity: "srv1",
+      uiTextHash: "x",
+      recordedAt: new Date().toISOString(),
+    });
+    expect(ledger.hasConsentLegacy("run_code", "snap1")).toBe(true);
+    expect(ledger.hasConsentLegacy("run_code", "other_snap")).toBe(false);
   });
 });

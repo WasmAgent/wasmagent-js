@@ -56,8 +56,8 @@ for (const name of readdirSync(packagesDir).sort()) {
     if (!["tier-0", "tier-1", "tier-2", "tier-3"].includes(wm.tier)) {
       issues.push(`wasmagent.tier must be tier-0..tier-3, got: ${wm.tier}`);
     }
-    if (!["stable", "experimental"].includes(wm.stability)) {
-      issues.push(`wasmagent.stability must be "stable" or "experimental", got: ${wm.stability}`);
+    if (!["stable", "beta", "alpha", "demo", "research"].includes(wm.stability)) {
+      issues.push(`wasmagent.stability must be one of "stable","beta","alpha","demo","research", got: ${wm.stability}`);
     }
   }
 

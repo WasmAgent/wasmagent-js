@@ -48,10 +48,11 @@ export { detectRugPull, hashContent, snapshotTool } from "@wasmagent/mcp-server"
 // Consent ledger
 export type {
   ConsentAction,
+  ConsentCacheKey,
   ConsentEvent,
   ConsentLedger,
 } from "./consent.js";
-export { hashUiText, InMemoryConsentLedger } from "./consent.js";
+export { hashField, hashUiText, InMemoryConsentLedger } from "./consent.js";
 // Gateway layer — identity, server card, scope lease, approval receipt, state-changing action approval
 export type {
   ApprovalReceipt,
@@ -87,12 +88,15 @@ export {
 // Taint tracking
 export type {
   ContentType,
+  RenderedTaintedObservation,
   TaintedObservation,
   TrustLevel,
 } from "./taint.js";
 export { renderTaintedObservation, taintObservation } from "./taint.js";
 // Static vetting
 export type {
+  AdversarialHit,
+  AdversarialResult,
   RiskCategory,
   RiskRecommendation,
   RiskSeverity,
@@ -100,4 +104,4 @@ export type {
   VettedField,
   VettingResult,
 } from "./vetting.js";
-export { vetTool, vetTools } from "./vetting.js";
+export { buildVettingCacheKey, evaluateAdversarial, vetTool, vetTools } from "./vetting.js";

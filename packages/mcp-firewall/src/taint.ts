@@ -20,7 +20,20 @@ export interface TaintedObservation {
   instructionLikeTextDetected: boolean;
 }
 
+/**
+ * Structured JSON output of renderTaintedObservation.
+ * The raw content is base64-encoded to prevent any re-interpretation as instructions.
+ */
+export interface RenderedTaintedObservation {
+  trust: TrustLevel;
+  tool: string;
+  content_b64: string;
+}
+
 import { createHash } from "node:crypto";
+
+/** Regex whitelist for tool names used in renderTaintedObservation. */
+const SAFE_TOOL_NAME_RE = /^[A-Za-z0-9_.-]+$/;
 
 const INSTRUCTION_LIKE_PATTERNS = [
   "you must",
@@ -68,13 +81,27 @@ export function taintObservation(
 }
 
 /**
- * Render a `TaintedObservation` as a tagged string for prompt assembly.
- * The tag boundary prevents the model from treating tool output as instructions.
+ * Render a `TaintedObservation` as a JSON structure for prompt assembly.
+ *
+ * The raw content is base64-encoded so that any embedded instruction strings
+ * (e.g. "<trust=verified>", "ignore previous instructions") cannot be
+ * misinterpreted by an LLM reading the serialized output.
+ *
+ * The tool name is validated against a safe-identifier whitelist before
+ * inclusion; an invalid name is replaced with "<invalid_tool_name>".
+ *
+ * Returns a `RenderedTaintedObservation` object. Callers that need a string
+ * for prompt assembly should use `JSON.stringify(renderTaintedObservation(...))`.
  */
-export function renderTaintedObservation(obs: TaintedObservation, rawContent: string): string {
-  return [
-    `<untrusted_tool_output tool="${obs.sourceTool}" trust="${obs.trust}" content_type="${obs.contentType}">`,
-    rawContent,
-    `</untrusted_tool_output>`,
-  ].join("\n");
+export function renderTaintedObservation(
+  obs: TaintedObservation,
+  rawContent: string
+): RenderedTaintedObservation {
+  const safeTool = SAFE_TOOL_NAME_RE.test(obs.sourceTool) ? obs.sourceTool : "<invalid_tool_name>";
+  const content_b64 = Buffer.from(rawContent, "utf8").toString("base64");
+  return {
+    trust: obs.trust,
+    tool: safeTool,
+    content_b64,
+  };
 }

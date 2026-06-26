@@ -17,10 +17,16 @@ export interface JwtPayload {
   scopes?: string[];
   /** Optional per-user rate-limit override. */
   rateLimit?: { rpm?: number; tpm?: number };
-  /** Expiration (Unix seconds). */
+  /** Expiration (Unix seconds). Required — tokens without exp are rejected. */
   exp?: number;
   /** Issued-at (Unix seconds). */
   iat?: number;
+  /** Issuer. */
+  iss?: string;
+  /** Audience (single string or array). */
+  aud?: string | string[];
+  /** JWT ID — used for revocation checks. */
+  jti?: string;
   /** Free-form extra claims. */
   [k: string]: unknown;
 }
@@ -82,10 +88,36 @@ async function importRs256Key(pem: string): Promise<CryptoKey> {
 }
 
 /**
- * Verify a JWT and return the parsed payload. Throws on any failure
- * (invalid signature, expired, malformed, unsupported alg).
+ * Options for {@link verifyJwt}.
  */
-export async function verifyJwt(token: string, key: JwtVerifierKey): Promise<JwtPayload> {
+export interface VerifyJwtOpts {
+  /**
+   * If set, the token's `iss` claim must equal this value.
+   * Tokens missing `iss` are rejected.
+   */
+  requiredIss?: string;
+  /**
+   * If set, the token's `aud` claim must include this value.
+   * Tokens missing `aud` are rejected.
+   */
+  requiredAud?: string;
+  /**
+   * Set of JWT IDs that have been revoked. If the token's `jti` is
+   * present in this set, verification fails.
+   */
+  revokedJti?: Set<string>;
+}
+
+/**
+ * Verify a JWT and return the parsed payload. Throws on any failure
+ * (invalid signature, expired, malformed, unsupported alg, missing exp,
+ * iss/aud mismatch, or revoked jti).
+ */
+export async function verifyJwt(
+  token: string,
+  key: JwtVerifierKey,
+  opts: VerifyJwtOpts = {}
+): Promise<JwtPayload> {
   const parts = token.split(".");
   if (parts.length !== 3) throw new Error("verifyJwt: token must have 3 parts");
   const [h, p, sig] = parts as [string, string, string];
@@ -128,13 +160,48 @@ export async function verifyJwt(token: string, key: JwtVerifierKey): Promise<Jwt
   }
 
   const nowSec = Math.floor(Date.now() / 1000);
-  if (payload.exp !== undefined && payload.exp < nowSec) {
+
+  // exp is mandatory — tokens without an expiration are rejected.
+  if (payload.exp === undefined) {
+    throw new Error("verifyJwt: missing exp claim — tokens must have an expiration");
+  }
+  if (payload.exp < nowSec) {
     throw new Error("verifyJwt: token expired");
   }
+
   // `nbf` (Not Before) — token not yet valid.
   if (typeof payload.nbf === "number" && payload.nbf > nowSec + 60) {
     throw new Error("verifyJwt: token not yet valid (nbf)");
   }
+
+  // iss (Issuer) check.
+  if (opts.requiredIss !== undefined) {
+    if (payload.iss === undefined) {
+      throw new Error("verifyJwt: missing iss claim");
+    }
+    if (payload.iss !== opts.requiredIss) {
+      throw new Error(`verifyJwt: iss mismatch — expected "${opts.requiredIss}", got "${payload.iss}"`);
+    }
+  }
+
+  // aud (Audience) check.
+  if (opts.requiredAud !== undefined) {
+    if (payload.aud === undefined) {
+      throw new Error("verifyJwt: missing aud claim");
+    }
+    const audList = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+    if (!audList.includes(opts.requiredAud)) {
+      throw new Error(`verifyJwt: aud mismatch — "${opts.requiredAud}" not in token audience`);
+    }
+  }
+
+  // jti revocation check.
+  if (opts.revokedJti !== undefined && typeof payload.jti === "string") {
+    if (opts.revokedJti.has(payload.jti)) {
+      throw new Error(`verifyJwt: token has been revoked (jti="${payload.jti}")`);
+    }
+  }
+
   return payload;
 }
 
@@ -143,22 +210,57 @@ export interface RequireAuthOpts {
   scope?: string;
   /** Verifier key — usually built from env. */
   key: JwtVerifierKey;
+  /**
+   * Required issuer. Mandatory — omitting this is a configuration error.
+   * Tokens missing or mismatching `iss` are rejected.
+   */
+  requiredIss: string;
+  /**
+   * Required audience. Mandatory — omitting this is a configuration error.
+   * Tokens missing or not including `aud` are rejected.
+   */
+  requiredAud: string;
+  /**
+   * Optional set of revoked JWT IDs. Tokens whose `jti` is in this set
+   * are rejected.
+   */
+  revokedJti?: Set<string>;
 }
 
 /**
  * Extract the Bearer token from a Hono / Fetch Request, verify it, and
  * return the auth context. Throws on missing or invalid token.
+ *
+ * `opts.requiredIss` and `opts.requiredAud` are mandatory. Omitting either
+ * is a configuration error that throws immediately, preventing silent
+ * pass-through of tokens with unvalidated issuer or audience.
  */
 export async function requireAuth(
   request: { headers: { get(name: string): string | null } },
   opts: RequireAuthOpts
 ): Promise<AuthContext> {
+  // Config-time guard: caller must always specify iss and aud.
+  if (!opts.requiredIss) {
+    throw new Error(
+      "requireAuth: configuration error — opts.requiredIss is required to prevent silent iss bypass"
+    );
+  }
+  if (!opts.requiredAud) {
+    throw new Error(
+      "requireAuth: configuration error — opts.requiredAud is required to prevent silent aud bypass"
+    );
+  }
+
   const auth = request.headers.get("Authorization") ?? request.headers.get("authorization");
   if (!auth?.startsWith("Bearer ")) {
     throw new Error("requireAuth: missing Bearer token");
   }
   const token = auth.slice("Bearer ".length).trim();
-  const payload = await verifyJwt(token, opts.key);
+  const payload = await verifyJwt(token, opts.key, {
+    requiredIss: opts.requiredIss,
+    requiredAud: opts.requiredAud,
+    revokedJti: opts.revokedJti,
+  });
 
   const scopes = payload.scopes ?? [];
   if (opts.scope && !scopes.includes(opts.scope)) {

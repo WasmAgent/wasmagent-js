@@ -36,7 +36,7 @@
   ],
   "wasmagent": {
     "tier": "tier-2",
-    "stability": "stable"
+    "stability": "alpha"
   },
   "license": "Apache-2.0",
   "repository": {

@@ -1,6 +1,6 @@
 # @wasmagent/mcp-gateway
 
-> **Maturity: alpha** — may change without notice; production use at your own risk.
+> **Maturity: stable** — published 0.1.0; composes all five `@wasmagent/mcp-firewall` layers (snapshot, vetting, policy, taint, consent) plus per-request identity and server card validation. Public API semver-guaranteed.
 
 MCP Gateway — identity propagation, server card validation, policy enforcement, and AEP evidence emission for MCP tool invocations.
 

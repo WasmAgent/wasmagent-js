@@ -103,6 +103,42 @@ const codeTool = sandboxedJsTool({ kernel: new QuickJSKernel() });
 
 ---
 
+## What is shipped vs alpha
+
+WasmAgent uses a five-tier maturity scale to prevent "shipped" from becoming a vague claim:
+
+| Tier | Meaning | Semver guarantee | Production use |
+|---|---|---|---|
+| **stable** | Public API locked; breaking changes require major-version bump | Yes | Yes |
+| **beta** | Functional and used in production, but a specific limitation is documented (e.g. first-line filter only, contract still evolving) | Minor/patch only | Yes, with caveats documented |
+| **alpha** | Schema versioned; fields may be added without a breaking-change bump | No | Informed use |
+| **demo** | Demonstration or example code; not hardened for production | No | No |
+| **research** | Research-grade prototype; interfaces may change without notice | No | No |
+
+Packages not listed here (model adapters, UI cards, etc.) follow the same scale — see each package's README or `package.json` `wasmagent.stability` field.
+
+---
+
+## Package maturity
+
+| Package | Maturity | Notes |
+|---|---|---|
+| `@wasmagent/core` | **stable** | Public API; semver guaranteed |
+| `@wasmagent/kernel-quickjs` | **stable** | |
+| `@wasmagent/kernel-remote` | **stable** | |
+| `@wasmagent/mcp-gateway` | **stable** | Published 0.1.0; gateway composes all firewall layers |
+| `@wasmagent/mcp-firewall` | **beta** | First-line filter, not adversarial-grade — keyword bag + lightweight n-gram classifier; use defence-in-depth |
+| `@wasmagent/aep` | **beta** | v0.2 signature contract (Ed25519) shipped; schema versioned |
+| `@wasmagent/otel-exporter` | **alpha** | GENAI_SEMCONV, AEP↔OTel bridge |
+| `@wasmagent/aisdk` / `@wasmagent/mastra-sandbox` | **alpha** | API stable, may add fields |
+| `@wasmagent/compliance` | **alpha** | Schema versioned; may add fields without breaking |
+| `@wasmagent/mcp-policy` | **alpha — private** | Not yet published to npm |
+| `@wasmagent/mcp-attestation` | **alpha — private** | Not yet published to npm |
+| `@wasmagent/evals-runner` | **alpha** | |
+| `@wasmagent/devtools` | **alpha** | |
+
+---
+
 ## WasmAgent Ecosystem
 
 WasmAgent is a portable, governable agent runtime for safe code execution, verifiable rollouts, and post-training data loops.

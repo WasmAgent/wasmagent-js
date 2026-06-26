@@ -115,14 +115,10 @@ export const AEPRecordSchema = z.object({
   budget_ledger: BudgetLedgerSchema.optional(),
   created_at_ms: z.number(),
   run_context: RunContextSchema.optional(),
-  signature: z
-    .object({
-      alg: z.string(),
-      key_id: z.string(),
-      sig: z.string(),
-      bundle: z.record(z.unknown()).optional(),
-      transparency_log_ref: z.string().optional(),
-    })
-    .optional(),
+  signature: z.object({
+    alg: z.literal("ed25519"),
+    key_id: z.string(),
+    sig: z.string(),
+  }),
 });
 export type AEPRecord = z.infer<typeof AEPRecordSchema>;

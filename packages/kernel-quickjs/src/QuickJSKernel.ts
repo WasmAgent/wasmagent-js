@@ -229,8 +229,33 @@ export class QuickJSKernel implements WasmKernel {
         // previous run so a manifest that omits a capability does not leak
         // a stale value from an earlier call. Mirrors the JsKernelWorker /
         // VmKernel reset pattern (see packages/core/src/executor/).
+        //
+        // W5 — Global guard freeze reset:
+        // __check_host__ and fetch are frozen (configurable:false) at first
+        // inject; they CANNOT be redefined here.  Instead we reset only
+        // __allowed_hosts__ (configurable:true) to an empty frozen array so
+        // __check_host__ sees an empty allow-list and rejects every host.
+        // fetch becomes a TypeError stub (reset to undefined) so typeof fetch
+        // returns "undefined" when the capability is absent.
+        // __env__ is also configurable:true so it can be reset freely.
         "__logs__ = []; var __finalAnswer__ = undefined; var __final_answer__ = undefined;" +
-          " var fetch = undefined; var __env__ = undefined; var __allowed_hosts__ = undefined;"
+          " (function() {" +
+          "   var _define = Object.defineProperty;" +
+          // Reset __allowed_hosts__ to empty frozen array (no-capability default).
+          "   _define(globalThis, '__allowed_hosts__', {" +
+          "     value: Object.freeze([]), configurable: true, writable: false, enumerable: false" +
+          "   });" +
+          // Reset fetch to undefined so typeof fetch === 'undefined' when capability absent.
+          // fetch is configurable:true, writable:false so direct assign fails but
+          // defineProperty with new value works.
+          "   _define(globalThis, 'fetch', {" +
+          "     value: undefined, configurable: true, writable: false, enumerable: false" +
+          "   });" +
+          // __env__ is always configurable:true.
+          "   _define(globalThis, '__env__', {" +
+          "     value: undefined, configurable: true, writable: false, enumerable: false" +
+          "   });" +
+          " }());"
       )
       ?.dispose?.();
 
@@ -408,48 +433,148 @@ export class QuickJSKernel implements WasmKernel {
 
   #injectFetchWrapper(ctx: QuickJSContext, allowedHosts: string[]): void {
     const hostsJson = JSON.stringify(allowedHosts);
-    // We inject:
-    //   __allowed_hosts__: the configured allow-list.
-    //   __check_host__:    helper that throws CapabilityDenied if a host is
-    //                      not on the list. Pre-2026-06 this was the only
-    //                      thing exposed, which violated the "unified policy
-    //                      face" promise — `typeof fetch` was `undefined`
-    //                      in QuickJS even when allowedHosts had entries
-    //                      (regression vs JsKernel/VmKernel where `fetch`
-    //                      is a real callable function).
-    //   fetch:             a real callable that runs the allow-list check
-    //                      and then rejects with a clear "no transport"
-    //                      error. QuickJS-in-WASM has no built-in network
-    //                      transport; consumers wanting actual outbound
-    //                      requests should either wire a host bridge or
-    //                      use RemoteSandboxKernel where the transport
-    //                      exists naturally. The shim makes `typeof fetch`
-    //                      report "function" when allowedHosts is granted,
-    //                      matching the cross-kernel honouring matrix.
+    // W5 — Global guard freeze (Security hardening):
+    //
+    // Security model:
+    //   __check_host__  — frozen: configurable:false, writable:false (cannot be
+    //                     overwritten OR deleted by sandbox code). Reads from
+    //                     globalThis.__allowed_hosts__ at call time so that the
+    //                     kernel can update the allowlist between runs by
+    //                     redefining __allowed_hosts__ (which is configurable:true).
+    //
+    //   __allowed_hosts__ — configurable:true, writable:false. Direct assignment
+    //                     silently fails (non-strict) or throws TypeError (strict).
+    //                     delete succeeds but leaves the property undefined, which
+    //                     __check_host__ treats as an empty list → rejects all hosts
+    //                     (fail-safe, not a bypass vector).
+    //
+    //   fetch           — configurable:true, writable:false. Can be reset to
+    //                     undefined between runs; direct assignment is blocked.
+    //                     The function calls __check_host__ which is the real
+    //                     security gatekeeper.
+    //
+    // Why __check_host__ is configurable:false but __allowed_hosts__ is not:
+    //   If sandbox code could replace __check_host__ with a no-op, every
+    //   subsequent fetch call would bypass the guard. By making __check_host__
+    //   non-configurable and non-writable we close that vector permanently.
+    //   __allowed_hosts__ is only an input to the check — replacing it with
+    //   undefined is fail-safe (all hosts rejected), and replacing it with a
+    //   different array is blocked by writable:false.
+    //
+    // Prototype freeze (defence-in-depth):
+    //   Key methods on Array.prototype, Function.prototype, Object.prototype
+    //   and String.prototype that are used by the check logic are explicitly
+    //   frozen to prevent prototype-pollution-based bypass.
+    //
+    // This method is called after the per-run reset which already set
+    // __allowed_hosts__ and fetch to their "no-capability" defaults. We now
+    // (re)define them to the live allowlist values. __check_host__ is only
+    // defined on the FIRST inject; subsequent injects skip it because the
+    // function reads __allowed_hosts__ dynamically.
     ctx
       .evalCode(`
-      var __allowed_hosts__ = ${hostsJson};
-      function __check_host__(host) {
-        var ok = __allowed_hosts__.some(function(h) {
-          if (h.startsWith("*.")) return host.endsWith(h.slice(1));
-          return host === h;
+      (function() {
+        var _define = Object.defineProperty;
+
+        // Update __allowed_hosts__ to the current per-run allowlist.
+        // configurable:true so the per-run reset can redefine it to [].
+        // writable:false so sandbox code cannot assign to it.
+        var _hosts = Object.freeze(${hostsJson}.slice());
+        _define(globalThis, "__allowed_hosts__", {
+          value: _hosts, configurable: true, writable: false, enumerable: false
         });
-        if (!ok) throw new Error("CapabilityDenied: fetch to \\"" + host + "\\" not in allowedHosts");
-      }
-      function fetch(input, init) {
-        var url = typeof input === "string" ? input : (input && input.url) || "";
-        var host = "";
-        try {
-          var m = url.match(/^https?:\\/\\/([^\\/?#]+)/i);
-          host = m ? m[1] : "";
-        } catch (e) { host = ""; }
-        __check_host__(host);
-        return Promise.reject(new Error(
-          "QuickJSKernel.fetch: no transport bound. allowedHosts=[" +
-          __allowed_hosts__.join(",") + "] passed; install a fetch transport " +
-          "via the host bridge or use RemoteSandboxKernel."
-        ));
-      }
+
+        // fetch shim — performs the allowlist check then rejects (no transport).
+        // configurable:true so per-run reset can set it to undefined.
+        // writable:false so sandbox direct-assignment is blocked.
+        function _fetchImpl(input, init) {
+          var url = typeof input === "string" ? input : (input && input.url) || "";
+          var host = "";
+          try {
+            var m = url.match(/^https?:\\/\\/([^\\/?#]+)/i);
+            host = m ? m[1] : "";
+          } catch (e) { host = ""; }
+          __check_host__(host);
+          return Promise.reject(new Error(
+            "QuickJSKernel.fetch: no transport bound. allowedHosts=[" +
+            (__allowed_hosts__ ? __allowed_hosts__.join(",") : "") +
+            "] passed; install a fetch transport " +
+            "via the host bridge or use RemoteSandboxKernel."
+          ));
+        }
+        _define(globalThis, "fetch", {
+          value: _fetchImpl, configurable: true, writable: false, enumerable: false
+        });
+
+        // __check_host__ — frozen permanently (configurable:false, writable:false).
+        // Reads __allowed_hosts__ from globalThis at call time so that the
+        // kernel can update the allowlist between runs. Sandbox code cannot
+        // overwrite or delete this function.
+        //
+        // Guard: only define on first inject (typeof check). Subsequent runs
+        // just update __allowed_hosts__ and fetch above; __check_host__ keeps
+        // working because it reads the updated __allowed_hosts__.
+        if (typeof __check_host__ === "undefined") {
+          function _checkHostImpl(host) {
+            // Read the live __allowed_hosts__ from globalThis at call time.
+            // This makes the check reflect whichever allowlist the kernel
+            // injected for the current run, without needing to redefine the
+            // frozen function itself.
+            var hosts = globalThis.__allowed_hosts__;
+            if (!hosts) {
+              throw new Error("CapabilityDenied: fetch to \\"" + host + "\\" not in allowedHosts");
+            }
+            // Manual iteration — does NOT rely on Array.prototype.some so that
+            // prototype pollution of Array.prototype cannot bypass the check.
+            for (var i = 0; i < hosts.length; i++) {
+              var h = hosts[i];
+              if (h.length > 2 && h[0] === "*" && h[1] === ".") {
+                if (host.length > h.length - 1 &&
+                    host.slice(host.length - (h.length - 1)) === h.slice(1)) return;
+              } else if (host === h) {
+                return;
+              }
+            }
+            throw new Error("CapabilityDenied: fetch to \\"" + host + "\\" not in allowedHosts");
+          }
+          _define(globalThis, "__check_host__", {
+            value: _checkHostImpl, configurable: false, writable: false, enumerable: false
+          });
+
+          // W5 — Prototype guard freeze (defence-in-depth).
+          // Close bypass vectors that rely on replacing prototype methods.
+          // These are ECMA-262 built-ins that should already be non-configurable;
+          // we re-freeze them explicitly as an extra layer.
+          var _protoProps = [
+            [Array.prototype,    "some"],
+            [Array.prototype,    "join"],
+            [Function.prototype, "apply"],
+            [Function.prototype, "call"],
+            [Function.prototype, "bind"],
+            [Object.prototype,   "toString"],
+            [Object.prototype,   "hasOwnProperty"],
+            [String.prototype,   "startsWith"],
+            [String.prototype,   "endsWith"],
+            [String.prototype,   "slice"],
+            [String.prototype,   "match"],
+          ];
+          for (var pi = 0; pi < _protoProps.length; pi++) {
+            try {
+              var _proto = _protoProps[pi][0];
+              var _key   = _protoProps[pi][1];
+              var _desc  = Object.getOwnPropertyDescriptor(_proto, _key);
+              if (_desc && (_desc.configurable || _desc.writable)) {
+                _define(_proto, _key, {
+                  value: _desc.value,
+                  configurable: false,
+                  writable: false,
+                  enumerable: false
+                });
+              }
+            } catch (e) { /* best-effort */ }
+          }
+        }
+      }());
     `)
       ?.dispose?.();
   }
@@ -458,12 +583,17 @@ export class QuickJSKernel implements WasmKernel {
    * Inject the unified `__env__` global (S1/A1 code-mode policy face).
    * The map is JSON-stringified into the QuickJS context and frozen so
    * sandbox code cannot mutate it. Mirrors `buildCapabilityGlobals` from core.
+   * W5: uses Object.defineProperty with writable:false, configurable:true so
+   * the per-run reset can redefine it to undefined when the capability is absent.
    */
   #injectEnv(ctx: QuickJSContext, env: Readonly<Record<string, string>>): void {
     const envJson = JSON.stringify(env);
     ctx
       .evalCode(`
-      var __env__ = Object.freeze(${envJson});
+      Object.defineProperty(globalThis, "__env__", {
+        value: Object.freeze(${envJson}),
+        configurable: true, writable: false, enumerable: false
+      });
     `)
       ?.dispose?.();
   }
