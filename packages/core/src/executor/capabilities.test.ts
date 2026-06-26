@@ -1,5 +1,6 @@
 import {
   assertPathAllowed,
+  assertRealpathContained,
   buildCapabilityGlobals,
   buildSandboxFetch,
   matchGlob,
@@ -249,5 +250,107 @@ describe("JsKernel __fs__ real I/O (A2)", () => {
     await expect(
       kernel.run(`__fs__.writeFile("/etc/nope.txt", "bad")`, { allowedWritePaths: [tmpDir] })
     ).rejects.toThrow(/CapabilityDenied/);
+  });
+
+  // ── A2 symlink escape (regression for PDF #11) ─────────────────────────────
+  // The lexical check in assertPathAllowed cannot tell whether a path under
+  // an allowed prefix is actually a symlink pointing outside. assertRealpathContained
+  // (the second gate in __fs__) resolves both sides with fs.realpath before the
+  // containment compare, so a symlink escape is rejected before readFile/writeFile
+  // follows the link.
+  //
+  // Windows requires admin or Developer Mode to create non-elevated symlinks; if
+  // symlink() raises EPERM we skip rather than fail the suite — the gate is still
+  // exercised on POSIX CI.
+  it("__fs__.readFile rejects when an allowed-prefix symlink points outside the prefix", async () => {
+    const { symlink, mkdir, writeFile: nodeWriteFileP } = await import("node:fs/promises");
+    const outsideDir = await mkdtemp(join(tmpdir(), "wasmagent-outside-"));
+    try {
+      const secret = join(outsideDir, "secret.txt");
+      await nodeWriteFileP(secret, "TOP SECRET", "utf8");
+
+      const allowedSub = join(tmpdir(), `wasmagent-allowed-${Date.now()}-${Math.floor(Math.random() * 1e9)}`);
+      await mkdir(allowedSub, { recursive: true });
+      const link = join(allowedSub, "link.txt");
+      try {
+        await symlink(secret, link, "file");
+      } catch (e) {
+        const code = (e as NodeJS.ErrnoException).code;
+        if (code === "EPERM" || code === "ENOSYS") {
+          // Windows non-admin / unsupported runtime — gate is exercised on POSIX.
+          await rm(allowedSub, { recursive: true, force: true });
+          return;
+        }
+        throw e;
+      }
+
+      const kernel = new JsKernel();
+      await expect(
+        kernel.run(`__fs__.readFile(${JSON.stringify(link)})`, { allowedReadPaths: [allowedSub] })
+      ).rejects.toThrow(/CapabilityDenied/);
+
+      await rm(allowedSub, { recursive: true, force: true });
+    } finally {
+      await rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  it("__fs__.writeFile rejects when an allowed-prefix dir symlink points outside the prefix", async () => {
+    const { symlink, mkdir } = await import("node:fs/promises");
+    const outsideDir = await mkdtemp(join(tmpdir(), "wasmagent-outside-"));
+    try {
+      const allowedSub = join(tmpdir(), `wasmagent-allowed-${Date.now()}-${Math.floor(Math.random() * 1e9)}`);
+      await mkdir(allowedSub, { recursive: true });
+      const linkDir = join(allowedSub, "subdir");
+      try {
+        await symlink(outsideDir, linkDir, "dir");
+      } catch (e) {
+        const code = (e as NodeJS.ErrnoException).code;
+        if (code === "EPERM" || code === "ENOSYS") {
+          await rm(allowedSub, { recursive: true, force: true });
+          return;
+        }
+        throw e;
+      }
+
+      const target = join(linkDir, "escaped.txt");
+      const kernel = new JsKernel();
+      await expect(
+        kernel.run(`__fs__.writeFile(${JSON.stringify(target)}, "escape")`, {
+          allowedWritePaths: [allowedSub],
+        })
+      ).rejects.toThrow(/CapabilityDenied/);
+
+      await rm(allowedSub, { recursive: true, force: true });
+    } finally {
+      await rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  // Runtime-agnostic guard — Windows CI without admin still exercises this
+  // because it doesn't need to create a symlink. Verifies that
+  // assertRealpathContained itself is wired up: a real-path mismatch
+  // (different drives / different tmp ancestors) is rejected even when
+  // assertPathAllowed would have approved.
+  it("assertRealpathContained rejects a read whose real path is not under any allowed prefix", async () => {
+    const outsideDir = await mkdtemp(join(tmpdir(), "wasmagent-outside-"));
+    try {
+      const secret = join(outsideDir, "secret.txt");
+      const { writeFile: nodeWriteFileP } = await import("node:fs/promises");
+      await nodeWriteFileP(secret, "x", "utf8");
+      // tmpDir is the allowed prefix but secret lives under outsideDir.
+      await expect(assertRealpathContained(secret, [tmpDir], "read")).rejects.toThrow(
+        /CapabilityDenied/
+      );
+    } finally {
+      await rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  it("assertRealpathContained allows a read whose real path is under an allowed prefix", async () => {
+    const filePath = join(tmpDir, "inside.txt");
+    const { writeFile: nodeWriteFileP } = await import("node:fs/promises");
+    await nodeWriteFileP(filePath, "ok", "utf8");
+    await expect(assertRealpathContained(filePath, [tmpDir], "read")).resolves.toBeUndefined();
   });
 });
