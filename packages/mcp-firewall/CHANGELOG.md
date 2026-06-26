@@ -1,5 +1,11 @@
 # @wasmagent/mcp-firewall
 
+## 1.3.4
+
+### Patch Changes
+
+- 76cbf87: fix(mcp-firewall): validate tool snapshot hash when evaluating consent, invalidating stale consent after tool descriptor changes
+
 ## 1.3.3
 
 ### Patch Changes

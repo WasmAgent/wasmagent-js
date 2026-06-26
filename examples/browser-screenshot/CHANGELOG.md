@@ -1,5 +1,12 @@
 # example-browser-screenshot
 
+## 0.1.9
+
+### Patch Changes
+
+- Updated dependencies [07804a7]
+  - @wasmagent/core@1.3.4
+
 ## 0.1.8
 
 ### Patch Changes
