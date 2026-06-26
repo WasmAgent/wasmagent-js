@@ -1,5 +1,14 @@
 # Branch Protection — operational guide
 
+> **Scope.** This document is the shared operational manual for branch
+> protection across all three WasmAgent open-source repositories:
+> [`wasmagent-js`](https://github.com/WasmAgent/wasmagent-js),
+> [`bscode`](https://github.com/WasmAgent/bscode), and
+> [`trace-pipeline`](https://github.com/WasmAgent/trace-pipeline).
+> The settings below apply to every `main` branch in the org. Sibling
+> repos link here instead of forking the content — when the protocol
+> changes, update this file only.
+
 The pre-push hook (`.githooks/pre-push`) blocks the developer's own bad
 pushes. Branch protection on GitHub blocks bad pushes from *every* path
 (direct push, merged PR with stale CI, force-push from another machine
@@ -18,9 +27,11 @@ branch protection on:
 
 ## Recommended settings
 
-Owner-only action — go to:
+Owner-only action — for each repo:
 
-`https://github.com/WasmAgent/wasmagent-js/settings/branches`
+- `https://github.com/WasmAgent/wasmagent-js/settings/branches`
+- `https://github.com/WasmAgent/bscode/settings/branches`
+- `https://github.com/WasmAgent/trace-pipeline/settings/branches`
 
 Add a rule for `main` with:
 
@@ -30,12 +41,25 @@ Add a rule for `main` with:
 | Required approvals | 0 (or 1 if you add a co-maintainer) | We don't have reviewers yet |
 | Dismiss stale PR approvals when new commits are pushed | ☑ | Approvals stay honest |
 | Require status checks to pass | ☑ | Hook the CI workflows below |
-| Required checks | `CI / Build, Typecheck & Test (1.3.14)`<br>`Release / release` (optional) | These are the workflows we ran tonight |
+| Required checks (per repo) | see "Required checks per repo" below | These are the workflows that run on every push |
 | Require branches to be up to date before merging | ☑ | Avoids "passed CI on old base" surprise |
 | Require conversation resolution before merging | ☑ | Catches review comments |
 | Require signed commits | ☐ | Add later if you set up GPG |
 | Require linear history | ☑ | Cleaner CHANGELOG, easier bisect |
 | Do not allow bypassing the above settings | ☑ (Administrators included) | Bind ourselves |
+
+### Required checks per repo
+
+| Repo | Required check name(s) |
+|---|---|
+| `wasmagent-js` | `CI / Build, Typecheck & Test (1.3.14)` <br> `Release / release` *(optional but recommended)* |
+| `bscode` | `CI / Typecheck, Test, Build` |
+| `trace-pipeline` | `CI / lint-and-test` *(or whatever the active workflow is — check `gh run list --limit 1`)* |
+
+If a workflow file is renamed, GitHub's UI search picks up the new name
+automatically; you just need to re-select it in the rule. The check
+name is the `name:` field of the workflow YAML, optionally followed by
+` / <job-id>` if you wired more than one job in the same workflow.
 
 ## Workflow change for you and for Claude Code
 
@@ -73,9 +97,17 @@ We recommend (a).
 
 ## Rollout plan
 
-1. Owner enables the rule on `main`.
+1. Owner enables the rule on `main` in each of the three repos.
 2. Run `bash .githooks/install.sh` on every dev machine so local hooks
-   match server policy. New clones must do this once.
+   match server policy. New clones must do this once per repo.
 3. Existing in-flight `git push origin main` workflows fail with a
    helpful message — switch them to PR-based.
 4. After two weeks, evaluate: turn on Require Signed Commits if smooth.
+
+## Related docs
+
+- `CLAUDE.md` (per-repo) — local–CI parity, foot-guns, release flow.
+  In `wasmagent-js`, see the "Release & publish" section.
+- `.githooks/pre-push` — the local mirror of CI required checks.
+- `.changeset/` (wasmagent-js only) — version bump semantics & policy.
+

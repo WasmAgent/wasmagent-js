@@ -52,7 +52,7 @@
     "fixup:packages": "node scripts/fixup-package-metadata.mjs && node scripts/fixup-tsconfig-exclude.mjs",
     "fixup:packages:check": "node scripts/fixup-package-metadata.mjs --check",
     "publish:check": "node scripts/publish-check.mjs",
-    "release:version": "changeset version",
+    "release:version": "node scripts/retry-changeset-version.mjs",
     "release:publish": "node scripts/replace-workspace-deps.mjs && changeset publish",
     "release:check-workspace-deps": "node scripts/replace-workspace-deps.mjs --check",
     "docs:dev": "vitepress dev docs",
