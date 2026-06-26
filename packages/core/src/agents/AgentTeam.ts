@@ -75,6 +75,11 @@ export interface AgentTeamSpawnContext {
   memberId: string;
   /** This member's parent traceId — emit events with parentTraceId = this. */
   parentTraceId: string | null;
+  /**
+   * AEP delegation chain for the member. Contains all ancestor agent IDs
+   * including this team's traceId. Use to populate AEP run_context.delegation_chain.
+   */
+  delegationChain: string[];
 }
 
 /** Caller-supplied factory: turn a spawn context into a runnable agent. */
@@ -170,6 +175,13 @@ export interface AgentTeamOptions {
   summaryMaxChars?: number;
   /** Stable team trace id; used to namespace member ids. */
   traceId?: string;
+  /**
+   * AEP delegation chain — list of ancestor agent IDs that led to this team
+   * being spawned. When set, the team appends its own traceId before passing
+   * the chain down to each member's {@link AgentTeamSpawnContext}.
+   * Maps directly to AEP run_context.delegation_chain.
+   */
+  delegationChain?: string[];
   /** Optional per-event observer; called with every event from every member. */
   onEvent?: (memberLabel: string, event: AgentEvent) => void;
 }
@@ -181,13 +193,14 @@ const SUMMARY_TAIL_EVENTS = 6;
 
 export class AgentTeam {
   readonly #opts: Required<
-    Omit<AgentTeamOptions, "tools" | "toolGuardrail" | "scorer" | "maxConcurrency" | "onEvent">
+    Omit<AgentTeamOptions, "tools" | "toolGuardrail" | "scorer" | "maxConcurrency" | "onEvent" | "delegationChain">
   > & {
     tools: ToolDefinition[] | undefined;
     toolGuardrail: ToolGuardrail | undefined;
     scorer: AgentTeamScorer | undefined;
     maxConcurrency: number | undefined;
     onEvent: ((memberLabel: string, event: AgentEvent) => void) | undefined;
+    delegationChain: string[] | undefined;
   };
 
   constructor(opts: AgentTeamOptions) {
@@ -213,6 +226,7 @@ export class AgentTeam {
       summaryMaxChars: opts.summaryMaxChars ?? DEFAULT_SUMMARY_MAX,
       traceId: opts.traceId ?? `team-${Math.floor(Math.random() * 1e9).toString(36)}`,
       onEvent: opts.onEvent,
+      delegationChain: opts.delegationChain,
     };
   }
 
@@ -301,6 +315,7 @@ export class AgentTeam {
       workspace: fork,
       memberId,
       parentTraceId: this.#opts.traceId,
+      delegationChain: buildDelegationContext(this.#opts.delegationChain, this.#opts.traceId).delegation_chain,
     };
     const agent = member.factory(ctx);
 
@@ -416,6 +431,27 @@ export class AgentTeam {
     const joined = parts.join("\n\n");
     return joined.length > max ? `${joined.slice(0, max - 3)}...` : joined;
   }
+}
+
+/**
+ * Build a RunContext-compatible delegation chain object for AEP records.
+ *
+ * @param parentChain - The delegation chain inherited from the caller, if any.
+ * @param currentId   - The ID of the agent/team that is delegating (appended to the chain).
+ * @returns An object shaped like AEP `run_context` delegation fields:
+ *          `{ delegation_chain: [...parentChain, currentId] }`
+ *
+ * @example
+ * ```ts
+ * const ctx = buildDelegationContext(spawnCtx.delegationChain, spawnCtx.memberId);
+ * // pass ctx.delegation_chain into AEPEmitter.emitRunContext(...)
+ * ```
+ */
+export function buildDelegationContext(
+  parentChain: string[] | undefined | null,
+  currentId: string
+): { delegation_chain: string[] } {
+  return { delegation_chain: [...(parentChain ?? []), currentId] };
 }
 
 /**
