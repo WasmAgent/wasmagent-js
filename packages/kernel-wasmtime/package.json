@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/kernel-wasmtime",
-  "version": "1.2.0",
+  "version": "1.3.2",
   "description": "WasmtimeKernel — true WASM sandbox for wasmagent via Javy (QuickJS→WASM) + Node's native WebAssembly API",
   "type": "module",
   "main": "./dist/index.js",
@@ -19,7 +19,7 @@
     "postinstall": "node scripts/postinstall.mjs"
   },
   "dependencies": {
-    "@wasmagent/core": "^1.2.0"
+    "@wasmagent/core": "^1.3.2"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
