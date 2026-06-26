@@ -11,6 +11,7 @@
  * Mirrors smolagents' `smolagent` CLI (cli.py:294).
  */
 
+import { existsSync } from "node:fs";
 import { readFile as fsReadFile, mkdir, writeFile } from "node:fs/promises";
 import { join, resolve as pathResolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -1605,7 +1606,13 @@ export async function goalCommand(
   }
 
   const workspaceDir = typeof opts.workspace === "string" ? opts.workspace : ".";
-  await mkdir(workspaceDir, { recursive: true });
+  // Bun 1.3.11 on Windows throws EEXIST for `mkdir(".", { recursive: true })`,
+  // diverging from Node where recursive:true is a no-op on existing dirs. Guard
+  // with existsSync so the cli works under both runtimes for cwd / pre-existing
+  // workspace paths.
+  if (!existsSync(workspaceDir)) {
+    await mkdir(workspaceDir, { recursive: true });
+  }
   const { ws, tools, scoutEntries, rootAbs } = await buildLocalFsWorkspace(workspaceDir);
 
   // 2026-06-18: --from-criteria <path.json> skips Phase 1 synthesis. The

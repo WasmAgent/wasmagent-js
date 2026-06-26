@@ -8,6 +8,9 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { AgentEvent } from "@wasmagent/core";
 import {
   buildAnthropicModel,
@@ -585,11 +588,16 @@ describe("goalCommand", () => {
       },
     ];
     const { goalCommand } = await import("./index.js");
-    await goalCommand("write a small doc", {
-      workspace: ".",
-      "max-iterations": "3",
-      "judge-samples": "3",
-    });
+    const workspace = mkdtempSync(join(tmpdir(), "wasmagent-goal-timeline-"));
+    try {
+      await goalCommand("write a small doc", {
+        workspace,
+        "max-iterations": "3",
+        "judge-samples": "3",
+      });
+    } finally {
+      rmSync(workspace, { recursive: true, force: true });
+    }
     const all = consoleLogSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(all).toMatch(/\[scout]\s+tools=2/);
     expect(all).toMatch(/\[criteria]\s+1 criterion/);
@@ -617,7 +625,12 @@ describe("goalCommand", () => {
       },
     ];
     const { goalCommand } = await import("./index.js");
-    await goalCommand("write a doc", { workspace: "." });
+    const workspace = mkdtempSync(join(tmpdir(), "wasmagent-goal-exhausted-"));
+    try {
+      await goalCommand("write a doc", { workspace });
+    } finally {
+      rmSync(workspace, { recursive: true, force: true });
+    }
     expect(process.exitCode).toBe(2);
   });
 });
