@@ -1,6 +1,6 @@
 {
   "name": "example-tool-search-rag",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "End-to-end RAG agent using @wasmagent/tools-web (Tavily) + @wasmagent/tools-rag (HttpEmbedder + InMemoryVectorStore)",
   "type": "module",

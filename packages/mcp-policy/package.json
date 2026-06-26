@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/mcp-firewall": "^1.2.0"
+    "@wasmagent/mcp-firewall": "^1.3.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
