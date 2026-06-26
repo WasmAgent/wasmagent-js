@@ -1,5 +1,11 @@
 # @wasmagent/aep
 
+## 1.3.4
+
+### Patch Changes
+
+- Align core-four package versions to 1.3.4
+
 ## 1.3.3
 
 ### Patch Changes
