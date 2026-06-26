@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   buildJavySource,
   computeHostHmac,
@@ -7,6 +8,18 @@ import {
   STATE_RESTORE_RESERVED,
   WasmtimeKernel,
 } from "./WasmtimeKernel.js";
+
+// Resolve the kernel-wasmtime package root from this test file's URL in a way
+// that works on both POSIX and Windows. The previous approach used
+// `import.meta.url.replace("file://", "")` which left an invalid `/C:/...`
+// prefix on Windows; `fileURLToPath` plus `dirname` returns a real filesystem
+// path on either platform. The regex strips a trailing `src` segment (with or
+// without further sub-path) so both `/pkg/src` and `/pkg/src/sub/` collapse to
+// the package root.
+const packageRootPath = dirname(fileURLToPath(import.meta.url)).replace(
+  /[\\/]src(?:[\\/].*)?$/,
+  ""
+);
 
 // ---------------------------------------------------------------------------
 // Harness tests run the generated JS in Node.js with a Javy.IO shim.
@@ -599,22 +612,14 @@ describe("WasmtimeKernel API (unit, javy mocked)", () => {
 
 describe("javy binary (postinstall)", () => {
   it("postinstall.mjs exists in scripts/", () => {
-    const scriptPath = join(
-      import.meta.url.replace("file://", "").replace(/\/src\/.*$/, ""),
-      "scripts",
-      "postinstall.mjs"
-    );
+    const scriptPath = join(packageRootPath, "scripts", "postinstall.mjs");
     expect(existsSync(scriptPath)).toBe(true);
   });
 
   it("vendor directory exists after package init", () => {
     // The vendor dir is created by postinstall.mjs. Since we can't run it in CI
     // without network access, we verify the script references the vendor dir.
-    const scriptPath = join(
-      import.meta.url.replace("file://", "").replace(/\/src\/.*$/, ""),
-      "scripts",
-      "postinstall.mjs"
-    );
+    const scriptPath = join(packageRootPath, "scripts", "postinstall.mjs");
     if (existsSync(scriptPath)) {
       const { readFileSync } = require("node:fs");
       const content = readFileSync(scriptPath, "utf8") as string;
