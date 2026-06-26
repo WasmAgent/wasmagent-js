@@ -193,7 +193,10 @@ const SUMMARY_TAIL_EVENTS = 6;
 
 export class AgentTeam {
   readonly #opts: Required<
-    Omit<AgentTeamOptions, "tools" | "toolGuardrail" | "scorer" | "maxConcurrency" | "onEvent" | "delegationChain">
+    Omit<
+      AgentTeamOptions,
+      "tools" | "toolGuardrail" | "scorer" | "maxConcurrency" | "onEvent" | "delegationChain"
+    >
   > & {
     tools: ToolDefinition[] | undefined;
     toolGuardrail: ToolGuardrail | undefined;
@@ -315,7 +318,8 @@ export class AgentTeam {
       workspace: fork,
       memberId,
       parentTraceId: this.#opts.traceId,
-      delegationChain: buildDelegationContext(this.#opts.delegationChain, this.#opts.traceId).delegation_chain,
+      delegationChain: buildDelegationContext(this.#opts.delegationChain, this.#opts.traceId)
+        .delegation_chain,
     };
     const agent = member.factory(ctx);
 

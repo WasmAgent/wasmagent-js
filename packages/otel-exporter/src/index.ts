@@ -420,6 +420,8 @@ function attributesToOtlp(attrs: SpanAttributes): OtlpKeyValue[] {
 
 // ── M5.3 — sampler / redactor / baggage / fine-grained metrics ──
 
+export type { AepActionLike, OtelSpanLike } from "./aep-otel-bridge.js";
+export { aepActionToOtelSpan, otelSpanToAepAction } from "./aep-otel-bridge.js";
 // ── AEP span names + attribute helpers ────────────────────────────────────────
 export type { AEPSpanName } from "./aep-span-names.js";
 export {
@@ -451,5 +453,3 @@ export {
 } from "./Sampler.js";
 export type { TraceRedactorOpts } from "./TraceRedactor.js";
 export { TraceRedactor } from "./TraceRedactor.js";
-export { aepActionToOtelSpan, otelSpanToAepAction } from "./aep-otel-bridge.js";
-export type { OtelSpanLike, AepActionLike } from "./aep-otel-bridge.js";
