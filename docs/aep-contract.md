@@ -1,12 +1,14 @@
-# AEP Schema Contract (aep/v0.1)
+# AEP Schema Contract (aep/v0.2)
 
 The Agent Evidence Protocol (AEP) is the cross-repo evidence contract for the WasmAgent ecosystem. `AEPRecord` is emitted by `@wasmagent/aep` after every agent run and consumed by `trace-pipeline` (`evomerge`) for audit and training data export.
 
 ---
 
-## Schema version: `aep/v0.1`
+## Schema version: `aep/v0.2`
 
-Pre-1.0 release candidate. New optional fields may be added without a version bump. Breaking changes require `aep/v0.2` and a migration script.
+Current shipped contract (2026-06-26). Adds a **required** Ed25519 `signature` field; emitter now always signs records via `AEPSigner` (default: `LocalEd25519Signer`; KMS adapter slot reserved). v0.1 records are still parsed for backward compatibility but no longer produced.
+
+New optional fields may be added without a version bump. Breaking changes require `aep/v0.3` and a migration script.
 
 ---
 
@@ -14,7 +16,7 @@ Pre-1.0 release candidate. New optional fields may be added without a version bu
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `schema_version` | `"aep/v0.1"` | **yes** | Always the literal `"aep/v0.1"` |
+| `schema_version` | `"aep/v0.1" \| "aep/v0.2"` | **yes** | The literal schema tag. New emitters always write `"aep/v0.2"`. |
 | `run_id` | `string` | **yes** | Unique identifier for this agent run |
 | `created_at_ms` | `number` | **yes** | Unix epoch ms when the record was built |
 | `trace_id` | `string` | no | OpenTelemetry-compatible trace ID for cross-signal correlation |
@@ -32,7 +34,7 @@ Pre-1.0 release candidate. New optional fields may be added without a version bu
 | `actions` | `ActionEvidence[]` | no | Evidence for each tool call |
 | `verifier_results` | `VerifierResult[]` | no | Per-verifier pass/fail + score |
 | `budget_ledger` | `BudgetLedger` | no | Budget consumption for tokens, latency, tools, risk, retries, human approvals |
-| `signature` | `{ alg, key_id, sig }` | no | Optional cryptographic signature |
+| `signature` | `{ alg: "ed25519", key_id, sig }` | **yes (v0.2)** | Ed25519 cryptographic signature over the canonical bytes of the record. Required by `AEPRecordSchema` in `aep/v0.2`; verification via `verifyAEPRecord(record, publicKey)`. |
 
 ---
 

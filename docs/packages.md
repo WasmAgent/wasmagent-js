@@ -26,8 +26,9 @@ wasmagent-js is a 37-package monorepo published under the `@wasmagent/*` scope o
 | `@wasmagent/claude-agent-sdk` · `@wasmagent/openai-agents` · `@wasmagent/a2a` · `@wasmagent/ag-ui` | Beta |
 | `@wasmagent/tools-web` · `@wasmagent/tools-rag` · `@wasmagent/tools-browser` | Beta |
 | `@wasmagent/compliance` | Alpha (schema contract frozen; repair API evolving) |
-| `@wasmagent/aep` | Alpha (schema versioned `aep/v0.1`; emitter API evolving) |
-| `@wasmagent/mcp-firewall` · `@wasmagent/mcp-gateway` · `@wasmagent/capability-compiler` | Alpha |
+| `@wasmagent/aep` | **Beta** (v0.2 Ed25519 signature contract shipped; schema-versioned; key management story still evolving) |
+| `@wasmagent/mcp-firewall` | **Beta** (first-line filter, not adversarial-grade — keyword bag + lightweight n-gram classifier; use defence-in-depth) |
+| `@wasmagent/mcp-gateway` · `@wasmagent/capability-compiler` | Alpha |
 | `@wasmagent/mcp-policy` | Alpha — private (not yet published to npm) |
 | `@wasmagent/mcp-attestation` | Alpha — private (not yet published to npm) |
 | `@wasmagent/eliza-rollout-plugin` | Experimental |
@@ -115,7 +116,7 @@ See the [kernel decision tree](/kernels/comparison) for picking the right one.
 |---|---|
 | [`@wasmagent/mcp-firewall`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-firewall) | Runtime firewall + gateway for MCP: descriptor snapshot, static vetting, per-call policy, taint tracking, consent ledger; **gateway layer**: identity propagation (`RequestIdentity`), server card (`ServerCard`/`buildServerCard`), state-changing action classification (`isStateChangingTool`), `MCPGateway` with AEP evidence refs |
 | [`@wasmagent/mcp-gateway`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-gateway) | MCP Gateway — identity propagation, server card validation, policy enforcement, AEP evidence emission for MCP tool invocations |
-| [`@wasmagent/aep`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/aep) | Agent Evidence Protocol — `AEPRecord` / `ActionEvidence` / `CapabilityDecision` types + `AEPEmitter`. Cross-repo public data contract for trace-pipeline training export and compliance audit. Schema: `aep/v0.1` |
+| [`@wasmagent/aep`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/aep) | Agent Evidence Protocol — `AEPRecord` / `ActionEvidence` / `CapabilityDecision` types + `AEPEmitter` + `AEPSigner` / `LocalEd25519Signer` / `verifyAEPRecord`. Cross-repo public data contract for trace-pipeline training export and compliance audit. Schema: `aep/v0.2` (v0.1 parsed for backward compat) |
 | [`@wasmagent/capability-compiler`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/capability-compiler) | Compile `CapabilityManifest` → MCP schema fragment, runtime policy rules, trace validator spec |
 | [`@wasmagent/compliance`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/compliance) | TaskSpec-driven verification + local repair for LLM runs; `ComplianceEvalRecord` emitter; IFEval benchmark harness |
 | [`@wasmagent/mcp-policy`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-policy) | **Alpha — not yet published.** Policy bundle DSL for MCP firewall rules. `PolicyBundle` (named, versioned, sha256-addressed collection of `PolicyRule`s) with `extend()`, `static default()`, `static strict()`; re-exports `evaluatePolicy`, `DEFAULT_RULES`, `DENY_BLOCKED_RULE`, `ASK_HIGH_RISK_RULE` from `@wasmagent/mcp-firewall`. API may change without notice. |

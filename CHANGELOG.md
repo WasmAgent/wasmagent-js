@@ -135,7 +135,7 @@ and completes the go-to-market hardening pass.
   Deterministic, no ML. Four layers:
   - `vetTool()` — static scan of description/inputSchema for injection, exfiltration, invisible chars, sampling abuse.
   - `evaluatePolicy()` — per-call allow / deny / ask_user / dry_run with pluggable `PolicyRule[]`.
-  - `taintObservation()` + `renderTaintedObservation()` — wrap tool outputs in untrusted XML boundary before prompt assembly.
+  - `taintObservation()` + `renderTaintedObservation()` — wrap tool outputs in a structured `{trust, tool, content_b64}` JSON envelope (since v1.2.0; was an XML boundary string in v1.1.x and earlier). Prompt-assembly layers in `@wasmagent/core` are responsible for the final boundary tags.
   - `InMemoryConsentLedger` — record/query/revoke user approvals scoped to tool snapshot hashes (rug-pull safe).
   Published to npm as `@wasmagent/mcp-firewall@1.1.0` and to the official MCP Registry as `io.github.telleroutlook/mcp-server`.
 

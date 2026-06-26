@@ -4,7 +4,7 @@
 
 Agent Evidence Protocol — runtime action evidence and run provenance types for WasmAgent.
 
-Emit verifiable `AEPRecord` evidence after every agent run. Records are schema-versioned (`aep/v0.1`) and consumable by `evomerge` for audit and training data export.
+Emit verifiable `AEPRecord` evidence after every agent run. Records are schema-versioned; v0.2 (Ed25519 signature contract) is the current shipped schema. v0.1 records are still parsed for backward compatibility but no longer produced. Records are consumable by `evomerge` for audit and training data export.
 
 ## Install
 

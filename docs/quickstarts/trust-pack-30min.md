@@ -126,16 +126,20 @@ const obs = taintObservation(entry.name, rawResult);
 // obs.contentHash                 → sha256 hex prefix
 
 const promptSafeText = renderTaintedObservation(obs, rawResult);
-// Wraps content in <untrusted_tool_output> tags so the model
-// cannot interpret tool output as new instructions.
+// Returns a structured envelope `{trust, tool, content_b64}` with
+// the raw content base64-encoded — any embedded `<trust=verified>`
+// markers in tool output can't leak as plaintext. The prompt-assembly
+// layer in @wasmagent/core wraps this envelope in boundary tags before
+// the model sees it.
 ```
 
 ---
 
 ## Step 2 — Record evidence (5 min)
 
-`AEPEmitter` builds a signed, schema-validated `AEPRecord` (`aep/v0.1`) that captures
-every tool decision in a single tamper-evident bundle.
+`AEPEmitter` builds a signed, schema-validated `AEPRecord` (`aep/v0.2` with
+mandatory Ed25519 `signature`) that captures every tool decision in a single
+tamper-evident bundle.
 
 ```ts
 import { AEPEmitter } from "@wasmagent/aep";

@@ -41,7 +41,7 @@ The wasmagent ecosystem spans three repositories that work together as a single 
 bscode runs jobs
   → build result (pass/fail) + visual checks
   → wasmagent-js RolloutForkRunner records trajectories
-  → AEPEmitter emits AEP evidence record (aep/v0.1)
+  → AEPEmitter emits signed AEP evidence record (aep/v0.2, Ed25519)
   → RolloutRanker scores branches (objective + judge)
   → rollout-wire JSONL + AEP bundle (Layer 1 + evidence)
   → trace-pipeline validate-aep → trust-score → audit-report
