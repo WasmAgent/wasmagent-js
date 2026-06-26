@@ -451,3 +451,5 @@ export {
 } from "./Sampler.js";
 export type { TraceRedactorOpts } from "./TraceRedactor.js";
 export { TraceRedactor } from "./TraceRedactor.js";
+export { aepActionToOtelSpan, otelSpanToAepAction } from "./aep-otel-bridge.js";
+export type { OtelSpanLike, AepActionLike } from "./aep-otel-bridge.js";

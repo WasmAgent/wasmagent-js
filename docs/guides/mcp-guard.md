@@ -133,3 +133,33 @@ WasmAgent MCP Guard is a **defence-in-depth layer**, not a security boundary. It
 
 For high-stakes deployments, combine with WASM sandboxing (`@wasmagent/kernel-quickjs`) and
 capability manifests (`@wasmagent/core` `CapabilityManifest`).
+
+## Claude Desktop Integration
+
+Add WasmAgent Guard as a transparent wrapper in your Claude Desktop MCP config
+(`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "my-server-guarded": {
+      "command": "npx",
+      "args": [
+        "@wasmagent/mcp-gateway",
+        "proxy",
+        "--config", "wasmagent.policy.yaml",
+        "--upstream-command", "node",
+        "--upstream-args", "/path/to/your/mcp-server.mjs"
+      ],
+      "env": {
+        "WASMAGENT_RUN_ID": "claude-desktop-session"
+      }
+    }
+  }
+}
+```
+
+The guard process intercepts every `tools/call` request, applies your policy,
+emits an AEP evidence record per action, and forwards allowed calls to the
+upstream server unchanged. Denied calls return a structured MCP error so Claude
+sees a clear refusal reason rather than a timeout.
