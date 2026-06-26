@@ -1,5 +1,12 @@
 # example-browser-screenshot
 
+## 0.1.5
+
+### Patch Changes
+
+- Updated dependencies [[`b044b6a`](https://github.com/WasmAgent/wasmagent-js/commit/b044b6af1da055849e62007319d400bf55ead8ef)]:
+  - @wasmagent/core@1.2.0
+
 ## 0.1.4
 
 ### Patch Changes
