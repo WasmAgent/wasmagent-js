@@ -27,6 +27,7 @@ tmp/
 # Private keys / certificates with embedded keys
 *.pem
 *.key
+*.seed
 id_rsa
 id_rsa.*
 id_ecdsa
