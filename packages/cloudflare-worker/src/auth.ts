@@ -258,11 +258,16 @@ export async function requireAuth(
     throw new Error("requireAuth: missing Bearer token");
   }
   const token = auth.slice("Bearer ".length).trim();
-  const payload = await verifyJwt(token, opts.key, {
+  // Build verifyJwt opts conditionally so we don't pass `undefined` for
+  // optional fields when exactOptionalPropertyTypes is on.
+  const verifyOpts: Parameters<typeof verifyJwt>[2] = {
     requiredIss: opts.requiredIss,
     requiredAud: opts.requiredAud,
-    revokedJti: opts.revokedJti,
-  });
+  };
+  if (opts.revokedJti !== undefined) {
+    verifyOpts.revokedJti = opts.revokedJti;
+  }
+  const payload = await verifyJwt(token, opts.key, verifyOpts);
 
   const scopes = payload.scopes ?? [];
   if (opts.scope && !scopes.includes(opts.scope)) {
