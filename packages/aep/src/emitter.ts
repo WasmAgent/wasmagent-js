@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { canonicalBytes } from "./canonical.js";
+import type { AEPSigner } from "./signer.js";
 import type {
   ActionEvidence,
   AEPRecord,
@@ -9,8 +11,6 @@ import type {
   VerifierResult,
 } from "./types.js";
 import { AEPRecordSchema } from "./types.js";
-import type { AEPSigner } from "./signer.js";
-import { canonicalBytes } from "./canonical.js";
 
 export interface AEPEmitterOptions {
   run_id: string;
@@ -140,7 +140,6 @@ export class AEPEmitter {
   }
 
   #buildUnsigned(createdAtMs?: number): Omit<AEPRecord, "signature"> {
-    // biome-ignore lint/correctness/noUnusedVariables: signer is intentionally excluded from the unsigned payload
     const { signer: _signer, ...opts } = this.#opts;
     return {
       schema_version: "aep/v0.2",

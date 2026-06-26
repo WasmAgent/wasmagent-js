@@ -35,8 +35,8 @@ function buildEnvelopeFrame(jsonStr: string): Uint8Array {
 async function simulateHarnessRun(
   source: string,
   stdinData: string,
-  runId: string = "test-run",
-  hmacSecret: string = ""
+  _runId: string = "test-run",
+  _hmacSecret: string = ""
 ): Promise<{ rawStdoutFrames: string[]; stderr: string }> {
   const rawStdoutChunks: Uint8Array[] = [];
   const stderrParts: string[] = [];
@@ -132,7 +132,7 @@ function parseEnvelopeLegacy(stdout: string): Record<string, unknown> {
   return JSON.parse(lines[0] ?? "{}") as Record<string, unknown>;
 }
 
-function parseStateLegacy(stdout: string): Record<string, string> {
+function _parseStateLegacy(stdout: string): Record<string, string> {
   const lines = stdout.split("\n").filter(Boolean);
   return JSON.parse(lines[1] ?? "{}") as Record<string, string>;
 }
@@ -181,10 +181,7 @@ describe("buildJavySource harness (unit, no javy CLI required)", () => {
 
     // Second run: restore state1, x * 2
     const src2 = buildJavySource("x * 2", [], state1);
-    const { rawStdoutFrames: frames2 } = await simulateHarnessRun(
-      src2,
-      JSON.stringify(state1)
-    );
+    const { rawStdoutFrames: frames2 } = await simulateHarnessRun(src2, JSON.stringify(state1));
     expect(parseEnvelope(frames2).output).toBe(20);
   });
 
@@ -384,10 +381,7 @@ describe("envelope protocol (unit)", () => {
       if (magicStart + headerSize > raw.length) break;
       const lenOff = magicStart + magic.length;
       const payloadLen =
-        (raw[lenOff] << 24) |
-        (raw[lenOff + 1] << 16) |
-        (raw[lenOff + 2] << 8) |
-        raw[lenOff + 3];
+        (raw[lenOff] << 24) | (raw[lenOff + 1] << 16) | (raw[lenOff + 2] << 8) | raw[lenOff + 3];
       const payloadStart = magicStart + headerSize;
       const payloadEnd = payloadStart + payloadLen;
       if (payloadEnd > raw.length) break;
@@ -469,11 +463,7 @@ describe("state restore reserved-key guard (unit)", () => {
   it("harness state-restore blocks overwriting Reflect", async () => {
     const fakeState = JSON.stringify({ Reflect: '"hacked"', z: "3" });
     // Read back Reflect to see if it was replaced.
-    const src = buildJavySource(
-      'typeof Reflect === "object" ? "object" : typeof Reflect',
-      [],
-      {}
-    );
+    const src = buildJavySource('typeof Reflect === "object" ? "object" : typeof Reflect', [], {});
     const { rawStdoutFrames, stderr } = await simulateHarnessRun(src, fakeState);
 
     const env = parseEnvelope(rawStdoutFrames);
@@ -532,8 +522,7 @@ describe("fd_write error codes (unit)", () => {
     // Length prefix
     const payloadStr = '{"test":1}';
     const expectedLen = new TextEncoder().encode(payloadStr).length;
-    const readLen =
-      (frame[8] << 24) | (frame[9] << 16) | (frame[10] << 8) | frame[11];
+    const readLen = (frame[8] << 24) | (frame[9] << 16) | (frame[10] << 8) | frame[11];
     expect(readLen).toBe(expectedLen);
   });
 });

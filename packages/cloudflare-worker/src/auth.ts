@@ -180,7 +180,9 @@ export async function verifyJwt(
       throw new Error("verifyJwt: missing iss claim");
     }
     if (payload.iss !== opts.requiredIss) {
-      throw new Error(`verifyJwt: iss mismatch — expected "${opts.requiredIss}", got "${payload.iss}"`);
+      throw new Error(
+        `verifyJwt: iss mismatch — expected "${opts.requiredIss}", got "${payload.iss}"`
+      );
     }
   }
 

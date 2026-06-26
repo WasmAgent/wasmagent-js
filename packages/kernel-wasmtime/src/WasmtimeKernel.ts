@@ -1,5 +1,5 @@
-import { createHmac, randomBytes } from "node:crypto";
 import { execFile } from "node:child_process";
+import { createHmac, randomBytes } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -224,9 +224,7 @@ export class WasmtimeKernel implements WasmKernel {
 
     for (const [key, value] of Object.entries(bag)) {
       if (STATE_RESTORE_RESERVED.has(key)) {
-        auditEntries.push(
-          `state-restore: attempt to overwrite reserved key "${key}" rejected`
-        );
+        auditEntries.push(`state-restore: attempt to overwrite reserved key "${key}" rejected`);
         continue;
       }
       safeState[key] = value;
@@ -577,7 +575,12 @@ export async function runWasm(
   stdinData: string,
   runId: string = "dev",
   hmacSecret: string = ""
-): Promise<{ stdout: string; stderr: string; newState: Record<string, string>; auditLog: string[] }> {
+): Promise<{
+  stdout: string;
+  stderr: string;
+  newState: Record<string, string>;
+  auditLog: string[];
+}> {
   const wasmBytes = await readFile(wasmPath);
 
   const WA = (globalThis as unknown as { WebAssembly: WasmAPI }).WebAssembly;
@@ -703,9 +706,7 @@ export async function runWasm(
       // No more magic headers — discard remaining bytes.
       if (pos < rawStdout.length) {
         const discarded = rawStdout.length - pos;
-        auditLog.push(
-          `envelope: discarded ${discarded} non-envelope byte(s) at offset ${pos}`
-        );
+        auditLog.push(`envelope: discarded ${discarded} non-envelope byte(s) at offset ${pos}`);
       }
       break;
     }
@@ -720,9 +721,7 @@ export async function runWasm(
 
     // Need at least ENVELOPE_HEADER_SIZE bytes for the header.
     if (magicStart + ENVELOPE_HEADER_SIZE > rawStdout.length) {
-      auditLog.push(
-        `envelope: truncated header at offset ${magicStart} — discarded`
-      );
+      auditLog.push(`envelope: truncated header at offset ${magicStart} — discarded`);
       break;
     }
 
@@ -755,9 +754,7 @@ export async function runWasm(
       if (tagMatch) {
         const actualTag = tagMatch[1];
         if (actualTag !== expectedTag) {
-          auditLog.push(
-            `envelope: HMAC mismatch for frame at offset ${magicStart} — discarded`
-          );
+          auditLog.push(`envelope: HMAC mismatch for frame at offset ${magicStart} — discarded`);
           pos = payloadEnd;
           continue;
         }
@@ -823,9 +820,7 @@ export function computeHostHmac(runId: string, payload: string, hmacSecret: stri
  * that needs cryptographic strength (vs the in-harness FNV-1a approximation).
  */
 export function computeCryptoHmac(runId: string, payload: string, hmacSecret: string): string {
-  return createHmac("sha256", hmacSecret)
-    .update(`${runId}|${payload}`)
-    .digest("hex");
+  return createHmac("sha256", hmacSecret).update(`${runId}|${payload}`).digest("hex");
 }
 
 // ─── Per-run randomness helpers ───────────────────────────────────────────────

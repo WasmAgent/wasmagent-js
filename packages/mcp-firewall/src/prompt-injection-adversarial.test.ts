@@ -13,8 +13,8 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { type CorpusCategory, RISK_CORPUS } from "./vetting-corpus.js";
 import { evaluateAdversarial, vetTool } from "./vetting.js";
+import { type CorpusCategory, RISK_CORPUS } from "./vetting-corpus.js";
 
 const DETECTION_THRESHOLD = 0.9; // require ≥ 90 % detection rate on corpus
 
@@ -60,9 +60,7 @@ const CATEGORIES: CorpusCategory[] = [
 describe("RISK_CORPUS — per-category detection", () => {
   for (const category of CATEGORIES) {
     it(`detects ≥ 70 % of [${category}] samples`, () => {
-      const samples = RISK_CORPUS.filter(
-        (s) => s.label === "malicious" && s.category === category
-      );
+      const samples = RISK_CORPUS.filter((s) => s.label === "malicious" && s.category === category);
       if (samples.length === 0) return; // skip if category not represented
 
       const detected = samples.filter((s) => evaluateAdversarial(s.text).score > 0.5);

@@ -144,7 +144,10 @@ describe("QuickJSKernel (edge-safe, no node:vm)", () => {
         `,
         caps
       );
-      const desc = JSON.parse(result.output as string) as { configurable: boolean; writable: boolean };
+      const desc = JSON.parse(result.output as string) as {
+        configurable: boolean;
+        writable: boolean;
+      };
       expect(desc.configurable).toBe(false);
       expect(desc.writable).toBe(false);
     });
@@ -161,9 +164,9 @@ describe("QuickJSKernel (edge-safe, no node:vm)", () => {
     it("host-check still works after multiple run() cycles", async () => {
       // Run a clean cycle, then re-inject, then verify the guard fires.
       await secKernel.run("1 + 1");
-      await expect(
-        secKernel.run(`fetch("http://blocked.com/")`, caps)
-      ).rejects.toThrow(/CapabilityDenied/);
+      await expect(secKernel.run(`fetch("http://blocked.com/")`, caps)).rejects.toThrow(
+        /CapabilityDenied/
+      );
     });
   });
 

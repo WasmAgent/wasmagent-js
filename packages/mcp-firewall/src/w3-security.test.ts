@@ -4,8 +4,8 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { hashField, InMemoryConsentLedger } from "./consent.js";
 import type { ConsentCacheKey } from "./consent.js";
+import { hashField, InMemoryConsentLedger } from "./consent.js";
 import { renderTaintedObservation, taintObservation } from "./taint.js";
 import { buildVettingCacheKey, vetTool } from "./vetting.js";
 
@@ -56,7 +56,10 @@ describe("W3-a: renderTaintedObservation base64 isolation", () => {
 
 describe("W3-b: consent cache miss on description change", () => {
   const originalDescription = "Read a file from disk";
-  const originalSchema = JSON.stringify({ type: "object", properties: { path: { type: "string" } } });
+  const originalSchema = JSON.stringify({
+    type: "object",
+    properties: { path: { type: "string" } },
+  });
   const serverIdentity = "srv-prod";
 
   function makeKey(desc: string, schema = originalSchema): ConsentCacheKey {

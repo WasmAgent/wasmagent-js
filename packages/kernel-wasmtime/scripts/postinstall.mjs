@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * postinstall.mjs — Download the javy static binary for the current platform.
  *
@@ -20,12 +21,11 @@
  *        Can also be run manually: `node scripts/postinstall.mjs`
  */
 
-import { createWriteStream, existsSync, mkdirSync, chmodSync, statSync } from "node:fs";
+import { chmodSync, createWriteStream, existsSync, mkdirSync, statSync } from "node:fs";
 import { get as httpsGet } from "node:https";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createHash } from "node:crypto";
+import { dirname, join } from "node:path";
 import { pipeline } from "node:stream/promises";
+import { fileURLToPath } from "node:url";
 import { createGunzip } from "node:zlib";
 
 // ── Configuration ────────────────────────────────────────────────────────────
@@ -38,13 +38,12 @@ const JAVY_VERSION = "3.4.0";
  */
 const PLATFORM_ASSET = {
   "darwin-arm64": `javy-aarch64-macos-${JAVY_VERSION}.gz`,
-  "darwin-x64":   `javy-x86_64-macos-${JAVY_VERSION}.gz`,
-  "linux-x64":    `javy-x86_64-linux-${JAVY_VERSION}.gz`,
-  "linux-arm64":  `javy-aarch64-linux-${JAVY_VERSION}.gz`,
+  "darwin-x64": `javy-x86_64-macos-${JAVY_VERSION}.gz`,
+  "linux-x64": `javy-x86_64-linux-${JAVY_VERSION}.gz`,
+  "linux-arm64": `javy-aarch64-linux-${JAVY_VERSION}.gz`,
 };
 
-const BASE_URL =
-  `https://github.com/bytecodealliance/javy/releases/download/v${JAVY_VERSION}`;
+const BASE_URL = `https://github.com/bytecodealliance/javy/releases/download/v${JAVY_VERSION}`;
 
 // ── Resolve paths ────────────────────────────────────────────────────────────
 
@@ -73,7 +72,8 @@ function download(url, destPath, gunzip = false) {
     function attempt(currentUrl) {
       httpsGet(currentUrl, (res) => {
         if (res.statusCode === 301 || res.statusCode === 302) {
-          if (!res.headers.location) return reject(new Error(`Redirect without Location: ${currentUrl}`));
+          if (!res.headers.location)
+            return reject(new Error(`Redirect without Location: ${currentUrl}`));
           return attempt(res.headers.location);
         }
         if (res.statusCode !== 200) {
@@ -103,7 +103,7 @@ async function main() {
   if (!asset) {
     console.warn(
       `[kernel-wasmtime] Unsupported platform "${key}" — javy binary not downloaded. ` +
-      "Install javy manually: https://github.com/bytecodealliance/javy/releases"
+        "Install javy manually: https://github.com/bytecodealliance/javy/releases"
     );
     return;
   }
@@ -138,12 +138,14 @@ async function main() {
     writeFileSync(versionMarker, JAVY_VERSION, "utf8");
 
     const size = statSync(binPath).size;
-    console.log(`[kernel-wasmtime] javy ${JAVY_VERSION} saved to ${binPath} (${(size / 1024 / 1024).toFixed(1)} MB)`);
+    console.log(
+      `[kernel-wasmtime] javy ${JAVY_VERSION} saved to ${binPath} (${(size / 1024 / 1024).toFixed(1)} MB)`
+    );
   } catch (err) {
     // Non-fatal: the kernel still works if javy is installed system-wide via PATH.
     console.warn(
       `[kernel-wasmtime] Warning: failed to download javy binary — ${err.message}\n` +
-      "  Install javy manually: https://github.com/bytecodealliance/javy/releases"
+        "  Install javy manually: https://github.com/bytecodealliance/javy/releases"
     );
   }
 }

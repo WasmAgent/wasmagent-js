@@ -89,7 +89,7 @@ export interface AdversarialResult {
 // A `train-vetting.mjs` script in packages/mcp-firewall/scripts/ can
 // re-derive them from updated training data.
 
-const ADVERSARIAL_THRESHOLD = 0.5; // sigmoid output threshold (strictly > 0.5 triggers)
+const _ADVERSARIAL_THRESHOLD = 0.5; // sigmoid output threshold (strictly > 0.5 triggers)
 
 // Weights for normalised (NFKC-lowercased, stripped zero-width) token n-grams.
 // Keys are space-joined n-gram tokens (bigrams: "ignore previous").
@@ -162,7 +162,7 @@ const NGRAM_WEIGHTS: Record<string, number> = {
   "忘记 之前": 3.5,
   "忽略 之前": 3.5,
   "新 指令": 2.8,
-  "新指令": 2.9,
+  新指令: 2.9,
   "忘记 规则": 3.0,
   "没有 限制": 2.9,
   // Russian bigrams
@@ -197,23 +197,23 @@ const ZERO_WIDTH_RE = /[­​-‏‪-‮⁠-⁯﻿]/g;
 // Applied ONLY when text is predominantly Latin (homoglyph attack detection).
 const LOOKALIKE_MAP: Record<string, string> = {
   // Cyrillic look-alikes
-  "а": "a", // U+0430
-  "е": "e", // U+0435
-  "о": "o", // U+043E
-  "р": "r", // U+0440
-  "с": "c", // U+0441
-  "у": "u", // U+0443
-  "х": "x", // U+0445
-  "і": "i", // U+0456
-  "А": "A", // U+0410
-  "Е": "E", // U+0415
-  "О": "O", // U+041E
-  "Р": "R", // U+0420
-  "С": "C", // U+0421
+  а: "a", // U+0430
+  е: "e", // U+0435
+  о: "o", // U+043E
+  р: "r", // U+0440
+  с: "c", // U+0441
+  у: "u", // U+0443
+  х: "x", // U+0445
+  і: "i", // U+0456
+  А: "A", // U+0410
+  Е: "E", // U+0415
+  О: "O", // U+041E
+  Р: "R", // U+0420
+  С: "C", // U+0421
   // Greek look-alikes
-  "ο": "o", // U+03BF Greek small omicron
-  "ν": "v", // U+03BD Greek small nu (approximation)
-  "Ο": "O", // U+039F Greek capital omicron
+  ο: "o", // U+03BF Greek small omicron
+  ν: "v", // U+03BD Greek small nu (approximation)
+  Ο: "O", // U+039F Greek capital omicron
 };
 
 const LOOKALIKE_RE = new RegExp(Object.keys(LOOKALIKE_MAP).join("|"), "g");
@@ -225,7 +225,10 @@ const LOOKALIKE_RE = new RegExp(Object.keys(LOOKALIKE_MAP).join("|"), "g");
 function isPredominantlyLatin(text: string): boolean {
   const letters = [...text].filter((c) => /\p{L}/u.test(c));
   if (letters.length === 0) return true;
-  const latinCount = letters.filter((c) => /[ -ɏ]/.test(c)).length;
+  // U+0020 (space) through U+024F (Latin Extended-B). Excludes Cyrillic so that
+  // Russian-language input is classified as non-Latin and routed to the standard
+  // (non-homoglyph) n-gram normalisation path.
+  const latinCount = letters.filter((c) => /[\u0020-\u024F]/.test(c)).length;
   return latinCount / letters.length > 0.5;
 }
 
@@ -281,9 +284,7 @@ export function evaluateAdversarial(text: string): AdversarialResult {
   // - predominantly Latin (or mixed with homoglyphs) → apply lookalike substitution
   // - predominantly non-Latin (Russian, Chinese) → keep as-is to preserve weight keys
   const latinDominant = isPredominantlyLatin(text);
-  const norm = latinDominant
-    ? normaliseForNgramWithHomoglyphs(text)
-    : normaliseForNgram(text);
+  const norm = latinDominant ? normaliseForNgramWithHomoglyphs(text) : normaliseForNgram(text);
   const tokens = tokenise(norm);
   const hits: AdversarialHit[] = [];
   let weightSum = 0;
@@ -331,6 +332,7 @@ export function evaluateAdversarial(text: string): AdversarialResult {
   );
   for (const key of base64Keys) {
     if (text.includes(key) && !hits.some((h) => h.ngram === key)) {
+      // biome-ignore lint/style/noNonNullAssertion: key iterated from NGRAM_WEIGHTS
       const w = NGRAM_WEIGHTS[key]!;
       hits.push({ ngram: key, weight: w });
       weightSum += w;
@@ -364,6 +366,7 @@ export function evaluateAdversarial(text: string): AdversarialResult {
       const decodedNorm = normaliseForNgramWithHomoglyphs(decoded);
       const decodedTokens = tokenise(decodedNorm);
       for (let i = 0; i < decodedTokens.length; i++) {
+        // biome-ignore lint/style/noNonNullAssertion: i bounded by decodedTokens.length
         const tk = decodedTokens[i]!;
         const w = NGRAM_WEIGHTS[tk];
         if (w !== undefined && !hits.some((h) => h.ngram === `url:${tk}`)) {
@@ -435,8 +438,14 @@ export function evaluateAdversarial(text: string): AdversarialResult {
   // contained non-ASCII characters, add a small homoglyph-encoding boost to
   // account for the deliberate character substitution.
   if (latinDominant && hits.length > 0) {
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: ASCII range check, intentional for homoglyph detection
     const hasNonAscii = /[^\x00-\x7F]/.test(text);
-    const normBaseline = text.replace(ZERO_WIDTH_RE, "").normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
+    const normBaseline = text
+      .replace(ZERO_WIDTH_RE, "")
+      .normalize("NFKC")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
     if (hasNonAscii && norm !== normBaseline) {
       weightSum += 0.8; // homoglyph boost
     }
@@ -566,9 +575,7 @@ function scanText(text: string, field: VettedField, _toolName: string): ToolRisk
   // has already been raised, emit a "high / ask" finding so that obfuscated
   // or multilingual injections that bypass the keyword bag are still caught.
   const adversarial = evaluateAdversarial(text);
-  const alreadyFlagged = findings.some(
-    (f) => f.severity === "critical" || f.severity === "high"
-  );
+  const alreadyFlagged = findings.some((f) => f.severity === "critical" || f.severity === "high");
   if (!alreadyFlagged && adversarial.score > 0.5) {
     findings.push({
       severity: "high",

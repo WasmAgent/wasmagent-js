@@ -80,14 +80,9 @@ export class LocalEd25519Signer implements AEPSigner {
  * );
  * ```
  */
-export function createLocalSignerFromSeed(
-  seedHex: string,
-  keyId: string
-): LocalEd25519Signer {
+export function createLocalSignerFromSeed(seedHex: string, keyId: string): LocalEd25519Signer {
   if (!/^[0-9a-fA-F]{64}$/.test(seedHex)) {
-    throw new Error(
-      "seedHex must be a 64-character hexadecimal string (32 bytes)"
-    );
+    throw new Error("seedHex must be a 64-character hexadecimal string (32 bytes)");
   }
   const bytes = Uint8Array.from(Buffer.from(seedHex, "hex"));
   return new LocalEd25519Signer(keyId, bytes);

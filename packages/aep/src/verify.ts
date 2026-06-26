@@ -1,6 +1,6 @@
 import * as ed from "@noble/ed25519";
-import type { AEPRecord } from "./types.js";
 import { canonicalBytes } from "./canonical.js";
+import type { AEPRecord } from "./types.js";
 
 /**
  * verifyAEPRecord — verify the ed25519 signature on an AEPRecord.
@@ -14,10 +14,7 @@ import { canonicalBytes } from "./canonical.js";
  * @param publicKey - 32-byte Ed25519 public key matching the `key_id` in the record.
  * @returns `true` if the signature is valid and covers the current record contents.
  */
-export async function verifyAEPRecord(
-  record: AEPRecord,
-  publicKey: Uint8Array
-): Promise<boolean> {
+export async function verifyAEPRecord(record: AEPRecord, publicKey: Uint8Array): Promise<boolean> {
   try {
     const { signature, ...unsigned } = record;
     if (!signature) return false;

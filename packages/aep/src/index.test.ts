@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { AEPEmitter } from "./emitter.js";
-import { AEPRecordSchema } from "./types.js";
 import { createLocalSignerFromSeed } from "./signer.js";
+import { AEPRecordSchema } from "./types.js";
 import { verifyAEPRecord } from "./verify.js";
 
 // Deterministic seed for tests (32 bytes as hex)
@@ -146,9 +146,7 @@ describe("AEP Ed25519 signature chain", () => {
 
   it("emit throws when no signer is configured", async () => {
     const emitter = new AEPEmitter({ run_id: "run-nosigner" });
-    await expect(emitter.emit()).rejects.toThrow(
-      "AEPEmitter.emit() requires a signer"
-    );
+    await expect(emitter.emit()).rejects.toThrow("AEPEmitter.emit() requires a signer");
   });
 });
 

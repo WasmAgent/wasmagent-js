@@ -49,10 +49,14 @@ function validPayload(overrides: Partial<JwtPayload> = {}): JwtPayload {
 describe("verifyJwt (HS256)", () => {
   it("accepts a valid token with all required claims", async () => {
     const token = await signHs256(validPayload());
-    const payload = await verifyJwt(token, { kind: "hs256", secret: SECRET }, {
-      requiredIss: ISS,
-      requiredAud: AUD,
-    });
+    const payload = await verifyJwt(
+      token,
+      { kind: "hs256", secret: SECRET },
+      {
+        requiredIss: ISS,
+        requiredAud: AUD,
+      }
+    );
     expect(payload.sub).toBe("user-1");
     expect(payload.scopes).toEqual(["agent:run"]);
   });
@@ -60,7 +64,11 @@ describe("verifyJwt (HS256)", () => {
   it("rejects a token with wrong signature", async () => {
     const token = await signHs256(validPayload());
     await expect(
-      verifyJwt(token, { kind: "hs256", secret: "wrong-secret" }, { requiredIss: ISS, requiredAud: AUD })
+      verifyJwt(
+        token,
+        { kind: "hs256", secret: "wrong-secret" },
+        { requiredIss: ISS, requiredAud: AUD }
+      )
     ).rejects.toThrow(/signature verification failed/);
   });
 
@@ -73,12 +81,8 @@ describe("verifyJwt (HS256)", () => {
   });
 
   it("rejects a malformed token", async () => {
-    await expect(
-      verifyJwt("not.a.token", { kind: "hs256", secret: SECRET })
-    ).rejects.toThrow();
-    await expect(
-      verifyJwt("oneonly", { kind: "hs256", secret: SECRET })
-    ).rejects.toThrow();
+    await expect(verifyJwt("not.a.token", { kind: "hs256", secret: SECRET })).rejects.toThrow();
+    await expect(verifyJwt("oneonly", { kind: "hs256", secret: SECRET })).rejects.toThrow();
   });
 
   // ── New: mandatory exp ────────────────────────────────────────────────────
@@ -127,10 +131,14 @@ describe("verifyJwt (HS256)", () => {
 
   it("accepts a token when aud is an array containing the required audience", async () => {
     const token = await signHs256(validPayload({ aud: ["wasmagent-api", "other-service"] }));
-    const payload = await verifyJwt(token, { kind: "hs256", secret: SECRET }, {
-      requiredIss: ISS,
-      requiredAud: AUD,
-    });
+    const payload = await verifyJwt(
+      token,
+      { kind: "hs256", secret: SECRET },
+      {
+        requiredIss: ISS,
+        requiredAud: AUD,
+      }
+    );
     expect(payload.sub).toBe("user-1");
   });
 
@@ -140,22 +148,30 @@ describe("verifyJwt (HS256)", () => {
     const token = await signHs256(validPayload({ jti: "token-abc-123" }));
     const revokedJti = new Set(["token-abc-123"]);
     await expect(
-      verifyJwt(token, { kind: "hs256", secret: SECRET }, {
-        requiredIss: ISS,
-        requiredAud: AUD,
-        revokedJti,
-      })
+      verifyJwt(
+        token,
+        { kind: "hs256", secret: SECRET },
+        {
+          requiredIss: ISS,
+          requiredAud: AUD,
+          revokedJti,
+        }
+      )
     ).rejects.toThrow(/revoked/);
   });
 
   it("accepts a valid token whose jti is NOT in the revocation list", async () => {
     const token = await signHs256(validPayload({ jti: "token-good-456" }));
     const revokedJti = new Set(["token-abc-123"]);
-    const payload = await verifyJwt(token, { kind: "hs256", secret: SECRET }, {
-      requiredIss: ISS,
-      requiredAud: AUD,
-      revokedJti,
-    });
+    const payload = await verifyJwt(
+      token,
+      { kind: "hs256", secret: SECRET },
+      {
+        requiredIss: ISS,
+        requiredAud: AUD,
+        revokedJti,
+      }
+    );
     expect(payload.sub).toBe("user-1");
   });
 
@@ -164,11 +180,15 @@ describe("verifyJwt (HS256)", () => {
   it("accepts a fully compliant token with iss, aud, exp, jti", async () => {
     const token = await signHs256(validPayload({ jti: "unique-token-id-789" }));
     const revokedJti = new Set(["other-revoked-id"]);
-    const payload = await verifyJwt(token, { kind: "hs256", secret: SECRET }, {
-      requiredIss: ISS,
-      requiredAud: AUD,
-      revokedJti,
-    });
+    const payload = await verifyJwt(
+      token,
+      { kind: "hs256", secret: SECRET },
+      {
+        requiredIss: ISS,
+        requiredAud: AUD,
+        revokedJti,
+      }
+    );
     expect(payload.sub).toBe("user-1");
     expect(payload.iss).toBe(ISS);
     expect(payload.aud).toBe(AUD);
@@ -237,7 +257,6 @@ describe("requireAuth", () => {
   it("throws a config error when requiredIss is not provided", async () => {
     const req = { headers: { get: () => null } };
     await expect(
-      // biome-ignore lint/suspicious/noExplicitAny: intentionally testing misconfiguration
       requireAuth(req, { key: { kind: "hs256", secret: SECRET }, requiredAud: AUD } as any)
     ).rejects.toThrow(/configuration error.*requiredIss/i);
   });
@@ -245,7 +264,6 @@ describe("requireAuth", () => {
   it("throws a config error when requiredAud is not provided", async () => {
     const req = { headers: { get: () => null } };
     await expect(
-      // biome-ignore lint/suspicious/noExplicitAny: intentionally testing misconfiguration
       requireAuth(req, { key: { kind: "hs256", secret: SECRET }, requiredIss: ISS } as any)
     ).rejects.toThrow(/configuration error.*requiredAud/i);
   });
