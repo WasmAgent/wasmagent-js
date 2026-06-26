@@ -1,5 +1,20 @@
 # @agentkit-js/cli
 
+## 1.3.4
+
+### Patch Changes
+
+- c49a1be: fix(kernel-remote): harness now checks `__finalAnswer__`/`__final_answer__` sentinel variables, matching QuickJS/JS kernel behavior
+
+  fix(cli): devtools server `listen()` now rejects on port-bind errors instead of hanging indefinitely
+
+  fix(cli): `parseCrosswalkYaml` validates all required fields (id, risk, priority) before pushing entries
+
+  fix(react): `useAgentRun` removes stale `status` from useCallback deps, uses `receivedFinalAnswer` flag for idle fallback
+
+- Updated dependencies [07804a7]
+  - @wasmagent/core@1.3.4
+
 ## 1.3.2
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # @agentkit-js/core
 
+## 1.3.4
+
+### Patch Changes
+
+- 07804a7: fix(core): extract bare `__finalAnswer__` assignment when model omits code fences
+
+  fix(core): guard against non-array content in AnthropicModel message formatter
+
+  docs(core): fix README usage example — correct package name, AsyncGenerator API, event types
+
 ## 1.3.3
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/mcp-firewall",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "description": "Runtime firewall for MCP and tool-augmented agents — descriptor integrity, static vetting, per-call policy, taint tracking, consent ledger",
   "type": "module",
   "main": "./dist/index.js",
