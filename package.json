@@ -40,6 +40,7 @@
     "check:stable-api": "node scripts/check-stable-api.mjs",
     "check:subpath-imports": "node scripts/check-subpath-imports.mjs",
     "check:no-control-bytes": "node scripts/check-no-control-bytes.mjs",
+    "check:changeset-required": "node scripts/check-changeset-required.mjs",
     "check:all": "npm run lint && npm run typecheck && npm run check:no-control-bytes && npm run check:version-coherence && npm run check:branding && npm run build && npm run publish:check",
     "verify:claims": "node scripts/verify-claims.mjs",
     "verify:claims:strict": "node scripts/verify-claims.mjs --strict",

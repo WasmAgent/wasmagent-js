@@ -16,6 +16,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # check-changeset-required.mjs diffs against the PR base / HEAD~1,
+          # so it needs more than the default shallow clone of depth=1.
+          fetch-depth: 0
 
       - name: Setup Bun ${{ matrix.bun-version }}
         uses: oven-sh/setup-bun@v2
@@ -33,6 +37,13 @@ jobs:
 
       - name: Check branding (no old brand references)
         run: node scripts/check-branding.mjs
+
+      - name: Changeset required for publishable-package source changes
+        # Skip on the changeset-release branch (the auto-PR that bumps
+        # versions intentionally has no changeset of its own — it consumes
+        # the existing ones).
+        if: github.head_ref != 'changeset-release/main' && github.ref_name != 'changeset-release/main'
+        run: node scripts/check-changeset-required.mjs
 
       - name: Check version coherence (core-four packages + workspace dep ranges)
         run: node scripts/check-version-coherence.mjs

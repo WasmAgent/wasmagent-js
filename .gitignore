@@ -1,19 +1,59 @@
+# ── Dependencies & build artifacts ──────────────────────────────────
 node_modules/
 dist/
 .turbo/
 *.tsbuildinfo
-.env
-.env.local
 .wrangler/
 coverage/
 *.log
+*.tgz
 examples/benchmarks/report-*.md
-.tmp/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
-*.tgz
-.DS_Store
 
-# Local benchmark caches (e.g. SWE-bench-lite tasks fetched from HF)
+# ── Local caches (benchmarks, agent scratch) ────────────────────────
+.tmp/
+tmp/
 .cache/
 .claude/
+
+# ── Secrets — never commit ──────────────────────────────────────────
+# Catch-all for env files, except the committed templates below.
+.env
+.env.*
+!.env.example
+!.env.template
+.dev.vars
+# Private keys / certificates with embedded keys
+*.pem
+*.key
+id_rsa
+id_rsa.*
+id_ecdsa
+id_ecdsa.*
+id_ed25519
+id_ed25519.*
+*.p12
+*.pfx
+*.jks
+*.pkcs12
+# Generic credential dumps
+secrets.json
+secrets.yaml
+secrets.yml
+.netrc
+.git-credentials
+# Cloud-provider credential files
+gcp-*credentials*.json
+service-account*.json
+aws-credentials*
+.npmrc
+
+# ── OS / editor (per-developer, never per-repo) ─────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

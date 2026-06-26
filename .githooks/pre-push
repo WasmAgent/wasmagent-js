@@ -71,6 +71,15 @@ if [ "${SKIP_VERSION_COHERENCE:-0}" != "1" ]; then
   step "Version coherence" node scripts/check-version-coherence.mjs
 fi
 
+if [ "${SKIP_CHANGESET_REQUIRED:-0}" != "1" ]; then
+  # Only meaningful when pushing a branch other than changeset-release/main
+  # (that branch carries no changeset itself by design).
+  if [ "$CURRENT_BRANCH" != "changeset-release/main" ]; then
+    step "Changeset required for publishable-package source changes" \
+      node scripts/check-changeset-required.mjs
+  fi
+fi
+
 if [ "${SKIP_TYPECHECK:-0}" != "1" ]; then
   step "Typecheck (tsc --noEmit)" npm run typecheck --silent
 fi
