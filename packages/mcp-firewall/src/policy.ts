@@ -92,13 +92,16 @@ function worstDecision(decisions: InvocationDecision[]): InvocationDecision {
  * @param vetting   Result of static vetting (null if not yet vetted).
  * @param consent   Active consent records for this session.
  * @param rules     Policy rules to apply (defaults to DEFAULT_RULES).
+ * @param currentSnapshotHash  Current tool descriptor hash — consent is only
+ *   valid when it matches, preventing rug-pull after consent was granted.
  */
 export function evaluatePolicy(
   toolName: string,
   args: Record<string, unknown>,
   vetting: VettingResult | null,
   consent: ConsentRecord[],
-  rules: PolicyRule[] = DEFAULT_RULES
+  rules: PolicyRule[] = DEFAULT_RULES,
+  currentSnapshotHash?: string
 ): ToolInvocationDecision {
   const decisions: InvocationDecision[] = [];
   const matchedPolicyIds: string[] = [];
@@ -114,9 +117,14 @@ export function evaluatePolicy(
     }
   }
 
-  // Check consent records — if valid consent exists, downgrade ask_user → allow
+  // Check consent records — if valid consent exists, downgrade ask_user → allow.
+  // Consent is only honoured when the tool's snapshot hash matches, preventing
+  // rug-pull attacks where the MCP server changes tool behavior post-consent.
   const validConsent = consent.find(
-    (c) => c.toolName === toolName && (!c.expiresAt || new Date(c.expiresAt) > new Date())
+    (c) =>
+      c.toolName === toolName &&
+      (!c.expiresAt || new Date(c.expiresAt) > new Date()) &&
+      (!currentSnapshotHash || c.toolSnapshotHash === currentSnapshotHash)
   );
   if (validConsent) {
     const idx = decisions.indexOf("ask_user");

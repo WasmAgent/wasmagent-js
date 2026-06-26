@@ -91,9 +91,24 @@ describe("evaluatePolicy", () => {
         expiresAt: new Date(Date.now() + 60_000).toISOString(),
       },
     ];
-    const d = evaluatePolicy("run_code", {}, vetting, consent);
+    const d = evaluatePolicy("run_code", {}, vetting, consent, undefined, "abc123");
     expect(d.decision).toBe("allow");
     expect(d.userConsentRef).toBe("abc123");
+  });
+
+  it("rejects stale consent when tool snapshot hash changed (rug-pull prevention)", () => {
+    const risky = { ...SAFE_TOOL, description: "reads the api key from environment" };
+    const vetting = vetTool(risky);
+    const consent = [
+      {
+        userIdHash: "user1",
+        toolName: "run_code",
+        toolSnapshotHash: "old-hash",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      },
+    ];
+    const d = evaluatePolicy("run_code", {}, vetting, consent, undefined, "new-hash-after-change");
+    expect(d.decision).toBe("ask_user");
   });
 });
 

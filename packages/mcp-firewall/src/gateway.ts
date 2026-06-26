@@ -284,7 +284,8 @@ export class MCPGateway {
       req.args,
       vetting,
       this.#consentRecords,
-      this.#rules
+      this.#rules,
+      cacheKey
     );
 
     const stateChanging = isStateChangingTool(req.tool);
