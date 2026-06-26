@@ -194,8 +194,14 @@ correct path for updates.
 
 - **`npm error 404 ... not in this registry`** on a package that you
   *know* exists on npm. This is almost always an `NPM_TOKEN` scope or
-  expiry problem, not a registry problem. Check the token's package-scope
-  access at `npmjs.com/settings/<org>/tokens`.
+  expiry problem, not a registry problem. **Granular Access Tokens
+  separate "Packages and scopes" permission from "Organizations"
+  permission** — to publish `@wasmagent/<pkg>` (org-owned), the token
+  must have *both* `@wasmagent` scope read+write **and** `wasmagent`
+  organization read+write. A token with only the packages permission
+  succeeds at `npm publish --dry-run` but returns E404 on real publish,
+  because dry-run skips the org-write API call. Verify both panels at
+  `npmjs.com/settings/<user>/tokens/granular-access-tokens/<id>`.
 
 ### Preventing E404 forever — migrate to Trusted Publisher (recommended)
 
