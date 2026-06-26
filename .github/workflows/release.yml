@@ -56,10 +56,14 @@ jobs:
           NPM_CONFIG_PROVENANCE: "true"
 
       - name: Publish-readiness check (only when packages were published)
+        # Continue even if individual packages fail metadata checks — they
+        # were already accepted by npm. The check here is informational, not
+        # blocking, so we don't lose the GitHub Release creation that follows.
         if: steps.changesets.outputs.published == 'true'
+        continue-on-error: true
         run: bun run publish:check
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release (aggregate)
         if: steps.changesets.outputs.published == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

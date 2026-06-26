@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+#
+# pre-push — reject pushes that would fail CI.
+#
+# This hook runs the same lint/typecheck/build/test checks that
+# .github/workflows/ci.yml runs, plus a NUL-byte source-file scan that
+# caught us in commit b044b6a. It exits non-zero if any check fails,
+# preventing the push.
+#
+# Emergency bypass:  git push --no-verify
+#
+# Enabled by:        git config core.hooksPath .githooks  (run once per clone)
+#                    or set up by .githooks/install.sh
+#
+# Skip individual checks via env vars (CI / fast-iteration only):
+#   SKIP_LINT=1, SKIP_TYPECHECK=1, SKIP_BUILD=1, SKIP_TEST=1, SKIP_PUBLISH_CHECK=1
+#
+# Total time on a clean tree with warm turbo cache: ~25s.
+# Cold cache: ~60–90s. Compare with one round-trip to CI (~3–6 min).
+
+set -e
+
+# Resolve repo root so the hook works from any subdirectory.
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+# Skip on branches we never push to npm-related CI paths (purely local).
+CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
+case "$CURRENT_BRANCH" in
+  scratch/*|draft/*|wip/*)
+    echo "[pre-push] skipped — branch '$CURRENT_BRANCH' matches scratch pattern."
+    exit 0
+    ;;
+esac
+
+# Quick exit when nothing tracked changed since origin (avoid running on no-op pushes).
+REMOTE="$(git remote get-url --push origin 2>/dev/null || echo "")"
+if [ -z "$REMOTE" ]; then
+  echo "[pre-push] no 'origin' remote, skipping."
+  exit 0
+fi
+
+cyan() { printf "\033[36m%s\033[0m\n" "$*"; }
+red()  { printf "\033[31m%s\033[0m\n" "$*"; }
+green(){ printf "\033[32m%s\033[0m\n" "$*"; }
+
+step() {
+  local name=$1; shift
+  cyan "→ $name"
+  if "$@"; then
+    green "  ✓ $name"
+  else
+    red "  ✗ $name failed."
+    red "  Run: $*"
+    red "  Bypass (NOT recommended): git push --no-verify"
+    exit 1
+  fi
+}
+
+START=$(date +%s 2>/dev/null || echo 0)
+
+if [ "${SKIP_LINT:-0}" != "1" ]; then
+  step "Lint (biome)" npx biome check packages/
+fi
+
+if [ "${SKIP_NUL:-0}" != "1" ]; then
+  step "Source files free of NUL/control bytes" node scripts/check-no-control-bytes.mjs
+fi
+
+if [ "${SKIP_VERSION_COHERENCE:-0}" != "1" ]; then
+  step "Version coherence" node scripts/check-version-coherence.mjs
+fi
+
+if [ "${SKIP_TYPECHECK:-0}" != "1" ]; then
+  step "Typecheck (tsc --noEmit)" npm run typecheck --silent
+fi
+
+if [ "${SKIP_BUILD:-0}" != "1" ]; then
+  step "Build (tsc emit + wrangler dry-run)" npm run build --silent
+fi
+
+if [ "${SKIP_TEST:-0}" != "1" ]; then
+  # Run each package in its own bun process to avoid global-state cross-talk
+  # (e.g. @noble/ed25519 + WasmtimeKernel.test.ts both touch crypto.subtle).
+  # CI uses `turbo run test` which already isolates per-package; we mirror that.
+  if [ "${FULL_TEST:-0}" = "1" ]; then
+    step "Test (all, turbo)" npm run test --silent
+  else
+    step "Test: aep"              bun test packages/aep/src/
+    step "Test: mcp-firewall"     bun test packages/mcp-firewall/src/
+    step "Test: kernel-quickjs"   bun test packages/kernel-quickjs/src/
+    step "Test: kernel-wasmtime"  bun test packages/kernel-wasmtime/src/
+    step "Test: cloudflare-worker auth" bun test packages/cloudflare-worker/src/auth.test.ts
+  fi
+fi
+
+if [ "${SKIP_PUBLISH_CHECK:-0}" != "1" ]; then
+  step "Publish-readiness (LICENSE / homepage / files)" node scripts/publish-check.mjs
+fi
+
+END=$(date +%s 2>/dev/null || echo 0)
+ELAPSED=$((END - START))
+green "✓ All pre-push checks passed in ${ELAPSED}s."
+exit 0

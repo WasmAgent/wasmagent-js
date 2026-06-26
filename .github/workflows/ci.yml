@@ -28,6 +28,9 @@ jobs:
       - name: Lint (Biome)
         run: bun run lint
 
+      - name: No NUL / C0 control bytes in source files
+        run: node scripts/check-no-control-bytes.mjs
+
       - name: Check branding (no old brand references)
         run: node scripts/check-branding.mjs
 
