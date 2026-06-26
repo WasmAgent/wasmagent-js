@@ -41,10 +41,14 @@
     "stability": "alpha"
   },
   "license": "Apache-2.0",
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/capability-compiler#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
     "directory": "packages/capability-compiler"
+  },
+  "bugs": {
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
   },
   "publishConfig": {
     "access": "public"
