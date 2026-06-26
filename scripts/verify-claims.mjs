@@ -7,6 +7,7 @@
  *   node scripts/verify-claims.mjs --strict  # warnings become errors
  *   node scripts/verify-claims.mjs --list    # print claim table
  *   node scripts/verify-claims.mjs --update  # stamp today on per-pr claims
+ *   node scripts/verify-claims.mjs --html    # write HTML dashboard to docs/claims/claims.html
  */
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -38,6 +39,7 @@ const args = process.argv.slice(2);
 const STRICT = args.includes("--strict");
 const LIST = args.includes("--list");
 const UPDATE = args.includes("--update");
+const HTML = args.includes("--html");
 
 const VALID_CI_MODES = ["nightly", "manual", "per-pr"];
 
@@ -184,6 +186,187 @@ function claimReferencesNumeric(claim, numeric) {
   return searchIn.includes(numeric);
 }
 
+// ─── HTML report ────────────────────────────────────────────────────────────
+
+/**
+ * Return the HTML status label and CSS class for a claim based on days since
+ * last_verified.  Uses a fixed 30 / 90 day threshold regardless of ci_mode so
+ * the dashboard gives a human-friendly at-a-glance view.
+ */
+function claimHtmlStatus(claim) {
+  if (!claim.last_verified || !isValidISODate(claim.last_verified)) {
+    return { label: "✗ Outdated", cls: "status-outdated" };
+  }
+  const age = daysSince(claim.last_verified);
+  if (age <= 30) return { label: "✓ Verified", cls: "status-verified" };
+  if (age <= 90) return { label: "⚠ Stale", cls: "status-stale" };
+  return { label: "✗ Outdated", cls: "status-outdated" };
+}
+
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function generateHtmlReport(claims, rootDir) {
+  let verified = 0;
+  let stale = 0;
+  let outdated = 0;
+
+  const rows = claims
+    .map((c) => {
+      const { label, cls } = claimHtmlStatus(c);
+      if (cls === "status-verified") verified++;
+      else if (cls === "status-stale") stale++;
+      else outdated++;
+
+      const scriptRel = escapeHtml(c.evidence_script ?? "");
+      const scriptPath = c.evidence_script ? resolve(rootDir, c.evidence_script) : null;
+      const scriptExists = scriptPath ? existsSync(scriptPath) : false;
+      const scriptCell = scriptExists
+        ? `<a href="${scriptRel}" style="color:#7ec8e3;">${scriptRel}</a>`
+        : `<span style="color:#e07070;">${scriptRel}</span>`;
+
+      return `    <tr>
+      <td><code>${escapeHtml(c.id)}</code></td>
+      <td>${escapeHtml(c.claim)}</td>
+      <td>${scriptCell}</td>
+      <td>${escapeHtml(c.last_verified)}</td>
+      <td><span class="badge badge-${escapeHtml(c.ci_mode ?? "")}">${escapeHtml(c.ci_mode)}</span></td>
+      <td><span class="${cls}">${label}</span></td>
+    </tr>`;
+    })
+    .join("\n");
+
+  const now = new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WasmAgent — Claim Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f1117;
+      color: #d0d4de;
+      font-family: ui-monospace, "Cascadia Code", "Fira Mono", monospace;
+      font-size: 13px;
+      padding: 32px 24px;
+    }
+    h1 { color: #e8eaf0; font-size: 20px; margin-bottom: 6px; }
+    .meta { color: #6b7280; font-size: 12px; margin-bottom: 20px; }
+    .summary {
+      display: flex; gap: 20px; margin-bottom: 24px; flex-wrap: wrap;
+    }
+    .summary-card {
+      background: #1a1d27;
+      border: 1px solid #2a2d3a;
+      border-radius: 6px;
+      padding: 10px 18px;
+      min-width: 120px;
+    }
+    .summary-card .num { font-size: 24px; font-weight: bold; }
+    .summary-card .lbl { color: #6b7280; font-size: 11px; margin-top: 2px; }
+    .num-total   { color: #a0a8c0; }
+    .num-verified { color: #4ade80; }
+    .num-stale   { color: #facc15; }
+    .num-outdated { color: #f87171; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #13161f;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    thead tr { background: #1e2230; }
+    th {
+      text-align: left;
+      padding: 10px 14px;
+      color: #8892a4;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #2a2d3a;
+    }
+    td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #1e2230;
+      vertical-align: top;
+      line-height: 1.45;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #191c28; }
+    td:first-child code {
+      background: #1e2230;
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 12px;
+      color: #9ab5f5;
+    }
+    .badge {
+      display: inline-block;
+      border-radius: 3px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    .badge-nightly  { background: #1e3a5f; color: #7ec8e3; }
+    .badge-per-pr   { background: #1e3a2f; color: #6de0a0; }
+    .badge-manual   { background: #3a2e1e; color: #e0b96d; }
+    .status-verified { color: #4ade80; font-weight: 600; }
+    .status-stale    { color: #facc15; font-weight: 600; }
+    .status-outdated { color: #f87171; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>WasmAgent — Claim Dashboard</h1>
+  <p class="meta">Generated: ${now} &nbsp;|&nbsp; Source: docs/claims/claims.yaml</p>
+
+  <div class="summary">
+    <div class="summary-card">
+      <div class="num num-total">${claims.length}</div>
+      <div class="lbl">total claims</div>
+    </div>
+    <div class="summary-card">
+      <div class="num num-verified">${verified}</div>
+      <div class="lbl">verified (&le;30d)</div>
+    </div>
+    <div class="summary-card">
+      <div class="num num-stale">${stale}</div>
+      <div class="lbl">stale (31–90d)</div>
+    </div>
+    <div class="summary-card">
+      <div class="num num-outdated">${outdated}</div>
+      <div class="lbl">outdated (&gt;90d)</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Claim</th>
+        <th>Evidence Script</th>
+        <th>Last Verified</th>
+        <th>CI Mode</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+${rows}
+    </tbody>
+  </table>
+</body>
+</html>
+`;
+}
+
 // ─── --update mode ─────────────────────────────────────────────────────────
 
 function updatePerPrClaims(rawText, claims, today) {
@@ -269,6 +452,15 @@ if (LIST) {
   }
   console.log(sep);
   console.log(`${claims.length} claim(s) total.`);
+  process.exit(0);
+}
+
+// ── --html mode ─────────────────────────────────────────────────────────────
+if (HTML) {
+  const html = generateHtmlReport(claims, ROOT);
+  const outPath = resolve(ROOT, "docs/claims/claims.html");
+  writeFileSync(outPath, html);
+  console.log("Claims dashboard written to", outPath);
   process.exit(0);
 }
 
