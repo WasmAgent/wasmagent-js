@@ -726,12 +726,15 @@ export async function runWasm(
     }
 
     // Read the length prefix (big-endian uint32).
+    // Bounds already checked at line 722 (magicStart + ENVELOPE_HEADER_SIZE <= rawStdout.length),
+    // so the four indices below are guaranteed defined; we use `?? 0` as a
+    // type-narrowing tactic that biome accepts and tsc treats as never null.
     const lenOffset = magicStart + ENVELOPE_MAGIC.length;
-    const payloadLen =
-      (rawStdout[lenOffset] << 24) |
-      (rawStdout[lenOffset + 1] << 16) |
-      (rawStdout[lenOffset + 2] << 8) |
-      rawStdout[lenOffset + 3];
+    const b0 = rawStdout[lenOffset] ?? 0;
+    const b1 = rawStdout[lenOffset + 1] ?? 0;
+    const b2 = rawStdout[lenOffset + 2] ?? 0;
+    const b3 = rawStdout[lenOffset + 3] ?? 0;
+    const payloadLen = ((b0 << 24) | (b1 << 16) | (b2 << 8) | b3) >>> 0;
 
     const payloadStart = magicStart + ENVELOPE_HEADER_SIZE;
     const payloadEnd = payloadStart + payloadLen;
