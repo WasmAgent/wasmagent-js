@@ -73,184 +73,108 @@ npm run typecheck      # turbo run typecheck across all packages
 bun test tests/integration/
 ```
 
-## Local–CI parity (MUST READ before pushing > 50 lines)
+## Release & publish
 
-`bun test` passing locally does **not** guarantee CI green. CI runs three more
-checks in addition to `bun test`, and several of them have caught us recently:
+### Local–CI parity (run before pushing source changes)
 
-```bash
-# Reproduce CI locally before push — run all four:
-npx biome check packages/                  # CI's "Lint" job
-npm run typecheck                          # CI's "Typecheck" job (tsc emit, NOT --noEmit)
-bun test packages/<changed>/src/           # CI's "Test" job
-npm run build                              # CI's "Build" job (Release-only)
-```
+`bun test` passing locally does **not** guarantee CI green. The pre-push
+hook (`.githooks/pre-push`) mirrors CI: lint → no-control-bytes →
+version-coherence → typecheck → build → tests → publish-readiness.
+Install once per clone: `bash .githooks/install.sh`. Bypass only in
+emergencies: `git push --no-verify`.
 
-### Foot-guns observed in the wild
+Manual one-shot equivalent: `npm run check:all`.
 
-1. **`bun test` ≠ CI typecheck.** `bun test` doesn't compile — `tsc` does, and
-   it surfaces errors `bun` ignores. Always run `npm run typecheck` before push.
+**Foot-guns that bit us 2026-06-26:**
 
-2. **`tsc -p tsconfig.json` (emit) is stricter than `tsc --noEmit`.** Some
-   packages use `noUncheckedIndexedAccess: true` + `exactOptionalPropertyTypes:
-   true`. `bun run build` in those packages catches errors that `tsc --noEmit`
-   misses. Run `npm run build` before push.
+| Symptom | Cause | Fix |
+|---|---|---|
+| TS2532 "Object possibly undefined" after biome `--write --unsafe` | biome strips `!` non-null assertions | Use `?? 0` / `?? default` instead |
+| Local `bun test` green, CI typecheck red | `tsc -p tsconfig.json` (emit) is stricter than `tsc --noEmit` | Run `npm run build` before push |
+| `exactOptionalPropertyTypes` rejects `{x: undefined}` | Passing explicit undefined ≠ omitting key | Build opts object conditionally |
+| File reads as binary, grep can't match | NUL/control byte in regex literal | Use `\uXXXX` escapes; `scripts/check-no-control-bytes.mjs` catches it |
+| Cross-package `bun test` fails on `@noble/ed25519` | `crypto.subtle` polluted between tests in same process | Run each package in its own `bun test` invocation (turbo CI already does this) |
 
-3. **`biome check --write --unsafe` strips non-null assertions (`!`).** The
-   strip can resurrect TS2532 (`Object is possibly 'undefined'`) errors that
-   were previously suppressed. Pattern:
-   ```ts
-   // ❌ biome --unsafe will strip the `!` and tsc fails next time
-   const b = arr[i]!;
-   // ✅ explicit fallback survives biome and satisfies tsc
-   const b = arr[i] ?? 0;
-   ```
-   Use `?? 0` / `?? defaultValue` for numeric / scalar fallbacks, or an
-   explicit early-return for refs that should never be undefined.
+### Versioning policy (semver applied to changeset bumps)
 
-4. **`exactOptionalPropertyTypes: true` distinguishes `undefined` from
-   absence.** Passing `{ revokedJti: undefined }` is **not** equivalent to
-   omitting the key — tsc rejects it. Build the opts object conditionally:
-   ```ts
-   const opts: Foo = { a: 1, b: 2 };
-   if (revokedJti !== undefined) opts.revokedJti = revokedJti;
-   ```
+We use semver via changesets. Choose the bump type carefully — `linked`
+in `.changeset/config.json` propagates the bump to all `@wasmagent/*`
+packages, so the wrong choice ripples wide.
 
-5. **NUL bytes (`\x00`) in source files are silently accepted by git.** They
-   make `awk`, `cat`, `grep`, and `file` report the file as binary, and biome
-   reports them as `noControlCharactersInRegex` errors. They typically sneak
-   in when a regex literal like `/[\x00-…]/` is hand-typed. Use explicit
-   ` `/`` Unicode escapes instead:
-   ```ts
-   // ❌ NUL byte literal — file becomes "binary", grep can't find it
-   const re = /[\x00-…]/;
-   // ✅ escape sequences — safe
-   const re = /[ -ɏ]/;
-   ```
+| Change | Bump | Example |
+|---|---|---|
+| Breaking API change, removed export, schema field renamed | **major** | `1.2.0 → 2.0.0` |
+| New feature, new public API, new package | **minor** | `1.2.0 → 1.3.0` |
+| Bug fix, doc fix, security patch, version-coherence alignment | **patch** | `1.2.0 → 1.2.1` |
 
-### Pre-push checklist (recommended)
+**Common mistake**: using `minor` for a coordination-only bump (e.g.,
+"align with core-four version"). Use **patch** instead — coordination
+isn't a feature.
 
-For commits that touch source files (not just docs / changesets), run before
-`git push`:
+### Release flow (two-stage PR)
 
-```bash
-npx biome check packages/ && \
-  npm run typecheck && \
-  npm run build && \
-  bun test packages/<changed>/src/
-```
+For any package already on npm:
 
-If any step fails, fix it before pushing. CI is not a substitute for local
-verification — every red CI run wastes ~3–6 minutes of feedback latency.
+1. Land your change on `main` with `.changeset/<name>.md` describing
+   what changed. The pre-push hook ensures CI-equivalent checks ran.
+2. `.github/workflows/release.yml` (changesets/action) auto-opens
+   `chore: release packages` PR with version bumps + CHANGELOG.
+3. Review the diff, merge the PR.
+4. Release workflow re-fires, runs `changeset publish` → npm.
+5. `changesets/action` also auto-creates per-package GitHub Releases;
+   the `Create GitHub Release (aggregate)` step adds a top-level
+   `wasmagent v<core-version>` release tied to CHANGELOG.
 
-## changeset release flow (publish via two-stage PR)
+`linked: [['@wasmagent/*']]` means packages mentioned in a changeset
++ their dependents share the same version number. A changeset listing
+5 packages bumps only those 5 — not the entire namespace.
 
-There are two npm-publishing paths in this repo. **Use the right one** —
-mixing them creates phantom versions and broken release PRs.
+### Transient failures and recovery
 
-### Path A: `changeset publish` (the everyday release path)
-
-For any change to a package that's already on npm. Workflow:
-
-```bash
-# After landing your change on main:
-1. Author writes .changeset/<name>.md describing what changed (see existing files for shape)
-2. Push to main. .github/workflows/release.yml triggers and auto-opens
-   "chore: release packages" PR using changesets/action.
-3. Review the auto-generated CHANGELOG diff + version bumps in the PR.
-4. Merge the PR — release.yml fires again, this time running
-   `changeset publish` which actually publishes to npm.
-```
-
-**Semantics of `.changeset/config.json` `linked` and `ignore`:**
-
-- `linked: [['@wasmagent/*']]` does **not** mean "every `@wasmagent/*` bumps
-  together unconditionally." It means "packages mentioned in a changeset
-  *plus packages that depend on them transitively* all share the same version
-  number." A changeset that lists 5 packages still only bumps those 5
-  (plus their dependents) — not the entire `@wasmagent/*` namespace.
-- `ignore: ['@wasmagent/cloudflare-worker', ...]` excludes from **version
-  bumping**, but `changeset publish` will still try to publish if it sees a
-  local version that's not on npm. To skip publishing entirely, keep
-  `"private": true` in `package.json`.
-
-### Path B: `publish-alpha.yml` (first-time publish only)
-
-Only when a brand-new scoped package has never appeared on npm. See the
-detailed steps in "Publishing new npm packages" below. **Do not** use
-`publish-alpha` for packages already on npm — `changeset publish` is the
-correct path for updates.
-
-### Common transient failures
-
-- **Release workflow "Premature close"** from GitHub GraphQL API while
-  generating changelog. Just re-run: `gh run rerun <id> --failed`. Not a
-  bug in your changes.
-
-- **Release PR shows `UNSTABLE`** mergeable state with "no checks reported".
-  The PR branch `changeset-release/main` doesn't have its own CI run because
-  the workflow filter excludes that branch. The content has already been
-  validated by the main-branch CI that produced it. Safe to merge.
-
-- **`npm error 404 ... not in this registry`** on a package that you
-  *know* exists on npm. This is almost always an `NPM_TOKEN` scope or
-  expiry problem, not a registry problem. **Granular Access Tokens
-  separate "Packages and scopes" permission from "Organizations"
-  permission** — to publish `@wasmagent/<pkg>` (org-owned), the token
-  must have *both* `@wasmagent` scope read+write **and** `wasmagent`
-  organization read+write. A token with only the packages permission
-  succeeds at `npm publish --dry-run` but returns E404 on real publish,
-  because dry-run skips the org-write API call. Verify both panels at
+- **`Premature close` from GitHub GraphQL** during `changeset version`
+  → `gh run rerun <id> --failed`. Not a code bug.
+- **`UNSTABLE` PR mergeable state** with "no checks reported" on the
+  `changeset-release/main` branch → safe to merge; content was
+  already validated by the main-branch CI that produced it.
+- **`npm error 404 ... not in this registry`** on an existing package
+  → almost always `NPM_TOKEN` scope problem. Granular Tokens have
+  *two* permission panels — Packages scope AND Organizations. To
+  publish `@wasmagent/<pkg>` (org-owned), the token needs both
+  `@wasmagent` scope read+write AND `wasmagent` org read+write. Local
+  `npm publish --dry-run` skips the org-write API, so it passes even
+  with a half-configured token. Verify at
   `npmjs.com/settings/<user>/tokens/granular-access-tokens/<id>`.
 
-### Preventing E404 forever — migrate to Trusted Publisher (recommended)
+### First-time publish (brand-new package never on npm)
 
-The long-term fix for "npm publish returns 404 even though the package
-exists" is to stop using long-lived `NPM_TOKEN` secrets entirely and
-adopt npm's [Trusted Publisher (OIDC)](https://docs.npmjs.com/trusted-publishers).
+Different path. `changeset publish` fails with E404 because the
+package has no manifest yet. Use the `publish-alpha.yml` workflow:
 
-**One-time setup:**
+1. Set required `package.json` fields (`publish-check.mjs` validates):
+   `homepage`, `repository`, `publishConfig: { access: "public" }`,
+   `files`, `license`. `wasmagent.stability` must be one of
+   `"stable" | "beta" | "alpha" | "demo" | "research"`.
+2. Keep `"private": true` so changesets doesn't try to publish.
+3. Add the package to `.changeset/config.json` `ignore` list.
+4. Trigger `publish-alpha.yml` (Actions tab → "Publish Alpha Packages",
+   set `packages` to the dir name, `dry_run: false`). The workflow
+   removes `private:true` for the publish, then leaves the package
+   in its original state.
+5. After first publish: remove `"private": true` from `package.json`,
+   remove from `.changeset/config.json` ignore list, commit. From
+   now on use the normal Release flow above.
+6. npm CDN takes 2–5 minutes to propagate. E404 right after a
+   successful publish (`+ @wasmagent/xxx@0.1.0`) is normal.
 
-1. On `npmjs.com/settings/wasmagent/publishing-access` (org-level), or on
-   each package's "Publishing access" page, add the workflow as a Trusted
-   Publisher:
-   - Repository: `WasmAgent/wasmagent-js`
-   - Workflow: `.github/workflows/release.yml`
-   - Environment: (leave blank)
-2. In `.github/workflows/release.yml`, delete the `Set npm registry` step
-   and the `NPM_TOKEN` env on `changesets/action`. The `permissions:
-   id-token: write` we already have lets npm CLI 9+ negotiate OIDC.
-3. Revoke the old `NPM_TOKEN` secret on the repo + on npm.
+### Long-term improvement: Trusted Publisher (OIDC)
 
-**Verifying the migration:**
-
-```bash
-# Dry-run a release locally — must NOT prompt for credentials
-gh workflow run release.yml --ref main
-gh run watch  # confirm "npm notice publish Signed provenance" + no 404
-```
-
-### Pre-publish checklist (run before triggering a release)
-
-```bash
-# 1. NPM_TOKEN still valid (skip after Trusted Publisher migration)
-gh secret list --repo WasmAgent/wasmagent-js | grep NPM_TOKEN
-# Updated within last 60 days. If older, rotate via npm Granular Token.
-
-# 2. Local dry-run of the package you most care about
-cd packages/aep && npm publish --dry-run --access public
-
-# 3. Local check:all
-npx biome check packages/ && npm run typecheck && npm run build && \
-  node scripts/check-version-coherence.mjs
-
-# 4. Verify changeset will produce the expected version bumps
-npx changeset status
-```
-
-If any of these fail, the Release workflow will fail the same way — fix
-locally first.
-
+Replace long-lived `NPM_TOKEN` with GitHub OIDC. Configure at
+`npmjs.com/settings/wasmagent/publishing-access` (org-level) or
+per-package, pointing to `WasmAgent/wasmagent-js` +
+`.github/workflows/release.yml`. Delete the `Set npm registry` step
+and `NPM_TOKEN` env from release.yml; `permissions: id-token: write`
+is already in place. Eliminates the entire E404-token-scope class
+of failures.
 ## Key modules (2026-06-26)
 
 | Module | Location |
@@ -326,36 +250,3 @@ PCL ties prompt_retry on mean but has 5× smaller variance. See
 
 Test it: `bun test packages/compliance/` (113 pass / 0 fail).
 Reproduce sweep: `bun packages/compliance/benchmarks/ifeval/run.ts --limit=50 --seed=42`.
-
-## Publishing new npm packages (MUST READ before adding new public packages)
-
-**The Release workflow (`changeset publish`) fails with E404 on brand-new scoped packages
-that have never existed on npm.** `changeset`'s `ignore` list only affects version bumping,
-NOT publishing — it will still attempt to publish any un-published version.
-
-### Correct procedure for first-time publishing a new package
-
-1. Add all required package.json fields (checked by `publish-check.mjs`):
-   - `homepage`, `repository`, `publishConfig: { access: "public" }`, `files`, `license`
-   - `wasmagent.tier` and `wasmagent.stability` must be one of `"stable"`, `"beta"`, `"alpha"`, `"demo"`, or `"research"` (five-tier scale; `"experimental"` is no longer a valid value)
-   - `README.md` and `LICENSE` must exist in the package directory
-
-2. Keep `"private": true` in package.json to prevent changeset from attempting publish.
-
-3. Add the package to `.changeset/config.json` `ignore` list.
-
-4. **First publish: use the `publish-alpha` workflow** (Actions → Publish Alpha Packages):
-   - Set `packages` to the package directory name (e.g. `aep mcp-gateway`)
-   - Set `dry_run: false`
-   - The workflow removes `private: true` temporarily, publishes, then the local file change is not committed
-   - **OR** publish locally: `cd packages/<name> && npm publish --access public` (after removing `private: true` from package.json)
-   - After successful publish, E403 "cannot publish over previously published" confirms it worked
-
-5. After first publish succeeds (verify with `npm view @wasmagent/<name>`):
-   - Remove `"private": true` from package.json
-   - Remove the package from `.changeset/config.json` ignore list
-   - Commit and push → subsequent Release workflow runs will manage versions via changeset normally
-
-6. **npm CDN propagation can take 2–5 minutes** after publish. E404 immediately after
-   a successful publish (`+ @wasmagent/xxx@0.1.0` in output) is normal — wait and retry.
-
