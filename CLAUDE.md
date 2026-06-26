@@ -1,5 +1,17 @@
 # wasmagent-js — Development Guide for Claude
 
+## What this project is (and is not)
+
+**Is:** Verifiable evidence layer + security control plane for MCP and tool-using agents.
+Three public entry points: `@wasmagent/mcp-firewall` (protect), `@wasmagent/aep` (record), `@wasmagent/compliance` (audit+train).
+
+**Is NOT — do not implement these:**
+- A general-purpose agent framework (LangChain / Mastra / AutoGen territory)
+- A Cursor / Claude Code / Codex competitor (no IDE UX, no remote execution at scale)
+- A compliance certification tool (never claim "satisfies EU AI Act / ISO 42001")
+- A universal RAG / workflow engine
+- A training framework (TRL / Axolotl territory) — we produce training *data*, not training *code*
+
 ## Test Commands
 
 **IMPORTANT: This project uses `bun test` (not `npx vitest run`, not `npm test`).**
@@ -61,34 +73,23 @@ npm run typecheck      # turbo run typecheck across all packages
 bun test tests/integration/
 ```
 
-## Key new packages (2026-06-22 RLAIF)
+## Key modules (2026-06-26)
 
 | Module | Location |
 |---|---|
 | `RolloutForkRunner` | `packages/core/src/enhancement/RolloutForkRunner.ts` |
-| `RolloutMemoryStore` | `packages/core/src/enhancement/RolloutMemoryStore.ts` |
 | `KernelPool` | `packages/core/src/executor/KernelPool.ts` |
-| `BuildPassesVerifier` | `packages/core/src/agents/verifiers/BuildPassesVerifier.ts` |
-| `VisualAssertVerifier` | `packages/core/src/agents/verifiers/VisualAssertVerifier.ts` |
-| `ScalarLLMJudgeVerifier` | `packages/core/src/agents/verifiers/ScalarLLMJudgeVerifier.ts` |
+| `BuildPassesVerifier` / `VisualAssertVerifier` / `ScalarLLMJudgeVerifier` | `packages/core/src/agents/verifiers/` |
 | `RolloutRanker` | `packages/core/src/ranking/RolloutRanker.ts` |
-| `summarizeToolOutput` | `packages/core/src/agents/ToolOutputSummarizer.ts` |
-| `RemoteSandboxKernel.runCommand` | `packages/kernel-remote/src/RemoteSandboxKernel.ts` |
-
-## AEP + Gateway (2026-06-25 P0 reform)
-
-| Module | Location |
-|---|---|
 | `AEPRecord` / `AEPEmitter` / `BudgetLedger` | `packages/aep/src/` (`@wasmagent/aep`) |
-| `AEP_SPAN_NAMES` (9 spans) / span attr helpers | `packages/otel-exporter/src/aep-span-names.ts` |
-| `MCPGateway` / `RequestIdentity` / `ServerCard` | `packages/mcp-firewall/src/gateway.ts` |
-| `isStateChangingTool` / `GatewayDecision` | `packages/mcp-firewall/src/gateway.ts` |
-| `GatewayMiddleware` / `composeMiddleware` / `InMemoryAuditLogger` | `packages/mcp-gateway/src/` (`@wasmagent/mcp-gateway`) |
-| `PolicyBundle` / `PolicyBundleMetadata` | `packages/mcp-policy/src/` (`@wasmagent/mcp-policy`) |
-| `CapabilityAttestation` / `AttestationRegistry` | `packages/mcp-attestation/src/` (`@wasmagent/mcp-attestation`) |
-| WASM Component Plugin ABI (WIT) | `packages/wit/wasmagent.wit` |
+| `AEP_SPAN_NAMES` / `GENAI_SEMCONV` / `aepActionToOtelSpan` | `packages/otel-exporter/src/` |
+| `MCPGateway` / `RequestIdentity` / `ServerCard` / `ScopeLease` / `ApprovalReceipt` | `packages/mcp-firewall/src/gateway.ts` |
+| `GatewayMiddleware` / `composeMiddleware` | `packages/mcp-gateway/src/` (`@wasmagent/mcp-gateway`) |
+| `PolicyBundle` / `PolicyBundleMetadata` | `packages/mcp-policy/src/` (alpha, private) |
+| `CapabilityAttestation` / `AttestationRegistry` | `packages/mcp-attestation/src/` (alpha, private) |
+| `buildDelegationContext` | `packages/core/src/agents/AgentTeam.ts` |
 
-## Compliance Engine (2026-06-24, Phase 0 + Phase 1 P0)
+## Compliance Engine + Security (2026-06-26)
 
 WasmAgent Compliance Engine — TaskSpec → ConstraintIR → Verifier → RepairTrace
 pipeline. Lives at `packages/compliance/` (`@wasmagent/compliance`).
@@ -104,8 +105,14 @@ See [ecosystem-map](https://github.com/WasmAgent/trace-pipeline/blob/main/docs/e
 | `@wasmagent/core` | **Stable** | Public API; semver guaranteed |
 | `@wasmagent/kernel-quickjs` | **Stable** | |
 | `@wasmagent/kernel-remote` | **Stable** | |
+| `@wasmagent/aep` | **Stable** | AEP v0.1/v0.2; schema versioned |
+| `@wasmagent/mcp-firewall` | **Stable** | ScopeLease, ApprovalReceipt, vetTool |
+| `@wasmagent/mcp-gateway` | **Stable** | Published 0.1.0 |
+| `@wasmagent/otel-exporter` | **Growth** | GENAI_SEMCONV, AEP↔OTel bridge |
 | `@wasmagent/aisdk` / `@wasmagent/mastra-sandbox` | **Growth** | API stable, may add fields |
 | `@wasmagent/compliance` | **Alpha** | Schema versioned; may add fields without breaking |
+| `@wasmagent/mcp-policy` | **Alpha — private** | Not yet published to npm |
+| `@wasmagent/mcp-attestation` | **Alpha — private** | Not yet published to npm |
 | `@wasmagent/evals-runner` | **Growth** | |
 | `@wasmagent/devtools` | **Growth** | |
 

@@ -230,17 +230,20 @@ wasmagent evidence export --input aep-records.jsonl --format json
 
 | Capability | Guide |
 |---|---|
-| Quality runners (self-consistency, reflect-refine, budget forcing, parallel fork-join) | [docs/guides/quality-runners.md](./docs/guides/quality-runners.md) |
-| Durable runtime (checkpoints, SSE resume, HITL across processes) | [docs/guides/durable-runtime.md](./docs/guides/durable-runtime.md) |
+| MCP firewall — vetTool, ScopeLease, ApprovalReceipt | [docs/guides/mcp-guard.md](./docs/guides/mcp-guard.md) |
+| AEP v0.2 evidence — causal chain, scope lease, taint, memory refs | [packages/aep/src/types.ts](./packages/aep/src/types.ts) |
+| OWASP MCP Top 10 crosswalk | [docs/security/standards-crosswalk.yaml](./docs/security/standards-crosswalk.yaml) |
+| OWASP security demo (10 scenarios) | [examples/owasp-demo/](./examples/owasp-demo/) |
+| Security benchmark runner | [examples/security-benchmark/](./examples/security-benchmark/) |
+| AEP ↔ OTel bidirectional mapping | [packages/otel-exporter/src/aep-otel-bridge.ts](./packages/otel-exporter/src/aep-otel-bridge.ts) |
+| AgentTeam delegation chain | [packages/core/src/agents/AgentTeam.ts](./packages/core/src/agents/AgentTeam.ts) |
+| Claim dashboard | `node scripts/verify-claims.mjs --html` → `docs/claims/claims.html` |
+| Quality runners (self-consistency, reflect-refine, parallel fork-join) | [docs/guides/quality-runners.md](./docs/guides/quality-runners.md) |
+| Durable runtime (checkpoints, SSE resume, HITL) | [docs/guides/durable-runtime.md](./docs/guides/durable-runtime.md) |
 | Observational memory — ~22% tokens on 50-turn traces | [docs/guides/observational-memory.md](./docs/guides/observational-memory.md) |
 | Goal-directed agent with verifiers | [docs/guides/goal-directed.md](./docs/guides/goal-directed.md) |
-| Super-Instruction Set (SI-1~9) — composable agent patterns | [docs/guides/super-instruction-set.md](./docs/guides/super-instruction-set.md) |
-| Production APIs (retry, evals, OTel, React hook, PTC) | [docs/api/production-apis.md](./docs/api/production-apis.md) |
+| Production APIs (retry, evals, OTel, React hook) | [docs/api/production-apis.md](./docs/api/production-apis.md) |
 | API stability policy | [docs/api/stability-policy.md](./docs/api/stability-policy.md) |
-| Kernel selection decision tree | [docs/kernels/comparison.md](./docs/kernels/comparison.md) |
-| Security governance + OWASP Agentic Top 10 | [docs/security-governance-pack/README.md](./docs/security-governance-pack/README.md) |
-| RLAIF data loop (rollout → DPO/PPO) | [docs/schemas/GOVERNANCE.md](./docs/schemas/GOVERNANCE.md) |
-| Adapter recipes (Vercel AI SDK, Mastra, OpenAI Agents, Claude SDK, MCP) | [docs/recipes/](./docs/recipes/) |
 
 ---
 
