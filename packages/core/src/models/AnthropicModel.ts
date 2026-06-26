@@ -550,6 +550,10 @@ function convertMessages(
         return { role, content: m.content };
       }
 
+      if (!Array.isArray(m.content)) {
+        return { role, content: String(m.content) };
+      }
+
       const blocks: AnthropicBlock[] = m.content
         .map((b): AnthropicBlock | null => {
           if (b.type === "text") return { type: "text", text: b.text };
