@@ -368,7 +368,7 @@ export function useAgentRun(
             });
             if (ac.signal.aborted) return;
           }
-          if (status !== "complete" && status !== "error") {
+          if (!receivedFinalAnswer) {
             setStatus("idle");
           }
         } catch (e) {
@@ -383,7 +383,7 @@ export function useAgentRun(
       })();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [endpoint, status, resolvedOpts.onEvent, resolvedOpts.headers, resolvedOpts.resume]
+    [endpoint, resolvedOpts.onEvent, resolvedOpts.headers, resolvedOpts.resume]
   );
 
   return {

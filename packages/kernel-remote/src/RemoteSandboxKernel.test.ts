@@ -137,5 +137,12 @@ describe("RemoteSandboxKernel", () => {
       expect(h2).toContain('"K2":"v2"');
       expect(h2).not.toContain("K1");
     });
+
+    it("harness checks __finalAnswer__ sentinel variable", () => {
+      const harness = _buildHarnessForTest('__finalAnswer__ = "hello";');
+      expect(harness).toContain("var __finalAnswer__ = undefined");
+      expect(harness).toContain("var __final_answer__ = undefined");
+      expect(harness).toContain("__isFinal");
+    });
   });
 });

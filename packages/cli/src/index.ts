@@ -1289,7 +1289,10 @@ export async function devtoolsCommand(
     res.end("not found");
   });
 
-  await new Promise<void>((resolve) => server.listen(port, resolve));
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, resolve);
+  });
   console.log(`wasmagent Studio: http://localhost:${port} (source: ${sourceLabel})`);
   console.log(
     `Tracking ${summaries.length} run${summaries.length === 1 ? "" : "s"} ` +
@@ -2404,7 +2407,9 @@ export async function standardsCommand(
     for (const raw of text.split("\n")) {
       const line = raw.trim();
       if (line.startsWith("- id:")) {
-        if (current.id) entries.push(current as CrosswalkEntry);
+        if (current.id && current.risk && current.priority) {
+          entries.push(current as CrosswalkEntry);
+        }
         current = {
           id: line
             .replace(/^-\s*id:\s*/, "")
@@ -2428,7 +2433,9 @@ export async function standardsCommand(
           .trim();
       }
     }
-    if (current.id) entries.push(current as CrosswalkEntry);
+    if (current.id && current.risk && current.priority) {
+      entries.push(current as CrosswalkEntry);
+    }
     return entries;
   }
 
