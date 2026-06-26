@@ -269,17 +269,36 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
 
     const dataPoints: object[] = [];
     for (const [modelId, data] of byModel) {
-      const attrs = [{ key: "gen_ai.request.model", value: { stringValue: modelId } }];
+      const attrs = [
+        { key: "gen_ai.request.model", value: { stringValue: modelId } },
+        { key: "gen_ai.operation.name", value: { stringValue: "chat" } },
+      ];
       if (data.inputTokens > 0) {
         dataPoints.push({
-          attributes: [...attrs, { key: "gen_ai.token.type", value: { stringValue: "input" } }],
+          attributes: [
+            ...attrs,
+            { key: "gen_ai.usage.input_tokens", value: { intValue: String(data.inputTokens) } },
+          ],
           asInt: String(data.inputTokens),
         });
       }
       if (data.outputTokens > 0) {
         dataPoints.push({
-          attributes: [...attrs, { key: "gen_ai.token.type", value: { stringValue: "output" } }],
+          attributes: [
+            ...attrs,
+            { key: "gen_ai.usage.output_tokens", value: { intValue: String(data.outputTokens) } },
+          ],
           asInt: String(data.outputTokens),
+        });
+      }
+      const totalTokens = data.inputTokens + data.outputTokens;
+      if (totalTokens > 0) {
+        dataPoints.push({
+          attributes: [
+            ...attrs,
+            { key: "gen_ai.usage.total_tokens", value: { intValue: String(totalTokens) } },
+          ],
+          asInt: String(totalTokens),
         });
       }
       // data.durations available for histogram export in future
@@ -406,6 +425,7 @@ export type { AEPSpanName } from "./aep-span-names.js";
 export {
   AEP_SPAN_NAMES,
   agentRunSpanAttrs,
+  GENAI_SEMCONV,
   llmGenerateSpanAttrs,
   mcpRequestSpanAttrs,
   policyCheckSpanAttrs,

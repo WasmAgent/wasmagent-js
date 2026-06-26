@@ -45,6 +45,46 @@ export const AEP_SPAN_NAMES = {
 /** Union of all AEP span name string literals. */
 export type AEPSpanName = (typeof AEP_SPAN_NAMES)[keyof typeof AEP_SPAN_NAMES];
 
+// ── OpenTelemetry GenAI semantic conventions ──────────────────────────────────
+
+/**
+ * OpenTelemetry GenAI semantic convention constants.
+ *
+ * Reference: https://opentelemetry.io/docs/specs/semconv/gen-ai/
+ *
+ * Usage:
+ *   import { GENAI_SEMCONV } from "@wasmagent/otel-exporter";
+ *
+ *   span.setAttribute(GENAI_SEMCONV.ATTR_INPUT_TOKENS, 512);
+ *   span.addEvent(GENAI_SEMCONV.EVENT_USER_MSG, { "gen_ai.prompt": "..." });
+ */
+export const GENAI_SEMCONV = {
+  /** Span name for LLM chat completions per OTel GenAI semconv */
+  SPAN_CHAT: "gen_ai.chat",
+  /** Span name for embedding calls */
+  SPAN_EMBEDDINGS: "gen_ai.embeddings",
+  /** Attribute: gen_ai.operation.name must be "chat" for chat completions */
+  ATTR_OPERATION_NAME: "gen_ai.operation.name",
+  /** Attribute: actual model used in response */
+  ATTR_RESPONSE_MODEL: "gen_ai.response.model",
+  /** Attribute: input token count */
+  ATTR_INPUT_TOKENS: "gen_ai.usage.input_tokens",
+  /** Attribute: output token count */
+  ATTR_OUTPUT_TOKENS: "gen_ai.usage.output_tokens",
+  /** Attribute: total token count */
+  ATTR_TOTAL_TOKENS: "gen_ai.usage.total_tokens",
+  /** Event name: system message */
+  EVENT_SYSTEM_MSG: "gen_ai.system.message",
+  /** Event name: user message */
+  EVENT_USER_MSG: "gen_ai.user.message",
+  /** Event name: assistant response */
+  EVENT_ASSISTANT_MSG: "gen_ai.assistant.message",
+  /** Event name: tool result */
+  EVENT_TOOL_MSG: "gen_ai.tool.message",
+  /** Event name: model response choice */
+  EVENT_CHOICE: "gen_ai.choice",
+} as const;
+
 // ── Per-span attribute helpers ────────────────────────────────────────────────
 
 /**

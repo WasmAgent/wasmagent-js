@@ -28,6 +28,8 @@ wasmagent-js is a 37-package monorepo published under the `@wasmagent/*` scope o
 | `@wasmagent/compliance` | Alpha (schema contract frozen; repair API evolving) |
 | `@wasmagent/aep` | Alpha (schema versioned `aep/v0.1`; emitter API evolving) |
 | `@wasmagent/mcp-firewall` · `@wasmagent/mcp-gateway` · `@wasmagent/capability-compiler` | Alpha |
+| `@wasmagent/mcp-policy` | Alpha — private (not yet published to npm) |
+| `@wasmagent/mcp-attestation` | Alpha — private (not yet published to npm) |
 | `@wasmagent/eliza-rollout-plugin` | Experimental |
 | `@wasmagent/cloudflare-worker` | Internal |
 
@@ -116,6 +118,41 @@ See the [kernel decision tree](/kernels/comparison) for picking the right one.
 | [`@wasmagent/aep`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/aep) | Agent Evidence Protocol — `AEPRecord` / `ActionEvidence` / `CapabilityDecision` types + `AEPEmitter`. Cross-repo public data contract for trace-pipeline training export and compliance audit. Schema: `aep/v0.1` |
 | [`@wasmagent/capability-compiler`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/capability-compiler) | Compile `CapabilityManifest` → MCP schema fragment, runtime policy rules, trace validator spec |
 | [`@wasmagent/compliance`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/compliance) | TaskSpec-driven verification + local repair for LLM runs; `ComplianceEvalRecord` emitter; IFEval benchmark harness |
+| [`@wasmagent/mcp-policy`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-policy) | **Alpha — not yet published.** Policy bundle DSL for MCP firewall rules. `PolicyBundle` (named, versioned, sha256-addressed collection of `PolicyRule`s) with `extend()`, `static default()`, `static strict()`; re-exports `evaluatePolicy`, `DEFAULT_RULES`, `DENY_BLOCKED_RULE`, `ASK_HIGH_RISK_RULE` from `@wasmagent/mcp-firewall`. API may change without notice. |
+| [`@wasmagent/mcp-attestation`](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-attestation) | **Alpha — not yet published.** Capability attestation registry for MCP server identity. Four ordered levels (`self < community < operator < audited`); `CapabilityAttestation` interface (attestationId, serverId, toolManifestDigest, level, capabilities, attestedBy, attestedAt); `AttestationRegistry`, `buildAttestation`, `isAttestationValid`. Full PKI signing via Sigstore can be layered on top. API may change without notice. |
+
+### Alpha packages — not yet published to npm
+
+The following packages are under active development and carry `"private": true` in their
+`package.json`. They are available from the monorepo source but are not yet on the npm registry.
+Install them via workspace dependency (`"@wasmagent/mcp-policy": "workspace:*"`) or wait for the
+first alpha publish via the `publish-alpha` workflow.
+
+#### @wasmagent/mcp-policy
+
+Policy bundle DSL for the WasmAgent MCP firewall. A `PolicyBundle` is a named, versioned,
+sha256-content-addressed collection of `PolicyRule`s. Key API:
+
+- `PolicyBundle` — `metadata`, `rules`, `digest`, `extend()`, `static default()`, `static strict()`
+- Re-exports from `@wasmagent/mcp-firewall`: `evaluatePolicy`, `DEFAULT_RULES`,
+  `DENY_BLOCKED_RULE`, `ASK_HIGH_RISK_RULE`, `PolicyRule`
+
+Related: `@wasmagent/mcp-firewall`, `@wasmagent/mcp-gateway`, `@wasmagent/mcp-attestation`.
+
+#### @wasmagent/mcp-attestation
+
+Capability attestation registry for MCP server identity. Provides a data model and registry for
+registering and verifying capability attestations on MCP tools. Key API:
+
+- Four ordered levels: `self < community < operator < audited`
+- `hasAttestation(serverId, level)` matches the given level and any higher level
+- `CapabilityAttestation` interface — `attestationId`, `serverId`, `toolManifestDigest`, `level`,
+  `capabilities`, `attestedBy`, `attestedAt`, optional `expiresAt`/`notes`
+- Exports: `buildAttestation`, `isAttestationValid`, `AttestationRegistry`
+- Full PKI signing via Sigstore can be layered on top
+
+Related: `@wasmagent/mcp-firewall` (enforcement), `@wasmagent/mcp-policy` (policy bundles),
+`@wasmagent/aep` (evidence records).
 
 ## Ecosystem integrations (beta)
 
