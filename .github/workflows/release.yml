@@ -78,6 +78,14 @@ jobs:
           print(core['version'] if core else 'unknown')
           ")
           TAG="v${CORE_VERSION}"
+          # Idempotency guard: when core-four packages publish in batches
+          # (e.g. core+mcp-firewall first, aep+compliance to align after),
+          # the second Release run targets the same aggregate tag. Skip if
+          # the release already exists rather than failing with HTTP 422.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists — skipping aggregate create."
+            exit 0
+          fi
           # Extract [Unreleased] section from CHANGELOG for release notes
           NOTES=$(python3 -c "
           import re
