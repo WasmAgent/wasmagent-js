@@ -36,6 +36,66 @@ const record = emitter.build();
 // record satisfies AEPRecord (aep/v0.1)
 ```
 
+## Compliance fields for run-provenance traceability
+
+`AEPRecord` v0.2 carries four optional string fields whose intent is to anchor an emitted record back to the exact code, runtime, policy ruleset, and tool manifest that produced it:
+
+| Field | Meaning | Typical source |
+|---|---|---|
+| `repo_commit` | Git commit hash of the agent code at run time | `process.env.GIT_COMMIT`, or `git rev-parse HEAD` captured at boot |
+| `runtime_version` | Agent runtime version string | `process.env.AGENT_VERSION`, or `package.json#version` read at boot |
+| `policy_bundle_digest` | SHA-256 of the active policy ruleset bundle | Computed when the bundle is loaded (boot, or on hot-reload) |
+| `tool_manifest_digest` | SHA-256 of the declared tool manifest | Computed when the manifest is loaded |
+
+All four are `optional` on the schema (`packages/aep/src/types.ts`). The constructor of `AEPEmitter` already accepts them — there is no API change required to start populating them:
+
+```ts
+import { createHash } from "node:crypto";
+import { AEPEmitter } from "@wasmagent/aep";
+
+function digestOf(bytes: Uint8Array | string): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+const emitter = new AEPEmitter({
+  run_id: "run-001",
+  model_id: "claude-sonnet-4-6",
+  model_provider: "anthropic",
+  // Captured once at process boot / build time; reused across all records.
+  repo_commit: process.env.GIT_COMMIT,
+  runtime_version: process.env.AGENT_VERSION,
+  // Computed once when the bundle / manifest is loaded.
+  policy_bundle_digest: digestOf(policyBundleCanonicalBytes),
+  tool_manifest_digest: digestOf(toolManifestCanonicalBytes),
+  signer,
+});
+```
+
+### When to populate
+
+| Field | When to compute |
+|---|---|
+| `repo_commit` | CI build (baked in as `GIT_COMMIT` env), or `git rev-parse HEAD` once at process start. Stable for the lifetime of the deployed process. |
+| `runtime_version` | Read from `package.json` at process start, or injected via `AGENT_VERSION`. Stable per release. |
+| `policy_bundle_digest` | When the policy ruleset is loaded — at boot, and again after any hot-reload. Recompute the digest if the bundle changes mid-process. |
+| `tool_manifest_digest` | When the tool manifest is loaded. Same lifecycle as the policy bundle. |
+
+### How to compute the digests
+
+Use SHA-256 over the canonical byte representation of the bundle/manifest file set. For a single JSON manifest, that's `createHash('sha256').update(JSON.stringify(canonical))`. For multi-file bundles, hash a stable concatenation (e.g. sort entries by path, then `hash(path + "\0" + content)` per entry).
+
+The exact canonicalisation is not prescribed by the schema — what matters is that the same logical bundle always produces the same digest, and that consumers downstream can recompute it independently from the artefact on disk.
+
+### Why these fields are worth populating
+
+Each field maps to one or more traceability requirements that downstream audit, eval, and replay tools expect. The mapping below is **informational**: AEP records do not by themselves satisfy any legal compliance obligation, and `@wasmagent/aep` makes no certification claim.
+
+Fields aligned with traceability requirements such as:
+- **EU AI Act (Regulation (EU) 2024/1689)** — Art. 12(3)(c) (system change documentation), Art. 19 (automatic logging enabling traceability), Annex IV Item 1(a) (provider and system version) and Item 6 (lifecycle changes).
+- General agent-system auditability — replaying a run requires knowing the exact code, runtime, policy, and tool definitions in effect.
+
+Whether a given deployment's records *meet* any specific regulatory requirement depends on retention policy, signing-key management, downstream review workflow, and the legal interpretation that applies to the operator — none of which `@wasmagent/aep` enforces.
+
 ## Documentation
 
 - [AEP schema](./src/types.ts)
@@ -59,6 +119,8 @@ signature: {
 The signature covers the **canonical serialisation** of the record minus the `signature` field itself.
 Canonical serialisation sorts JSON object keys lexicographically (recursive) and UTF-8-encodes the result.
 This means any field mutation (including `run_id`, `created_at_ms`, `actions`, etc.) invalidates the signature.
+
+The four provenance fields described in [Compliance fields for run-provenance traceability](#compliance-fields-for-run-provenance-traceability) (`repo_commit`, `runtime_version`, `policy_bundle_digest`, `tool_manifest_digest`) are part of the signed payload when populated — tampering with them invalidates the signature exactly the same way mutating `run_id` does.
 
 ### Verifying a record
 

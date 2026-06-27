@@ -71,6 +71,46 @@ describe("AEPEmitter", () => {
     expect(record.budget_ledger?.token_budget?.spent).toBe(450);
     expect(record.budget_ledger?.token_budget?.limit).toBe(1000);
   });
+
+  it("threads run-provenance fields from constructor into the built record", async () => {
+    // Regression coverage for the run-provenance traceability fields documented
+    // in README §"Compliance fields for run-provenance traceability". The
+    // constructor already accepts these four optional fields — this test pins
+    // the transport from AEPEmitterOptions → AEPRecord so a future refactor
+    // can't silently drop them.
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-provenance-001",
+      model_id: "test-model",
+      repo_commit: "1234567890abcdef1234567890abcdef12345678",
+      runtime_version: "wasmagent-js@1.2.3",
+      policy_bundle_digest: "a".repeat(64),
+      tool_manifest_digest: "b".repeat(64),
+      signer,
+    });
+
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+
+    // Both build() and emit() must carry the four fields through.
+    const built = emitter.build(1_700_000_000_000);
+    expect(built.repo_commit).toBe("1234567890abcdef1234567890abcdef12345678");
+    expect(built.runtime_version).toBe("wasmagent-js@1.2.3");
+    expect(built.policy_bundle_digest).toBe("a".repeat(64));
+    expect(built.tool_manifest_digest).toBe("b".repeat(64));
+
+    const emitted = await emitter.emit(1_700_000_000_000);
+    expect(emitted.repo_commit).toBe("1234567890abcdef1234567890abcdef12345678");
+    expect(emitted.runtime_version).toBe("wasmagent-js@1.2.3");
+    expect(emitted.policy_bundle_digest).toBe("a".repeat(64));
+    expect(emitted.tool_manifest_digest).toBe("b".repeat(64));
+
+    // And tampering with any of them must invalidate the signature — the
+    // README explicitly states these fields are part of the signed payload.
+    const publicKey = await signer.getPublicKey();
+    const tampered = { ...emitted, repo_commit: "deadbeef" };
+    const valid = await verifyAEPRecord(tampered, publicKey);
+    expect(valid).toBe(false);
+  });
 });
 
 describe("AEP Ed25519 signature chain", () => {
