@@ -1,5 +1,11 @@
 # @wasmagent/compliance
 
+## 1.4.0
+
+### Patch Changes
+
+- Version bump for core-four lockstep coherence
+
 ## 1.3.4
 
 ### Patch Changes
