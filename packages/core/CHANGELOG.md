@@ -1,5 +1,13 @@
 # @agentkit-js/core
 
+## 1.4.0
+
+### Minor Changes
+
+- 37bfff1: feat(core): add onVerifierResult callback to ToolCallingAgentOptions for emitting AEP VerifierResult from guardrail checks (input, output, tool layers).
+
+  Refs: WasmAgent/wasmagent-ops#3
+
 ## 1.3.4
 
 ### Patch Changes

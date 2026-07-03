@@ -1,5 +1,21 @@
 # @wasmagent/aep
 
+## 1.4.0
+
+### Patch Changes
+
+- e34751a: docs(aep): describe run-provenance fields (repo_commit, runtime_version, policy_bundle_digest, tool_manifest_digest) and how downstream consumers anchor a record back to the code, runtime, policy ruleset and tool manifest in effect at run time. Adds an explicit regression test that pins the constructor → record transport for the four fields and confirms they are inside the signed payload.
+
+  Refs: WasmAgent/wasmagent-js#12
+
+- 70f111f: fix(aep): use Date.now() instead of performance.now() for default timestamps
+
+  - `emit()` / `build()` now defaults `created_at_ms` to `Date.now()` (Unix epoch ms) instead of `performance.now()` (ms since process start). Fixes records showing `1970-01-01` in downstream audit tools.
+  - `addAction()` without explicit `timestamp_ms` also defaults to `Date.now()`.
+  - `addAction()` with `capability_decision` now auto-registers to `capability_decisions[]` (deduped), fixing silent empty manifest in downstream `toEvents()`.
+
+  Fixes: #14, #15
+
 ## 1.3.4
 
 ### Patch Changes
