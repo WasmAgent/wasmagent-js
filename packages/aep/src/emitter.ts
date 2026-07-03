@@ -53,7 +53,8 @@ export class AEPEmitter {
     if (action.capability_decision) {
       const cd = action.capability_decision;
       const exists = this.#capabilityDecisions.some(
-        (d) => d.capability === cd.capability && d.subject === cd.subject && d.resource === cd.resource
+        (d) =>
+          d.capability === cd.capability && d.subject === cd.subject && d.resource === cd.resource
       );
       if (!exists) this.#capabilityDecisions.push(cd);
     }
