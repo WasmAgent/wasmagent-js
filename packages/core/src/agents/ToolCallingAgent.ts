@@ -160,6 +160,17 @@ export interface ToolCallingAgentOptions {
    * precedence; this acts as the fallback.
    */
   signal?: AbortSignal;
+  /**
+   * Optional callback invoked after each guardrail check with a structured
+   * verifier result. Callers can wire this to AEPEmitter.addVerifierResult()
+   * to feed guardrail outcomes into the AEP evidence record.
+   */
+  onVerifierResult?: (result: {
+    verifier_id: string;
+    passed: boolean;
+    score: number;
+    claim_ids: string[];
+  }) => void;
 }
 
 /**
@@ -195,6 +206,8 @@ export class ToolCallingAgent {
   readonly #synthesisCodeTool: string | null;
   /** SI-7 — pre-bound AbortSignal (optional; run() opts take precedence). */
   readonly #signal: AbortSignal | undefined;
+  /** Optional callback for AEP verifier result emission from guardrail checks. */
+  readonly #onVerifierResult: ToolCallingAgentOptions["onVerifierResult"];
   /** SI-6+8 — active config snapshot, built at construction and emitted at run_start. */
   readonly #runConfig: Omit<AgentRunConfig, "signal">;
 
@@ -234,6 +247,7 @@ export class ToolCallingAgent {
         toolsSchema: this.#toolsSchema,
       });
     this.#signal = opts.signal;
+    this.#onVerifierResult = opts.onVerifierResult;
     // SI-6+8: build config snapshot once; reused at run_start and each checkpoint.
     this.#runConfig = {
       model: this.#model.providerId,
@@ -455,6 +469,12 @@ export class ToolCallingAgent {
 
       // A1: check if input guardrail triggered (checked after generation to preserve concurrency).
       if (inputGuardrailTripwire) {
+        this.#onVerifierResult?.({
+          verifier_id: `guardrail:input:${inputGuardrailTripwire.guardrailName}`,
+          passed: false,
+          score: 0,
+          claim_ids: [],
+        });
         yield {
           traceId,
           parentTraceId,
@@ -623,6 +643,12 @@ export class ToolCallingAgent {
         // A1: output guardrail check before emitting final_answer.
         const outputTripwire = await runOutputGuardrails(this.#outputGuardrails, parsedAnswer);
         if (outputTripwire) {
+          this.#onVerifierResult?.({
+            verifier_id: `guardrail:output:${outputTripwire.guardrailName}`,
+            passed: false,
+            score: 0,
+            claim_ids: [],
+          });
           yield {
             traceId,
             parentTraceId,
@@ -761,6 +787,12 @@ export class ToolCallingAgent {
             }
           );
           if (toolTripwire) {
+            this.#onVerifierResult?.({
+              verifier_id: `guardrail:${toolTripwire.guardrailName}`,
+              passed: false,
+              score: 0,
+              claim_ids: [],
+            });
             yield {
               traceId,
               parentTraceId,
@@ -787,6 +819,12 @@ export class ToolCallingAgent {
             };
             return;
           }
+          this.#onVerifierResult?.({
+            verifier_id: `guardrail:tool:${call.name}`,
+            passed: true,
+            score: 1,
+            claim_ids: [],
+          });
         }
       }
 
