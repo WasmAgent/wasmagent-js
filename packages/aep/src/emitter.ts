@@ -47,9 +47,17 @@ export class AEPEmitter {
   ): void {
     this.#actions.push({
       action_id: action.action_id ?? `action-${this.#actions.length}`,
-      timestamp_ms: action.timestamp_ms ?? performance.now(),
+      timestamp_ms: action.timestamp_ms ?? Date.now(),
       ...action,
     } as ActionEvidence);
+    if (action.capability_decision) {
+      const cd = action.capability_decision;
+      const exists = this.#capabilityDecisions.some(
+        (d) =>
+          d.capability === cd.capability && d.subject === cd.subject && d.resource === cd.resource
+      );
+      if (!exists) this.#capabilityDecisions.push(cd);
+    }
   }
 
   addCapabilityDecision(decision: CapabilityDecision): void {
@@ -78,7 +86,7 @@ export class AEPEmitter {
    *
    * For a fully signed record use `emit()` instead.
    *
-   * @param createdAtMs - Override creation timestamp (defaults to performance.now()).
+   * @param createdAtMs - Override creation timestamp (defaults to Date.now()).
    * @param signerOverride - Optional: provide a signer to sign inline (async variant).
    *   Prefer `emit()` for async signing.
    */
@@ -150,7 +158,7 @@ export class AEPEmitter {
       actions: this.#actions,
       verifier_results: this.#verifierResults,
       budget_ledger: this.#budgetLedger,
-      created_at_ms: createdAtMs ?? performance.now(),
+      created_at_ms: createdAtMs ?? Date.now(),
     };
   }
 
