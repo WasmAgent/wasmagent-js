@@ -8,12 +8,16 @@
  *
  * Output: schemas/aep-record.schema.json
  */
-import { writeFileSync, mkdirSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { AEPRecordSchema } from "../src/types.js";
 
-const outputPath = resolve(dirname(import.meta.dirname ?? __dirname), "schemas", "aep-record.schema.json");
+const outputPath = resolve(
+  dirname(import.meta.dirname ?? __dirname),
+  "schemas",
+  "aep-record.schema.json",
+);
 
 mkdirSync(dirname(outputPath), { recursive: true });
 
