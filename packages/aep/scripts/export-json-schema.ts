@@ -16,7 +16,7 @@ import { AEPRecordSchema } from "../src/types.js";
 const outputPath = resolve(
   dirname(import.meta.dirname ?? __dirname),
   "schemas",
-  "aep-record.schema.json",
+  "aep-record.schema.json"
 );
 
 mkdirSync(dirname(outputPath), { recursive: true });

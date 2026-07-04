@@ -14,7 +14,8 @@
       "!**/.wrangler",
       "!**/coverage",
       "!**/.next",
-      "!**/examples"
+      "!**/examples",
+      "!**/schemas"
     ]
   },
   "formatter": {
