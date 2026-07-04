@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+// PermissionGate — signals that the platform's permission layer already handled authorization
+export const PermissionGateSchema = z.object({
+  decision: z.enum(["approved", "denied", "auto_approved"]),
+  gate: z.string(),
+  reason: z.string().optional(),
+});
+export type PermissionGate = z.infer<typeof PermissionGateSchema>;
+
 // CapabilityDecision — one allow/deny decision for a tool invocation
 export const CapabilityDecisionSchema = z.object({
   capability: z.string(),
@@ -38,6 +46,8 @@ export const ActionEvidenceSchema = z.object({
   // v0.2 state digests
   pre_state_digest: z.string().optional(),
   post_state_digest: z.string().optional(),
+  // v0.2 permission gate — signals platform-level authorization
+  permission_gate: PermissionGateSchema.optional(),
 });
 export type ActionEvidence = z.infer<typeof ActionEvidenceSchema>;
 
@@ -98,6 +108,8 @@ export type RunContext = z.infer<typeof RunContextSchema>;
 export const AEPRecordSchema = z.object({
   schema_version: z.enum(["aep/v0.1", "aep/v0.2"]),
   run_id: z.string(),
+  user_id: z.string().optional(),
+  subject_id: z.string().optional(),
   trace_id: z.string().optional(),
   parent_trace_id: z.string().nullish(),
   repo_commit: z.string().optional(),

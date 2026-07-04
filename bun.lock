@@ -21,7 +21,7 @@
     },
     "examples/a2a-interop": {
       "name": "wasmagent-example-a2a-interop",
-      "version": "0.0.8",
+      "version": "0.0.9",
       "dependencies": {
         "@wasmagent/a2a": "workspace:*",
         "@wasmagent/core": "workspace:*",
@@ -54,7 +54,7 @@
     },
     "examples/basic-agent": {
       "name": "basic-agent",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@anthropic-ai/sdk": "^0.37.0",
         "@wasmagent/core": "workspace:*",
@@ -62,7 +62,7 @@
     },
     "examples/browser-screenshot": {
       "name": "example-browser-screenshot",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/model-anthropic": "workspace:*",
@@ -137,7 +137,7 @@
     },
     "examples/eval-suite": {
       "name": "example-eval-suite",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/model-anthropic": "workspace:*",
@@ -145,7 +145,7 @@
     },
     "examples/integration-smoke": {
       "name": "wasmagent-integration-smoke",
-      "version": "0.0.10",
+      "version": "0.0.11",
       "dependencies": {
         "@wasmagent/aisdk": "workspace:*",
         "@wasmagent/cli": "workspace:*",
@@ -176,7 +176,7 @@
     },
     "examples/local-offline": {
       "name": "local-offline",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/kernel-quickjs": "workspace:*",
@@ -204,7 +204,7 @@
     },
     "examples/mcp-memory-server": {
       "name": "@wasmagent-example/mcp-memory-server",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/mcp-server": "workspace:*",
@@ -212,7 +212,7 @@
     },
     "examples/mcp-portal": {
       "name": "mcp-portal",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/mcp-server": "workspace:*",
@@ -258,7 +258,7 @@
     },
     "examples/tool-calling-agent": {
       "name": "tool-calling-agent-example",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@anthropic-ai/sdk": "^0.37.0",
         "@wasmagent/core": "workspace:*",
@@ -267,7 +267,7 @@
     },
     "examples/tool-search-rag": {
       "name": "example-tool-search-rag",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/model-anthropic": "workspace:*",
@@ -289,7 +289,7 @@
     },
     "packages/aep": {
       "name": "@wasmagent/aep",
-      "version": "1.3.4",
+      "version": "1.4.0",
       "dependencies": {
         "@noble/ed25519": "^3.1.0",
         "zod": "^3.23.0",
@@ -297,6 +297,7 @@
       "devDependencies": {
         "@types/node": "^22.0.0",
         "typescript": "^5.7.0",
+        "zod-to-json-schema": "^3.25.2",
       },
     },
     "packages/ag-ui": {
@@ -412,7 +413,7 @@
     },
     "packages/compliance": {
       "name": "@wasmagent/compliance",
-      "version": "1.3.4",
+      "version": "1.4.0",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "zod": "^3.23.0",
@@ -424,7 +425,7 @@
     },
     "packages/core": {
       "name": "@wasmagent/core",
-      "version": "1.3.4",
+      "version": "1.4.0",
       "dependencies": {
         "@wasmagent/agent-prompts": "^1.0.3",
         "zod": "^3.23.0",
@@ -589,7 +590,7 @@
     },
     "packages/mcp-firewall": {
       "name": "@wasmagent/mcp-firewall",
-      "version": "1.3.4",
+      "version": "1.4.0",
       "dependencies": {
         "@wasmagent/mcp-server": "^1.1.0",
       },
@@ -891,7 +892,7 @@
     },
     "tests/integration": {
       "name": "@wasmagent/integration-tests",
-      "version": "1.3.4",
+      "version": "1.4.0",
       "dependencies": {
         "@wasmagent/agent-prompts": "workspace:*",
         "@wasmagent/core": "workspace:*",

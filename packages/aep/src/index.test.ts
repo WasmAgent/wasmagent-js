@@ -61,6 +61,20 @@ describe("AEPEmitter", () => {
     expect(typeof action?.timestamp_ms).toBe("number");
   });
 
+  it("uses provided timestamp_ms for historical data seeding (#19)", () => {
+    const emitter = new AEPEmitter({ run_id: "run-historical" });
+    const historicalTs = 1_600_000_000_000; // a past timestamp
+    emitter.addAction({
+      tool_name: "seed_data",
+      state_changing: true,
+      timestamp_ms: historicalTs,
+    });
+    const record = emitter.build();
+    const action = record.actions[0];
+    expect(action).toBeDefined();
+    expect(action?.timestamp_ms).toBe(historicalTs);
+  });
+
   it("setBudgetLedger records budget consumption in the built AEPRecord", () => {
     const emitter = new AEPEmitter({ run_id: "run-budget-001" });
     emitter.setBudgetLedger({
@@ -110,6 +124,86 @@ describe("AEPEmitter", () => {
     const tampered = { ...emitted, repo_commit: "deadbeef" };
     const valid = await verifyAEPRecord(tampered, publicKey);
     expect(valid).toBe(false);
+  });
+
+  it("supports user_id and subject_id via constructor (#20)", () => {
+    const emitter = new AEPEmitter({
+      run_id: "run-user-001",
+      user_id: "user-alice",
+      subject_id: "subject-project-x",
+    });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.user_id).toBe("user-alice");
+    expect(record.subject_id).toBe("subject-project-x");
+  });
+
+  it("supports user_id and subject_id via setter methods (#20)", () => {
+    const emitter = new AEPEmitter({ run_id: "run-user-002" });
+    emitter.setUserId("user-bob");
+    emitter.setSubjectId("subject-audit-trail");
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.user_id).toBe("user-bob");
+    expect(record.subject_id).toBe("subject-audit-trail");
+  });
+
+  it("user_id and subject_id are optional and backwards compatible (#20)", () => {
+    const emitter = new AEPEmitter({ run_id: "run-user-003" });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.user_id).toBeUndefined();
+    expect(record.subject_id).toBeUndefined();
+  });
+
+  it("supports permission_gate on action events (#21)", () => {
+    const emitter = new AEPEmitter({ run_id: "run-gate-001" });
+    emitter.addAction({
+      tool_name: "deploy",
+      state_changing: true,
+      permission_gate: {
+        decision: "approved",
+        gate: "production-deploy-gate",
+        reason: "auto-approved by policy for staging",
+      },
+    });
+    const record = emitter.build(1_700_000_000_000);
+    const action = record.actions[0];
+    expect(action?.permission_gate).toBeDefined();
+    expect(action?.permission_gate?.decision).toBe("approved");
+    expect(action?.permission_gate?.gate).toBe("production-deploy-gate");
+    expect(action?.permission_gate?.reason).toBe("auto-approved by policy for staging");
+  });
+
+  it("permission_gate supports denied decision (#21)", () => {
+    const emitter = new AEPEmitter({ run_id: "run-gate-002" });
+    emitter.addAction({
+      tool_name: "delete_db",
+      state_changing: true,
+      permission_gate: {
+        decision: "denied",
+        gate: "destructive-ops-gate",
+      },
+    });
+    const record = emitter.build(1_700_000_000_000);
+    const action = record.actions[0];
+    expect(action?.permission_gate?.decision).toBe("denied");
+    expect(action?.permission_gate?.reason).toBeUndefined();
+  });
+
+  it("permission_gate supports auto_approved decision (#21)", () => {
+    const emitter = new AEPEmitter({ run_id: "run-gate-003" });
+    emitter.addAction({
+      tool_name: "read_file",
+      state_changing: false,
+      permission_gate: {
+        decision: "auto_approved",
+        gate: "read-only-gate",
+      },
+    });
+    const record = emitter.build(1_700_000_000_000);
+    const action = record.actions[0];
+    expect(action?.permission_gate?.decision).toBe("auto_approved");
   });
 });
 
@@ -240,6 +334,62 @@ describe("AEPRecord schema validation", () => {
 
     const result = AEPRecordSchema.safeParse(recordValid);
     expect(result.success).toBe(true);
+  });
+
+  it("schema parse succeeds with user_id and subject_id (#20)", () => {
+    const recordWithIds = {
+      schema_version: "aep/v0.2",
+      run_id: "run-ids",
+      user_id: "user-123",
+      subject_id: "subject-456",
+      created_at_ms: 1_700_000_000_000,
+      input_refs: [],
+      output_refs: [],
+      capability_decisions: [],
+      actions: [],
+      verifier_results: [],
+      signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+    };
+
+    const result = AEPRecordSchema.safeParse(recordWithIds);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.user_id).toBe("user-123");
+      expect(result.data.subject_id).toBe("subject-456");
+    }
+  });
+
+  it("schema parse succeeds with permission_gate on actions (#21)", () => {
+    const recordWithGate = {
+      schema_version: "aep/v0.2",
+      run_id: "run-gate",
+      created_at_ms: 1_700_000_000_000,
+      input_refs: [],
+      output_refs: [],
+      capability_decisions: [],
+      actions: [
+        {
+          action_id: "action-0",
+          tool_name: "deploy",
+          state_changing: true,
+          timestamp_ms: 1_700_000_000_000,
+          evidence_refs: [],
+          permission_gate: {
+            decision: "approved",
+            gate: "deploy-gate",
+            reason: "approved by admin",
+          },
+        },
+      ],
+      verifier_results: [],
+      signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+    };
+
+    const result = AEPRecordSchema.safeParse(recordWithGate);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.actions[0]?.permission_gate?.decision).toBe("approved");
+    }
   });
 });
 

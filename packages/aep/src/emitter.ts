@@ -14,6 +14,8 @@ import { AEPRecordSchema } from "./types.js";
 
 export interface AEPEmitterOptions {
   run_id: string;
+  user_id?: string;
+  subject_id?: string;
   trace_id?: string;
   parent_trace_id?: string | null;
   repo_commit?: string;
@@ -34,9 +36,21 @@ export class AEPEmitter {
   readonly #outputRefs: OutputRef[] = [];
   readonly #verifierResults: VerifierResult[] = [];
   #budgetLedger: BudgetLedger | undefined;
+  #userId: string | undefined;
+  #subjectId: string | undefined;
 
   constructor(opts: AEPEmitterOptions) {
     this.#opts = opts;
+    this.#userId = opts.user_id;
+    this.#subjectId = opts.subject_id;
+  }
+
+  setUserId(userId: string): void {
+    this.#userId = userId;
+  }
+
+  setSubjectId(subjectId: string): void {
+    this.#subjectId = subjectId;
   }
 
   addAction(
@@ -148,10 +162,12 @@ export class AEPEmitter {
   }
 
   #buildUnsigned(createdAtMs?: number): Omit<AEPRecord, "signature"> {
-    const { signer: _signer, ...opts } = this.#opts;
+    const { signer: _signer, user_id: _u, subject_id: _s, ...opts } = this.#opts;
     return {
       schema_version: "aep/v0.2",
       ...opts,
+      ...(this.#userId !== undefined && { user_id: this.#userId }),
+      ...(this.#subjectId !== undefined && { subject_id: this.#subjectId }),
       input_refs: this.#inputRefs,
       output_refs: this.#outputRefs,
       capability_decisions: this.#capabilityDecisions,

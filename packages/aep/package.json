@@ -15,7 +15,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "bun test",
-    "clean": "rm -rf dist .turbo"
+    "clean": "rm -rf dist .turbo",
+    "schema:export": "bun run scripts/export-json-schema.ts"
   },
   "dependencies": {
     "@noble/ed25519": "^3.1.0",
@@ -23,7 +24,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "zod-to-json-schema": "^3.25.2"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -51,6 +53,7 @@
   },
   "files": [
     "dist",
+    "schemas",
     "README.md",
     "LICENSE"
   ]

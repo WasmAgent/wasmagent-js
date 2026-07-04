@@ -1,0 +1,476 @@
+{
+  "$ref": "#/definitions/AEPRecord",
+  "definitions": {
+    "AEPRecord": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "enum": [
+            "aep/v0.1",
+            "aep/v0.2"
+          ]
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "subject_id": {
+          "type": "string"
+        },
+        "trace_id": {
+          "type": "string"
+        },
+        "parent_trace_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "repo_commit": {
+          "type": "string"
+        },
+        "runtime_version": {
+          "type": "string"
+        },
+        "model_provider": {
+          "type": "string"
+        },
+        "model_id": {
+          "type": "string"
+        },
+        "policy_bundle_digest": {
+          "type": "string"
+        },
+        "tool_manifest_digest": {
+          "type": "string"
+        },
+        "mcp_server_card_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "input_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "uri": {
+                "type": "string"
+              },
+              "digest": {
+                "type": "string"
+              },
+              "taint_labels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              }
+            },
+            "required": [
+              "uri"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "output_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "uri": {
+                "type": "string"
+              },
+              "digest": {
+                "type": "string"
+              },
+              "redaction_profile": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "uri"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "capability_decisions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "capability": {
+                "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "resource": {
+                "type": "string"
+              },
+              "decision": {
+                "type": "string",
+                "enum": [
+                  "allow",
+                  "deny",
+                  "ask_user",
+                  "dry_run"
+                ]
+              },
+              "reason_code": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "capability",
+              "subject",
+              "resource",
+              "decision"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "action_id": {
+                "type": "string"
+              },
+              "tool_name": {
+                "type": "string"
+              },
+              "state_changing": {
+                "type": "boolean"
+              },
+              "precondition_digest": {
+                "type": "string"
+              },
+              "result_digest": {
+                "type": "string"
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              },
+              "capability_decision": {
+                "type": "object",
+                "properties": {
+                  "capability": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "resource": {
+                    "type": "string"
+                  },
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "allow",
+                      "deny",
+                      "ask_user",
+                      "dry_run"
+                    ]
+                  },
+                  "reason_code": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "capability",
+                  "subject",
+                  "resource",
+                  "decision"
+                ],
+                "additionalProperties": false
+              },
+              "timestamp_ms": {
+                "type": "number"
+              },
+              "parent_action_id": {
+                "type": "string"
+              },
+              "causal_chain_id": {
+                "type": "string"
+              },
+              "tool_descriptor_digest": {
+                "type": "string"
+              },
+              "server_card_digest": {
+                "type": "string"
+              },
+              "scope_lease_id": {
+                "type": "string"
+              },
+              "approval_context_hash": {
+                "type": "string"
+              },
+              "input_taint_labels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "output_taint_labels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "memory_read_refs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "memory_write_refs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "pre_state_digest": {
+                "type": "string"
+              },
+              "post_state_digest": {
+                "type": "string"
+              },
+              "permission_gate": {
+                "type": "object",
+                "properties": {
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "approved",
+                      "denied",
+                      "auto_approved"
+                    ]
+                  },
+                  "gate": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "decision",
+                  "gate"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "action_id",
+              "tool_name",
+              "state_changing",
+              "timestamp_ms"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "verifier_results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "verifier_id": {
+                "type": "string"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "score": {
+                "type": "number"
+              },
+              "claim_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              }
+            },
+            "required": [
+              "verifier_id",
+              "passed"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "budget_ledger": {
+          "type": "object",
+          "properties": {
+            "token_budget": {
+              "type": "object",
+              "properties": {
+                "limit": {
+                  "type": "number"
+                },
+                "spent": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "spent"
+              ],
+              "additionalProperties": false
+            },
+            "latency_budget": {
+              "type": "object",
+              "properties": {
+                "limit_ms": {
+                  "type": "number"
+                },
+                "actual_ms": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "actual_ms"
+              ],
+              "additionalProperties": false
+            },
+            "tool_budget": {
+              "type": "object",
+              "properties": {
+                "limit": {
+                  "type": "number"
+                },
+                "spent": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "spent"
+              ],
+              "additionalProperties": false
+            },
+            "risk_budget": {
+              "type": "object",
+              "properties": {
+                "limit": {
+                  "type": "number"
+                },
+                "spent": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "spent"
+              ],
+              "additionalProperties": false
+            },
+            "retry_budget": {
+              "type": "object",
+              "properties": {
+                "limit": {
+                  "type": "number"
+                },
+                "spent": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "spent"
+              ],
+              "additionalProperties": false
+            },
+            "human_approval_budget": {
+              "type": "object",
+              "properties": {
+                "limit": {
+                  "type": "number"
+                },
+                "spent": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "spent"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "created_at_ms": {
+          "type": "number"
+        },
+        "run_context": {
+          "type": "object",
+          "properties": {
+            "agent_id": {
+              "type": "string"
+            },
+            "agent_version": {
+              "type": "string"
+            },
+            "subagent_id": {
+              "type": "string"
+            },
+            "delegation_chain": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "environment_digest": {
+              "type": "string"
+            },
+            "dependency_lock_digest": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "signature": {
+          "type": "object",
+          "properties": {
+            "alg": {
+              "type": "string",
+              "const": "ed25519"
+            },
+            "key_id": {
+              "type": "string"
+            },
+            "sig": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "alg",
+            "key_id",
+            "sig"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "run_id",
+        "created_at_ms",
+        "signature"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}
