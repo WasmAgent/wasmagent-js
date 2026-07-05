@@ -101,6 +101,9 @@ export const RunContextSchema = z.object({
   delegation_chain: z.array(z.string()).default([]),
   environment_digest: z.string().optional(),
   dependency_lock_digest: z.string().optional(),
+  // v0.3 session / conversation fields (#22)
+  session_id: z.string().optional(),
+  turn_index: z.number().int().min(0).optional(),
 });
 export type RunContext = z.infer<typeof RunContextSchema>;
 

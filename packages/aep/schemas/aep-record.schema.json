@@ -437,6 +437,13 @@
             },
             "dependency_lock_digest": {
               "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "turn_index": {
+              "type": "integer",
+              "minimum": 0
             }
           },
           "additionalProperties": false

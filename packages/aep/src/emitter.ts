@@ -8,6 +8,7 @@ import type {
   CapabilityDecision,
   InputRef,
   OutputRef,
+  RunContext,
   VerifierResult,
 } from "./types.js";
 import { AEPRecordSchema } from "./types.js";
@@ -24,6 +25,10 @@ export interface AEPEmitterOptions {
   model_id?: string;
   policy_bundle_digest?: string;
   tool_manifest_digest?: string;
+  /** Default created_at_ms timestamp. Overridden by the parameter to build()/emit(). */
+  created_at_ms?: number;
+  /** Run context including session_id, turn_index, agent metadata. */
+  run_context?: RunContext;
   /** Optional signer. When provided, emit() signs the record; build() remains unsigned-compatible via a dummy placeholder. */
   signer?: AEPSigner;
 }
@@ -162,7 +167,7 @@ export class AEPEmitter {
   }
 
   #buildUnsigned(createdAtMs?: number): Omit<AEPRecord, "signature"> {
-    const { signer: _signer, user_id: _u, subject_id: _s, ...opts } = this.#opts;
+    const { signer: _signer, user_id: _u, subject_id: _s, created_at_ms: defaultTs, run_context, ...opts } = this.#opts;
     return {
       schema_version: "aep/v0.2",
       ...opts,
@@ -174,7 +179,8 @@ export class AEPEmitter {
       actions: this.#actions,
       verifier_results: this.#verifierResults,
       budget_ledger: this.#budgetLedger,
-      created_at_ms: createdAtMs ?? Date.now(),
+      created_at_ms: createdAtMs ?? defaultTs ?? Date.now(),
+      ...(run_context !== undefined && { run_context }),
     };
   }
 

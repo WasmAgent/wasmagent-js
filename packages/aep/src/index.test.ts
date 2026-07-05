@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { AEPEmitter } from "./emitter.js";
 import { createLocalSignerFromSeed } from "./signer.js";
 import { AEPRecordSchema } from "./types.js";
+import { isStateChangingTool, STATE_CHANGING_PATTERNS } from "./utils.js";
 import { verifyAEPRecord } from "./verify.js";
 
 // Deterministic seed for tests (32 bytes as hex)
@@ -413,5 +414,98 @@ describe("createLocalSignerFromSeed", () => {
     const sig1 = await signer1.sign(bytes);
     const sig2 = await signer2.sign(bytes);
     expect(sig1).toBe(sig2);
+  });
+});
+
+describe("isStateChangingTool (#23)", () => {
+  it("returns true for tools with state-changing names", () => {
+    expect(isStateChangingTool({ name: "write_file" })).toBe(true);
+    expect(isStateChangingTool({ name: "create_user" })).toBe(true);
+    expect(isStateChangingTool({ name: "delete_record" })).toBe(true);
+    expect(isStateChangingTool({ name: "deploy_app" })).toBe(true);
+    expect(isStateChangingTool({ name: "execute_command" })).toBe(true);
+  });
+
+  it("returns true when description contains state-changing keywords", () => {
+    expect(isStateChangingTool({ name: "foo", description: "Publish the artifact" })).toBe(true);
+    expect(isStateChangingTool({ name: "bar", description: "Will send an email" })).toBe(true);
+  });
+
+  it("returns false for read-only tools", () => {
+    expect(isStateChangingTool({ name: "read_file" })).toBe(false);
+    expect(isStateChangingTool({ name: "get_status" })).toBe(false);
+    expect(isStateChangingTool({ name: "list_items" })).toBe(false);
+    expect(isStateChangingTool({ name: "search", description: "Searches documents" })).toBe(false);
+  });
+
+  it("exports STATE_CHANGING_PATTERNS array", () => {
+    expect(Array.isArray(STATE_CHANGING_PATTERNS)).toBe(true);
+    expect(STATE_CHANGING_PATTERNS.length).toBeGreaterThan(0);
+    expect(STATE_CHANGING_PATTERNS[0]).toBeInstanceOf(RegExp);
+  });
+});
+
+describe("session_id / turn_index (#22)", () => {
+  it("passes run_context with session_id and turn_index through to the record", () => {
+    const emitter = new AEPEmitter({
+      run_id: "run-session-001",
+      run_context: {
+        agent_id: "agent-1",
+        session_id: "session-abc",
+        turn_index: 3,
+      },
+    });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.run_context).toBeDefined();
+    expect(record.run_context?.session_id).toBe("session-abc");
+    expect(record.run_context?.turn_index).toBe(3);
+  });
+
+  it("schema validates run_context with session fields", () => {
+    const raw = {
+      schema_version: "aep/v0.2",
+      run_id: "run-session-schema",
+      created_at_ms: 1_700_000_000_000,
+      input_refs: [],
+      output_refs: [],
+      capability_decisions: [],
+      actions: [],
+      verifier_results: [],
+      run_context: {
+        session_id: "sess-123",
+        turn_index: 0,
+        delegation_chain: [],
+      },
+      signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+    };
+    const result = AEPRecordSchema.safeParse(raw);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.run_context?.session_id).toBe("sess-123");
+      expect(result.data.run_context?.turn_index).toBe(0);
+    }
+  });
+});
+
+describe("created_at_ms in constructor (#19)", () => {
+  it("uses created_at_ms from constructor when build() has no argument", () => {
+    const emitter = new AEPEmitter({
+      run_id: "run-ts-001",
+      created_at_ms: 1_500_000_000_000,
+    });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = emitter.build();
+    expect(record.created_at_ms).toBe(1_500_000_000_000);
+  });
+
+  it("build() parameter overrides constructor created_at_ms", () => {
+    const emitter = new AEPEmitter({
+      run_id: "run-ts-002",
+      created_at_ms: 1_500_000_000_000,
+    });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = emitter.build(1_600_000_000_000);
+    expect(record.created_at_ms).toBe(1_600_000_000_000);
   });
 });
