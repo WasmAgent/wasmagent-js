@@ -1,5 +1,25 @@
 # @wasmagent/aep
 
+## 1.7.0
+
+### Minor Changes
+
+- d4a06f7: feat: standards-alignment features (#25-#30)
+
+  - RecordingMode tri-state (validation/delta/full) on ActionEvidence (#26)
+  - compileToRecordingPolicy for risk-driven AEP recording granularity (#28)
+  - W3C PROV-DM causal graph + selectByDependency on EventLogReplay (#29)
+  - OTEL_SEMCONV_STABILITY_OPT_IN support + GENAI_SEMCONV_VERSION (#30)
+
+- 4f1ed76: feat(aep): resolve issues #18-#23
+
+  - Export `isStateChangingTool()` and `STATE_CHANGING_PATTERNS` from new utils module (#23)
+  - Add `session_id` and `turn_index` fields to RunContext for multi-turn audit trails (#22)
+  - PermissionGate schema for system permission layer signaling (#21)
+  - `user_id` and `subject_id` on AEPRecord for cross-run behavior audit (#20)
+  - `created_at_ms` in AEPEmitterOptions for ergonomic timestamp seeding (#19)
+  - Regenerated JSON Schema with all new fields; added Python emitter example (#18)
+
 ## 1.5.0
 
 ### Minor Changes

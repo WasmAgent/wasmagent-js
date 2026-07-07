@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/aep",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Agent Evidence Protocol — runtime action evidence and run provenance types for WasmAgent",
   "type": "module",
   "main": "./dist/index.js",
