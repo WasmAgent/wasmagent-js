@@ -44,3 +44,6 @@ export type {
   TraceViolation,
 } from "./traceValidator.js";
 export { compileToTraceValidator } from "./traceValidator.js";
+
+export type { RecordingPolicy, RiskContext } from "./recordingPolicy.js";
+export { compileToRecordingPolicy } from "./recordingPolicy.js";
