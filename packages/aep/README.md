@@ -102,6 +102,35 @@ Whether a given deployment's records *meet* any specific regulatory requirement 
 - [wasmagent-js security pack](https://WasmAgent.github.io/wasmagent-js/security-governance-pack/)
 - [trace-pipeline evomerge](https://github.com/WasmAgent/trace-pipeline)
 
+## Recording Modes
+
+Each `ActionEvidence` entry carries a `recording_mode` field that controls how much content is captured:
+
+| Mode | Meaning | When to use |
+|---|---|---|
+| `validation` | Digests only — hash of inputs/outputs, no raw content. Minimal storage, sufficient for tamper detection. | Default. Read-only actions with no anomaly signals. |
+| `delta` | Captures a diff/patch relative to a prior state referenced by `delta_ref`. | Local mutations (file edits, DB updates) where full snapshots are wasteful. |
+| `full` | Captures complete input and output content alongside digests. | High-risk actions: external mutations, network egress, tainted inputs, consent anomalies, unknown side-effects. |
+
+The mode defaults to `"validation"` for backwards compatibility with v0.2 records that omit the field.
+
+### Setting the recording mode
+
+```ts
+// Emitter-level default (applies to all actions unless overridden)
+const emitter = new AEPEmitter({ run_id: "run-001", recordingMode: "full" });
+
+// Per-action override
+emitter.addAction({
+  tool_name: "patch_file",
+  state_changing: true,
+  recording_mode: "delta",
+  delta_ref: "sha256:previous-state-digest",
+});
+```
+
+The `delta_ref` field is only meaningful when `recording_mode` is `"delta"` — it references the prior state snapshot the delta is computed against.
+
 ## Signature contract v0.2
 
 Every `AEPRecord` emitted via `AEPEmitter.emit()` carries a mandatory `signature` block:

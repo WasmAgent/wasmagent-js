@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// RecordingMode — tri-state indicating how much content to capture in an AEP record
+export type RecordingMode = "validation" | "delta" | "full";
+
 // PermissionGate — signals that the platform's permission layer already handled authorization
 export const PermissionGateSchema = z.object({
   decision: z.enum(["approved", "denied", "auto_approved"]),
@@ -48,6 +51,9 @@ export const ActionEvidenceSchema = z.object({
   post_state_digest: z.string().optional(),
   // v0.2 permission gate — signals platform-level authorization
   permission_gate: PermissionGateSchema.optional(),
+  // v0.3 recording mode — controls evidence capture depth
+  recording_mode: z.enum(["validation", "delta", "full"]).default("validation"),
+  delta_ref: z.string().optional(),
 });
 export type ActionEvidence = z.infer<typeof ActionEvidenceSchema>;
 
