@@ -37,7 +37,7 @@ describe("AEPEmitter", () => {
 
     const record = emitter.build(1_700_000_000_000);
 
-    expect(record.schema_version).toBe("aep/v0.2");
+    expect(record.schema_version).toBe("aep/v0.3");
     expect(record.actions.length).toBe(1);
     expect(record.capability_decisions.length).toBe(1);
     expect(record.verifier_results.length).toBe(1);
@@ -88,11 +88,6 @@ describe("AEPEmitter", () => {
   });
 
   it("threads run-provenance fields from constructor into the built record", async () => {
-    // Regression coverage for the run-provenance traceability fields documented
-    // in README §"Compliance fields for run-provenance traceability". The
-    // constructor already accepts these four optional fields — this test pins
-    // the transport from AEPEmitterOptions → AEPRecord so a future refactor
-    // can't silently drop them.
     const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
     const emitter = new AEPEmitter({
       run_id: "run-provenance-001",
@@ -106,7 +101,6 @@ describe("AEPEmitter", () => {
 
     emitter.addAction({ tool_name: "noop", state_changing: false });
 
-    // Both build() and emit() must carry the four fields through.
     const built = emitter.build(1_700_000_000_000);
     expect(built.repo_commit).toBe("1234567890abcdef1234567890abcdef12345678");
     expect(built.runtime_version).toBe("wasmagent-js@1.2.3");
@@ -119,8 +113,6 @@ describe("AEPEmitter", () => {
     expect(emitted.policy_bundle_digest).toBe("a".repeat(64));
     expect(emitted.tool_manifest_digest).toBe("b".repeat(64));
 
-    // And tampering with any of them must invalidate the signature — the
-    // README explicitly states these fields are part of the signed payload.
     const publicKey = await signer.getPublicKey();
     const tampered = { ...emitted, repo_commit: "deadbeef" };
     const valid = await verifyAEPRecord(tampered, publicKey);
@@ -288,7 +280,7 @@ describe("AEP Ed25519 signature chain", () => {
 describe("AEPRecord schema validation", () => {
   it("schema parse fails when signature is missing", () => {
     const recordWithoutSig = {
-      schema_version: "aep/v0.2",
+      schema_version: "aep/v0.3",
       run_id: "run-nosig",
       created_at_ms: 1_700_000_000_000,
       input_refs: [],
@@ -296,7 +288,6 @@ describe("AEPRecord schema validation", () => {
       capability_decisions: [],
       actions: [],
       verifier_results: [],
-      // signature intentionally omitted
     };
 
     const result = AEPRecordSchema.safeParse(recordWithoutSig);
@@ -305,7 +296,7 @@ describe("AEPRecord schema validation", () => {
 
   it("schema parse fails when signature.alg is not 'ed25519'", () => {
     const recordBadAlg = {
-      schema_version: "aep/v0.2",
+      schema_version: "aep/v0.3",
       run_id: "run-badalg",
       created_at_ms: 1_700_000_000_000,
       input_refs: [],
@@ -322,7 +313,7 @@ describe("AEPRecord schema validation", () => {
 
   it("schema parse succeeds with a valid signature block", () => {
     const recordValid = {
-      schema_version: "aep/v0.2",
+      schema_version: "aep/v0.3",
       run_id: "run-valid",
       created_at_ms: 1_700_000_000_000,
       input_refs: [],
@@ -339,7 +330,7 @@ describe("AEPRecord schema validation", () => {
 
   it("schema parse succeeds with user_id and subject_id (#20)", () => {
     const recordWithIds = {
-      schema_version: "aep/v0.2",
+      schema_version: "aep/v0.3",
       run_id: "run-ids",
       user_id: "user-123",
       subject_id: "subject-456",
@@ -362,7 +353,7 @@ describe("AEPRecord schema validation", () => {
 
   it("schema parse succeeds with permission_gate on actions (#21)", () => {
     const recordWithGate = {
-      schema_version: "aep/v0.2",
+      schema_version: "aep/v0.3",
       run_id: "run-gate",
       created_at_ms: 1_700_000_000_000,
       input_refs: [],
@@ -390,6 +381,37 @@ describe("AEPRecord schema validation", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.actions[0]?.permission_gate?.decision).toBe("approved");
+    }
+  });
+
+  it("v0.2 records still parse under v0.3 schema (backwards compat)", () => {
+    const v02Record = {
+      schema_version: "aep/v0.2",
+      run_id: "run-v02-compat",
+      created_at_ms: 1_700_000_000_000,
+      input_refs: [],
+      output_refs: [],
+      capability_decisions: [],
+      actions: [
+        {
+          action_id: "action-0",
+          tool_name: "read_file",
+          state_changing: false,
+          timestamp_ms: 1_700_000_000_000,
+          evidence_refs: [],
+        },
+      ],
+      verifier_results: [],
+      signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+    };
+
+    const result = AEPRecordSchema.safeParse(v02Record);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.schema_version).toBe("aep/v0.2");
+      // Defaults should apply
+      expect(result.data.actions[0]?.recording_mode).toBe("validation");
+      expect(result.data.actions[0]?.side_effect_class).toBe("unknown");
     }
   });
 });
@@ -464,7 +486,7 @@ describe("session_id / turn_index (#22)", () => {
 
   it("schema validates run_context with session fields", () => {
     const raw = {
-      schema_version: "aep/v0.2",
+      schema_version: "aep/v0.3",
       run_id: "run-session-schema",
       created_at_ms: 1_700_000_000_000,
       input_refs: [],
@@ -519,15 +541,25 @@ describe("RecordingMode tri-state (#26)", () => {
   });
 
   it("recording_mode respects emitter-level recordingMode option", () => {
-    const emitter = new AEPEmitter({ run_id: "run-rm-002", recordingMode: "full" });
+    const emitter = new AEPEmitter({
+      run_id: "run-rm-002",
+      recordingMode: "full",
+    });
     emitter.addAction({ tool_name: "write_file", state_changing: true });
     const record = emitter.build(1_700_000_000_000);
     expect(record.actions[0]?.recording_mode).toBe("full");
   });
 
   it("per-action recording_mode overrides emitter-level default", () => {
-    const emitter = new AEPEmitter({ run_id: "run-rm-003", recordingMode: "validation" });
-    emitter.addAction({ tool_name: "deploy", state_changing: true, recording_mode: "full" });
+    const emitter = new AEPEmitter({
+      run_id: "run-rm-003",
+      recordingMode: "validation",
+    });
+    emitter.addAction({
+      tool_name: "deploy",
+      state_changing: true,
+      recording_mode: "full",
+    });
     const record = emitter.build(1_700_000_000_000);
     expect(record.actions[0]?.recording_mode).toBe("full");
   });
@@ -577,6 +609,395 @@ describe("RecordingMode tri-state (#26)", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.actions[0]?.recording_mode).toBe("validation");
+    }
+  });
+});
+
+describe("AEP v0.3 — side_effect_class (#7 Gap 1)", () => {
+  it("side_effect_class defaults to 'unknown' when not specified", () => {
+    const emitter = new AEPEmitter({ run_id: "run-sec-001" });
+    emitter.addAction({ tool_name: "read_file", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.side_effect_class).toBe("unknown");
+  });
+
+  it("side_effect_class respects emitter-level sideEffectClass option", () => {
+    const emitter = new AEPEmitter({
+      run_id: "run-sec-002",
+      sideEffectClass: "read",
+    });
+    emitter.addAction({ tool_name: "read_file", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.side_effect_class).toBe("read");
+  });
+
+  it("per-action side_effect_class overrides emitter-level default", () => {
+    const emitter = new AEPEmitter({
+      run_id: "run-sec-003",
+      sideEffectClass: "read",
+    });
+    emitter.addAction({
+      tool_name: "deploy",
+      state_changing: true,
+      side_effect_class: "network-egress",
+    });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.side_effect_class).toBe("network-egress");
+  });
+
+  it("run_side_effect_class_max is computed correctly from actions", () => {
+    const emitter = new AEPEmitter({ run_id: "run-sec-max-001" });
+    emitter.addAction({
+      tool_name: "read_file",
+      state_changing: false,
+      side_effect_class: "read",
+    });
+    emitter.addAction({
+      tool_name: "write_file",
+      state_changing: true,
+      side_effect_class: "mutate-local",
+    });
+    emitter.addAction({
+      tool_name: "deploy",
+      state_changing: true,
+      side_effect_class: "mutate-external",
+    });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.run_side_effect_class_max).toBe("mutate-external");
+  });
+
+  it("run_side_effect_class_max picks 'unknown' as highest when present", () => {
+    const emitter = new AEPEmitter({ run_id: "run-sec-max-002" });
+    emitter.addAction({
+      tool_name: "read_file",
+      state_changing: false,
+      side_effect_class: "read",
+    });
+    emitter.addAction({
+      tool_name: "mystery",
+      state_changing: true,
+      side_effect_class: "unknown",
+    });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.run_side_effect_class_max).toBe("unknown");
+  });
+
+  it("run_side_effect_class_max handles single action", () => {
+    const emitter = new AEPEmitter({ run_id: "run-sec-max-003" });
+    emitter.addAction({
+      tool_name: "fetch",
+      state_changing: true,
+      side_effect_class: "network-egress",
+    });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.run_side_effect_class_max).toBe("network-egress");
+  });
+
+  it("run_side_effect_class_max is undefined when no actions", () => {
+    const emitter = new AEPEmitter({ run_id: "run-sec-max-004" });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.run_side_effect_class_max).toBeUndefined();
+  });
+
+  it("state_changing boolean is preserved for backwards compat", () => {
+    const emitter = new AEPEmitter({ run_id: "run-sec-compat" });
+    emitter.addAction({
+      tool_name: "deploy",
+      state_changing: true,
+      side_effect_class: "mutate-external",
+    });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.state_changing).toBe(true);
+    expect(record.actions[0]?.side_effect_class).toBe("mutate-external");
+  });
+});
+
+describe("AEP v0.3 — state_digest_kind + state_digest_coverage (#7 Gap 2)", () => {
+  it("state_digest_kind is optional and accepts valid values", () => {
+    const raw = {
+      schema_version: "aep/v0.3",
+      run_id: "run-sdk-001",
+      created_at_ms: 1_700_000_000_000,
+      actions: [
+        {
+          action_id: "action-0",
+          tool_name: "git_commit",
+          state_changing: true,
+          timestamp_ms: 1_700_000_000_000,
+          pre_state_digest: "sha256:abc",
+          post_state_digest: "sha256:def",
+          state_digest_kind: "git-tree",
+          state_digest_coverage: { paths: ["/src"], depth: 3 },
+        },
+      ],
+      signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+    };
+    const result = AEPRecordSchema.safeParse(raw);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.actions[0]?.state_digest_kind).toBe("git-tree");
+      expect(result.data.actions[0]?.state_digest_coverage).toEqual({
+        paths: ["/src"],
+        depth: 3,
+      });
+    }
+  });
+
+  it("state_digest_coverage can hold arbitrary shape", () => {
+    const emitter = new AEPEmitter({ run_id: "run-sdk-002" });
+    emitter.addAction({
+      tool_name: "db_migration",
+      state_changing: true,
+      pre_state_digest: "sha256:before",
+      post_state_digest: "sha256:after",
+      state_digest_kind: "db-rowset",
+      state_digest_coverage: { tables: ["users", "orders"], filter: "active" },
+    });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.state_digest_coverage).toEqual({
+      tables: ["users", "orders"],
+      filter: "active",
+    });
+  });
+});
+
+describe("AEP v0.3 — argument_drift (#7 Gap 3)", () => {
+  it("argument_drift serializes and deserializes correctly", () => {
+    const emitter = new AEPEmitter({ run_id: "run-drift-001" });
+    emitter.addAction({
+      tool_name: "exec_command",
+      state_changing: true,
+      argument_drift: {
+        detected: true,
+        approved_args_digest: "sha256:approved",
+        observed_args_digest: "sha256:observed",
+        resolution: "denied",
+      },
+    });
+    const record = emitter.build(1_700_000_000_000);
+    const drift = record.actions[0]?.argument_drift;
+    expect(drift).toBeDefined();
+    expect(drift?.detected).toBe(true);
+    expect(drift?.approved_args_digest).toBe("sha256:approved");
+    expect(drift?.observed_args_digest).toBe("sha256:observed");
+    expect(drift?.resolution).toBe("denied");
+  });
+
+  it("argument_drift with matched resolution", () => {
+    const emitter = new AEPEmitter({ run_id: "run-drift-002" });
+    emitter.addAction({
+      tool_name: "safe_tool",
+      state_changing: false,
+      argument_drift: {
+        detected: false,
+        approved_args_digest: "sha256:same",
+        observed_args_digest: "sha256:same",
+        resolution: "matched",
+      },
+    });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.argument_drift?.detected).toBe(false);
+    expect(record.actions[0]?.argument_drift?.resolution).toBe("matched");
+  });
+
+  it("argument_drift is optional and defaults to undefined", () => {
+    const emitter = new AEPEmitter({ run_id: "run-drift-003" });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.argument_drift).toBeUndefined();
+  });
+
+  it("argument_drift schema validation rejects invalid resolution", () => {
+    const raw = {
+      schema_version: "aep/v0.3",
+      run_id: "run-drift-bad",
+      created_at_ms: 1_700_000_000_000,
+      actions: [
+        {
+          action_id: "action-0",
+          tool_name: "tool",
+          state_changing: true,
+          timestamp_ms: 1_700_000_000_000,
+          argument_drift: {
+            detected: true,
+            approved_args_digest: "sha256:a",
+            observed_args_digest: "sha256:b",
+            resolution: "invalid_value",
+          },
+        },
+      ],
+      signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+    };
+    const result = AEPRecordSchema.safeParse(raw);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("AEP v0.3 — approval_mode + approval_extension + deny_reason_class (#7 Gap 4)", () => {
+  it("approval_mode defaults to 'none' on capability decisions", () => {
+    const raw = {
+      schema_version: "aep/v0.3",
+      run_id: "run-am-001",
+      created_at_ms: 1_700_000_000_000,
+      capability_decisions: [
+        {
+          capability: "fs:write",
+          subject: "agent",
+          resource: "/tmp/out.txt",
+          decision: "allow",
+        },
+      ],
+      actions: [],
+      signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+    };
+    const result = AEPRecordSchema.safeParse(raw);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.capability_decisions[0]?.approval_mode).toBe("none");
+    }
+  });
+
+  it("approval_mode accepts all valid enum values", () => {
+    const modes = [
+      "one-shot-payload",
+      "bounded-lease",
+      "policy-allow-with-receipt",
+      "policy-deny-with-evidence",
+      "re-approval-on-drift",
+      "none",
+    ] as const;
+    for (const mode of modes) {
+      const raw = {
+        schema_version: "aep/v0.3",
+        run_id: `run-am-${mode}`,
+        created_at_ms: 1_700_000_000_000,
+        capability_decisions: [
+          {
+            capability: "net:egress",
+            subject: "agent",
+            resource: "https://api.example.com",
+            decision: "allow",
+            approval_mode: mode,
+          },
+        ],
+        actions: [],
+        signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+      };
+      const result = AEPRecordSchema.safeParse(raw);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.capability_decisions[0]?.approval_mode).toBe(mode);
+      }
+    }
+  });
+
+  it("approval_extension is accepted when present", () => {
+    const raw = {
+      schema_version: "aep/v0.3",
+      run_id: "run-ae-001",
+      created_at_ms: 1_700_000_000_000,
+      capability_decisions: [
+        {
+          capability: "fs:write",
+          subject: "agent",
+          resource: "/tmp/out.txt",
+          decision: "allow",
+          approval_mode: "bounded-lease",
+          approval_extension: {
+            namespace: "custom-policy",
+            mode: "time-bounded",
+            evidence_digest: "sha256:ext-evidence",
+          },
+        },
+      ],
+      actions: [],
+      signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+    };
+    const result = AEPRecordSchema.safeParse(raw);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const ext = result.data.capability_decisions[0]?.approval_extension;
+      expect(ext?.namespace).toBe("custom-policy");
+      expect(ext?.mode).toBe("time-bounded");
+      expect(ext?.evidence_digest).toBe("sha256:ext-evidence");
+    }
+  });
+
+  it("deny_reason_class is optional and accepts valid values", () => {
+    const classes = [
+      "tool-identity",
+      "argument",
+      "tainted-input",
+      "resource-scope",
+      "missing-delegation",
+      "policy-rule",
+      "other",
+    ] as const;
+    for (const cls of classes) {
+      const raw = {
+        schema_version: "aep/v0.3",
+        run_id: `run-drc-${cls}`,
+        created_at_ms: 1_700_000_000_000,
+        capability_decisions: [
+          {
+            capability: "fs:delete",
+            subject: "agent",
+            resource: "/",
+            decision: "deny",
+            deny_reason_class: cls,
+          },
+        ],
+        actions: [],
+        signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+      };
+      const result = AEPRecordSchema.safeParse(raw);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.capability_decisions[0]?.deny_reason_class).toBe(cls);
+      }
+    }
+  });
+
+  it("deny_reason_class rejects invalid values", () => {
+    const raw = {
+      schema_version: "aep/v0.3",
+      run_id: "run-drc-bad",
+      created_at_ms: 1_700_000_000_000,
+      capability_decisions: [
+        {
+          capability: "fs:delete",
+          subject: "agent",
+          resource: "/",
+          decision: "deny",
+          deny_reason_class: "not-a-valid-class",
+        },
+      ],
+      actions: [],
+      signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+    };
+    const result = AEPRecordSchema.safeParse(raw);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("AEP v0.3 — schema_version", () => {
+  it("emitter writes schema_version 'aep/v0.3' by default", () => {
+    const emitter = new AEPEmitter({ run_id: "run-sv-001" });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.schema_version).toBe("aep/v0.3");
+  });
+
+  it("schema accepts 'aep/v0.1', 'aep/v0.2', and 'aep/v0.3'", () => {
+    for (const ver of ["aep/v0.1", "aep/v0.2", "aep/v0.3"] as const) {
+      const raw = {
+        schema_version: ver,
+        run_id: `run-ver-${ver}`,
+        created_at_ms: 1_700_000_000_000,
+        signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+      };
+      const result = AEPRecordSchema.safeParse(raw);
+      expect(result.success).toBe(true);
     }
   });
 });
