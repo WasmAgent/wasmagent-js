@@ -8,6 +8,7 @@ import type {
   CapabilityDecision,
   InputRef,
   OutputRef,
+  RecordingMode,
   RunContext,
   VerifierResult,
 } from "./types.js";
@@ -31,6 +32,8 @@ export interface AEPEmitterOptions {
   run_context?: RunContext;
   /** Optional signer. When provided, emit() signs the record; build() remains unsigned-compatible via a dummy placeholder. */
   signer?: AEPSigner;
+  /** Default recording mode for actions added without an explicit recording_mode. */
+  recordingMode?: RecordingMode;
 }
 
 export class AEPEmitter {
@@ -64,10 +67,12 @@ export class AEPEmitter {
       timestamp_ms?: number;
     }
   ): void {
+    const recording_mode = action.recording_mode ?? this.#opts.recordingMode ?? "validation";
     this.#actions.push({
       action_id: action.action_id ?? `action-${this.#actions.length}`,
       timestamp_ms: action.timestamp_ms ?? Date.now(),
       ...action,
+      recording_mode,
     } as ActionEvidence);
     if (action.capability_decision) {
       const cd = action.capability_decision;
@@ -167,7 +172,14 @@ export class AEPEmitter {
   }
 
   #buildUnsigned(createdAtMs?: number): Omit<AEPRecord, "signature"> {
-    const { signer: _signer, user_id: _u, subject_id: _s, created_at_ms: defaultTs, run_context, ...opts } = this.#opts;
+    const {
+      signer: _signer,
+      user_id: _u,
+      subject_id: _s,
+      created_at_ms: defaultTs,
+      run_context,
+      ...opts
+    } = this.#opts;
     return {
       schema_version: "aep/v0.2",
       ...opts,

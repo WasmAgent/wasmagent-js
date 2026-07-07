@@ -67,6 +67,18 @@ export interface OtlpHttpExporterOptions {
    * Default: 1000.
    */
   retryDelayMs?: number;
+  /**
+   * Semantic convention version strategy.
+   *
+   * - "default" — use the baseline attribute names (current stable mapping).
+   * - "latest" — opt-in to the latest experimental semconv attributes.
+   *
+   * Also respects the OTEL_SEMCONV_STABILITY_OPT_IN environment variable:
+   * set it to "genai/experimental" to enable latest semconv without code changes.
+   *
+   * Default: "default"
+   */
+  semconvVersion?: "default" | "latest";
 }
 
 /**
@@ -86,6 +98,7 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
   readonly #maxRetries: number;
   readonly #retryDelayMs: number;
   readonly #resource: Record<string, string>;
+  readonly #useLatestSemconv: boolean;
 
   constructor(opts: OtlpHttpExporterOptions = {}) {
     const base = (opts.endpoint ?? "http://localhost:4318").replace(/\/$/, "");
@@ -102,6 +115,19 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
       "service.name": opts.serviceName ?? "wasmagent",
       ...(opts.serviceVersion ? { "service.version": opts.serviceVersion } : {}),
     };
+
+    // Resolve semconv version: explicit option takes priority, then env var
+    const envOpt =
+      typeof process !== "undefined" ? process.env.OTEL_SEMCONV_STABILITY_OPT_IN : undefined;
+    this.#useLatestSemconv = opts.semconvVersion === "latest" || envOpt === "genai/experimental";
+  }
+
+  /**
+   * Whether the exporter is using the latest (experimental) semantic conventions.
+   * When true, attribute names may follow the newest OTel GenAI semconv draft.
+   */
+  get useLatestSemconv(): boolean {
+    return this.#useLatestSemconv;
   }
 
   /**
@@ -428,6 +454,7 @@ export {
   AEP_SPAN_NAMES,
   agentRunSpanAttrs,
   GENAI_SEMCONV,
+  GENAI_SEMCONV_VERSION,
   llmGenerateSpanAttrs,
   mcpRequestSpanAttrs,
   policyCheckSpanAttrs,

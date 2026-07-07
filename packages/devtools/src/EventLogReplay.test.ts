@@ -10,7 +10,7 @@
  */
 
 import type { AgentEvent } from "@wasmagent/core";
-import { EventLogReplay, type LoggedEvent } from "./EventLogReplay.js";
+import { EventLogReplay, type LoggedEvent, type ProvEdge } from "./EventLogReplay.js";
 
 let seq = 0;
 function logged(event: { event: string; data?: Record<string, unknown> }): LoggedEvent {
@@ -123,5 +123,94 @@ describe("EventLogReplay", () => {
     // Mutate the source array; the engine's view should be unaffected.
     events.length = 0;
     expect(r.eventCount).toBe(8);
+  });
+});
+
+describe("selectByDependency (PROV-DM causal graph, #29)", () => {
+  it("falls back to linear prefix when no provEdges are present", () => {
+    const events = makeTrace();
+    const r = new EventLogReplay(events);
+    // Target the 4th event (tool_call_end)
+    const cursor = r.selectByDependency("000004");
+    // Should include events 1..4 (linear prefix)
+    expect(cursor.prefixEvents.length).toBe(4);
+    expect(cursor.prefixEvents[3]?.eventId).toBe("000004");
+  });
+
+  it("traverses PROV edges backwards from target to find causal ancestors", () => {
+    seq = 0;
+    const events: LoggedEvent[] = [
+      { ...logged({ event: "run_start" }), provEdges: [] },
+      { ...logged({ event: "step_start" }), provEdges: [] },
+      {
+        ...logged({ event: "tool_call_end", data: { toolName: "agent_a_output" } }),
+        provEdges: [{ type: "wasGeneratedBy", from: "000003", to: "000002" }],
+      },
+      {
+        ...logged({ event: "tool_call_end", data: { toolName: "agent_b_output" } }),
+        provEdges: [{ type: "wasGeneratedBy", from: "000004", to: "000002" }],
+      },
+      {
+        ...logged({ event: "final_answer", data: { answer: "combined" } }),
+        provEdges: [
+          { type: "used", from: "000005", to: "000003" },
+          { type: "used", from: "000005", to: "000004" },
+        ],
+      },
+    ];
+
+    const r = new EventLogReplay(events);
+    const cursor = r.selectByDependency("000005");
+
+    // Should include: 000005 (target), 000003, 000004 (direct deps),
+    // 000002 (transitive dep via 000003 and 000004)
+    const ids = cursor.prefixEvents.map((e) => e.eventId);
+    expect(ids).toContain("000005");
+    expect(ids).toContain("000003");
+    expect(ids).toContain("000004");
+    expect(ids).toContain("000002");
+    // Should NOT include 000001 (run_start has no edge linking to target)
+    expect(ids).not.toContain("000001");
+  });
+
+  it("returns events in original log order", () => {
+    seq = 0;
+    const events: LoggedEvent[] = [
+      { ...logged({ event: "run_start" }), provEdges: [] },
+      {
+        ...logged({ event: "tool_call_end" }),
+        provEdges: [{ type: "wasGeneratedBy", from: "000002", to: "000001" }],
+      },
+      {
+        ...logged({ event: "final_answer", data: { answer: "done" } }),
+        provEdges: [{ type: "used", from: "000003", to: "000002" }],
+      },
+    ];
+
+    const r = new EventLogReplay(events);
+    const cursor = r.selectByDependency("000003");
+
+    // All 3 are in the dependency chain, and should be in original order
+    expect(cursor.prefixEvents.map((e) => e.eventId)).toEqual(["000001", "000002", "000003"]);
+    expect(cursor.finalAnswer).toBe("done");
+  });
+
+  it("handles target event with no dependencies", () => {
+    seq = 0;
+    const events: LoggedEvent[] = [
+      { ...logged({ event: "run_start" }), provEdges: [] },
+      {
+        ...logged({ event: "step_start" }),
+        provEdges: [{ type: "wasAssociatedWith", from: "000002", to: "000001" }],
+      },
+      { ...logged({ event: "tool_call_end" }), provEdges: [] },
+    ];
+
+    const r = new EventLogReplay(events);
+    const cursor = r.selectByDependency("000003");
+
+    // 000003 has no outgoing edges, so only itself is returned
+    expect(cursor.prefixEvents.length).toBe(1);
+    expect(cursor.prefixEvents[0]?.eventId).toBe("000003");
   });
 });

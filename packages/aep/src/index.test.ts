@@ -509,3 +509,74 @@ describe("created_at_ms in constructor (#19)", () => {
     expect(record.created_at_ms).toBe(1_600_000_000_000);
   });
 });
+
+describe("RecordingMode tri-state (#26)", () => {
+  it("recording_mode defaults to 'validation' when not specified", () => {
+    const emitter = new AEPEmitter({ run_id: "run-rm-001" });
+    emitter.addAction({ tool_name: "read_file", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.recording_mode).toBe("validation");
+  });
+
+  it("recording_mode respects emitter-level recordingMode option", () => {
+    const emitter = new AEPEmitter({ run_id: "run-rm-002", recordingMode: "full" });
+    emitter.addAction({ tool_name: "write_file", state_changing: true });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.recording_mode).toBe("full");
+  });
+
+  it("per-action recording_mode overrides emitter-level default", () => {
+    const emitter = new AEPEmitter({ run_id: "run-rm-003", recordingMode: "validation" });
+    emitter.addAction({ tool_name: "deploy", state_changing: true, recording_mode: "full" });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.recording_mode).toBe("full");
+  });
+
+  it("delta_ref is accepted when mode is 'delta'", () => {
+    const emitter = new AEPEmitter({ run_id: "run-rm-004" });
+    emitter.addAction({
+      tool_name: "patch_file",
+      state_changing: true,
+      recording_mode: "delta",
+      delta_ref: "sha256:prev-state-digest",
+    });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.recording_mode).toBe("delta");
+    expect(record.actions[0]?.delta_ref).toBe("sha256:prev-state-digest");
+  });
+
+  it("delta_ref is optional and can be omitted", () => {
+    const emitter = new AEPEmitter({ run_id: "run-rm-005" });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.delta_ref).toBeUndefined();
+  });
+
+  it("v0.2 records without recording_mode parse with default 'validation' (backwards compat)", () => {
+    const raw = {
+      schema_version: "aep/v0.2",
+      run_id: "run-compat",
+      created_at_ms: 1_700_000_000_000,
+      input_refs: [],
+      output_refs: [],
+      capability_decisions: [],
+      actions: [
+        {
+          action_id: "action-0",
+          tool_name: "read_file",
+          state_changing: false,
+          timestamp_ms: 1_700_000_000_000,
+          evidence_refs: [],
+          // no recording_mode field — should default
+        },
+      ],
+      verifier_results: [],
+      signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+    };
+    const result = AEPRecordSchema.safeParse(raw);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.actions[0]?.recording_mode).toBe("validation");
+    }
+  });
+});

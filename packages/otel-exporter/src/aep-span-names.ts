@@ -48,6 +48,14 @@ export type AEPSpanName = (typeof AEP_SPAN_NAMES)[keyof typeof AEP_SPAN_NAMES];
 // ── OpenTelemetry GenAI semantic conventions ──────────────────────────────────
 
 /**
+ * The version of the OTel GenAI semantic conventions this package conforms to.
+ * Tracks the semconv spec version (not the OTel SDK version).
+ *
+ * @see https://opentelemetry.io/docs/specs/semconv/gen-ai/
+ */
+export const GENAI_SEMCONV_VERSION = "1.28.0";
+
+/**
  * OpenTelemetry GenAI semantic convention constants.
  *
  * Reference: https://opentelemetry.io/docs/specs/semconv/gen-ai/

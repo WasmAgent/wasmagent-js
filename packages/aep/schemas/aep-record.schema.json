@@ -272,6 +272,18 @@
                   "gate"
                 ],
                 "additionalProperties": false
+              },
+              "recording_mode": {
+                "type": "string",
+                "enum": [
+                  "validation",
+                  "delta",
+                  "full"
+                ],
+                "default": "validation"
+              },
+              "delta_ref": {
+                "type": "string"
               }
             },
             "required": [

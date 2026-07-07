@@ -14,10 +14,29 @@
 
 import type { AgentEvent } from "@wasmagent/core";
 
+/**
+ * W3C PROV-DM causal edge between events.
+ *
+ * Maps directly to PROV-DM relations:
+ *   - "used" — Activity consumed an Entity
+ *   - "wasGeneratedBy" — Entity was produced by an Activity
+ *   - "wasAssociatedWith" — Activity was performed by an Agent
+ *   - "wasDerivedFrom" — Entity was derived from another Entity
+ */
+export interface ProvEdge {
+  type: "used" | "wasGeneratedBy" | "wasAssociatedWith" | "wasDerivedFrom";
+  /** Source event ID (the subject of the relation). */
+  from: string;
+  /** Target event ID (the object of the relation). */
+  to: string;
+}
+
 /** Shape we accept — kept structurally compatible with EventLog's LoggedEvent. */
 export interface LoggedEvent {
   eventId: string;
   event: AgentEvent;
+  /** Optional W3C PROV-DM causal edges originating from this event. */
+  provEdges?: ProvEdge[];
 }
 
 /** Lightweight per-step view derived from the event stream. */
@@ -167,6 +186,79 @@ export class EventLogReplay {
       }
     }
     return lastMatch;
+  }
+
+  /**
+   * Select all causal ancestors of the given event by traversing PROV edges
+   * backwards. Returns a ReplayCursor containing only the events in the
+   * dependency subgraph (ordered by their position in the original log).
+   *
+   * Falls back to linear prefix (all events up to and including the target)
+   * if no provEdges are present on any event in the log.
+   */
+  selectByDependency(targetEventId: string): ReplayCursor {
+    // Check if any event has provEdges
+    const hasProvEdges = this.#events.some((e) => e.provEdges && e.provEdges.length > 0);
+
+    if (!hasProvEdges) {
+      // Fallback: linear prefix up to and including the target event
+      const targetIdx = this.#events.findIndex((e) => e.eventId === targetEventId);
+      if (targetIdx === -1) {
+        return this.select(0);
+      }
+      const prefix = this.#events.slice(0, targetIdx + 1);
+      return {
+        totalEvents: this.#events.length,
+        totalSteps: this.#steps.length,
+        currentStep: this.stepForEventId(targetEventId),
+        prefixEvents: prefix,
+        finalAnswer: findFinalAnswer(prefix),
+      };
+    }
+
+    // Build dependency graph: an edge {from, to} means "from depends on to".
+    // We traverse backwards from the target to find all causal ancestors.
+    const edgesFrom = new Map<string, string[]>(); // eventId -> list of "to" ids
+
+    for (const ev of this.#events) {
+      if (ev.provEdges) {
+        for (const edge of ev.provEdges) {
+          const existing = edgesFrom.get(edge.from) ?? [];
+          existing.push(edge.to);
+          edgesFrom.set(edge.from, existing);
+        }
+      }
+    }
+
+    // BFS from targetEventId following dependency links
+    const visited = new Set<string>();
+    const queue: string[] = [targetEventId];
+    visited.add(targetEventId);
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      const deps = edgesFrom.get(current);
+      if (deps) {
+        for (const dep of deps) {
+          if (!visited.has(dep)) {
+            visited.add(dep);
+            queue.push(dep);
+          }
+        }
+      }
+    }
+
+    // Return events in original log order that are in the dependency set
+    const prefix = this.#events.filter((e) => visited.has(e.eventId));
+    const finalAnswer = findFinalAnswer(prefix);
+
+    return {
+      totalEvents: this.#events.length,
+      totalSteps: this.#steps.length,
+      currentStep: this.stepForEventId(targetEventId),
+      prefixEvents: prefix,
+      finalAnswer,
+    };
   }
 
   // ── Internals ─────────────────────────────────────────────────────────────
