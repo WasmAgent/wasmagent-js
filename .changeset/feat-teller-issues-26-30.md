@@ -1,5 +1,8 @@
 ---
 "@wasmagent/aep": minor
+"@wasmagent/core": minor
+"@wasmagent/mcp-firewall": minor
+"@wasmagent/compliance": minor
 "@wasmagent/capability-compiler": minor
 "@wasmagent/devtools": minor
 "@wasmagent/otel-exporter": minor
