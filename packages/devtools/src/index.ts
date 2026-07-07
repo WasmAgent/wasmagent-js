@@ -9,6 +9,7 @@ export type {
   Fork,
   ForkOptions,
   LoggedEvent,
+  ProvEdge,
   ReplayCursor,
   ReplayStep,
 } from "./EventLogReplay.js";

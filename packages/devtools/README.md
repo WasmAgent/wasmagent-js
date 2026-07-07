@@ -68,3 +68,43 @@ If you find this useful and you don't otherwise use wasmagent, that is exactly t
 ## License
 
 [Apache-2.0](./LICENSE) — © wasmagent contributors
+
+---
+
+## W3C PROV-DM Causal Graph
+
+The `EventLogReplay` engine supports optional **W3C PROV-DM causal edges** on logged events. When present, these edges enable dependency-based replay selection — extracting only the causal ancestors of a target event rather than the full linear prefix.
+
+### ProvEdge type
+
+```ts
+interface ProvEdge {
+  type: "used" | "wasGeneratedBy" | "wasAssociatedWith" | "wasDerivedFrom";
+  from: string; // source event ID
+  to: string;   // target event ID
+}
+```
+
+These map directly to W3C PROV-DM relations:
+- `used` — an Activity consumed an Entity
+- `wasGeneratedBy` — an Entity was produced by an Activity
+- `wasAssociatedWith` — an Activity was performed by an Agent
+- `wasDerivedFrom` — an Entity was derived from another Entity
+
+### Usage
+
+```ts
+import { EventLogReplay } from "@wasmagent/devtools";
+
+const replay = new EventLogReplay(events, { traceId: "t1" });
+
+// Select only the causal ancestors of a specific event
+const cursor = replay.selectByDependency("evt-final-answer");
+// cursor.prefixEvents contains only events in the dependency subgraph
+
+// Falls back to linear prefix if no provEdges exist
+```
+
+### Multi-agent example
+
+See `examples/multi-agent-replay/` for a complete example showing two sub-agents with explicit dependency edges and how `selectByDependency` extracts the relevant causal subgraph.
