@@ -8,7 +8,8 @@
           "type": "string",
           "enum": [
             "aep/v0.1",
-            "aep/v0.2"
+            "aep/v0.2",
+            "aep/v0.3"
           ]
         },
         "run_id": {
@@ -126,6 +127,50 @@
               },
               "reason_code": {
                 "type": "string"
+              },
+              "approval_mode": {
+                "type": "string",
+                "enum": [
+                  "one-shot-payload",
+                  "bounded-lease",
+                  "policy-allow-with-receipt",
+                  "policy-deny-with-evidence",
+                  "re-approval-on-drift",
+                  "none"
+                ],
+                "default": "none"
+              },
+              "approval_extension": {
+                "type": "object",
+                "properties": {
+                  "namespace": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "evidence_digest": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "namespace",
+                  "mode",
+                  "evidence_digest"
+                ],
+                "additionalProperties": false
+              },
+              "deny_reason_class": {
+                "type": "string",
+                "enum": [
+                  "tool-identity",
+                  "argument",
+                  "tainted-input",
+                  "resource-scope",
+                  "missing-delegation",
+                  "policy-rule",
+                  "other"
+                ]
               }
             },
             "required": [
@@ -188,6 +233,50 @@
                   },
                   "reason_code": {
                     "type": "string"
+                  },
+                  "approval_mode": {
+                    "type": "string",
+                    "enum": [
+                      "one-shot-payload",
+                      "bounded-lease",
+                      "policy-allow-with-receipt",
+                      "policy-deny-with-evidence",
+                      "re-approval-on-drift",
+                      "none"
+                    ],
+                    "default": "none"
+                  },
+                  "approval_extension": {
+                    "type": "object",
+                    "properties": {
+                      "namespace": {
+                        "type": "string"
+                      },
+                      "mode": {
+                        "type": "string"
+                      },
+                      "evidence_digest": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "namespace",
+                      "mode",
+                      "evidence_digest"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "deny_reason_class": {
+                    "type": "string",
+                    "enum": [
+                      "tool-identity",
+                      "argument",
+                      "tainted-input",
+                      "resource-scope",
+                      "missing-delegation",
+                      "policy-rule",
+                      "other"
+                    ]
                   }
                 },
                 "required": [
@@ -284,6 +373,61 @@
               },
               "delta_ref": {
                 "type": "string"
+              },
+              "side_effect_class": {
+                "type": "string",
+                "enum": [
+                  "read",
+                  "mutate-local",
+                  "mutate-external",
+                  "network-egress",
+                  "unknown"
+                ],
+                "default": "unknown"
+              },
+              "state_digest_kind": {
+                "type": "string",
+                "enum": [
+                  "git-tree",
+                  "sandbox-fs",
+                  "db-rowset",
+                  "browser-dom",
+                  "kv-snapshot",
+                  "memory-bag",
+                  "other"
+                ]
+              },
+              "state_digest_coverage": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "argument_drift": {
+                "type": "object",
+                "properties": {
+                  "detected": {
+                    "type": "boolean"
+                  },
+                  "approved_args_digest": {
+                    "type": "string"
+                  },
+                  "observed_args_digest": {
+                    "type": "string"
+                  },
+                  "resolution": {
+                    "type": "string",
+                    "enum": [
+                      "matched",
+                      "denied"
+                    ]
+                  }
+                },
+                "required": [
+                  "detected",
+                  "approved_args_digest",
+                  "observed_args_digest",
+                  "resolution"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -459,6 +603,16 @@
             }
           },
           "additionalProperties": false
+        },
+        "run_side_effect_class_max": {
+          "type": "string",
+          "enum": [
+            "read",
+            "mutate-local",
+            "mutate-external",
+            "network-egress",
+            "unknown"
+          ]
         },
         "signature": {
           "type": "object",

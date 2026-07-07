@@ -1,10 +1,10 @@
 # @wasmagent/aep
 
-> **Maturity: beta (v0.2 signature contract)** — AEP v0.2 Ed25519 signature contract shipped and schema-versioned. The signing key management story (KMS rotation, key revocation) is still evolving; treat key-id semantics as beta-stable.
+> **Maturity: beta (v0.3 schema)** — AEP v0.3 extends the evidence schema with side-effect classification, state-digest metadata, argument-drift detection, and approval-mode semantics. The Ed25519 signature contract remains stable from v0.2. The signing key management story (KMS rotation, key revocation) is still evolving; treat key-id semantics as beta-stable.
 
 Agent Evidence Protocol — runtime action evidence and run provenance types for WasmAgent.
 
-Emit verifiable `AEPRecord` evidence after every agent run. Records are schema-versioned; v0.2 (Ed25519 signature contract) is the current shipped schema. v0.1 records are still parsed for backward compatibility but no longer produced. Records are consumable by `evomerge` for audit and training data export.
+Emit verifiable `AEPRecord` evidence after every agent run. Records are schema-versioned; v0.3 is the current shipped schema. v0.1 and v0.2 records are still parsed for backward compatibility but no longer produced. Records are consumable by `evomerge` for audit and training data export.
 
 ## Install
 
@@ -130,6 +130,86 @@ emitter.addAction({
 ```
 
 The `delta_ref` field is only meaningful when `recording_mode` is `"delta"` — it references the prior state snapshot the delta is computed against.
+
+## v0.3 Schema Additions
+
+AEP v0.3 introduces four new capabilities to the evidence schema:
+
+### Side-Effect Classification (Gap 1)
+
+Each `ActionEvidence` carries a `side_effect_class` field that classifies the impact of the action:
+
+| Class | Meaning |
+|---|---|
+| `read` | Read-only, no mutation |
+| `mutate-local` | Local state change (file edit, DB write) |
+| `mutate-external` | External system mutation (deploy, API call) |
+| `network-egress` | Outbound network traffic |
+| `unknown` | Not yet classified (default) |
+
+The top-level `AEPRecord` also carries `run_side_effect_class_max` — the highest severity class across all actions in the run, computed automatically by the emitter.
+
+```ts
+emitter.addAction({
+  tool_name: "deploy",
+  state_changing: true,
+  side_effect_class: "mutate-external",
+});
+```
+
+### State Digest Metadata (Gap 2)
+
+When `pre_state_digest` or `post_state_digest` is present, you can annotate it with:
+
+- `state_digest_kind` — identifies what is being digested (`"git-tree"`, `"sandbox-fs"`, `"db-rowset"`, `"browser-dom"`, `"kv-snapshot"`, `"memory-bag"`, `"other"`)
+- `state_digest_coverage` — a free-form record describing the scope of the digest
+
+```ts
+emitter.addAction({
+  tool_name: "git_commit",
+  state_changing: true,
+  pre_state_digest: "sha256:abc",
+  post_state_digest: "sha256:def",
+  state_digest_kind: "git-tree",
+  state_digest_coverage: { paths: ["/src"], depth: 3 },
+});
+```
+
+### Argument Drift Detection (Gap 3)
+
+Detects when observed tool arguments differ from approved arguments:
+
+```ts
+emitter.addAction({
+  tool_name: "exec_command",
+  state_changing: true,
+  argument_drift: {
+    detected: true,
+    approved_args_digest: "sha256:approved",
+    observed_args_digest: "sha256:observed",
+    resolution: "denied",
+  },
+});
+```
+
+### Approval Mode and Extensions (Gap 4)
+
+`CapabilityDecision` now carries approval semantics:
+
+- `approval_mode` — how the decision was reached (`"one-shot-payload"`, `"bounded-lease"`, `"policy-allow-with-receipt"`, `"policy-deny-with-evidence"`, `"re-approval-on-drift"`, `"none"`)
+- `approval_extension` — namespace-scoped extension evidence
+- `deny_reason_class` — why a deny occurred (`"tool-identity"`, `"argument"`, `"tainted-input"`, `"resource-scope"`, `"missing-delegation"`, `"policy-rule"`, `"other"`)
+
+```ts
+emitter.addCapabilityDecision({
+  capability: "fs:write",
+  subject: "agent",
+  resource: "/tmp/out.txt",
+  decision: "deny",
+  approval_mode: "policy-deny-with-evidence",
+  deny_reason_class: "resource-scope",
+});
+```
 
 ## Signature contract v0.2
 

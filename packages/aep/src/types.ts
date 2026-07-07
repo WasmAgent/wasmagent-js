@@ -3,6 +3,43 @@ import { z } from "zod";
 // RecordingMode — tri-state indicating how much content to capture in an AEP record
 export type RecordingMode = "validation" | "delta" | "full";
 
+// SideEffectClass — classifies the side-effect of an action (v0.3)
+export type SideEffectClass =
+  | "read"
+  | "mutate-local"
+  | "mutate-external"
+  | "network-egress"
+  | "unknown";
+
+// ApprovalMode — how the capability decision was reached (v0.3)
+export type ApprovalMode =
+  | "one-shot-payload"
+  | "bounded-lease"
+  | "policy-allow-with-receipt"
+  | "policy-deny-with-evidence"
+  | "re-approval-on-drift"
+  | "none";
+
+// DenyReasonClass — reason category for a deny decision (v0.3)
+export type DenyReasonClass =
+  | "tool-identity"
+  | "argument"
+  | "tainted-input"
+  | "resource-scope"
+  | "missing-delegation"
+  | "policy-rule"
+  | "other";
+
+// StateDigestKind — identifies the kind of state being digested (v0.3)
+export type StateDigestKind =
+  | "git-tree"
+  | "sandbox-fs"
+  | "db-rowset"
+  | "browser-dom"
+  | "kv-snapshot"
+  | "memory-bag"
+  | "other";
+
 // PermissionGate — signals that the platform's permission layer already handled authorization
 export const PermissionGateSchema = z.object({
   decision: z.enum(["approved", "denied", "auto_approved"]),
@@ -11,6 +48,23 @@ export const PermissionGateSchema = z.object({
 });
 export type PermissionGate = z.infer<typeof PermissionGateSchema>;
 
+// ArgumentDrift — detected drift between approved and observed arguments (v0.3)
+export const ArgumentDriftSchema = z.object({
+  detected: z.boolean(),
+  approved_args_digest: z.string(),
+  observed_args_digest: z.string(),
+  resolution: z.enum(["matched", "denied"]),
+});
+export type ArgumentDrift = z.infer<typeof ArgumentDriftSchema>;
+
+// ApprovalExtension — namespace-scoped extension for approval decisions (v0.3)
+export const ApprovalExtensionSchema = z.object({
+  namespace: z.string(),
+  mode: z.string(),
+  evidence_digest: z.string(),
+});
+export type ApprovalExtension = z.infer<typeof ApprovalExtensionSchema>;
+
 // CapabilityDecision — one allow/deny decision for a tool invocation
 export const CapabilityDecisionSchema = z.object({
   capability: z.string(),
@@ -18,6 +72,29 @@ export const CapabilityDecisionSchema = z.object({
   resource: z.string(),
   decision: z.enum(["allow", "deny", "ask_user", "dry_run"]),
   reason_code: z.string().optional(),
+  // v0.3 approval fields
+  approval_mode: z
+    .enum([
+      "one-shot-payload",
+      "bounded-lease",
+      "policy-allow-with-receipt",
+      "policy-deny-with-evidence",
+      "re-approval-on-drift",
+      "none",
+    ])
+    .default("none"),
+  approval_extension: ApprovalExtensionSchema.optional(),
+  deny_reason_class: z
+    .enum([
+      "tool-identity",
+      "argument",
+      "tainted-input",
+      "resource-scope",
+      "missing-delegation",
+      "policy-rule",
+      "other",
+    ])
+    .optional(),
 });
 export type CapabilityDecision = z.infer<typeof CapabilityDecisionSchema>;
 
@@ -54,6 +131,25 @@ export const ActionEvidenceSchema = z.object({
   // v0.3 recording mode — controls evidence capture depth
   recording_mode: z.enum(["validation", "delta", "full"]).default("validation"),
   delta_ref: z.string().optional(),
+  // v0.3 side effect classification
+  side_effect_class: z
+    .enum(["read", "mutate-local", "mutate-external", "network-egress", "unknown"])
+    .default("unknown"),
+  // v0.3 state digest metadata
+  state_digest_kind: z
+    .enum([
+      "git-tree",
+      "sandbox-fs",
+      "db-rowset",
+      "browser-dom",
+      "kv-snapshot",
+      "memory-bag",
+      "other",
+    ])
+    .optional(),
+  state_digest_coverage: z.record(z.unknown()).optional(),
+  // v0.3 argument drift detection
+  argument_drift: ArgumentDriftSchema.optional(),
 });
 export type ActionEvidence = z.infer<typeof ActionEvidenceSchema>;
 
@@ -115,7 +211,7 @@ export type RunContext = z.infer<typeof RunContextSchema>;
 
 // AEPRecord — the top-level Agent Evidence Protocol record
 export const AEPRecordSchema = z.object({
-  schema_version: z.enum(["aep/v0.1", "aep/v0.2"]),
+  schema_version: z.enum(["aep/v0.1", "aep/v0.2", "aep/v0.3"]),
   run_id: z.string(),
   user_id: z.string().optional(),
   subject_id: z.string().optional(),
@@ -136,6 +232,10 @@ export const AEPRecordSchema = z.object({
   budget_ledger: BudgetLedgerSchema.optional(),
   created_at_ms: z.number(),
   run_context: RunContextSchema.optional(),
+  // v0.3 run-level side effect maximum
+  run_side_effect_class_max: z
+    .enum(["read", "mutate-local", "mutate-external", "network-egress", "unknown"])
+    .optional(),
   signature: z.object({
     alg: z.literal("ed25519"),
     key_id: z.string(),

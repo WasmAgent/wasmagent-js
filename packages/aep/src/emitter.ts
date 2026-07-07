@@ -10,9 +10,27 @@ import type {
   OutputRef,
   RecordingMode,
   RunContext,
+  SideEffectClass,
   VerifierResult,
 } from "./types.js";
 import { AEPRecordSchema } from "./types.js";
+
+/**
+ * Ordered severity of side-effect classes from least to most impactful.
+ * Used to compute the run-level maximum.
+ */
+const SIDE_EFFECT_ORDER: readonly SideEffectClass[] = [
+  "read",
+  "mutate-local",
+  "mutate-external",
+  "network-egress",
+  "unknown",
+] as const;
+
+function sideEffectOrdinal(cls: SideEffectClass): number {
+  const idx = SIDE_EFFECT_ORDER.indexOf(cls);
+  return idx === -1 ? SIDE_EFFECT_ORDER.length : idx;
+}
 
 export interface AEPEmitterOptions {
   run_id: string;
@@ -34,6 +52,8 @@ export interface AEPEmitterOptions {
   signer?: AEPSigner;
   /** Default recording mode for actions added without an explicit recording_mode. */
   recordingMode?: RecordingMode;
+  /** Default side_effect_class for actions added without an explicit side_effect_class. */
+  sideEffectClass?: SideEffectClass;
 }
 
 export class AEPEmitter {
@@ -68,11 +88,13 @@ export class AEPEmitter {
     }
   ): void {
     const recording_mode = action.recording_mode ?? this.#opts.recordingMode ?? "validation";
+    const side_effect_class = action.side_effect_class ?? this.#opts.sideEffectClass ?? "unknown";
     this.#actions.push({
       action_id: action.action_id ?? `action-${this.#actions.length}`,
       timestamp_ms: action.timestamp_ms ?? Date.now(),
       ...action,
       recording_mode,
+      side_effect_class,
     } as ActionEvidence);
     if (action.capability_decision) {
       const cd = action.capability_decision;
@@ -159,7 +181,10 @@ export class AEPEmitter {
       key_id: signer.keyId,
       sig: "PLACEHOLDER",
     };
-    const normalised = AEPRecordSchema.parse({ ...unsigned, signature: placeholder });
+    const normalised = AEPRecordSchema.parse({
+      ...unsigned,
+      signature: placeholder,
+    });
     const { signature: _placeholder, ...normalisedUnsigned } = normalised;
     const bytes = canonicalBytes(normalisedUnsigned);
     const sig = await signer.sign(bytes);
@@ -171,6 +196,21 @@ export class AEPEmitter {
     return AEPRecordSchema.parse({ ...normalisedUnsigned, signature });
   }
 
+  #computeRunSideEffectClassMax(): SideEffectClass | undefined {
+    if (this.#actions.length === 0) return undefined;
+    let maxOrdinal = -1;
+    let maxClass: SideEffectClass = "read";
+    for (const action of this.#actions) {
+      const cls = (action.side_effect_class ?? "unknown") as SideEffectClass;
+      const ord = sideEffectOrdinal(cls);
+      if (ord > maxOrdinal) {
+        maxOrdinal = ord;
+        maxClass = cls;
+      }
+    }
+    return maxClass;
+  }
+
   #buildUnsigned(createdAtMs?: number): Omit<AEPRecord, "signature"> {
     const {
       signer: _signer,
@@ -178,10 +218,13 @@ export class AEPEmitter {
       subject_id: _s,
       created_at_ms: defaultTs,
       run_context,
+      recordingMode: _rm,
+      sideEffectClass: _sec,
       ...opts
     } = this.#opts;
+    const runSideEffectMax = this.#computeRunSideEffectClassMax();
     return {
-      schema_version: "aep/v0.2",
+      schema_version: "aep/v0.3",
       ...opts,
       ...(this.#userId !== undefined && { user_id: this.#userId }),
       ...(this.#subjectId !== undefined && { subject_id: this.#subjectId }),
@@ -193,6 +236,9 @@ export class AEPEmitter {
       budget_ledger: this.#budgetLedger,
       created_at_ms: createdAtMs ?? defaultTs ?? Date.now(),
       ...(run_context !== undefined && { run_context }),
+      ...(runSideEffectMax !== undefined && {
+        run_side_effect_class_max: runSideEffectMax,
+      }),
     };
   }
 
