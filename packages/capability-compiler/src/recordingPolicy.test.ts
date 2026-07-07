@@ -36,7 +36,7 @@ describe("compileToRecordingPolicy (#28)", () => {
   it("returns full when taintChainLength > 0 AND sideEffectClass is not read", () => {
     const policy = compileToRecordingPolicy(
       MANIFEST,
-      ctx({ taintChainLength: 2, sideEffectClass: "mutate-local" }),
+      ctx({ taintChainLength: 2, sideEffectClass: "mutate-local" })
     );
     expect(policy.mode).toBe("full");
     expect(policy.reason).toBe("tainted input reaching state-changing call");
@@ -76,7 +76,7 @@ describe("compileToRecordingPolicy (#28)", () => {
     // The unknown == highest severity invariant must hold regardless of other signals
     const policy = compileToRecordingPolicy(
       MANIFEST,
-      ctx({ sideEffectClass: "unknown", taintChainLength: 0, wasVetted: false }),
+      ctx({ sideEffectClass: "unknown", taintChainLength: 0, wasVetted: false })
     );
     expect(policy.mode).toBe("full");
   });
@@ -85,7 +85,7 @@ describe("compileToRecordingPolicy (#28)", () => {
     // Even a read-only tool flagged by vetting gets full recording
     const policy = compileToRecordingPolicy(
       MANIFEST,
-      ctx({ wasVetted: true, sideEffectClass: "read", taintChainLength: 0 }),
+      ctx({ wasVetted: true, sideEffectClass: "read", taintChainLength: 0 })
     );
     expect(policy.mode).toBe("full");
     expect(policy.reason).toBe("tool flagged by vetting");

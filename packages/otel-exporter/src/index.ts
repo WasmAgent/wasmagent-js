@@ -117,7 +117,8 @@ export class OtlpHttpExporter implements SpanExporter, MetricExporter {
     };
 
     // Resolve semconv version: explicit option takes priority, then env var
-    const envOpt = typeof process !== "undefined" ? process.env.OTEL_SEMCONV_STABILITY_OPT_IN : undefined;
+    const envOpt =
+      typeof process !== "undefined" ? process.env.OTEL_SEMCONV_STABILITY_OPT_IN : undefined;
     this.#useLatestSemconv = opts.semconvVersion === "latest" || envOpt === "genai/experimental";
   }
 

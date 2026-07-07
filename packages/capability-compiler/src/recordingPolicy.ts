@@ -45,7 +45,7 @@ export interface RecordingPolicy {
  */
 export function compileToRecordingPolicy(
   _manifest: CapabilityManifest,
-  riskContext: RiskContext,
+  riskContext: RiskContext
 ): RecordingPolicy {
   // Priority 1: tool flagged by vetting
   if (riskContext.wasVetted) {
@@ -68,7 +68,10 @@ export function compileToRecordingPolicy(
   }
 
   // Priority 5: external mutation or network egress
-  if (riskContext.sideEffectClass === "mutate-external" || riskContext.sideEffectClass === "network-egress") {
+  if (
+    riskContext.sideEffectClass === "mutate-external" ||
+    riskContext.sideEffectClass === "network-egress"
+  ) {
     return { mode: "full", reason: "external mutation" };
   }
 
