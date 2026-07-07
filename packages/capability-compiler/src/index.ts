@@ -38,12 +38,12 @@ export type {
 } from "./policy.js";
 export { compileToPolicy } from "./policy.js";
 
+export type { RecordingPolicy, RiskContext } from "./recordingPolicy.js";
+export { compileToRecordingPolicy } from "./recordingPolicy.js";
+
 export type {
   TraceStep,
   TraceValidatorSpec,
   TraceViolation,
 } from "./traceValidator.js";
 export { compileToTraceValidator } from "./traceValidator.js";
-
-export type { RecordingPolicy, RiskContext } from "./recordingPolicy.js";
-export { compileToRecordingPolicy } from "./recordingPolicy.js";

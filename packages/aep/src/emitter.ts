@@ -172,7 +172,14 @@ export class AEPEmitter {
   }
 
   #buildUnsigned(createdAtMs?: number): Omit<AEPRecord, "signature"> {
-    const { signer: _signer, user_id: _u, subject_id: _s, created_at_ms: defaultTs, run_context, ...opts } = this.#opts;
+    const {
+      signer: _signer,
+      user_id: _u,
+      subject_id: _s,
+      created_at_ms: defaultTs,
+      run_context,
+      ...opts
+    } = this.#opts;
     return {
       schema_version: "aep/v0.2",
       ...opts,
