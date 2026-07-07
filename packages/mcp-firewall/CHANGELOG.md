@@ -1,5 +1,11 @@
 # @wasmagent/mcp-firewall
 
+## 1.8.0
+
+### Minor Changes
+
+- b87dded: feat(aep): implement v0.3 schema — side_effect_class, state_digest_kind, argument_drift, approval_mode (#7)
+
 ## 1.7.0
 
 ### Minor Changes
