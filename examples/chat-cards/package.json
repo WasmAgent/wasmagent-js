@@ -15,7 +15,7 @@
     "@terrastruct/d2": "^0.1.33",
     "docx": "^9.7.1",
     "react": "^18.3.0",
-    "react-dom": "^18.3.0",
+    "react-dom": "^19.2.7",
     "react-markdown": "^9.0.0",
     "remark-gfm": "^4.0.0"
   },
