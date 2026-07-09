@@ -1,5 +1,12 @@
 # @wasmagent-example/mcp-memory-server
 
+## 0.1.15
+
+### Patch Changes
+
+- Updated dependencies [2df0159]
+  - @wasmagent/core@1.9.1
+
 ## 0.1.14
 
 ### Patch Changes

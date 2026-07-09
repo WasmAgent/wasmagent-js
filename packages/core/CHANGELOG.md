@@ -1,5 +1,11 @@
 # @agentkit-js/core
 
+## 1.9.1
+
+### Patch Changes
+
+- 2df0159: chore: add SBOM generation and property-based testing (#44, #46)
+
 ## 1.9.0
 
 ### Minor Changes
