@@ -76,13 +76,9 @@ describe("buildJavySource — property-based", () => {
 describe("computeHostHmac — property-based", () => {
   it("returns empty string when secret is empty", () => {
     fc.assert(
-      fc.property(
-        fc.string(),
-        fc.string(),
-        (runId, payload) => {
-          expect(computeHostHmac(runId, payload, "")).toBe("");
-        }
-      ),
+      fc.property(fc.string(), fc.string(), (runId, payload) => {
+        expect(computeHostHmac(runId, payload, "")).toBe("");
+      }),
       { numRuns: 100 }
     );
   });

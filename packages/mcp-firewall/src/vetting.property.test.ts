@@ -27,7 +27,10 @@ const arbInputSchema = fc.oneof(
   fc.constant({ type: "object", properties: {} }),
   fc.record({
     type: fc.constant("object"),
-    properties: fc.dictionary(fc.string({ minLength: 1, maxLength: 20 }), fc.constant({ type: "string" })),
+    properties: fc.dictionary(
+      fc.string({ minLength: 1, maxLength: 20 }),
+      fc.constant({ type: "string" })
+    ),
   }),
   fc.jsonValue().map((v) => (typeof v === "object" && v !== null ? v : { type: "object" }))
 );
