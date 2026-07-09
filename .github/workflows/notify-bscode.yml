@@ -102,7 +102,7 @@ jobs:
 
       - name: Open PR in bscode
         if: steps.gate.outputs.skip == 'false' && steps.bump.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.BSCODE_DISPATCH_TOKEN }}
           path: bscode
