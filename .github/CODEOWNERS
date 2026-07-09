@@ -1,0 +1,18 @@
+# Security-critical packages require security team review
+packages/mcp-firewall/ @WasmAgent/security
+packages/aep/ @WasmAgent/core
+packages/kernel-wasmtime/ @WasmAgent/security
+packages/kernel-quickjs/ @WasmAgent/security
+packages/compliance/ @WasmAgent/core
+packages/mcp-gateway/ @WasmAgent/security
+packages/mcp-policy/ @WasmAgent/security
+packages/mcp-attestation/ @WasmAgent/security
+
+# Core runtime
+packages/core/ @WasmAgent/core
+packages/devtools/ @WasmAgent/core
+packages/otel-exporter/ @WasmAgent/core
+packages/capability-compiler/ @WasmAgent/core
+
+# Default
+* @WasmAgent/maintainers
