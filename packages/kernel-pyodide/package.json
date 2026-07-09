@@ -24,7 +24,7 @@
     "pyodide": ">=0.26.0"
   },
   "devDependencies": {
-    "pyodide": "0.29.4",
+    "pyodide": "314.0.2",
     "typescript": "^5.7.0"
   },
   "license": "Apache-2.0",
