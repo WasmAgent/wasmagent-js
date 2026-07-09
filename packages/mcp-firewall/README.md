@@ -253,6 +253,24 @@ import { MCPGateway, buildServerCard, createRequestIdentity, isStateChangingTool
 import type { GatewayDecision, GatewayRequest, MCPGatewayOptions, RequestIdentity, ServerCard } from "@wasmagent/mcp-firewall";
 ```
 
+## Risk categories
+
+The `RiskCategory` type classifies detected threats:
+
+| Category | Description |
+|----------|-------------|
+| `tool_poisoning` | Prompt injection via tool metadata |
+| `shadowing` | Tool impersonation or name-squatting |
+| `rug_pull` | Descriptor swap after initial registration |
+| `exfiltration` | Extraction of sensitive data (env, keys, filesystem) |
+| `sampling_abuse` | Tool requesting LLM callbacks |
+| `invisible_chars` | Hidden Unicode control characters |
+| `ssrf` | Server-side request forgery via network tools |
+| `command_execution` | Arbitrary command or code execution |
+| `privilege_escalation` | Permission scope expansion |
+| `credential_access` | Access to secrets or credentials |
+| `supply_chain` | Unverified MCP server provenance |
+
 ## Further reading
 
 - [Security Governance Pack](../../docs/security-governance-pack/README.md) — deployment checklist, threat model, OWASP agentic mapping

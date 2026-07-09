@@ -169,6 +169,14 @@ try {
   /* ignore */
 }
 
+// ── 5b. Skip for Dependabot PRs ─────────────────────────────────────
+
+const prAuthor = process.env.GITHUB_ACTOR ?? "";
+if (prAuthor === "dependabot[bot]") {
+  console.log("✓ Dependabot PR — changeset not required.");
+  process.exit(0);
+}
+
 // ── 6. Read .changeset/*.md and confirm at least one names a touched pkg
 
 const changesetDir = join(ROOT, ".changeset");

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { AEPEmitter } from "./emitter.js";
+import { resolveRepoCommit } from "./resolve-repo-commit.js";
 import { createLocalSignerFromSeed } from "./signer.js";
 import { AEPRecordSchema } from "./types.js";
 import { isStateChangingTool, STATE_CHANGING_PATTERNS } from "./utils.js";
@@ -998,6 +999,118 @@ describe("AEP v0.3 — schema_version", () => {
       };
       const result = AEPRecordSchema.safeParse(raw);
       expect(result.success).toBe(true);
+    }
+  });
+});
+
+describe("AEPEmitter.withDefaults factory (#47)", () => {
+  it("creates emitters with shared defaults", () => {
+    const factory = AEPEmitter.withDefaults({
+      model_id: "claude-sonnet-4-6",
+      model_provider: "anthropic",
+      recordingMode: "full",
+    });
+
+    const emitter1 = factory.create({ run_id: "run-factory-001" });
+    emitter1.addAction({ tool_name: "read_file", state_changing: false });
+    const record1 = emitter1.build(1_700_000_000_000);
+
+    expect(record1.model_id).toBe("claude-sonnet-4-6");
+    expect(record1.actions[0]?.recording_mode).toBe("full");
+    expect(record1.run_id).toBe("run-factory-001");
+  });
+
+  it("overrides defaults per-instance", () => {
+    const factory = AEPEmitter.withDefaults({
+      model_id: "claude-sonnet-4-6",
+      model_provider: "anthropic",
+    });
+
+    const emitter = factory.create({
+      run_id: "run-factory-002",
+      model_id: "gpt-4o",
+    });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+
+    expect(record.model_id).toBe("gpt-4o");
+    expect(record.run_id).toBe("run-factory-002");
+  });
+});
+
+describe("resolveRepoCommit (#48)", () => {
+  it("returns env var value when set", () => {
+    const orig = process.env.AEP_REPO_COMMIT;
+    process.env.AEP_REPO_COMMIT = "abc123def456";
+    try {
+      const result = resolveRepoCommit();
+      expect(result).toBe("abc123def456");
+    } finally {
+      if (orig === undefined) {
+        delete process.env.AEP_REPO_COMMIT;
+      } else {
+        process.env.AEP_REPO_COMMIT = orig;
+      }
+    }
+  });
+
+  it("returns a custom env var when specified", () => {
+    const orig = process.env.MY_COMMIT;
+    process.env.MY_COMMIT = "custom-sha";
+    try {
+      const result = resolveRepoCommit({ envVar: "MY_COMMIT" });
+      expect(result).toBe("custom-sha");
+    } finally {
+      if (orig === undefined) {
+        delete process.env.MY_COMMIT;
+      } else {
+        process.env.MY_COMMIT = orig;
+      }
+    }
+  });
+
+  it("falls back to git rev-parse HEAD in a git repo", () => {
+    const orig = process.env.AEP_REPO_COMMIT;
+    delete process.env.AEP_REPO_COMMIT;
+    try {
+      const result = resolveRepoCommit({ cwd: process.cwd() });
+      // Should be a 40-char hex SHA in a git repo
+      expect(result).toMatch(/^[0-9a-f]{40}$/);
+    } finally {
+      if (orig !== undefined) {
+        process.env.AEP_REPO_COMMIT = orig;
+      }
+    }
+  });
+
+  it("falls back to package.json version when not in a git repo", () => {
+    const orig = process.env.AEP_REPO_COMMIT;
+    delete process.env.AEP_REPO_COMMIT;
+    try {
+      // Use /tmp which is not a git repo but has no package.json either
+      const result = resolveRepoCommit({ cwd: "/tmp", fallbackToVersion: true });
+      // Should be "unknown" since /tmp has no package.json
+      expect(result).toBe("unknown");
+    } finally {
+      if (orig !== undefined) {
+        process.env.AEP_REPO_COMMIT = orig;
+      }
+    }
+  });
+
+  it("returns 'unknown' when all strategies fail", () => {
+    const orig = process.env.AEP_REPO_COMMIT;
+    delete process.env.AEP_REPO_COMMIT;
+    try {
+      const result = resolveRepoCommit({
+        cwd: "/tmp",
+        fallbackToVersion: false,
+      });
+      expect(result).toBe("unknown");
+    } finally {
+      if (orig !== undefined) {
+        process.env.AEP_REPO_COMMIT = orig;
+      }
     }
   });
 });
