@@ -23,12 +23,17 @@ import type { McpToolEntry } from "@wasmagent/mcp-server";
 
 export type RiskSeverity = "low" | "medium" | "high" | "critical";
 export type RiskCategory =
-  | "tool_poisoning"
-  | "shadowing"
-  | "rug_pull"
+  | "command_execution"
+  | "credential_access"
   | "exfiltration"
+  | "invisible_chars"
+  | "privilege_escalation"
+  | "rug_pull"
   | "sampling_abuse"
-  | "invisible_chars";
+  | "shadowing"
+  | "ssrf"
+  | "supply_chain"
+  | "tool_poisoning";
 
 export type VettedField = "name" | "description" | "inputSchema";
 
