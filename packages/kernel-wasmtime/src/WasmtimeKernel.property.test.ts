@@ -12,14 +12,11 @@ import {
 describe("buildJavySource — property-based", () => {
   it("never throws regardless of code content", () => {
     fc.assert(
-      fc.property(
-        fc.string({ minLength: 0, maxLength: 500 }),
-        (code) => {
-          const source = buildJavySource(code, [], {}, {});
-          expect(typeof source).toBe("string");
-          expect(source.length).toBeGreaterThan(0);
-        }
-      ),
+      fc.property(fc.string({ minLength: 0, maxLength: 500 }), (code) => {
+        const source = buildJavySource(code, [], {}, {});
+        expect(typeof source).toBe("string");
+        expect(source.length).toBeGreaterThan(0);
+      }),
       { numRuns: 150 }
     );
   });
@@ -42,15 +39,12 @@ describe("buildJavySource — property-based", () => {
 
   it("always includes the envelope magic bytes as a literal", () => {
     fc.assert(
-      fc.property(
-        fc.string({ minLength: 1, maxLength: 100 }),
-        (code) => {
-          const source = buildJavySource(code, [], {}, {});
-          // The magic bytes [0x57, 0x41, 0x53, 0x4d, 0x41, 0x47, 0x4e, 0x54]
-          // are embedded in the harness as a comma-separated literal.
-          expect(source).toContain("87,65,83,77,65,71,78,84");
-        }
-      ),
+      fc.property(fc.string({ minLength: 1, maxLength: 100 }), (code) => {
+        const source = buildJavySource(code, [], {}, {});
+        // The magic bytes [0x57, 0x41, 0x53, 0x4d, 0x41, 0x47, 0x4e, 0x54]
+        // are embedded in the harness as a comma-separated literal.
+        expect(source).toContain("87,65,83,77,65,71,78,84");
+      }),
       { numRuns: 50 }
     );
   });
