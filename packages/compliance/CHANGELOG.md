@@ -1,5 +1,13 @@
 # @wasmagent/compliance
 
+## 1.9.1
+
+### Patch Changes
+
+- 2df0159: chore: add SBOM generation and property-based testing (#44, #46)
+- Updated dependencies [2df0159]
+  - @wasmagent/core@1.9.1
+
 ## 1.9.0
 
 ### Minor Changes
