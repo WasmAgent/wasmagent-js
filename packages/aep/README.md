@@ -120,6 +120,33 @@ Fields aligned with traceability requirements such as:
 
 Whether a given deployment's records *meet* any specific regulatory requirement depends on retention policy, signing-key management, downstream review workflow, and the legal interpretation that applies to the operator — none of which `@wasmagent/aep` enforces.
 
+## Resolving `repo_commit` automatically
+
+The `resolveRepoCommit()` helper resolves the current repo commit using a three-step fallback chain:
+
+1. Environment variable (default: `AEP_REPO_COMMIT`)
+2. `git rev-parse HEAD` in the working directory
+3. `package.json` version (prefixed with `v`)
+
+```ts
+import { AEPEmitter, resolveRepoCommit } from "@wasmagent/aep";
+
+const emitter = new AEPEmitter({
+  run_id: "run-001",
+  repo_commit: resolveRepoCommit(),
+});
+```
+
+Customise the env var name or working directory:
+
+```ts
+resolveRepoCommit({
+  envVar: "GIT_COMMIT",          // default: "AEP_REPO_COMMIT"
+  cwd: "/app",                   // default: process.cwd()
+  fallbackToVersion: false,      // default: true
+});
+```
+
 ## Documentation
 
 - [AEP schema](./src/types.ts)
