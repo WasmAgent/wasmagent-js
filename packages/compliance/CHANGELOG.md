@@ -1,5 +1,16 @@
 # @wasmagent/compliance
 
+## 1.9.0
+
+### Minor Changes
+
+- d849b83: feat: DX improvements + governance + mcp-firewall risk categories (#43, #45, #47, #48, #49)
+
+### Patch Changes
+
+- Updated dependencies [d849b83]
+  - @wasmagent/core@1.9.0
+
 ## 1.8.0
 
 ### Minor Changes

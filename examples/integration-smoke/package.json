@@ -1,6 +1,6 @@
 {
   "name": "wasmagent-integration-smoke",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "private": true,
   "description": "Local-only end-to-end smoke scripts that drive the public package surface (A1/A2/A4/A5 etc.). NOT part of CI — run them by hand to verify a fresh build.",
   "type": "module",
