@@ -245,4 +245,14 @@ export class AEPEmitter {
   static digestContent(content: string): string {
     return createHash("sha256").update(content).digest("hex");
   }
+
+  static withDefaults(defaults: Partial<AEPEmitterOptions>): {
+    create(overrides?: Partial<AEPEmitterOptions>): AEPEmitter;
+  } {
+    return {
+      create(overrides?: Partial<AEPEmitterOptions>) {
+        return new AEPEmitter({ ...defaults, ...overrides } as AEPEmitterOptions);
+      },
+    };
+  }
 }

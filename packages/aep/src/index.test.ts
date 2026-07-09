@@ -1001,3 +1001,38 @@ describe("AEP v0.3 — schema_version", () => {
     }
   });
 });
+
+describe("AEPEmitter.withDefaults factory (#47)", () => {
+  it("creates emitters with shared defaults", () => {
+    const factory = AEPEmitter.withDefaults({
+      model_id: "claude-sonnet-4-6",
+      model_provider: "anthropic",
+      recordingMode: "full",
+    });
+
+    const emitter1 = factory.create({ run_id: "run-factory-001" });
+    emitter1.addAction({ tool_name: "read_file", state_changing: false });
+    const record1 = emitter1.build(1_700_000_000_000);
+
+    expect(record1.model_id).toBe("claude-sonnet-4-6");
+    expect(record1.actions[0]?.recording_mode).toBe("full");
+    expect(record1.run_id).toBe("run-factory-001");
+  });
+
+  it("overrides defaults per-instance", () => {
+    const factory = AEPEmitter.withDefaults({
+      model_id: "claude-sonnet-4-6",
+      model_provider: "anthropic",
+    });
+
+    const emitter = factory.create({
+      run_id: "run-factory-002",
+      model_id: "gpt-4o",
+    });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+
+    expect(record.model_id).toBe("gpt-4o");
+    expect(record.run_id).toBe("run-factory-002");
+  });
+});

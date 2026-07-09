@@ -36,6 +36,30 @@ const record = emitter.build();
 // record satisfies AEPRecord (aep/v0.1)
 ```
 
+## Factory / Builder API
+
+Use `AEPEmitter.withDefaults()` to create a factory that shares common options across many emitters (useful in long-lived services that emit one record per request):
+
+```ts
+import { AEPEmitter } from "@wasmagent/aep";
+
+// Create once at service boot
+const factory = AEPEmitter.withDefaults({
+  model_id: "claude-sonnet-4-6",
+  model_provider: "anthropic",
+  repo_commit: process.env.GIT_COMMIT,
+  runtime_version: process.env.AGENT_VERSION,
+  recordingMode: "full",
+});
+
+// Per-request — only supply the run-specific fields
+const emitter = factory.create({ run_id: crypto.randomUUID() });
+emitter.addAction({ tool_name: "search", state_changing: false });
+const record = emitter.build();
+```
+
+Overrides passed to `factory.create()` take precedence over the shared defaults.
+
 ## Compliance fields for run-provenance traceability
 
 `AEPRecord` v0.2 carries four optional string fields whose intent is to anchor an emitted record back to the exact code, runtime, policy ruleset, and tool manifest that produced it:
