@@ -1,5 +1,12 @@
 # @agentkit-js/integration-tests
 
+## 1.10.0
+
+### Patch Changes
+
+- Updated dependencies [8c9cd5d]
+  - @wasmagent/core@1.10.0
+
 ## 1.9.1
 
 ### Patch Changes
