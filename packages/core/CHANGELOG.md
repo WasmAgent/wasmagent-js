@@ -1,5 +1,11 @@
 # @agentkit-js/core
 
+## 1.11.0
+
+### Minor Changes
+
+- d619b14: chore: align core-four package versions to 1.10.0
+
 ## 1.10.0
 
 ### Minor Changes
