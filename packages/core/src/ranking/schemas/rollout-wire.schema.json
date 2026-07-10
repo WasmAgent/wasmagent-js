@@ -5,6 +5,7 @@
   "description": "Intermediate JSONL formats in the wasmagent → evomerge data pipeline. Contains three related record types at different pipeline stages. NOT the final training record format — see training-record.schema.json. Validate individual records against the named entry schemas below: rollout-wire/v1/branch, rollout-wire/v1/dpo, rollout-wire/v1/ppo.",
   "oneOf": [
     { "$ref": "#/$defs/RolloutBranchRecord" },
+    { "$ref": "#/$defs/RolloutTreeRecord" },
     { "$ref": "#/$defs/DpoRecord" },
     { "$ref": "#/$defs/PpoRecord" }
   ],
@@ -41,6 +42,40 @@
         "total_score": {
           "type": "number",
           "description": "Raw RolloutRanker totalScore, NOT normalized to [0,1]. Normalized by evomerge _compute_reward()."
+        }
+      }
+    },
+    "RolloutTreeRecord": {
+      "description": "Layer 1.5: Fork-topology record. Groups branches by divergence point for step-level DPO credit assignment.",
+      "type": "object",
+      "required": ["rollout_id", "task", "branches", "fork_map"],
+      "additionalProperties": true,
+      "properties": {
+        "rollout_id": { "type": "string", "minLength": 1 },
+        "task": { "type": "string", "minLength": 1 },
+        "branches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["branch_index", "forked_at_step", "forked_at_event_id", "shared_prefix_steps"],
+            "properties": {
+              "branch_index": { "type": "integer", "minimum": 0 },
+              "temperature": { "type": "number" },
+              "final_answer": { "type": "string" },
+              "objective_score": { "type": "integer", "enum": [0, 1] },
+              "total_score": { "type": "number" },
+              "forked_at_step": { "type": "integer", "minimum": 0 },
+              "forked_at_event_id": { "type": "string" },
+              "shared_prefix_steps": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "fork_map": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0 }
+          }
         }
       }
     },

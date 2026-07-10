@@ -2,6 +2,7 @@ export { agentTrajectorySuite } from "./agent-trajectory.js";
 export { costPerCorrectSuite } from "./cost-per-correct.js";
 export { goalDirectedQualitySuite } from "./goal-directed-quality.js";
 export { latencyUnderBudgetSuite } from "./latency-under-budget.js";
+export { linearisationAblationSuite } from "./linearisation-ablation.js";
 export { locomoRefinedSuite } from "./locomo-refined.js";
 export { longContextRecallSuite } from "./long-context-recall.js";
 export { memoryAgentBenchSuite } from "./memory-agent-bench.js";
@@ -27,6 +28,7 @@ import { agentTrajectorySuite } from "./agent-trajectory.js";
 import { costPerCorrectSuite } from "./cost-per-correct.js";
 import { goalDirectedQualitySuite } from "./goal-directed-quality.js";
 import { latencyUnderBudgetSuite } from "./latency-under-budget.js";
+import { linearisationAblationSuite } from "./linearisation-ablation.js";
 import { locomoRefinedSuite } from "./locomo-refined.js";
 import { longContextRecallSuite } from "./long-context-recall.js";
 import { memoryAgentBenchSuite } from "./memory-agent-bench.js";
@@ -39,6 +41,8 @@ import { toolSequenceSuite } from "./tool-sequence.js";
  *  `multi-turn-memory-original-6` for callers (smoke tests, contract
  *  pins) that need a fixed denominator across enrichments of the main
  *  LoCoMo-style 63-item suite. */
+const linearisationAblation = linearisationAblationSuite();
+
 export const REFERENCE_SUITES: Record<string, BenchmarkSuite> = {
   [multiTurnMemorySuite.name]: multiTurnMemorySuite,
   [multiTurnMemorySuiteOriginal.name]: multiTurnMemorySuiteOriginal,
@@ -51,4 +55,5 @@ export const REFERENCE_SUITES: Record<string, BenchmarkSuite> = {
   [locomoRefinedSuite.name]: locomoRefinedSuite,
   [memoryAgentBenchSuite.name]: memoryAgentBenchSuite,
   [goalDirectedQualitySuite.name]: goalDirectedQualitySuite,
+  [linearisationAblation.name]: linearisationAblation,
 };

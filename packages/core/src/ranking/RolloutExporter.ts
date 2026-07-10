@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { RolloutBranchResult } from "../enhancement/RolloutForkRunner.js";
 import type { AgentEvent } from "../types/events.js";
 import type { RankedBranch } from "./RolloutRanker.js";
+import type { RolloutSFTAnnotator, TurnAnnotation } from "./RolloutSFTAnnotator.js";
 
 // ── Record types ──────────────────────────────────────────────────────────────
 //
@@ -18,6 +19,7 @@ export interface DpoRecord {
   chosen: string;
   rejected: string;
   tool_call_sequence: AgentEvent[];
+  loss_weight_annotations?: TurnAnnotation[];
   provenance: {
     source: "wasmagent-rollout";
     rollout_id: string;
@@ -71,7 +73,8 @@ function ngramHash(task: string): string {
 export function toDpoRecord(
   branches: RolloutBranchResult[],
   ranked: RankedBranch[],
-  exportedAtMs: number
+  exportedAtMs: number,
+  annotator?: RolloutSFTAnnotator
 ): DpoRecord | null {
   if (ranked.length < 2) return null;
 
@@ -88,7 +91,7 @@ export function toDpoRecord(
   if (!chosenBranch || !rejectedBranch) return null;
   if (chosenBranch.finalAnswer === rejectedBranch.finalAnswer) return null;
 
-  return {
+  const record: DpoRecord = {
     prompt: chosenBranch.task,
     chosen: chosenBranch.finalAnswer,
     rejected: rejectedBranch.finalAnswer,
@@ -106,6 +109,12 @@ export function toDpoRecord(
       n_gram_hash: ngramHash(chosenBranch.task),
     },
   };
+
+  if (annotator) {
+    record.loss_weight_annotations = annotator.annotate(chosenBranch.trajectory, chosenRanked);
+  }
+
+  return record;
 }
 
 /**
