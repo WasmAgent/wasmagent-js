@@ -20,7 +20,7 @@
     { "role": "user", "content": "<task instruction>" },
     // ...assistant + tool turns alternating until final assistant turn...
   ],
-  "loss_weight_tokens": "default" | "recovery" | "state_summary",
+  "loss_weight_tokens": "default" | "recovery" | "state_summary" | "high_value",
   "provenance": {
     "source": "WasmAgent/v1-ruler-traces-v1-starter",
     "v1_item_id": "<exact V1 item id>" | "synth-<descriptor>",
@@ -99,6 +99,10 @@ Optional bucketed weighting (evomerge can ignore):
 - `state_summary` — 1.5× on assistant `content` tokens (the
   natural-language summary) immediately before a `tool_calls`
   emission. Targets the "multi-turn state collapse" failure mode.
+- `high_value` — 2.0× on assistant tokens in a turn after which
+  the branch's running score improved by ≥ threshold vs branch
+  mean. Score-based; no named pattern required. Assigned by
+  `RolloutSFTAnnotator` from `RankedBranch.totalScore`.
 
 These names appear in the `loss_weight_tokens` field; they label
 the **dominant** purpose of the record. Records can serve multiple
@@ -163,7 +167,7 @@ Per-record v2 shape:
     { "role": "user", "content": "Pick the next tool to call (or final_answer if the task is now complete)." },
     { "role": "assistant", "content": "{\"choice\":\"final_answer\"}" }
   ],
-  "loss_weight_tokens": "default" | "recovery" | "state_summary",
+  "loss_weight_tokens": "default" | "recovery" | "state_summary" | "high_value",
   "provenance": {
     "source": "<v1-source>+v2-arm-f",
     "v1_item_id": "<unchanged>",

@@ -23,6 +23,7 @@ export interface RolloutMemoryRecord {
   keySteps: string;
   objectiveScore: 0 | 1;
   finalAnswer: string;
+  totalScore?: number;
 }
 
 export interface RolloutMemory {
@@ -34,53 +35,56 @@ export interface RolloutMemory {
 
 export interface RolloutMemoryStoreOptions {
   store: Retriever;
+  includeAllScores?: boolean;
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
 
 export class RolloutMemoryStore {
   readonly #store: Retriever;
+  readonly #includeAllScores: boolean;
 
   constructor(opts: RolloutMemoryStoreOptions) {
     this.#store = opts.store;
+    this.#includeAllScores = opts.includeAllScores ?? false;
   }
 
   /**
-   * Persist a rollout if objectiveScore=1. Score=0 records are silently dropped.
-   *
-   * The stored text is "task_summary + key_steps" — no LLM summarisation, purely
-   * deterministic formatting so the memory content is reproducible.
+   * Persist a rollout. When includeAllScores=false (default), only score=1 is kept.
    */
   async upsert(rollout: RolloutMemoryRecord): Promise<void> {
-    if (rollout.objectiveScore !== 1) return;
+    if (!this.#includeAllScores && rollout.objectiveScore !== 1) return;
 
     const id = `${rollout.rolloutId}-b${rollout.branchIndex}`;
     const text = formatMemoryText(rollout.task, rollout.keySteps);
+    const totalScore = rollout.totalScore ?? rollout.objectiveScore;
     await this.#store.add(id, text, {
       rolloutId: rollout.rolloutId,
       branchIndex: rollout.branchIndex,
       objectiveScore: rollout.objectiveScore,
+      totalScore,
     });
   }
 
   /**
    * Retrieve the topK most relevant past rollout memories for the given task.
-   *
-   * Returns an empty array (never throws) when the store is empty or the
-   * query returns no results.
    */
-  async retrieve(task: string, topK = 3): Promise<RolloutMemory[]> {
+  async retrieve(task: string, topK = 3, minScore?: number): Promise<RolloutMemory[]> {
     try {
       const results = await this.#store.search(task, topK);
-      return results.map((r) => {
+      const memories = results.map((r) => {
         const meta = r.metadata ?? {};
         return {
           id: r.id,
           taskSummary: r.text,
           keySteps: String(meta.keySteps ?? ""),
-          score: r.score,
+          score: typeof meta.totalScore === "number" ? (meta.totalScore as number) : r.score,
         };
       });
+      if (minScore !== undefined) {
+        return memories.filter((m) => m.score >= minScore);
+      }
+      return memories;
     } catch {
       return [];
     }
@@ -88,13 +92,18 @@ export class RolloutMemoryStore {
 
   /**
    * Format retrieved memories as a system prompt injection for RolloutForkRunner.
-   *
-   * Returns empty string when memories is empty so callers can safely concatenate.
    */
   static formatAsSystemPrompt(memories: RolloutMemory[]): string {
     if (memories.length === 0) return "";
-    const lines = memories.map((m, i) => `${i + 1}. ${m.taskSummary}`);
-    return `# Relevant past successful approaches:\n${lines.join("\n")}`;
+    const allHighScore = memories.every((m) => m.score >= 0.9);
+    if (allHighScore) {
+      const lines = memories.map((m, i) => `${i + 1}. ${m.taskSummary}`);
+      return `# Relevant past successful approaches:\n${lines.join("\n")}`;
+    }
+    const lines = memories.map(
+      (m, i) => `${i + 1}. [score: ${m.score.toFixed(2)}] ${m.taskSummary}`
+    );
+    return `# Trajectories on similar past tasks:\n${lines.join("\n")}`;
   }
 }
 
