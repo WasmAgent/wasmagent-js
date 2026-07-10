@@ -27,7 +27,7 @@ export class RolloutSFTAnnotator {
 
     for (let i = 0; i < trajectory.length; i++) {
       // biome-ignore lint/style/noNonNullAssertion: index bounds checked by loop
-      const event = trajectory[i]!
+      const event = trajectory[i]!;
       if (!isAssistantTurn(event)) continue;
 
       const prevEvent = i > 0 ? trajectory[i - 1] : undefined;
