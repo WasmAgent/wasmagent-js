@@ -4,7 +4,7 @@ import { resolveRepoCommit } from "./resolve-repo-commit.js";
 import { createLocalSignerFromSeed } from "./signer.js";
 import { AEPRecordSchema } from "./types.js";
 import { isStateChangingTool, STATE_CHANGING_PATTERNS } from "./utils.js";
-import { verifyAEPRecord, verifyAEPChain } from "./verify.js";
+import { verifyAEPChain, verifyAEPRecord } from "./verify.js";
 
 // Deterministic seed for tests (32 bytes as hex)
 const TEST_SEED = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";

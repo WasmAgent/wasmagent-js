@@ -297,7 +297,7 @@ export function evaluateAdversarial(text: string): AdversarialResult {
   // ── 1. Token n-gram scan (unigrams, bigrams, trigrams) ────────────────────
   for (const token of tokens) {
     if (!Object.hasOwn(NGRAM_WEIGHTS, token)) continue;
-    const w = NGRAM_WEIGHTS[token]!;
+    const w = NGRAM_WEIGHTS[token] as number;
     hits.push({ ngram: token, weight: w });
     weightSum += w;
   }
@@ -305,7 +305,7 @@ export function evaluateAdversarial(text: string): AdversarialResult {
   for (let i = 0; i < tokens.length - 1; i++) {
     const bigram = `${tokens[i]} ${tokens[i + 1]}`;
     if (!Object.hasOwn(NGRAM_WEIGHTS, bigram)) continue;
-    const w = NGRAM_WEIGHTS[bigram]!;
+    const w = NGRAM_WEIGHTS[bigram] as number;
     hits.push({ ngram: bigram, weight: w });
     weightSum += w;
   }
@@ -313,7 +313,7 @@ export function evaluateAdversarial(text: string): AdversarialResult {
   for (let i = 0; i < tokens.length - 2; i++) {
     const trigram = `${tokens[i]} ${tokens[i + 1]} ${tokens[i + 2]}`;
     if (!Object.hasOwn(NGRAM_WEIGHTS, trigram)) continue;
-    const w = NGRAM_WEIGHTS[trigram]!;
+    const w = NGRAM_WEIGHTS[trigram] as number;
     hits.push({ ngram: trigram, weight: w });
     weightSum += w;
   }
@@ -334,8 +334,7 @@ export function evaluateAdversarial(text: string): AdversarialResult {
   );
   for (const key of base64Keys) {
     if (text.includes(key) && !hits.some((h) => h.ngram === key)) {
-      // biome-ignore lint/style/noNonNullAssertion: key iterated from NGRAM_WEIGHTS
-      const w = NGRAM_WEIGHTS[key]!;
+      const w = NGRAM_WEIGHTS[key] as number;
       hits.push({ ngram: key, weight: w });
       weightSum += w;
     }
@@ -355,7 +354,7 @@ export function evaluateAdversarial(text: string): AdversarialResult {
   while ((dotMatch = dotSeparatedRe.exec(norm)) !== null) {
     const reconstructed = dotMatch[0].replace(/\./g, "");
     if (!Object.hasOwn(NGRAM_WEIGHTS, reconstructed)) continue;
-    const w = NGRAM_WEIGHTS[reconstructed]!;
+    const w = NGRAM_WEIGHTS[reconstructed] as number;
     if (!hits.some((h) => h.ngram === `dot:${reconstructed}`)) {
       hits.push({ ngram: `dot:${reconstructed}`, weight: w });
       weightSum += w;
@@ -369,17 +368,17 @@ export function evaluateAdversarial(text: string): AdversarialResult {
       const decodedNorm = normaliseForNgramWithHomoglyphs(decoded);
       const decodedTokens = tokenise(decodedNorm);
       for (let i = 0; i < decodedTokens.length; i++) {
-        // biome-ignore lint/style/noNonNullAssertion: i bounded by decodedTokens.length
-        const tk = decodedTokens[i]!;
+        const tk = decodedTokens[i];
+        if (!tk) continue;
         if (Object.hasOwn(NGRAM_WEIGHTS, tk) && !hits.some((h) => h.ngram === `url:${tk}`)) {
-          const w = NGRAM_WEIGHTS[tk]!;
+          const w = NGRAM_WEIGHTS[tk] as number;
           hits.push({ ngram: `url:${tk}`, weight: w });
           weightSum += w;
         }
         if (i < decodedTokens.length - 1) {
           const bg = `${decodedTokens[i]} ${decodedTokens[i + 1]}`;
           if (Object.hasOwn(NGRAM_WEIGHTS, bg) && !hits.some((h) => h.ngram === `url:${bg}`)) {
-            const bw = NGRAM_WEIGHTS[bg]!;
+            const bw = NGRAM_WEIGHTS[bg] as number;
             hits.push({ ngram: `url:${bg}`, weight: bw });
             weightSum += bw;
           }
@@ -387,7 +386,7 @@ export function evaluateAdversarial(text: string): AdversarialResult {
         if (i < decodedTokens.length - 2) {
           const tg = `${decodedTokens[i]} ${decodedTokens[i + 1]} ${decodedTokens[i + 2]}`;
           if (Object.hasOwn(NGRAM_WEIGHTS, tg) && !hits.some((h) => h.ngram === `url:${tg}`)) {
-            const tw = NGRAM_WEIGHTS[tg]!;
+            const tw = NGRAM_WEIGHTS[tg] as number;
             hits.push({ ngram: `url:${tg}`, weight: tw });
             weightSum += tw;
           }
@@ -410,7 +409,7 @@ export function evaluateAdversarial(text: string): AdversarialResult {
       const decodedTokens = tokenise(normaliseForNgramWithHomoglyphs(decoded));
       for (const tk of decodedTokens) {
         if (!Object.hasOwn(NGRAM_WEIGHTS, tk)) continue;
-        const w = NGRAM_WEIGHTS[tk]!;
+        const w = NGRAM_WEIGHTS[tk] as number;
         if (!hits.some((h) => h.ngram === `hex:${tk}`)) {
           hits.push({ ngram: `hex:${tk}`, weight: w });
           weightSum += w;
