@@ -4,7 +4,7 @@ import { resolveRepoCommit } from "./resolve-repo-commit.js";
 import { createLocalSignerFromSeed } from "./signer.js";
 import { AEPRecordSchema } from "./types.js";
 import { isStateChangingTool, STATE_CHANGING_PATTERNS } from "./utils.js";
-import { verifyAEPRecord } from "./verify.js";
+import { verifyAEPRecord, verifyAEPChain } from "./verify.js";
 
 // Deterministic seed for tests (32 bytes as hex)
 const TEST_SEED = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
@@ -1112,5 +1112,112 @@ describe("resolveRepoCommit (#48)", () => {
         process.env.AEP_REPO_COMMIT = orig;
       }
     }
+  });
+});
+
+describe("Inter-record hash chain (#40)", () => {
+  const TEST_SEED_CHAIN = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+  const TEST_KEY_ID_CHAIN = "test-chain-key-01";
+
+  it("emit 3 records sequentially — verifyAEPChain returns { valid: true }", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED_CHAIN, TEST_KEY_ID_CHAIN);
+    const emitter = new AEPEmitter({ run_id: "run-chain-001", signer });
+
+    emitter.addAction({ tool_name: "read_file", state_changing: false });
+    const r1 = await emitter.emit(1_700_000_000_000);
+
+    emitter.addAction({ tool_name: "write_file", state_changing: true });
+    const r2 = await emitter.emit(1_700_000_001_000);
+
+    emitter.addAction({ tool_name: "deploy", state_changing: true });
+    const r3 = await emitter.emit(1_700_000_002_000);
+
+    // First record should have null prev_record_hash
+    expect(r1.prev_record_hash).toBeNull();
+    // Subsequent records should have a prev_record_hash
+    expect(r2.prev_record_hash).toBeDefined();
+    expect(typeof r2.prev_record_hash).toBe("string");
+    expect(r3.prev_record_hash).toBeDefined();
+    expect(typeof r3.prev_record_hash).toBe("string");
+
+    const result = verifyAEPChain([r1, r2, r3]);
+    expect(result.valid).toBe(true);
+    expect(result.brokenAt).toBeUndefined();
+  });
+
+  it("delete middle record from sequence — verifyAEPChain returns broken", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED_CHAIN, TEST_KEY_ID_CHAIN);
+    const emitter = new AEPEmitter({ run_id: "run-chain-002", signer });
+
+    emitter.addAction({ tool_name: "read_file", state_changing: false });
+    const r1 = await emitter.emit(1_700_000_000_000);
+
+    emitter.addAction({ tool_name: "write_file", state_changing: true });
+    await emitter.emit(1_700_000_001_000); // r2 — will be deleted
+
+    emitter.addAction({ tool_name: "deploy", state_changing: true });
+    const r3 = await emitter.emit(1_700_000_002_000);
+
+    // Skip r2: chain is [r1, r3] — r3's prev_record_hash points to r2, not r1
+    const result = verifyAEPChain([r1, r3]);
+    expect(result.valid).toBe(false);
+    expect(result.brokenAt).toBe(1);
+  });
+
+  it("existing single-record verifyAEPRecord still works (backward compat)", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED_CHAIN, TEST_KEY_ID_CHAIN);
+    const emitter = new AEPEmitter({ run_id: "run-chain-003", signer });
+
+    emitter.addAction({ tool_name: "bash", state_changing: false });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    const publicKey = await signer.getPublicKey();
+    const valid = await verifyAEPRecord(record, publicKey);
+    expect(valid).toBe(true);
+  });
+
+  it("records without prev_record_hash pass chain verification", () => {
+    // Simulate legacy records that lack prev_record_hash
+    const legacyRecords = [
+      {
+        schema_version: "aep/v0.3" as const,
+        run_id: "run-legacy-001",
+        created_at_ms: 1_700_000_000_000,
+        input_refs: [],
+        output_refs: [],
+        capability_decisions: [],
+        actions: [],
+        verifier_results: [],
+        signature: { alg: "ed25519" as const, key_id: "k1", sig: "dGVzdA==" },
+      },
+      {
+        schema_version: "aep/v0.3" as const,
+        run_id: "run-legacy-002",
+        created_at_ms: 1_700_000_001_000,
+        input_refs: [],
+        output_refs: [],
+        capability_decisions: [],
+        actions: [],
+        verifier_results: [],
+        signature: { alg: "ed25519" as const, key_id: "k1", sig: "dGVzdA==" },
+        // no prev_record_hash
+      },
+    ];
+
+    const result = verifyAEPChain(legacyRecords as any);
+    expect(result.valid).toBe(true);
+  });
+
+  it("prev_record_hash is a 64-char hex string (SHA-256)", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED_CHAIN, TEST_KEY_ID_CHAIN);
+    const emitter = new AEPEmitter({ run_id: "run-chain-hex", signer });
+
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    await emitter.emit(1_700_000_000_000);
+
+    emitter.addAction({ tool_name: "noop2", state_changing: false });
+    const r2 = await emitter.emit(1_700_000_001_000);
+
+    expect(r2.prev_record_hash).toMatch(/^[0-9a-f]{64}$/);
   });
 });

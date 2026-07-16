@@ -66,6 +66,7 @@ export class AEPEmitter {
   #budgetLedger: BudgetLedger | undefined;
   #userId: string | undefined;
   #subjectId: string | undefined;
+  #prevRecordHash: string | null = null;
 
   constructor(opts: AEPEmitterOptions) {
     this.#opts = opts;
@@ -193,7 +194,14 @@ export class AEPEmitter {
       key_id: signer.keyId,
       sig,
     };
-    return AEPRecordSchema.parse({ ...normalisedUnsigned, signature });
+    const record = AEPRecordSchema.parse({ ...normalisedUnsigned, signature });
+
+    // Compute hash of this record (without signature) for the next record's prev_record_hash
+    const { signature: _sig, ...recordUnsigned } = record;
+    const recordBytes = canonicalBytes(recordUnsigned);
+    this.#prevRecordHash = createHash("sha256").update(recordBytes).digest("hex");
+
+    return record;
   }
 
   #computeRunSideEffectClassMax(): SideEffectClass | undefined {
@@ -235,6 +243,7 @@ export class AEPEmitter {
       verifier_results: this.#verifierResults,
       budget_ledger: this.#budgetLedger,
       created_at_ms: createdAtMs ?? defaultTs ?? Date.now(),
+      prev_record_hash: this.#prevRecordHash,
       ...(run_context !== undefined && { run_context }),
       ...(runSideEffectMax !== undefined && {
         run_side_effect_class_max: runSideEffectMax,

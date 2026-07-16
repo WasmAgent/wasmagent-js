@@ -231,6 +231,7 @@ export const AEPRecordSchema = z.object({
   verifier_results: z.array(VerifierResultSchema).default([]),
   budget_ledger: BudgetLedgerSchema.optional(),
   created_at_ms: z.number(),
+  prev_record_hash: z.string().nullish(),
   run_context: RunContextSchema.optional(),
   // v0.3 run-level side effect maximum
   run_side_effect_class_max: z
