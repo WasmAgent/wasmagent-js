@@ -1,5 +1,5 @@
-import * as ed from "@noble/ed25519";
 import { createHash } from "node:crypto";
+import * as ed from "@noble/ed25519";
 import { canonicalBytes } from "./canonical.js";
 import type { AEPRecord } from "./types.js";
 
@@ -55,8 +55,9 @@ export function verifyAEPChain(records: AEPRecord[]): ChainVerificationResult {
   }
 
   for (let i = 1; i < records.length; i++) {
-    const current = records[i]!;
-    const prev = records[i - 1]!;
+    const current = records[i];
+    const prev = records[i - 1];
+    if (!current || !prev) continue;
 
     // If prev_record_hash is absent/null, treat as valid (backward compatibility)
     if (current.prev_record_hash == null) {
