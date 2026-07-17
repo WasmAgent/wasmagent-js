@@ -18,6 +18,8 @@ export interface TaintedObservation {
   sanitizers: string[];
   /** True if the content contains instruction-like text. */
   instructionLikeTextDetected: boolean;
+  /** Adversarial classifier score from evaluateAdversarial() (0..1). */
+  adversarialScore: number;
 }
 
 /**
@@ -31,6 +33,7 @@ export interface RenderedTaintedObservation {
 }
 
 import { createHash } from "node:crypto";
+import { evaluateAdversarial } from "./vetting.js";
 
 /** Regex whitelist for tool names used in renderTaintedObservation. */
 const SAFE_TOOL_NAME_RE = /^[A-Za-z0-9_.-]+$/;
@@ -70,13 +73,16 @@ export function taintObservation(
   opts?: { trust?: TrustLevel; sanitizers?: string[] }
 ): TaintedObservation {
   const hash = createHash("sha256").update(rawContent, "utf8").digest("hex").slice(0, 64);
+  const patternMatch = detectInstructionLike(rawContent);
+  const adversarial = evaluateAdversarial(rawContent);
   return {
     sourceTool,
     trust: opts?.trust ?? "untrusted",
     contentType: detectContentType(rawContent),
     contentHash: hash,
     sanitizers: opts?.sanitizers ?? [],
-    instructionLikeTextDetected: detectInstructionLike(rawContent),
+    instructionLikeTextDetected: patternMatch || adversarial.score > 0.5,
+    adversarialScore: adversarial.score,
   };
 }
 
