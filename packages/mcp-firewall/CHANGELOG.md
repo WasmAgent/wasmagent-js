@@ -1,5 +1,15 @@
 # @wasmagent/mcp-firewall
 
+## 1.12.0
+
+### Minor Changes
+
+- c391458: feat: run full adversarial detection on tool return values in taintObservation()
+
+### Patch Changes
+
+- 6f28170: feat: add inter-record hash chain (prev_record_hash) and verifyAEPChain()
+
 ## 1.11.0
 
 ### Minor Changes

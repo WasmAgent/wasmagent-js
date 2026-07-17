@@ -1,5 +1,11 @@
 # @wasmagent/aep
 
+## 1.12.0
+
+### Minor Changes
+
+- 6f28170: feat: add inter-record hash chain (prev_record_hash) and verifyAEPChain()
+
 ## 1.11.0
 
 ### Minor Changes
