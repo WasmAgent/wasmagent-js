@@ -150,8 +150,26 @@ Each budget entry has `{ limit?: number, spent: number }`.
 
 ---
 
+## Standards Alignment
+
+AEP has been evaluated against the [AgentHook v0.2 draft](https://github.com/agenthook/spec) event model for agent runtime evidence. The full analysis is available in [RFC: AEP <-> AgentHook v0.2 Field Alignment](./rfcs/rfc-aep-agenthook-alignment.md).
+
+**Key differentiators of AEP vs. AgentHook v0.2:**
+
+- **Policy-first design** -- AEP records `policy_bundle_digest`, `tool_manifest_digest`, and structured `CapabilityDecision` arrays with approval modes. AgentHook models decisions as flat per-event fields without policy anchoring.
+- **Budget accounting** -- AEP's `BudgetLedger` tracks six resource dimensions (tokens, latency, tools, risk, retries, human approvals). AgentHook has no equivalent.
+- **Verifier results** -- AEP includes post-run verification verdicts (`verifier_results`) linking to specific claims. AgentHook does not model verification.
+- **Tamper-evident chaining** -- AEP's `prev_record_hash` creates a hash-linked sequence of records. AgentHook events are independent.
+- **Content-addressed by default** -- AEP digests inputs/outputs rather than storing raw content, supporting privacy-preserving audit. AgentHook stores full payloads in `model_call` and `tool_output`.
+- **in-toto/DSSE wrapping** -- AEP records can serve as predicates inside in-toto attestation envelopes for supply-chain verification (see RFC for feasibility analysis).
+
+AgentHook v0.2 offers `decision.confidence` scoring and `observation.trust_level` enums that AEP does not yet provide; these are candidates for AEP v0.4.
+
+---
+
 ## Related
 
 - [`@wasmagent/aep` package](../packages/aep/README.md) — `AEPEmitter`, `AEPRecord`, `BudgetLedger` TypeScript types
 - [Trust Pack 30-min quickstart](./quickstarts/trust-pack-30min.md) — end-to-end usage
 - [trace-pipeline evomerge](https://github.com/WasmAgent/trace-pipeline) — downstream consumer
+- [RFC: AEP <-> AgentHook v0.2 Alignment](./rfcs/rfc-aep-agenthook-alignment.md) — field mapping and in-toto wrapping feasibility
