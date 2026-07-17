@@ -164,3 +164,54 @@ requires `cosign` or an equivalent Sigstore client library.
 | in-toto | Link metadata | `actions[]` as in-toto steps |
 
 See [`standards-crosswalk.yaml`](./standards-crosswalk.yaml) for the full mapping.
+
+## Inter-record hash chain verification
+
+Starting with the hash chain feature, AEP records can be linked in a tamper-evident
+sequence. Each record carries an optional `prev_record_hash` field containing the SHA-256
+hex digest of the previous record's canonical bytes (signature stripped).
+
+### Trust model
+
+The signature on each individual record proves **who** produced it and that the record
+body has not been modified. The hash chain adds a second guarantee: **no record in the
+sequence has been deleted, reordered, or inserted** after the fact.
+
+Together these two mechanisms provide:
+
+| Property | Mechanism |
+|---|---|
+| Integrity (single record) | Ed25519 signature over canonical bytes |
+| Sequence integrity (chain) | `prev_record_hash` links each record to its predecessor |
+| Non-repudiation | Signing key identity bound to `key_id` |
+| Backward compatibility | `prev_record_hash` is optional (`.nullish()`) — older records without it are accepted |
+
+### How it works
+
+1. The `AEPEmitter` maintains internal state: the SHA-256 hex hash of the most recently
+   emitted record's canonical bytes (without the `signature` field).
+2. On every call to `emit()`, the emitter sets `prev_record_hash` in the new record's
+   payload to that stored hash (or `null` for the first record in a session).
+3. After signing and finalising the record, the emitter computes the canonical hash of the
+   new record and stores it for the next emission.
+
+### Verifying a chain
+
+Use `verifyAEPChain(records)` from `@wasmagent/aep`:
+
+```ts
+import { verifyAEPChain } from "@wasmagent/aep";
+
+const result = verifyAEPChain(orderedRecords);
+if (!result.valid) {
+  console.error(`Chain broken at index ${result.brokenAt}`);
+}
+```
+
+The function iterates through the ordered array. For each record after the first, if
+`prev_record_hash` is present, it recomputes the SHA-256 of the previous record's
+canonical bytes and compares. A mismatch indicates tampering (deletion, reordering, or
+insertion).
+
+Records that lack `prev_record_hash` (null/undefined) are treated as valid links for
+backward compatibility with pre-chain records.
