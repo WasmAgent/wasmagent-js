@@ -1,5 +1,16 @@
 # @wasmagent/compliance
 
+## 1.13.0
+
+### Minor Changes
+
+- d619b14: chore: align core-four package versions to 1.12.0
+
+### Patch Changes
+
+- Updated dependencies [d619b14]
+  - @wasmagent/core@1.13.0
+
 ## 1.11.0
 
 ### Minor Changes
