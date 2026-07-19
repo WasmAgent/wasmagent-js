@@ -1,5 +1,15 @@
 # @wasmagent/aep
 
+## 1.14.0
+
+### Minor Changes
+
+- ae0b2c9: feat(aep): AEPTimestamper interface and LocalTimestamper for external timestamp anchoring
+
+### Patch Changes
+
+- a68e8be: feat(core): ApprovalRequest type, ApprovalStore interface, InMemory and CF KV adapters
+
 ## 1.13.1
 
 ### Patch Changes
