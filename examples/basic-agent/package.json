@@ -9,6 +9,6 @@
   },
   "dependencies": {
     "@wasmagent/core": "workspace:*",
-    "@anthropic-ai/sdk": "^0.37.0"
+    "@anthropic-ai/sdk": "^0.112.3"
   }
 }

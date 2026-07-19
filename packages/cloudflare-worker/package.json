@@ -22,7 +22,7 @@
     "quickjs-emscripten-core": "0.32.0"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.55.0",
+    "@anthropic-ai/sdk": "^0.112.3",
     "@cloudflare/workers-types": "^4.20241224.0",
     "@size-limit/preset-big-lib": "^12.1.0",
     "size-limit": "^12.1.0",
