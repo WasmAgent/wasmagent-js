@@ -2,11 +2,11 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export function resolveRepoCommit(options?: {
+export async function resolveRepoCommit(options?: {
   envVar?: string;
   cwd?: string;
   fallbackToVersion?: boolean;
-}): string {
+}): Promise<string> {
   const envVar = options?.envVar ?? "AEP_REPO_COMMIT";
   const cwd = options?.cwd ?? process.cwd();
   const fallbackToVersion = options?.fallbackToVersion ?? true;

@@ -98,17 +98,22 @@ export class AEPEmitter {
       side_effect_class,
     } as ActionEvidence);
     if (action.capability_decision) {
-      const cd = action.capability_decision;
-      const exists = this.#capabilityDecisions.some(
-        (d) =>
-          d.capability === cd.capability && d.subject === cd.subject && d.resource === cd.resource
-      );
-      if (!exists) this.#capabilityDecisions.push(cd);
+      this.#pushCapabilityDecision(action.capability_decision);
     }
   }
 
   addCapabilityDecision(decision: CapabilityDecision): void {
-    this.#capabilityDecisions.push(decision);
+    this.#pushCapabilityDecision(decision);
+  }
+
+  #pushCapabilityDecision(decision: CapabilityDecision): void {
+    const exists = this.#capabilityDecisions.some(
+      (d) =>
+        d.capability === decision.capability &&
+        d.subject === decision.subject &&
+        d.resource === decision.resource
+    );
+    if (!exists) this.#capabilityDecisions.push(decision);
   }
 
   addInputRef(ref: InputRef): void {

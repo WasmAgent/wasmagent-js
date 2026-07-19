@@ -459,6 +459,15 @@ describe("isStateChangingTool (#23)", () => {
     expect(isStateChangingTool({ name: "get_status" })).toBe(false);
     expect(isStateChangingTool({ name: "list_items" })).toBe(false);
     expect(isStateChangingTool({ name: "search", description: "Searches documents" })).toBe(false);
+    expect(isStateChangingTool({ name: "run_invoice_match" })).toBe(false);
+    expect(isStateChangingTool({ name: "run_compliance_checks" })).toBe(false);
+    expect(isStateChangingTool({ name: "post_process" })).toBe(false);
+    expect(isStateChangingTool({ name: "run_report" })).toBe(false);
+  });
+
+  it("returns true for tools with 'save' in the name", () => {
+    expect(isStateChangingTool({ name: "save_pr_draft" })).toBe(true);
+    expect(isStateChangingTool({ name: "save_file" })).toBe(true);
   });
 
   it("exports STATE_CHANGING_PATTERNS array", () => {
@@ -1038,12 +1047,52 @@ describe("AEPEmitter.withDefaults factory (#47)", () => {
   });
 });
 
+describe("addCapabilityDecision dedup (#83)", () => {
+  it("does not duplicate when addAction and addCapabilityDecision provide the same decision", () => {
+    const emitter = new AEPEmitter({ run_id: "run-dedup-001" });
+    const cd = {
+      capability: "fs:write",
+      subject: "agent",
+      resource: "/tmp/output.txt",
+      decision: "allow" as const,
+      reason_code: "policy-default",
+    };
+
+    emitter.addAction({
+      tool_name: "write_file",
+      state_changing: true,
+      capability_decision: cd,
+    });
+
+    emitter.addCapabilityDecision(cd);
+
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.capability_decisions.length).toBe(1);
+  });
+
+  it("does not duplicate when addCapabilityDecision is called twice with the same decision", () => {
+    const emitter = new AEPEmitter({ run_id: "run-dedup-002" });
+    const cd = {
+      capability: "net:egress",
+      subject: "agent",
+      resource: "https://api.example.com",
+      decision: "allow" as const,
+    };
+
+    emitter.addCapabilityDecision(cd);
+    emitter.addCapabilityDecision(cd);
+
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.capability_decisions.length).toBe(1);
+  });
+});
+
 describe("resolveRepoCommit (#48)", () => {
-  it("returns env var value when set", () => {
+  it("returns env var value when set", async () => {
     const orig = process.env.AEP_REPO_COMMIT;
     process.env.AEP_REPO_COMMIT = "abc123def456";
     try {
-      const result = resolveRepoCommit();
+      const result = await resolveRepoCommit();
       expect(result).toBe("abc123def456");
     } finally {
       if (orig === undefined) {
@@ -1054,11 +1103,11 @@ describe("resolveRepoCommit (#48)", () => {
     }
   });
 
-  it("returns a custom env var when specified", () => {
+  it("returns a custom env var when specified", async () => {
     const orig = process.env.MY_COMMIT;
     process.env.MY_COMMIT = "custom-sha";
     try {
-      const result = resolveRepoCommit({ envVar: "MY_COMMIT" });
+      const result = await resolveRepoCommit({ envVar: "MY_COMMIT" });
       expect(result).toBe("custom-sha");
     } finally {
       if (orig === undefined) {
@@ -1069,11 +1118,11 @@ describe("resolveRepoCommit (#48)", () => {
     }
   });
 
-  it("falls back to git rev-parse HEAD in a git repo", () => {
+  it("falls back to git rev-parse HEAD in a git repo", async () => {
     const orig = process.env.AEP_REPO_COMMIT;
     delete process.env.AEP_REPO_COMMIT;
     try {
-      const result = resolveRepoCommit({ cwd: process.cwd() });
+      const result = await resolveRepoCommit({ cwd: process.cwd() });
       // Should be a 40-char hex SHA in a git repo
       expect(result).toMatch(/^[0-9a-f]{40}$/);
     } finally {
@@ -1083,12 +1132,12 @@ describe("resolveRepoCommit (#48)", () => {
     }
   });
 
-  it("falls back to package.json version when not in a git repo", () => {
+  it("falls back to package.json version when not in a git repo", async () => {
     const orig = process.env.AEP_REPO_COMMIT;
     delete process.env.AEP_REPO_COMMIT;
     try {
       // Use /tmp which is not a git repo but has no package.json either
-      const result = resolveRepoCommit({ cwd: "/tmp", fallbackToVersion: true });
+      const result = await resolveRepoCommit({ cwd: "/tmp", fallbackToVersion: true });
       // Should be "unknown" since /tmp has no package.json
       expect(result).toBe("unknown");
     } finally {
@@ -1098,11 +1147,11 @@ describe("resolveRepoCommit (#48)", () => {
     }
   });
 
-  it("returns 'unknown' when all strategies fail", () => {
+  it("returns 'unknown' when all strategies fail", async () => {
     const orig = process.env.AEP_REPO_COMMIT;
     delete process.env.AEP_REPO_COMMIT;
     try {
-      const result = resolveRepoCommit({
+      const result = await resolveRepoCommit({
         cwd: "/tmp",
         fallbackToVersion: false,
       });
