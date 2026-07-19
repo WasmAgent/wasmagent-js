@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { AEPEmitter } from "./emitter.js";
 import { resolveRepoCommit } from "./resolve-repo-commit.js";
 import { createLocalSignerFromSeed } from "./signer.js";
+import { LocalTimestamper } from "./timestamperLocal.js";
 import { AEPRecordSchema } from "./types.js";
 import { isStateChangingTool, STATE_CHANGING_PATTERNS } from "./utils.js";
 import { verifyAEPChain, verifyAEPRecord } from "./verify.js";
@@ -1268,5 +1269,81 @@ describe("Inter-record hash chain (#40)", () => {
     const r2 = await emitter.emit(1_700_000_001_000);
 
     expect(r2.prev_record_hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe("AEPTimestamper — LocalTimestamper (#42)", () => {
+  it("LocalTimestamper produces a valid TimestampProof", async () => {
+    const ts = new LocalTimestamper("test-tsa");
+    const bytes = new TextEncoder().encode("test record payload");
+    const proof = await ts.timestamp(bytes);
+
+    expect(proof.authority).toBe("test-tsa");
+    expect(proof.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(typeof proof.proof).toBe("string");
+    expect(proof.proof.length).toBeGreaterThan(0);
+    expect(proof.logIndex).toBeUndefined();
+  });
+
+  it("LocalTimestamper uses default authorityId when not specified", async () => {
+    const ts = new LocalTimestamper();
+    expect(ts.authorityId).toBe("local-dev-tsa");
+    const bytes = new TextEncoder().encode("data");
+    const proof = await ts.timestamp(bytes);
+    expect(proof.authority).toBe("local-dev-tsa");
+  });
+
+  it("AEPEmitter with timestamper attaches timestamp_proof to emitted records", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const timestamper = new LocalTimestamper("ci-tsa");
+    const emitter = new AEPEmitter({
+      run_id: "run-ts-001",
+      signer,
+      timestamper,
+    });
+
+    emitter.addAction({ tool_name: "write_file", state_changing: true });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    expect(record.timestamp_proof).toBeDefined();
+    expect(record.timestamp_proof?.authority).toBe("ci-tsa");
+    expect(record.timestamp_proof?.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(typeof record.timestamp_proof?.proof).toBe("string");
+    expect(record.timestamp_proof?.proof.length).toBeGreaterThan(0);
+  });
+
+  it("AEPEmitter without timestamper does not attach timestamp_proof (backwards compat)", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-ts-002",
+      signer,
+    });
+
+    emitter.addAction({ tool_name: "read_file", state_changing: false });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    expect(record.timestamp_proof).toBeUndefined();
+  });
+
+  it("timestamp_proof field passes schema validation", () => {
+    const raw = {
+      schema_version: "aep/v0.3",
+      run_id: "run-ts-schema",
+      created_at_ms: 1_700_000_000_000,
+      actions: [],
+      signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+      timestamp_proof: {
+        timestamp: "2024-01-15T12:00:00.000Z",
+        authority: "rfc3161-tsa",
+        proof: "base64encodedproof==",
+        logIndex: 42,
+      },
+    };
+    const result = AEPRecordSchema.safeParse(raw);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.timestamp_proof?.authority).toBe("rfc3161-tsa");
+      expect(result.data.timestamp_proof?.logIndex).toBe(42);
+    }
   });
 });

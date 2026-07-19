@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { canonicalBytes } from "./canonical.js";
 import type { AEPSigner } from "./signer.js";
+import type { AEPTimestamper } from "./timestamper.js";
 import type {
   ActionEvidence,
   AEPRecord,
@@ -50,6 +51,8 @@ export interface AEPEmitterOptions {
   run_context?: RunContext;
   /** Optional signer. When provided, emit() signs the record; build() remains unsigned-compatible via a dummy placeholder. */
   signer?: AEPSigner;
+  /** Optional timestamper. When provided, emit() attaches a timestamp proof after signing. */
+  timestamper?: AEPTimestamper;
   /** Default recording mode for actions added without an explicit recording_mode. */
   recordingMode?: RecordingMode;
   /** Default side_effect_class for actions added without an explicit side_effect_class. */
@@ -200,6 +203,14 @@ export class AEPEmitter {
       sig,
     };
     const record = AEPRecordSchema.parse({ ...normalisedUnsigned, signature });
+
+    // If a timestamper is configured, request a timestamp proof and attach it
+    const timestamper = this.#opts.timestamper;
+    if (timestamper) {
+      const tsBytes = canonicalBytes(normalisedUnsigned);
+      const proof = await timestamper.timestamp(tsBytes);
+      record.timestamp_proof = proof;
+    }
 
     // Compute hash of this record (without signature) for the next record's prev_record_hash
     const { signature: _sig, ...recordUnsigned } = record;

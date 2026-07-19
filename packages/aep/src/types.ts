@@ -237,6 +237,15 @@ export const AEPRecordSchema = z.object({
   run_side_effect_class_max: z
     .enum(["read", "mutate-local", "mutate-external", "network-egress", "unknown"])
     .optional(),
+  // v0.3 external timestamp proof (optional, attached by AEPTimestamper)
+  timestamp_proof: z
+    .object({
+      timestamp: z.string(),
+      authority: z.string(),
+      proof: z.string(),
+      logIndex: z.number().optional(),
+    })
+    .optional(),
   signature: z.object({
     alg: z.literal("ed25519"),
     key_id: z.string(),
