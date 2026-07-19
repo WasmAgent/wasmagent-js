@@ -263,11 +263,20 @@ export {
 } from "./models/index.js";
 // Policies — approval gates for write-class tools [stable]
 export type {
+  ApprovalDecision,
   ApprovalPolicyOptions,
+  ApprovalRequest,
   ApprovalRule,
+  ApprovalStore,
   WriteOpKind,
-} from "./policies/approvalPolicy.js";
-export { ApprovalPolicy, applyApprovalPolicy, PolicyPresets } from "./policies/approvalPolicy.js";
+} from "./policies/index.js";
+export {
+  ApprovalPolicy,
+  applyApprovalPolicy,
+  CloudflareKvApprovalStore,
+  InMemoryApprovalStore,
+  PolicyPresets,
+} from "./policies/index.js";
 // A2 — durable SSE streaming with Last-Event-ID resume [stable]
 export type { EventLogOptions, LoggedEvent } from "./streaming/EventLog.js";
 export { EventLog, formatSseFrame } from "./streaming/EventLog.js";
