@@ -1,6 +1,6 @@
 {
   "name": "wasmagent-example-a2a-interop",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "private": true,
   "type": "module",
   "description": "End-to-end demo proving @wasmagent/a2a implements the A2A v1.0 protocol correctly — a local WasmAgent agent is exposed as an A2A server, then called by an external 'framework' simulated via raw HTTP and via A2ARemoteAgent (which is what ADK / CrewAI / your own framework would do).",

@@ -1,5 +1,13 @@
 # @wasmagent/compliance
 
+## 1.13.1
+
+### Patch Changes
+
+- 7f3eecc: fix: deduplicate addCapabilityDecision, async resolveRepoCommit, tighten isStateChangingTool patterns
+- Updated dependencies [7f3eecc]
+  - @wasmagent/core@1.13.1
+
 ## 1.13.0
 
 ### Minor Changes
