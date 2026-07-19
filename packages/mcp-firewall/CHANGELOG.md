@@ -1,5 +1,11 @@
 # @wasmagent/mcp-firewall
 
+## 1.13.1
+
+### Patch Changes
+
+- 7f3eecc: fix: deduplicate addCapabilityDecision, async resolveRepoCommit, tighten isStateChangingTool patterns
+
 ## 1.12.0
 
 ### Minor Changes
