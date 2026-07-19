@@ -1,8 +1,8 @@
 ---
-"@anthropic/aep": patch
-"@anthropic/wasmagent-core": patch
-"@anthropic/mcp-firewall": patch
-"@anthropic/compliance": patch
+"@wasmagent/aep": patch
+"@wasmagent/core": patch
+"@wasmagent/mcp-firewall": patch
+"@wasmagent/compliance": patch
 ---
 
 fix: deduplicate addCapabilityDecision, async resolveRepoCommit, tighten isStateChangingTool patterns
