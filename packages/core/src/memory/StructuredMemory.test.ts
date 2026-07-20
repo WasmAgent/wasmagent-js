@@ -84,6 +84,46 @@ describe("StructuredMemory.query", () => {
   });
 });
 
+describe("StructuredMemory options-object overloads (#92)", () => {
+  it("get() accepts { namespace } options object", async () => {
+    const m = newMem();
+    await m.set("k", "val", { namespace: "semantic" });
+    expect(await m.get("k", { namespace: "semantic" })).toBe("val");
+    expect(await m.get("k", { namespace: "episodic" })).toBeNull();
+  });
+
+  it("get() defaults to episodic when options object has no namespace", async () => {
+    const m = newMem();
+    await m.set("k", "val");
+    expect(await m.get("k", {})).toBe("val");
+  });
+
+  it("delete() accepts { namespace } options object", async () => {
+    const m = newMem();
+    await m.set("k", "val", { namespace: "procedural" });
+    await m.delete("k", { namespace: "procedural" });
+    expect(await m.get("k", "procedural")).toBeNull();
+  });
+
+  it("count() accepts { namespace } options object", async () => {
+    const m = newMem();
+    await m.set("a", 1, { namespace: "episodic" });
+    await m.set("b", 2, { namespace: "semantic" });
+    expect(await m.count({ namespace: "episodic" })).toBe(1);
+    expect(await m.count({ namespace: "semantic" })).toBe(1);
+    expect(await m.count({})).toBe(2);
+  });
+
+  it("backward compat — get/delete/count still accept plain string", async () => {
+    const m = newMem();
+    await m.set("k", "v", { namespace: "semantic" });
+    expect(await m.get("k", "semantic")).toBe("v");
+    expect(await m.count("semantic")).toBe(1);
+    await m.delete("k", "semantic");
+    expect(await m.get("k", "semantic")).toBeNull();
+  });
+});
+
 describe("StructuredMemory.decay", () => {
   it("does not delete fresh entries", async () => {
     const m = newMem();

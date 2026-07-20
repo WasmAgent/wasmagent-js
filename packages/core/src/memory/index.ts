@@ -1,5 +1,6 @@
 export type { Bm25Match } from "./Bm25Indexer.js";
 export { Bm25Indexer, tokenize as bm25Tokenize } from "./Bm25Indexer.js";
+export { FileStructuredKv } from "./fileKv.js";
 export type { HybridRetrieverOpts } from "./HybridRetriever.js";
 export { HybridRetriever, hybridRetriever } from "./HybridRetriever.js";
 export { LazyObservationHandle } from "./LazyObservationHandle.js";
