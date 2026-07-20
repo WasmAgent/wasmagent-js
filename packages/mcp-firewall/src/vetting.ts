@@ -18,6 +18,7 @@
  */
 
 import type { McpToolEntry } from "@wasmagent/mcp-server";
+import type { SemanticDetector } from "./semanticDetector.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,6 +41,7 @@ export type FindingType =
   | "exfiltration_attempt"
   | "invisible_chars"
   | "sampling_abuse"
+  | "semantic_paraphrase"
   | "rug_pull"
   | "unknown";
 
@@ -669,4 +671,73 @@ export function vetTool(entry: McpToolEntry): VettingResult {
  */
 export function vetTools(entries: McpToolEntry[]): VettingResult[] {
   return entries.map(vetTool);
+}
+
+// ── Async vetting with semantic detection ───────────────────────────────────
+
+/**
+ * Options for the async vetting pipeline.
+ */
+export interface VetToolOptions {
+  /**
+   * Optional semantic detector for paraphrase-based injection detection (phase 3).
+   * When provided, the detector is run against name, description, and inputSchema
+   * after the existing keyword + n-gram phases. If the score exceeds the detector's
+   * warn threshold, a `semantic_paraphrase` finding is added.
+   */
+  semanticDetector?: SemanticDetector;
+}
+
+/**
+ * Async version of `vetTool()` that supports the optional semantic detection phase.
+ *
+ * When `options.semanticDetector` is provided, after the synchronous keyword + n-gram
+ * phases, the semantic detector is run against the tool's description, inputSchema,
+ * and name fields. Findings of type `semantic_paraphrase` are added when the
+ * similarity score exceeds the detector's configured thresholds.
+ *
+ * When no semantic detector is provided, this behaves identically to `vetTool()`.
+ */
+export async function vetToolAsync(
+  entry: McpToolEntry,
+  options?: VetToolOptions
+): Promise<VettingResult> {
+  // Phase 1 + 2: synchronous keyword + n-gram detection
+  const result = vetTool(entry);
+
+  // Phase 3: semantic detection (optional, async)
+  if (!options?.semanticDetector) return result;
+
+  const detector = options.semanticDetector;
+  const fields: Array<{ text: string; field: VettedField }> = [
+    { text: entry.description, field: "description" },
+    { text: JSON.stringify(entry.inputSchema), field: "inputSchema" },
+    { text: entry.name, field: "name" },
+  ];
+
+  for (const { text, field } of fields) {
+    const detection = await detector.detect(text);
+    if (detection.score < 0.82) continue;
+
+    const severity: RiskSeverity = detection.score >= 0.9 ? "critical" : "medium";
+    const recommendation: RiskRecommendation = detection.score >= 0.9 ? "deny" : "ask";
+
+    result.findings.push({
+      severity,
+      category: "tool_poisoning",
+      type: "semantic_paraphrase",
+      field,
+      evidenceExcerpt: excerpt(
+        `[semantic score=${detection.score.toFixed(3)} category=${detection.matchedCategory ?? "unknown"}] ${excerpt(text, 80)}`
+      ),
+      evidenceHash: fieldHash(text),
+      recommendation,
+    });
+  }
+
+  // Recompute aggregate recommendation after adding semantic findings
+  result.recommendation = worstRecommendation(result.findings);
+  result.blocked = result.recommendation === "deny";
+
+  return result;
 }
