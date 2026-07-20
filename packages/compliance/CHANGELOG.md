@@ -1,5 +1,13 @@
 # @wasmagent/compliance
 
+## 1.15.0
+
+### Patch Changes
+
+- ba4b9f1: feat(core): StructuredMemory.get() options overload, FileStructuredKv durable backend
+- Updated dependencies [ba4b9f1]
+  - @wasmagent/core@1.15.0
+
 ## 1.14.1
 
 ### Patch Changes

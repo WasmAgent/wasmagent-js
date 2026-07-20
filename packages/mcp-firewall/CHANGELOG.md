@@ -1,5 +1,11 @@
 # @wasmagent/mcp-firewall
 
+## 1.15.0
+
+### Patch Changes
+
+- ba4b9f1: feat(core): StructuredMemory.get() options overload, FileStructuredKv durable backend
+
 ## 1.14.1
 
 ### Patch Changes

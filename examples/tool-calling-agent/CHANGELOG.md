@@ -1,5 +1,12 @@
 # tool-calling-agent-example
 
+## 0.1.21
+
+### Patch Changes
+
+- Updated dependencies [ba4b9f1]
+  - @wasmagent/core@1.15.0
+
 ## 0.1.20
 
 ### Patch Changes
