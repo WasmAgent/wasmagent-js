@@ -211,7 +211,7 @@ export type RunContext = z.infer<typeof RunContextSchema>;
 
 // AEPRecord — the top-level Agent Evidence Protocol record
 export const AEPRecordSchema = z.object({
-  schema_version: z.enum(["aep/v0.1", "aep/v0.2", "aep/v0.3"]),
+  schema_version: z.enum(["aep/v0.1", "aep/v0.2", "aep/v0.3", "aep/v0.4"]),
   run_id: z.string(),
   user_id: z.string().optional(),
   subject_id: z.string().optional(),
@@ -244,6 +244,19 @@ export const AEPRecordSchema = z.object({
       authority: z.string(),
       proof: z.string(),
       logIndex: z.number().optional(),
+    })
+    .optional(),
+  // v0.4: DSSE envelope (when present, `signature` is derived from envelope for backward compat)
+  dsse_envelope: z
+    .object({
+      payloadType: z.string(),
+      payload: z.string(),
+      signatures: z.array(
+        z.object({
+          keyid: z.string(),
+          sig: z.string(),
+        })
+      ),
     })
     .optional(),
   signature: z.object({

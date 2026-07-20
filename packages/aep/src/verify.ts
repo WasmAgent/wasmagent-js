@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import * as ed from "@noble/ed25519";
 import { canonicalBytes } from "./canonical.js";
+import { verifyDSSEEnvelope } from "./dsse.js";
 import type { AEPRecord } from "./types.js";
 
 /**
@@ -15,7 +16,10 @@ export interface ChainVerificationResult {
 /**
  * verifyAEPRecord — verify the ed25519 signature on an AEPRecord.
  *
- * Steps:
+ * For v0.4 records with a `dsse_envelope`, verifies via DSSE (PAE encoding).
+ * For legacy records, falls back to canonical-bytes verification.
+ *
+ * Steps (legacy):
  * 1. Strip the `signature` field to reconstruct the unsigned payload.
  * 2. Re-compute the canonical bytes the signer would have signed.
  * 3. Base64-decode the `sig` field and verify against the provided public key.
@@ -31,7 +35,13 @@ export async function verifyAEPRecord(record: AEPRecord, publicKey: Uint8Array):
     );
   }
   try {
-    const { signature, ...unsigned } = record;
+    // If DSSE envelope is present, verify via DSSE
+    if (record.dsse_envelope) {
+      return await verifyDSSEEnvelope(record.dsse_envelope, publicKey);
+    }
+
+    // Legacy verification path
+    const { signature, dsse_envelope: _dsse, ...unsigned } = record;
     if (!signature) return false;
 
     const bytes = canonicalBytes(unsigned);
@@ -74,8 +84,8 @@ export function verifyAEPChain(records: AEPRecord[]): ChainVerificationResult {
       continue;
     }
 
-    // Compute the expected hash: SHA-256 hex of canonical bytes of previous record (without signature)
-    const { signature: _sig, ...prevUnsigned } = prev;
+    // Compute the expected hash: SHA-256 hex of canonical bytes of previous record (without signature/dsse_envelope)
+    const { signature: _sig, dsse_envelope: _dsse, ...prevUnsigned } = prev;
     const prevBytes = canonicalBytes(prevUnsigned);
     const expectedHash = createHash("sha256").update(prevBytes).digest("hex");
 
