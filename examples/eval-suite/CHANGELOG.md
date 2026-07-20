@@ -1,5 +1,12 @@
 # example-eval-suite
 
+## 0.1.22
+
+### Patch Changes
+
+- Updated dependencies [2606745]
+  - @wasmagent/core@1.16.0
+
 ## 0.1.21
 
 ### Patch Changes
