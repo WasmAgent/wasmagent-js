@@ -1,5 +1,11 @@
 # @wasmagent/mcp-firewall
 
+## 1.18.0
+
+### Patch Changes
+
+- Align version with core-four coherence policy
+
 ## 1.17.0
 
 ### Minor Changes

@@ -1,5 +1,11 @@
 # @wasmagent/aep
 
+## 1.18.0
+
+### Minor Changes
+
+- chore: align core-four package versions to 1.17.0 (version coherence policy)
+
 ## 1.16.0
 
 ### Minor Changes

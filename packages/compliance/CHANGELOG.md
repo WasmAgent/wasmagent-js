@@ -1,5 +1,16 @@
 # @wasmagent/compliance
 
+## 1.18.0
+
+### Minor Changes
+
+- chore: align core-four package versions to 1.17.0 (version coherence policy)
+
+### Patch Changes
+
+- Updated dependencies
+  - @wasmagent/core@1.18.0
+
 ## 1.16.0
 
 ### Patch Changes

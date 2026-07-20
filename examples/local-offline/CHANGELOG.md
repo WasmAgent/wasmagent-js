@@ -1,5 +1,12 @@
 # local-offline
 
+## 0.1.22
+
+### Patch Changes
+
+- Updated dependencies
+  - @wasmagent/core@1.18.0
+
 ## 0.1.21
 
 ### Patch Changes
