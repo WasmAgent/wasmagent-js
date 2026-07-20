@@ -236,6 +236,7 @@ describe("AEP Ed25519 signature chain", () => {
       signer,
     });
 
+    emitter.addAction({ tool_name: "noop", state_changing: false });
     const record = await emitter.emit(1_700_000_000_000);
     const publicKey = await signer.getPublicKey();
 
@@ -252,6 +253,7 @@ describe("AEP Ed25519 signature chain", () => {
       signer,
     });
 
+    emitter.addAction({ tool_name: "noop", state_changing: false });
     const record = await emitter.emit(1_700_000_000_000);
     const publicKey = await signer.getPublicKey();
 
@@ -266,6 +268,7 @@ describe("AEP Ed25519 signature chain", () => {
     const wrongSigner = createLocalSignerFromSeed(wrongSeed, "wrong-key");
 
     const emitter = new AEPEmitter({ run_id: "run-wrongkey-001", signer });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
     const record = await emitter.emit(1_700_000_000_000);
 
     const wrongPublicKey = await wrongSigner.getPublicKey();
@@ -1345,5 +1348,66 @@ describe("AEPTimestamper — LocalTimestamper (#42)", () => {
       expect(result.data.timestamp_proof?.authority).toBe("rfc3161-tsa");
       expect(result.data.timestamp_proof?.logIndex).toBe(42);
     }
+  });
+});
+
+describe("verifyAEPRecord — Promise detection (#91)", () => {
+  it("throws TypeError when passed a Promise instead of AEPRecord", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({ run_id: "run-promise-detect", signer });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+
+    const promise = emitter.emit(1_700_000_000_000);
+    const publicKey = await signer.getPublicKey();
+
+    // Pass the unawaited promise — should throw TypeError
+    await expect(verifyAEPRecord(promise as any, publicKey)).rejects.toThrow(TypeError);
+    await expect(verifyAEPRecord(promise as any, publicKey)).rejects.toThrow(
+      "Did you forget to await"
+    );
+
+    // Clean up — actually await the promise
+    await promise;
+  });
+});
+
+describe("verifyAEPChain — Promise detection (#91)", () => {
+  it("throws TypeError when passed a Promise instead of AEPRecord[]", () => {
+    const promise = Promise.resolve([]);
+    expect(() => verifyAEPChain(promise as any)).toThrow(TypeError);
+    expect(() => verifyAEPChain(promise as any)).toThrow("Did you forget to await");
+  });
+});
+
+describe("AEPEmitter.emit() — empty actions validation (#95)", () => {
+  it("throws when emit() is called with no actions recorded", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({ run_id: "run-empty-001", signer });
+
+    await expect(emitter.emit(1_700_000_000_000)).rejects.toThrow(
+      "AEPEmitter.emit() called with no actions recorded"
+    );
+  });
+
+  it("does not throw when allowEmptyActions is true", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-empty-002",
+      signer,
+      allowEmptyActions: true,
+    });
+
+    const record = await emitter.emit(1_700_000_000_000);
+    expect(record.actions).toHaveLength(0);
+    expect(record.schema_version).toBe("aep/v0.3");
+  });
+
+  it("does not throw when actions have been added", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({ run_id: "run-empty-003", signer });
+    emitter.addAction({ tool_name: "read_file", state_changing: false });
+
+    const record = await emitter.emit(1_700_000_000_000);
+    expect(record.actions).toHaveLength(1);
   });
 });

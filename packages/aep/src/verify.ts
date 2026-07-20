@@ -25,6 +25,11 @@ export interface ChainVerificationResult {
  * @returns `true` if the signature is valid and covers the current record contents.
  */
 export async function verifyAEPRecord(record: AEPRecord, publicKey: Uint8Array): Promise<boolean> {
+  if (record && typeof (record as any).then === "function") {
+    throw new TypeError(
+      "Received a Promise instead of an AEPRecord. Did you forget to await AEPEmitter.emit()?"
+    );
+  }
   try {
     const { signature, ...unsigned } = record;
     if (!signature) return false;
@@ -50,6 +55,11 @@ export async function verifyAEPRecord(record: AEPRecord, publicKey: Uint8Array):
  * @returns A ChainVerificationResult indicating whether the chain is intact.
  */
 export function verifyAEPChain(records: AEPRecord[]): ChainVerificationResult {
+  if (records && typeof (records as any).then === "function") {
+    throw new TypeError(
+      "Received a Promise instead of an AEPRecord[]. Did you forget to await AEPEmitter.emit()?"
+    );
+  }
   if (records.length <= 1) {
     return { valid: true };
   }

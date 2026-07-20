@@ -35,6 +35,14 @@ export type RiskCategory =
   | "supply_chain"
   | "tool_poisoning";
 
+export type FindingType =
+  | "prompt_injection"
+  | "exfiltration_attempt"
+  | "invisible_chars"
+  | "sampling_abuse"
+  | "rug_pull"
+  | "unknown";
+
 export type VettedField = "name" | "description" | "inputSchema";
 
 export type RiskRecommendation = "allow" | "ask" | "deny";
@@ -42,6 +50,7 @@ export type RiskRecommendation = "allow" | "ask" | "deny";
 export interface ToolRiskFinding {
   severity: RiskSeverity;
   category: RiskCategory;
+  type: FindingType;
   field: VettedField;
   /** Short excerpt of the suspicious content (max 120 chars). */
   evidenceExcerpt: string;
@@ -525,6 +534,7 @@ function scanText(text: string, field: VettedField, _toolName: string): ToolRisk
       findings.push({
         severity: "critical",
         category: "tool_poisoning",
+        type: "prompt_injection",
         field,
         evidenceExcerpt: excerpt(text),
         evidenceHash: hash,
@@ -539,6 +549,7 @@ function scanText(text: string, field: VettedField, _toolName: string): ToolRisk
       findings.push({
         severity: "high",
         category: "exfiltration",
+        type: "exfiltration_attempt",
         field,
         evidenceExcerpt: excerpt(text),
         evidenceHash: hash,
@@ -553,6 +564,7 @@ function scanText(text: string, field: VettedField, _toolName: string): ToolRisk
       findings.push({
         severity: "high",
         category: "sampling_abuse",
+        type: "sampling_abuse",
         field,
         evidenceExcerpt: excerpt(text),
         evidenceHash: hash,
@@ -566,6 +578,7 @@ function scanText(text: string, field: VettedField, _toolName: string): ToolRisk
     findings.push({
       severity: "medium",
       category: "invisible_chars",
+      type: "invisible_chars",
       field,
       evidenceExcerpt: excerpt(text),
       evidenceHash: hash,
@@ -583,6 +596,7 @@ function scanText(text: string, field: VettedField, _toolName: string): ToolRisk
     findings.push({
       severity: "high",
       category: "tool_poisoning",
+      type: "prompt_injection",
       field,
       evidenceExcerpt: excerpt(
         `[adversarial-classifier score=${adversarial.score.toFixed(3)} hits=${adversarial.hits.map((h) => h.ngram).join("|")}] ${excerpt(text, 80)}`

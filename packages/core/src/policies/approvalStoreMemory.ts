@@ -8,6 +8,11 @@ export class InMemoryApprovalStore implements ApprovalStore {
   readonly #store = new Map<string, ApprovalRequest>();
 
   async put(request: ApprovalRequest): Promise<void> {
+    if (typeof request !== "object" || request === null || !request.requestId) {
+      throw new TypeError(
+        "InMemoryApprovalStore.put() expects a single ApprovalRequest object with a requestId field"
+      );
+    }
     this.#store.set(request.requestId, { ...request });
   }
 

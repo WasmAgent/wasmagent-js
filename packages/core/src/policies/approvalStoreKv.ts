@@ -20,6 +20,11 @@ export class CloudflareKvApprovalStore implements ApprovalStore {
   }
 
   async put(request: ApprovalRequest): Promise<void> {
+    if (typeof request !== "object" || request === null || !request.requestId) {
+      throw new TypeError(
+        "CloudflareKvApprovalStore.put() expects a single ApprovalRequest object with a requestId field"
+      );
+    }
     await this.#kv.put(this.#key(request.requestId), JSON.stringify(request));
   }
 
