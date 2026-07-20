@@ -85,6 +85,14 @@ export {
   DENY_BLOCKED_RULE,
   evaluatePolicy,
 } from "./policy.js";
+// Semantic detection (phase 3)
+export type {
+  SemanticDetectionResult,
+  SemanticDetector,
+  SemanticDetectorOptions,
+} from "./semanticDetector.js";
+export { DEFAULT_MALICIOUS_CORPUS } from "./semanticDetector.js";
+export { TfidfSemanticDetector } from "./semanticDetectorLocal.js";
 // Taint tracking
 export type {
   ContentType,
@@ -102,7 +110,14 @@ export type {
   RiskRecommendation,
   RiskSeverity,
   ToolRiskFinding,
+  VetToolOptions,
   VettedField,
   VettingResult,
 } from "./vetting.js";
-export { buildVettingCacheKey, evaluateAdversarial, vetTool, vetTools } from "./vetting.js";
+export {
+  buildVettingCacheKey,
+  evaluateAdversarial,
+  vetTool,
+  vetToolAsync,
+  vetTools,
+} from "./vetting.js";
