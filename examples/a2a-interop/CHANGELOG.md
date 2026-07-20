@@ -1,5 +1,12 @@
 # agentkit-example-a2a-interop
 
+## 0.0.21
+
+### Patch Changes
+
+- Updated dependencies [2606745]
+  - @wasmagent/core@1.16.0
+
 ## 0.0.20
 
 ### Patch Changes

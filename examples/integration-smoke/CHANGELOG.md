@@ -1,5 +1,12 @@
 # agentkit-integration-smoke
 
+## 0.0.23
+
+### Patch Changes
+
+- Updated dependencies [2606745]
+  - @wasmagent/core@1.16.0
+
 ## 0.0.22
 
 ### Patch Changes

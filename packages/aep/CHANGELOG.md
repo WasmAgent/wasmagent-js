@@ -1,5 +1,11 @@
 # @wasmagent/aep
 
+## 1.16.0
+
+### Minor Changes
+
+- 2606745: feat(aep): DSSE/in-toto attestation envelope for AEP v0.4 — industry-standard signature format
+
 ## 1.15.0
 
 ### Patch Changes
