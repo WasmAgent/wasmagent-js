@@ -1,5 +1,12 @@
 # @wasmagent/compliance
 
+
+## 1.19.0
+
+### Patch Changes
+
+- Align version with core-four coherence policy
+
 ## 1.18.0
 
 ### Minor Changes
