@@ -126,4 +126,41 @@ export interface KernelOptions {
   capabilities?: Partial<CapabilityManifest>;
   /** Max milliseconds for a single synchronous code run. Blocks infinite loops. */
   timeoutMs?: number;
+  /**
+   * Maximum fuel units for deterministic execution budgeting (issue #34).
+   *
+   * When set, the WASM binary is instrumented at load time so that every
+   * instruction block deducts from an i64 fuel counter. Execution traps with
+   * a `FuelExhausted` error when fuel reaches zero.
+   *
+   * One fuel unit roughly corresponds to one basic block of WASM instructions.
+   * Typical values: 1_000_000 for lightweight scripts, 100_000_000 for heavier
+   * computation.
+   *
+   * Currently honoured by: WasmtimeKernel (via binary instrumentation).
+   * Other kernels accept the option but fall back to time-based enforcement.
+   */
+  fuelLimit?: number;
+  /**
+   * Maximum WebAssembly linear memory in bytes (issue #36).
+   *
+   * Enforced by rewriting the WASM memory section to include a `maximum` page
+   * count (1 page = 65 536 bytes). If the guest attempts to grow memory beyond
+   * this limit, `memory.grow` returns -1 (allocation failure).
+   *
+   * Default when omitted: no explicit cap (module-defined or engine default).
+   * Currently honoured by: WasmtimeKernel (via WASM binary rewrite).
+   */
+  maxMemoryBytes?: number;
+  /**
+   * Epoch tick interval in milliseconds for cooperative interruption (issue #35).
+   *
+   * Controls how frequently the host checks whether the execution deadline has
+   * been exceeded. A smaller value gives tighter deadline enforcement at the
+   * cost of slightly higher timer overhead.
+   *
+   * Default: 10ms. Range: 1-1000ms.
+   * Currently honoured by: WasmtimeKernel.
+   */
+  epochTickMs?: number;
 }

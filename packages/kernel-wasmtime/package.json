@@ -19,7 +19,8 @@
     "postinstall": "node scripts/postinstall.mjs"
   },
   "dependencies": {
-    "@wasmagent/core": "^1.3.2"
+    "@wasmagent/core": "^1.3.2",
+    "@seda-protocol/wasm-metering-ts": "^2.0.1"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",

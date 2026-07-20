@@ -22,7 +22,7 @@
     },
     "examples/a2a-interop": {
       "name": "wasmagent-example-a2a-interop",
-      "version": "0.0.17",
+      "version": "0.0.22",
       "dependencies": {
         "@wasmagent/a2a": "workspace:*",
         "@wasmagent/core": "workspace:*",
@@ -55,7 +55,7 @@
     },
     "examples/basic-agent": {
       "name": "basic-agent",
-      "version": "0.1.18",
+      "version": "0.1.23",
       "dependencies": {
         "@anthropic-ai/sdk": "^0.37.0",
         "@wasmagent/core": "workspace:*",
@@ -63,7 +63,7 @@
     },
     "examples/browser-screenshot": {
       "name": "example-browser-screenshot",
-      "version": "0.1.18",
+      "version": "0.1.23",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/model-anthropic": "workspace:*",
@@ -138,7 +138,7 @@
     },
     "examples/eval-suite": {
       "name": "example-eval-suite",
-      "version": "0.1.18",
+      "version": "0.1.23",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/model-anthropic": "workspace:*",
@@ -146,7 +146,7 @@
     },
     "examples/integration-smoke": {
       "name": "wasmagent-integration-smoke",
-      "version": "0.0.19",
+      "version": "0.0.24",
       "dependencies": {
         "@wasmagent/aisdk": "workspace:*",
         "@wasmagent/cli": "workspace:*",
@@ -177,7 +177,7 @@
     },
     "examples/local-offline": {
       "name": "local-offline",
-      "version": "0.1.17",
+      "version": "0.1.22",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/kernel-quickjs": "workspace:*",
@@ -205,7 +205,7 @@
     },
     "examples/mcp-memory-server": {
       "name": "@wasmagent-example/mcp-memory-server",
-      "version": "0.1.19",
+      "version": "0.1.24",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/mcp-server": "workspace:*",
@@ -213,7 +213,7 @@
     },
     "examples/mcp-portal": {
       "name": "mcp-portal",
-      "version": "0.1.19",
+      "version": "0.1.24",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/mcp-server": "workspace:*",
@@ -259,7 +259,7 @@
     },
     "examples/tool-calling-agent": {
       "name": "tool-calling-agent-example",
-      "version": "0.1.18",
+      "version": "0.1.23",
       "dependencies": {
         "@anthropic-ai/sdk": "^0.37.0",
         "@wasmagent/core": "workspace:*",
@@ -268,7 +268,7 @@
     },
     "examples/tool-search-rag": {
       "name": "example-tool-search-rag",
-      "version": "0.1.18",
+      "version": "0.1.23",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/model-anthropic": "workspace:*",
@@ -290,7 +290,7 @@
     },
     "packages/aep": {
       "name": "@wasmagent/aep",
-      "version": "1.13.1",
+      "version": "1.18.0",
       "dependencies": {
         "@noble/ed25519": "^3.1.0",
         "zod": "^3.23.0",
@@ -414,7 +414,7 @@
     },
     "packages/compliance": {
       "name": "@wasmagent/compliance",
-      "version": "1.13.1",
+      "version": "1.18.0",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "zod": "^3.23.0",
@@ -426,7 +426,7 @@
     },
     "packages/core": {
       "name": "@wasmagent/core",
-      "version": "1.13.1",
+      "version": "1.18.0",
       "dependencies": {
         "@wasmagent/agent-prompts": "^1.0.3",
         "zod": "^3.23.0",
@@ -560,6 +560,7 @@
       "name": "@wasmagent/kernel-wasmtime",
       "version": "1.3.2",
       "dependencies": {
+        "@seda-protocol/wasm-metering-ts": "^2.0.1",
         "@wasmagent/core": "^1.3.2",
       },
       "devDependencies": {
@@ -592,7 +593,7 @@
     },
     "packages/mcp-firewall": {
       "name": "@wasmagent/mcp-firewall",
-      "version": "1.13.1",
+      "version": "1.18.0",
       "dependencies": {
         "@wasmagent/mcp-server": "^1.1.0",
       },
@@ -895,7 +896,7 @@
     },
     "tests/integration": {
       "name": "@wasmagent/integration-tests",
-      "version": "1.13.1",
+      "version": "1.18.0",
       "dependencies": {
         "@wasmagent/agent-prompts": "workspace:*",
         "@wasmagent/core": "workspace:*",
@@ -1374,6 +1375,8 @@
 
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.61.1", "https://registry.npmmirror.com/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.61.1.tgz", { "os": "win32", "cpu": "x64" }, "sha512-X+zaP2x+j4RXGfbp/seSoRHWnPxzApilDszisZxbYH5C/jTxFhCtDNdPGZb9lJyYPs24wGxruPF7Y+sIXt9Gzw=="],
 
+    "@seda-protocol/wasm-metering-ts": ["@seda-protocol/wasm-metering-ts@2.0.1", "https://registry.npmmirror.com/@seda-protocol/wasm-metering-ts/-/wasm-metering-ts-2.0.1.tgz", { "dependencies": { "leb128": "^0.0.5" }, "peerDependencies": { "typescript": "^5.7.3" } }, "sha512-Mx5CR76dIFgBVCJlBJ50MEuOYfGez/w2DWkSj4tIUVz1cSNbhYTd29+/0gQjrM056mDqfpJDg03VKjcCrlehDg=="],
+
     "@shikijs/core": ["@shikijs/core@2.5.0", "https://registry.npmmirror.com/@shikijs/core/-/core-2.5.0.tgz", { "dependencies": { "@shikijs/engine-javascript": "2.5.0", "@shikijs/engine-oniguruma": "2.5.0", "@shikijs/types": "2.5.0", "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.4", "hast-util-to-html": "^9.0.4" } }, "sha512-uu/8RExTKtavlpH7XqnVYBrfBkUc20ngXiX9NSrBhOVZYv/7XQRKUyhtkeflY5QsxC0GbJThCerruZfsUaSldg=="],
 
     "@shikijs/engine-javascript": ["@shikijs/engine-javascript@2.5.0", "https://registry.npmmirror.com/@shikijs/engine-javascript/-/engine-javascript-2.5.0.tgz", { "dependencies": { "@shikijs/types": "2.5.0", "@shikijs/vscode-textmate": "^10.0.2", "oniguruma-to-es": "^3.1.0" } }, "sha512-VjnOpnQf8WuCEZtNUdjjwGUbtAVKuZkVQ/5cHy/tojVVRIRtlWMYVjyWhxOmIq05AlSOv72z7hRNRGVBgQOl0w=="],
@@ -1740,6 +1743,8 @@
 
     "blake3-wasm": ["blake3-wasm@2.1.5", "https://registry.npmmirror.com/blake3-wasm/-/blake3-wasm-2.1.5.tgz", {}, "sha512-F1+K8EbfOZE49dtoPtmxUQrpXaBIl3ICvasLh+nJta0xkz+9kF/7uet9fLnwKqhDrmj6g+6K3Tw9yQPUg2ka5g=="],
 
+    "bn.js": ["bn.js@5.2.5", "https://registry.npmmirror.com/bn.js/-/bn.js-5.2.5.tgz", {}, "sha512-Vq886eXykuP5E6HcKSSStP3bJgrE6In5WKxVUvJ8XGpWWYs2xZHWqUwzCtGgEtBcxyd57KBFDPFoUfNzdaHCNg=="],
+
     "body-parser": ["body-parser@2.2.2", "https://registry.npmmirror.com/body-parser/-/body-parser-2.2.2.tgz", { "dependencies": { "bytes": "3.1.2", "content-type": "1.0.5", "debug": "4.4.3", "http-errors": "2.0.1", "iconv-lite": "0.7.2", "on-finished": "2.4.1", "qs": "6.15.2", "raw-body": "3.0.2", "type-is": "2.1.0" } }, "sha512-oP5VkATKlNwcgvxi0vM0p/D3n2C3EReYVX+DNYs5TjZFn/oQt2j+4sVJtSMr18pdRr8wjTcBl6LoV+FUwzPmNA=="],
 
     "brace-expansion": ["brace-expansion@5.0.6", "https://registry.npmmirror.com/brace-expansion/-/brace-expansion-5.0.6.tgz", { "dependencies": { "balanced-match": "4.0.4" } }, "sha512-kLpxurY4Z4r9sgMsyG0Z9uzsBlgiU/EFKhj/h91/8yHu0edo7XuixOIH3VcJ8kkxs6/jPzoI6U9Vj3WqbMQ94g=="],
@@ -1753,6 +1758,8 @@
     "buffer-crc32": ["buffer-crc32@0.2.13", "https://registry.npmmirror.com/buffer-crc32/-/buffer-crc32-0.2.13.tgz", {}, "sha512-VO9Ht/+p3SN7SKWqcrgEzjGbRSJYTx+Q1pTQC0wrWqHx0vpJraQ6GtHx8tvcg1rlK1byhU5gccxgOgj7B0TDkQ=="],
 
     "buffer-from": ["buffer-from@1.1.2", "https://registry.npmmirror.com/buffer-from/-/buffer-from-1.1.2.tgz", {}, "sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ=="],
+
+    "buffer-pipe": ["buffer-pipe@0.0.3", "https://registry.npmmirror.com/buffer-pipe/-/buffer-pipe-0.0.3.tgz", { "dependencies": { "safe-buffer": "^5.1.2" } }, "sha512-GlxfuD/NrKvCNs0Ut+7b1IHjylfdegMBxQIlZHj7bObKVQBxB5S84gtm2yu1mQ8/sSggceWBDPY0cPXgvX2MuA=="],
 
     "bytes": ["bytes@3.1.2", "https://registry.npmmirror.com/bytes/-/bytes-3.1.2.tgz", {}, "sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg=="],
 
@@ -2215,6 +2222,8 @@
     "jsonfile": ["jsonfile@4.0.0", "https://registry.npmmirror.com/jsonfile/-/jsonfile-4.0.0.tgz", { "optionalDependencies": { "graceful-fs": "^4.1.6" } }, "sha512-m6F1R3z8jjlf2imQHS2Qez5sjKWQzbuuhuJ/FKYFRZvPE3PuHcSMVZzfsLhGVOkfd20obL5SWEBew5ShlquNxg=="],
 
     "jszip": ["jszip@3.10.1", "https://registry.npmmirror.com/jszip/-/jszip-3.10.1.tgz", { "dependencies": { "lie": "~3.3.0", "pako": "~1.0.2", "readable-stream": "~2.3.6", "setimmediate": "^1.0.5" } }, "sha512-xXDvecyTpGLrqFrvkrUSoxxfJI5AH7U8zxxtVclpsUtMCq4JQ290LY8AW5c7Ggnr/Y/oK+bQMbqK2qmtk3pN4g=="],
+
+    "leb128": ["leb128@0.0.5", "https://registry.npmmirror.com/leb128/-/leb128-0.0.5.tgz", { "dependencies": { "bn.js": "^5.0.0", "buffer-pipe": "0.0.3" } }, "sha512-elbNtfmu3GndZbesVF6+iQAfVjOXW9bM/aax9WwMlABZW+oK9sbAZEXoewaPHmL34sxa8kVwWsru8cNE/yn2gg=="],
 
     "libxmljs2": ["libxmljs2@0.35.0", "https://registry.npmmirror.com/libxmljs2/-/libxmljs2-0.35.0.tgz", { "dependencies": { "bindings": "~1.5.0", "nan": "~2.20.0", "node-gyp": "^10.2.0", "prebuild-install": "^7.1.2" } }, "sha512-SpVopqn4YNydnLjkGfL6yQwzjlipmEnCCsVrD/0hQmdgsQWb5rVmSJxxjQltHIUTto29vgX+PhLjXoc+gMeABQ=="],
 
