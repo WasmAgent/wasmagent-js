@@ -1,5 +1,13 @@
 # @wasmagent/compliance
 
+## 1.14.1
+
+### Patch Changes
+
+- c08682d: fix: ApprovalStore runtime guard, emit() empty-actions throw, Finding type field, Promise detection
+- Updated dependencies [c08682d]
+  - @wasmagent/core@1.14.1
+
 ## 1.14.0
 
 ### Patch Changes

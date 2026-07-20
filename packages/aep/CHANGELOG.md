@@ -1,5 +1,11 @@
 # @wasmagent/aep
 
+## 1.14.1
+
+### Patch Changes
+
+- c08682d: fix: ApprovalStore runtime guard, emit() empty-actions throw, Finding type field, Promise detection
+
 ## 1.14.0
 
 ### Minor Changes
