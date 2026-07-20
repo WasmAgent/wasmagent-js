@@ -15,7 +15,7 @@ jobs:
         bun-version: ["1.3.14"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # check-changeset-required.mjs diffs against the PR base / HEAD~1,
           # so it needs more than the default shallow clone of depth=1.
@@ -151,7 +151,7 @@ jobs:
     needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2

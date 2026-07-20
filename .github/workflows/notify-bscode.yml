@@ -54,13 +54,13 @@ jobs:
 
       - name: Checkout wasmagent-js (read new versions)
         if: steps.gate.outputs.skip == 'false'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: wasmagent-js
 
       - name: Checkout bscode
         if: steps.gate.outputs.skip == 'false'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: WasmAgent/bscode
           token: ${{ secrets.BSCODE_DISPATCH_TOKEN }}
