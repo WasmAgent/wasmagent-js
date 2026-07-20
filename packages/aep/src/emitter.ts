@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { canonicalBytes } from "./canonical.js";
+import type { DSSEEnvelope } from "./dsse.js";
+import { paeEncode, wrapInTotoStatement } from "./dsse.js";
 import type { AEPSigner } from "./signer.js";
 import type { AEPTimestamper } from "./timestamper.js";
 import type {
@@ -59,6 +61,8 @@ export interface AEPEmitterOptions {
   sideEffectClass?: SideEffectClass;
   /** When true, emit() will not throw if no actions have been recorded. */
   allowEmptyActions?: boolean;
+  /** When true, emit() wraps the record in a DSSE/in-toto envelope (v0.4). Default: false. */
+  useDsse?: boolean;
 }
 
 export class AEPEmitter {
@@ -171,6 +175,12 @@ export class AEPEmitter {
    * 3. Sign with the configured AEPSigner.
    * 4. Attach the `signature` block and validate the full schema.
    *
+   * When `useDsse` is enabled:
+   * - Wraps the unsigned payload in an in-toto Statement inside a DSSE envelope.
+   * - Signs using PAE (Pre-Authentication Encoding) per the DSSE spec.
+   * - Attaches `dsse_envelope` to the record and sets schema_version to "aep/v0.4".
+   * - Still populates the legacy `signature` field for backward compatibility.
+   *
    * @param createdAtMs - Override creation timestamp.
    * @throws If no signer was provided at construction time.
    */
@@ -202,7 +212,69 @@ export class AEPEmitter {
       ...unsigned,
       signature: placeholder,
     });
-    const { signature: _placeholder, ...normalisedUnsigned } = normalised;
+    const {
+      signature: _placeholder,
+      dsse_envelope: _dsseIgnore,
+      ...normalisedUnsigned
+    } = normalised;
+
+    if (this.#opts.useDsse) {
+      // DSSE/in-toto path (v0.4)
+      const bytes = canonicalBytes(normalisedUnsigned);
+      const payloadDigest = createHash("sha256").update(bytes).digest("hex");
+
+      // Wrap into in-toto Statement
+      const statement = wrapInTotoStatement(
+        normalisedUnsigned as unknown as Record<string, unknown>,
+        normalisedUnsigned.run_id,
+        payloadDigest
+      );
+      const statementJson = JSON.stringify(statement);
+      const payloadB64 = Buffer.from(statementJson).toString("base64");
+
+      // Compute PAE and sign
+      const payloadType = "application/vnd.in-toto+json";
+      const paeBytes = paeEncode(payloadType, payloadB64);
+      const sig = await signer.sign(paeBytes);
+
+      // Build DSSE envelope
+      const dsseEnvelope: DSSEEnvelope = {
+        payloadType,
+        payload: payloadB64,
+        signatures: [{ keyid: signer.keyId, sig }],
+      };
+
+      // Legacy signature field for backward compat (same key_id, sig from envelope)
+      const signature: AEPRecord["signature"] = {
+        alg: "ed25519",
+        key_id: signer.keyId,
+        sig,
+      };
+
+      const record = AEPRecordSchema.parse({
+        ...normalisedUnsigned,
+        schema_version: "aep/v0.4",
+        dsse_envelope: dsseEnvelope,
+        signature,
+      });
+
+      // If a timestamper is configured, request a timestamp proof and attach it
+      const timestamper = this.#opts.timestamper;
+      if (timestamper) {
+        const tsBytes = canonicalBytes(normalisedUnsigned);
+        const proof = await timestamper.timestamp(tsBytes);
+        record.timestamp_proof = proof;
+      }
+
+      // Compute hash for chain linkage
+      const { signature: _sig, dsse_envelope: _dsse, ...recordUnsigned } = record;
+      const recordBytes = canonicalBytes(recordUnsigned);
+      this.#prevRecordHash = createHash("sha256").update(recordBytes).digest("hex");
+
+      return record;
+    }
+
+    // Legacy signing path (v0.3 and earlier)
     const bytes = canonicalBytes(normalisedUnsigned);
     const sig = await signer.sign(bytes);
     const signature: AEPRecord["signature"] = {
@@ -221,7 +293,7 @@ export class AEPEmitter {
     }
 
     // Compute hash of this record (without signature) for the next record's prev_record_hash
-    const { signature: _sig, ...recordUnsigned } = record;
+    const { signature: _sig, dsse_envelope: _dsse, ...recordUnsigned } = record;
     const recordBytes = canonicalBytes(recordUnsigned);
     this.#prevRecordHash = createHash("sha256").update(recordBytes).digest("hex");
 

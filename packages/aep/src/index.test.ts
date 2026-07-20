@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { paeEncode, verifyDSSEEnvelope, wrapInTotoStatement } from "./dsse.js";
 import { AEPEmitter } from "./emitter.js";
 import { resolveRepoCommit } from "./resolve-repo-commit.js";
 import { createLocalSignerFromSeed } from "./signer.js";
@@ -1409,5 +1410,225 @@ describe("AEPEmitter.emit() — empty actions validation (#95)", () => {
 
     const record = await emitter.emit(1_700_000_000_000);
     expect(record.actions).toHaveLength(1);
+  });
+});
+
+describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
+  it("paeEncode produces correct Pre-Authentication Encoding", () => {
+    const result = paeEncode("application/vnd.in-toto+json", "test-payload");
+    const decoded = new TextDecoder().decode(result);
+    // PAE = "DSSEv1" + SP + len(type) + SP + type + SP + len(body) + SP + body
+    const typeLen = new TextEncoder().encode("application/vnd.in-toto+json").length;
+    const payloadLen = new TextEncoder().encode("test-payload").length;
+    expect(decoded).toBe(
+      `DSSEv1 ${typeLen} application/vnd.in-toto+json ${payloadLen} test-payload`
+    );
+  });
+
+  it("paeEncode handles empty strings", () => {
+    const result = paeEncode("", "");
+    const decoded = new TextDecoder().decode(result);
+    expect(decoded).toBe("DSSEv1 0  0 ");
+  });
+
+  it("wrapInTotoStatement produces valid in-toto Statement shape", () => {
+    const record = { run_id: "run-001", created_at_ms: 1700000000000 };
+    const statement = wrapInTotoStatement(record, "run-001", "abcdef1234567890");
+    expect(statement._type).toBe("https://in-toto.io/Statement/v1");
+    expect(statement.subject).toHaveLength(1);
+    expect(statement.subject[0]?.name).toBe("urn:wasmagent:run:run-001");
+    expect(statement.subject[0]?.digest).toEqual({ sha256: "abcdef1234567890" });
+    expect(statement.predicateType).toBe("https://wasmagent.dev/attestations/aep/v0.4");
+    expect(statement.predicate).toEqual(record);
+  });
+
+  it("AEPEmitter with useDsse: true produces record with dsse_envelope and schema_version aep/v0.4", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-dsse-001",
+      signer,
+      useDsse: true,
+    });
+
+    emitter.addAction({ tool_name: "write_file", state_changing: true });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    expect(record.schema_version).toBe("aep/v0.4");
+    expect(record.dsse_envelope).toBeDefined();
+    expect(record.dsse_envelope?.payloadType).toBe("application/vnd.in-toto+json");
+    expect(record.dsse_envelope?.payload).toBeDefined();
+    expect(record.dsse_envelope?.signatures).toHaveLength(1);
+    expect(record.dsse_envelope?.signatures[0]?.keyid).toBe(TEST_KEY_ID);
+    expect(typeof record.dsse_envelope?.signatures[0]?.sig).toBe("string");
+  });
+
+  it("verifyDSSEEnvelope verifies a valid envelope", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-dsse-verify-001",
+      signer,
+      useDsse: true,
+    });
+
+    emitter.addAction({ tool_name: "bash", state_changing: false });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    const publicKey = await signer.getPublicKey();
+    const valid = await verifyDSSEEnvelope(record.dsse_envelope!, publicKey);
+    expect(valid).toBe(true);
+  });
+
+  it("verifyDSSEEnvelope rejects tampered payload", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-dsse-tamper-001",
+      signer,
+      useDsse: true,
+    });
+
+    emitter.addAction({ tool_name: "bash", state_changing: false });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    const publicKey = await signer.getPublicKey();
+    // Tamper with the payload
+    const tampered = {
+      ...record.dsse_envelope!,
+      payload: Buffer.from("tampered-content").toString("base64"),
+    };
+    const valid = await verifyDSSEEnvelope(tampered, publicKey);
+    expect(valid).toBe(false);
+  });
+
+  it("verifyAEPRecord works for DSSE records (v0.4)", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-dsse-full-verify",
+      signer,
+      useDsse: true,
+    });
+
+    emitter.addAction({ tool_name: "deploy", state_changing: true });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    const publicKey = await signer.getPublicKey();
+    const valid = await verifyAEPRecord(record, publicKey);
+    expect(valid).toBe(true);
+  });
+
+  it("verifyAEPRecord still works for legacy records (backward compat)", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-dsse-legacy-compat",
+      signer,
+      useDsse: false,
+    });
+
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    expect(record.schema_version).toBe("aep/v0.3");
+    expect(record.dsse_envelope).toBeUndefined();
+
+    const publicKey = await signer.getPublicKey();
+    const valid = await verifyAEPRecord(record, publicKey);
+    expect(valid).toBe(true);
+  });
+
+  it("legacy signature field is still populated for backward compat in DSSE records", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-dsse-legacy-sig",
+      signer,
+      useDsse: true,
+    });
+
+    emitter.addAction({ tool_name: "write_file", state_changing: true });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    expect(record.signature).toBeDefined();
+    expect(record.signature.alg).toBe("ed25519");
+    expect(record.signature.key_id).toBe(TEST_KEY_ID);
+    expect(record.signature.sig.length).toBeGreaterThan(0);
+    // The legacy sig should match the DSSE envelope sig
+    expect(record.signature.sig).toBe(record.dsse_envelope?.signatures[0]?.sig);
+  });
+
+  it("DSSE envelope payload decodes to a valid in-toto Statement", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-dsse-decode-001",
+      signer,
+      useDsse: true,
+    });
+
+    emitter.addAction({ tool_name: "read_file", state_changing: false });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    const payloadJson = Buffer.from(record.dsse_envelope!.payload, "base64").toString("utf-8");
+    const statement = JSON.parse(payloadJson);
+    expect(statement._type).toBe("https://in-toto.io/Statement/v1");
+    expect(statement.subject).toHaveLength(1);
+    expect(statement.subject[0].name).toBe("urn:wasmagent:run:run-dsse-decode-001");
+    expect(statement.predicateType).toBe("https://wasmagent.dev/attestations/aep/v0.4");
+    expect(statement.predicate.run_id).toBe("run-dsse-decode-001");
+  });
+
+  it("schema accepts aep/v0.4 with dsse_envelope", () => {
+    const raw = {
+      schema_version: "aep/v0.4",
+      run_id: "run-v04-schema",
+      created_at_ms: 1_700_000_000_000,
+      input_refs: [],
+      output_refs: [],
+      capability_decisions: [],
+      actions: [],
+      verifier_results: [],
+      dsse_envelope: {
+        payloadType: "application/vnd.in-toto+json",
+        payload: "dGVzdA==",
+        signatures: [{ keyid: "k1", sig: "c2ln" }],
+      },
+      signature: { alg: "ed25519", key_id: "k1", sig: "c2ln" },
+    };
+    const result = AEPRecordSchema.safeParse(raw);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.schema_version).toBe("aep/v0.4");
+      expect(result.data.dsse_envelope).toBeDefined();
+    }
+  });
+
+  it("verifyDSSEEnvelope returns false for empty signatures", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const publicKey = await signer.getPublicKey();
+    const envelope = {
+      payloadType: "application/vnd.in-toto+json",
+      payload: "dGVzdA==",
+      signatures: [],
+    };
+    const valid = await verifyDSSEEnvelope(envelope, publicKey);
+    expect(valid).toBe(false);
+  });
+
+  it("DSSE records work with hash chain verification", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-dsse-chain",
+      signer,
+      useDsse: true,
+    });
+
+    emitter.addAction({ tool_name: "read_file", state_changing: false });
+    const r1 = await emitter.emit(1_700_000_000_000);
+
+    emitter.addAction({ tool_name: "write_file", state_changing: true });
+    const r2 = await emitter.emit(1_700_000_001_000);
+
+    expect(r1.prev_record_hash).toBeNull();
+    expect(r2.prev_record_hash).toBeDefined();
+    expect(typeof r2.prev_record_hash).toBe("string");
+
+    const result = verifyAEPChain([r1, r2]);
+    expect(result.valid).toBe(true);
   });
 });

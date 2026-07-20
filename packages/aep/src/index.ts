@@ -1,4 +1,5 @@
 export * from "./canonical.js";
+export * from "./dsse.js";
 export * from "./emitter.js";
 export * from "./resolve-repo-commit.js";
 export * from "./signer.js";
