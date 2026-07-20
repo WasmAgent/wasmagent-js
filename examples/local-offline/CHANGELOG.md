@@ -1,5 +1,12 @@
 # local-offline
 
+## 0.1.23
+
+### Patch Changes
+
+- Updated dependencies [ebd04ed]
+  - @wasmagent/core@1.19.0
+
 ## 0.1.22
 
 ### Patch Changes
