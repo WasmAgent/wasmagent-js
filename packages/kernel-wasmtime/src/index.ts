@@ -1,2 +1,2 @@
-export type { WasmtimeKernelOptions } from "./WasmtimeKernel.js";
-export { WasmtimeKernel } from "./WasmtimeKernel.js";
+export type { RunWasmOptions, WasmtimeKernelOptions } from "./WasmtimeKernel.js";
+export { buildDefaultCostTable, WasmtimeKernel } from "./WasmtimeKernel.js";

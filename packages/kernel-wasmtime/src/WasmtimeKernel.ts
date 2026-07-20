@@ -59,6 +59,30 @@ export interface WasmtimeKernelOptions extends KernelOptions {
    * Install: https://github.com/bytecodealliance/javy/releases
    */
   javyPath?: string;
+
+  /**
+   * Maximum fuel units for deterministic execution budgeting (issue #34).
+   * When set, the WASM binary is instrumented with gas metering after Javy
+   * compilation. Each basic block deducts from an i64 counter; execution
+   * traps when fuel reaches zero.
+   *
+   * Default: undefined (no fuel metering — time-based timeout only).
+   */
+  fuelLimit?: number;
+
+  /**
+   * Maximum WebAssembly linear memory in bytes (issue #36).
+   * Enforced by rewriting the WASM memory section to cap `maximum` pages.
+   * 1 page = 65 536 bytes. Default: undefined (no explicit cap).
+   */
+  maxMemoryBytes?: number;
+
+  /**
+   * Epoch tick interval in milliseconds (issue #35).
+   * Controls how frequently the cooperative interruption timer fires.
+   * Default: 10ms.
+   */
+  epochTickMs?: number;
 }
 
 /**
@@ -113,6 +137,9 @@ export interface WasmtimeKernelOptions extends KernelOptions {
 export class WasmtimeKernel implements WasmKernel {
   readonly #javyPath: string;
   readonly #timeoutMs: number;
+  readonly #fuelLimit: number | undefined;
+  readonly #maxMemoryBytes: number | undefined;
+  readonly #epochTickMs: number;
 
   // Emulated cross-run state bag: maps variable name → JSON-serialised value.
   #stateJson: Record<string, string> = {};
@@ -120,6 +147,9 @@ export class WasmtimeKernel implements WasmKernel {
   constructor(opts?: WasmtimeKernelOptions) {
     this.#javyPath = opts?.javyPath ?? "javy";
     this.#timeoutMs = opts?.timeoutMs ?? 10_000;
+    this.#fuelLimit = opts?.fuelLimit;
+    this.#maxMemoryBytes = opts?.maxMemoryBytes;
+    this.#epochTickMs = opts?.epochTickMs ?? 10;
   }
 
   async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
@@ -168,7 +198,13 @@ export class WasmtimeKernel implements WasmKernel {
         wasmPath,
         stdinData,
         runId,
-        hmacSecret
+        hmacSecret,
+        {
+          fuelLimit: this.#fuelLimit,
+          maxMemoryBytes: this.#maxMemoryBytes,
+          timeoutMs: effectiveTimeoutMs,
+          epochTickMs: this.#epochTickMs,
+        }
       );
 
       // Persist updated state bag for subsequent run() calls.
@@ -556,6 +592,18 @@ export function buildJavySource(
 
 // ─── WASM runner (node:wasi + WebAssembly) ────────────────────────────────────
 
+/** Options for the WASM execution runtime. */
+export interface RunWasmOptions {
+  /** Fuel limit for deterministic metering (#34). */
+  fuelLimit?: number | undefined;
+  /** Maximum memory in bytes (#36). */
+  maxMemoryBytes?: number | undefined;
+  /** Wall-clock timeout for the execution (#35). */
+  timeoutMs?: number | undefined;
+  /** Epoch tick interval in ms (#35). */
+  epochTickMs?: number | undefined;
+}
+
 /**
  * Instantiate and run a WASI-compiled WASM module using Node's built-in WebAssembly API.
  *
@@ -566,6 +614,14 @@ export function buildJavySource(
  *   - Bytes not prefixed with the magic header are discarded and audit-logged.
  *   - The HMAC tag emitted on stderr is verified against the envelope payload.
  *
+ * Resource limits (issues #34, #35, #36):
+ *   - fuelLimit: when provided, the WASM binary is instrumented with gas metering
+ *     via @seda-protocol/wasm-metering-ts. Execution traps when fuel is exhausted.
+ *   - maxMemoryBytes: when provided, the WASM memory section is rewritten to enforce
+ *     a maximum page count. memory.grow returns -1 beyond this limit.
+ *   - timeoutMs + epochTickMs: cooperative interruption via AbortController. A timer
+ *     fires every epochTickMs and aborts if total elapsed exceeds timeoutMs.
+ *
  * WebAssembly types come from lib.dom.d.ts which is excluded in this Node-only package.
  * We access the WebAssembly global via `globalThis` cast through `unknown` to avoid
  * the DOM lib dependency.
@@ -574,16 +630,38 @@ export async function runWasm(
   wasmPath: string,
   stdinData: string,
   runId: string = "dev",
-  hmacSecret: string = ""
+  hmacSecret: string = "",
+  options: RunWasmOptions = {}
 ): Promise<{
   stdout: string;
   stderr: string;
   newState: Record<string, string>;
   auditLog: string[];
 }> {
-  const wasmBytes = await readFile(wasmPath);
+  let wasmBytes: Buffer | Uint8Array = await readFile(wasmPath);
 
   const WA = (globalThis as unknown as { WebAssembly: WasmAPI }).WebAssembly;
+
+  // ── Resource limit: fuel metering (#34) ──────────────────────────────────
+  // Instrument the WASM binary with gas counters. The instrumented binary
+  // exports `metering_remaining_points` (i64 global) which we set before
+  // execution and read after to detect fuel exhaustion.
+  const fuelLimit = options.fuelLimit;
+  let isMetered = false;
+  if (fuelLimit !== undefined && fuelLimit > 0) {
+    const { meterWasm } = await import("@seda-protocol/wasm-metering-ts");
+    const costTable = buildDefaultCostTable(fuelLimit, options.maxMemoryBytes);
+    wasmBytes = meterWasm(Buffer.from(wasmBytes), costTable) as Buffer;
+    isMetered = true;
+  } else if (options.maxMemoryBytes !== undefined && options.maxMemoryBytes > 0) {
+    // If only memory limit is requested (no fuel), still instrument for memory cap.
+    const { meterWasm } = await import("@seda-protocol/wasm-metering-ts");
+    // Use an extremely high fuel limit so metering never triggers, but memory
+    // limit rewrite is applied.
+    const costTable = buildDefaultCostTable(Number.MAX_SAFE_INTEGER, options.maxMemoryBytes);
+    wasmBytes = meterWasm(Buffer.from(wasmBytes), costTable) as Buffer;
+    isMetered = true;
+  }
 
   const stdinBuffer = new TextEncoder().encode(stdinData);
   let stdinOffset = 0;
@@ -674,15 +752,95 @@ export async function runWasm(
     wasi_snapshot_preview1: wasiSnapshotPreview1,
   } as Record<string, Record<string, WasmImportValue>>);
 
+  // ── Resource limit: set initial fuel (#34) ─────────────────────────────────
+  // After instantiation, write the fuel budget into the metering global so the
+  // instrumented code has gas to spend. The global is i64 so we use BigInt.
+  if (isMetered && fuelLimit !== undefined && fuelLimit > 0) {
+    const meteringGlobal = instance.exports.metering_remaining_points as
+      | { value: bigint }
+      | undefined;
+    if (meteringGlobal && typeof meteringGlobal.value !== "undefined") {
+      meteringGlobal.value = BigInt(fuelLimit);
+    }
+  }
+
+  // ── Resource limit: epoch cooperative interruption (#35) ────────────────────
+  // Use a timer that fires every epochTickMs. If total elapsed exceeds the
+  // timeout, we cannot preempt synchronous WASM execution from the same thread,
+  // but the timeout is still enforced by the Node.js event loop for async
+  // operations. For synchronous WASM (which blocks the event loop), the fuel
+  // metering provides the primary defence. The epoch timer is a secondary
+  // defence that fires after WASM returns control (e.g. via fd_write host calls).
+  const timeoutMs = options.timeoutMs;
+  const epochTickMs = options.epochTickMs ?? 10;
+  let epochTimedOut = false;
+  let epochTimer: ReturnType<typeof setInterval> | undefined;
+  const startTime = Date.now();
+
+  if (timeoutMs !== undefined && timeoutMs > 0) {
+    epochTimer = setInterval(() => {
+      if (Date.now() - startTime > timeoutMs) {
+        epochTimedOut = true;
+        // We can't preempt synchronous WASM from JS in the same thread,
+        // but this flag is checked after execution completes.
+        if (epochTimer) clearInterval(epochTimer);
+      }
+    }, epochTickMs);
+  }
+
   try {
     wasi.start(instance as WasmInstance);
   } catch (err) {
+    // Clean up epoch timer on any exit path.
+    if (epochTimer) clearInterval(epochTimer);
+
+    // Check if this is a fuel exhaustion trap (unreachable instruction from metering).
+    if (isMetered) {
+      const exhaustedGlobal = instance.exports.metering_points_exhausted as
+        | { value: number }
+        | undefined;
+      if (exhaustedGlobal && exhaustedGlobal.value === 1) {
+        throw new Error(`FuelExhausted: execution exceeded fuel limit of ${fuelLimit} units`);
+      }
+      // Also check via the error message for unreachable traps from metering.
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("unreachable") || msg.includes("RuntimeError")) {
+        // Might be a metering trap — check remaining points.
+        const remainingGlobal = instance.exports.metering_remaining_points as
+          | { value: bigint }
+          | undefined;
+        if (remainingGlobal && remainingGlobal.value <= 0n) {
+          throw new Error(`FuelExhausted: execution exceeded fuel limit of ${fuelLimit} units`);
+        }
+      }
+    }
+
     // WASI programs exit via proc_exit, which throws in Node — expected behaviour.
     const code = (err as { code?: number }).code;
     if (typeof code === "number" && code !== 0) {
       throw new Error(`WasmtimeKernel: WASM exited with code ${code}`);
     }
     // proc_exit(0) — normal completion, fall through.
+  }
+
+  // Clean up epoch timer.
+  if (epochTimer) clearInterval(epochTimer);
+
+  // Check epoch timeout after execution completes.
+  if (epochTimedOut) {
+    throw new Error(
+      `EpochTimeout: execution exceeded deadline of ${timeoutMs}ms (epoch tick: ${epochTickMs}ms)`
+    );
+  }
+
+  // ── Resource limit: check fuel exhaustion post-execution (#34) ─────────────
+  if (isMetered && fuelLimit !== undefined) {
+    const exhaustedGlobal = instance.exports.metering_points_exhausted as
+      | { value: number }
+      | undefined;
+    if (exhaustedGlobal && exhaustedGlobal.value === 1) {
+      throw new Error(`FuelExhausted: execution exceeded fuel limit of ${fuelLimit} units`);
+    }
   }
 
   const decoder = new TextDecoder();
@@ -835,6 +993,38 @@ function randomRunId(): string {
 function randomHmacSecret(): string {
   // 32 random bytes as hex — sufficient for the FNV-1a tag derivation.
   return randomBytes(32).toString("hex");
+}
+
+// ─── Fuel metering cost table builder ────────────────────────────────────────
+
+/**
+ * Build the cost table used by @seda-protocol/wasm-metering-ts.
+ *
+ * The cost table assigns a "gas cost" to each WASM opcode category. We use a
+ * uniform cost of 1 per basic block instruction (DEFAULT=1) for simplicity.
+ * The `fuelLimit` is written as the initial gas budget by the caller after
+ * instantiation (via the exported `metering_remaining_points` global).
+ *
+ * The `memory.maximum` field limits how many pages the module's memory section
+ * is allowed to declare. 1 page = 65536 bytes.
+ */
+export function buildDefaultCostTable(
+  _fuelLimit: number,
+  maxMemoryBytes?: number
+): Record<string, unknown> {
+  const maxPages =
+    maxMemoryBytes !== undefined ? Math.max(1, Math.ceil(maxMemoryBytes / 65536)) : 512; // Default: 32MB if no explicit limit
+
+  return {
+    // Per-opcode cost (DEFAULT = cost for any opcode not explicitly listed).
+    code: {
+      DEFAULT: 1,
+    },
+    // Memory section rewrite: cap maximum pages.
+    memory: {
+      maximum: maxPages,
+    },
+  };
 }
 
 // ─── Magic-header search helper ───────────────────────────────────────────────

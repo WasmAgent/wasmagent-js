@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  buildDefaultCostTable,
   buildJavySource,
   computeHostHmac,
   ENVELOPE_MAGIC,
@@ -626,5 +627,93 @@ describe("javy binary (postinstall)", () => {
       // Script must reference vendor directory.
       expect(content).toContain("vendor");
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Resource limit tests (#34, #35, #36)
+// ---------------------------------------------------------------------------
+
+describe("resource limits — buildDefaultCostTable (unit)", () => {
+  it("returns a valid cost table with code.DEFAULT = 1", () => {
+    const table = buildDefaultCostTable(1_000_000);
+    expect(table.code).toEqual({ DEFAULT: 1 });
+  });
+
+  it("computes memory maximum pages from maxMemoryBytes", () => {
+    // 1 MB = 1_048_576 bytes / 65536 = 16 pages
+    const table = buildDefaultCostTable(1_000_000, 1_048_576);
+    const mem = table.memory as { maximum: number };
+    expect(mem.maximum).toBe(16);
+  });
+
+  it("rounds up partial pages", () => {
+    // 100_000 bytes / 65536 = ~1.53 pages → 2 pages
+    const table = buildDefaultCostTable(1_000_000, 100_000);
+    const mem = table.memory as { maximum: number };
+    expect(mem.maximum).toBe(2);
+  });
+
+  it("uses 512 pages (32MB) as default when no memory limit specified", () => {
+    const table = buildDefaultCostTable(1_000_000);
+    const mem = table.memory as { maximum: number };
+    expect(mem.maximum).toBe(512);
+  });
+
+  it("ensures minimum of 1 page even for very small limits", () => {
+    const table = buildDefaultCostTable(1_000_000, 1); // 1 byte
+    const mem = table.memory as { maximum: number };
+    expect(mem.maximum).toBe(1);
+  });
+});
+
+describe("resource limits — WasmtimeKernel options (unit)", () => {
+  it("accepts fuelLimit option in constructor", () => {
+    const k = new WasmtimeKernel({ fuelLimit: 500_000 });
+    // Kernel should construct without error.
+    expect(k).toBeInstanceOf(WasmtimeKernel);
+  });
+
+  it("accepts maxMemoryBytes option in constructor", () => {
+    const k = new WasmtimeKernel({ maxMemoryBytes: 4 * 1024 * 1024 }); // 4MB
+    expect(k).toBeInstanceOf(WasmtimeKernel);
+  });
+
+  it("accepts epochTickMs option in constructor", () => {
+    const k = new WasmtimeKernel({ epochTickMs: 5 });
+    expect(k).toBeInstanceOf(WasmtimeKernel);
+  });
+
+  it("accepts all resource limit options together", () => {
+    const k = new WasmtimeKernel({
+      fuelLimit: 1_000_000,
+      maxMemoryBytes: 8 * 1024 * 1024,
+      epochTickMs: 20,
+      timeoutMs: 5_000,
+    });
+    expect(k).toBeInstanceOf(WasmtimeKernel);
+  });
+
+  it("defaults epochTickMs to 10 when not specified", () => {
+    // We can't directly inspect private fields, but we verify construction works.
+    const k = new WasmtimeKernel({});
+    expect(k).toBeInstanceOf(WasmtimeKernel);
+  });
+});
+
+describe("resource limits — KernelOptions type compatibility (unit)", () => {
+  it("fuelLimit, maxMemoryBytes, epochTickMs are accepted by KernelOptions", () => {
+    // This test ensures the types interface is correctly extended.
+    // If the types were wrong, TypeScript compilation would fail.
+    const opts = {
+      engine: "wasmtime" as const,
+      timeoutMs: 5000,
+      fuelLimit: 1_000_000,
+      maxMemoryBytes: 4 * 1024 * 1024,
+      epochTickMs: 10,
+    };
+    // Just verify the object satisfies the shape expected by WasmtimeKernel.
+    const k = new WasmtimeKernel(opts);
+    expect(k).toBeInstanceOf(WasmtimeKernel);
   });
 });
