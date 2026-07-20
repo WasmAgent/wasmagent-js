@@ -1,0 +1,317 @@
+[
+  {
+    "name": "list_files",
+    "description": "List files in the specified directory",
+    "inputSchema": { "type": "object", "properties": { "path": { "type": "string" } } },
+    "label": "benign",
+    "category": "filesystem"
+  },
+  {
+    "name": "read_file",
+    "description": "Read the contents of a file at the given path",
+    "inputSchema": { "type": "object", "properties": { "path": { "type": "string" } } },
+    "label": "benign",
+    "category": "filesystem"
+  },
+  {
+    "name": "write_file",
+    "description": "Write content to a file, creating it if it does not exist",
+    "inputSchema": { "type": "object", "properties": { "path": { "type": "string" }, "content": { "type": "string" } } },
+    "label": "benign",
+    "category": "filesystem"
+  },
+  {
+    "name": "delete_file",
+    "description": "Delete a file at the specified path",
+    "inputSchema": { "type": "object", "properties": { "path": { "type": "string" } } },
+    "label": "benign",
+    "category": "filesystem"
+  },
+  {
+    "name": "create_directory",
+    "description": "Create a new directory at the specified path, including parent directories if needed",
+    "inputSchema": { "type": "object", "properties": { "path": { "type": "string" } } },
+    "label": "benign",
+    "category": "filesystem"
+  },
+  {
+    "name": "search_files",
+    "description": "Search for files matching a glob pattern in the workspace",
+    "inputSchema": { "type": "object", "properties": { "pattern": { "type": "string" }, "directory": { "type": "string" } } },
+    "label": "benign",
+    "category": "filesystem"
+  },
+  {
+    "name": "move_file",
+    "description": "Move or rename a file from source path to destination path",
+    "inputSchema": { "type": "object", "properties": { "source": { "type": "string" }, "destination": { "type": "string" } } },
+    "label": "benign",
+    "category": "filesystem"
+  },
+  {
+    "name": "fetch_url",
+    "description": "Fetch the content of a URL and return the response body as text",
+    "inputSchema": { "type": "object", "properties": { "url": { "type": "string" }, "method": { "type": "string" } } },
+    "label": "benign",
+    "category": "http"
+  },
+  {
+    "name": "http_post",
+    "description": "Send an HTTP POST request to the specified URL with JSON body",
+    "inputSchema": { "type": "object", "properties": { "url": { "type": "string" }, "body": { "type": "object" } } },
+    "label": "benign",
+    "category": "http"
+  },
+  {
+    "name": "api_request",
+    "description": "Make an authenticated API request using the configured service endpoint",
+    "inputSchema": { "type": "object", "properties": { "endpoint": { "type": "string" }, "params": { "type": "object" } } },
+    "label": "benign",
+    "category": "http"
+  },
+  {
+    "name": "download_file",
+    "description": "Download a file from a URL and save it to the specified local path",
+    "inputSchema": { "type": "object", "properties": { "url": { "type": "string" }, "savePath": { "type": "string" } } },
+    "label": "benign",
+    "category": "http"
+  },
+  {
+    "name": "webhook_notify",
+    "description": "Send a notification payload to a configured webhook URL for event alerting",
+    "inputSchema": { "type": "object", "properties": { "event": { "type": "string" }, "payload": { "type": "object" } } },
+    "label": "benign",
+    "category": "http"
+  },
+  {
+    "name": "graphql_query",
+    "description": "Execute a GraphQL query against the configured API endpoint and return results",
+    "inputSchema": { "type": "object", "properties": { "query": { "type": "string" }, "variables": { "type": "object" } } },
+    "label": "benign",
+    "category": "http"
+  },
+  {
+    "name": "query_database",
+    "description": "Execute a read-only SQL query against the configured database and return results",
+    "inputSchema": { "type": "object", "properties": { "sql": { "type": "string" }, "params": { "type": "array" } } },
+    "label": "benign",
+    "category": "database"
+  },
+  {
+    "name": "insert_record",
+    "description": "Insert a new record into the specified database table",
+    "inputSchema": { "type": "object", "properties": { "table": { "type": "string" }, "data": { "type": "object" } } },
+    "label": "benign",
+    "category": "database"
+  },
+  {
+    "name": "update_record",
+    "description": "Update an existing record in the database table matching the given ID",
+    "inputSchema": { "type": "object", "properties": { "table": { "type": "string" }, "id": { "type": "string" }, "data": { "type": "object" } } },
+    "label": "benign",
+    "category": "database"
+  },
+  {
+    "name": "delete_record",
+    "description": "Delete a record from the database table by its primary key",
+    "inputSchema": { "type": "object", "properties": { "table": { "type": "string" }, "id": { "type": "string" } } },
+    "label": "benign",
+    "category": "database"
+  },
+  {
+    "name": "list_tables",
+    "description": "List all available tables in the connected database",
+    "inputSchema": { "type": "object", "properties": {} },
+    "label": "benign",
+    "category": "database"
+  },
+  {
+    "name": "run_migration",
+    "description": "Run pending database schema migrations in order",
+    "inputSchema": { "type": "object", "properties": { "direction": { "type": "string" } } },
+    "label": "benign",
+    "category": "database"
+  },
+  {
+    "name": "execute_code",
+    "description": "Execute code in a sandboxed runtime environment and return the output",
+    "inputSchema": { "type": "object", "properties": { "language": { "type": "string" }, "code": { "type": "string" } } },
+    "label": "benign",
+    "category": "code_execution"
+  },
+  {
+    "name": "run_tests",
+    "description": "Run the test suite for the specified project and return pass/fail results",
+    "inputSchema": { "type": "object", "properties": { "testPath": { "type": "string" }, "filter": { "type": "string" } } },
+    "label": "benign",
+    "category": "code_execution"
+  },
+  {
+    "name": "lint_code",
+    "description": "Run linting rules against the specified source files and report violations",
+    "inputSchema": { "type": "object", "properties": { "files": { "type": "array", "items": { "type": "string" } } } },
+    "label": "benign",
+    "category": "code_execution"
+  },
+  {
+    "name": "format_code",
+    "description": "Apply code formatting rules to the specified files using the project formatter",
+    "inputSchema": { "type": "object", "properties": { "files": { "type": "array", "items": { "type": "string" } } } },
+    "label": "benign",
+    "category": "code_execution"
+  },
+  {
+    "name": "compile_typescript",
+    "description": "Compile TypeScript files and report any type errors found",
+    "inputSchema": { "type": "object", "properties": { "tsconfig": { "type": "string" } } },
+    "label": "benign",
+    "category": "code_execution"
+  },
+  {
+    "name": "send_email",
+    "description": "Send an email message to the specified recipient with subject and body",
+    "inputSchema": { "type": "object", "properties": { "to": { "type": "string" }, "subject": { "type": "string" }, "body": { "type": "string" } } },
+    "label": "benign",
+    "category": "messaging"
+  },
+  {
+    "name": "send_slack_message",
+    "description": "Post a message to a Slack channel using the configured workspace integration",
+    "inputSchema": { "type": "object", "properties": { "channel": { "type": "string" }, "message": { "type": "string" } } },
+    "label": "benign",
+    "category": "messaging"
+  },
+  {
+    "name": "create_notification",
+    "description": "Create a push notification for the user with the given title and message",
+    "inputSchema": { "type": "object", "properties": { "title": { "type": "string" }, "message": { "type": "string" } } },
+    "label": "benign",
+    "category": "messaging"
+  },
+  {
+    "name": "schedule_reminder",
+    "description": "Schedule a reminder notification to be sent at the specified time",
+    "inputSchema": { "type": "object", "properties": { "message": { "type": "string" }, "datetime": { "type": "string" } } },
+    "label": "benign",
+    "category": "messaging"
+  },
+  {
+    "name": "get_weather",
+    "description": "Get the current weather conditions for a specified location",
+    "inputSchema": { "type": "object", "properties": { "location": { "type": "string" } } },
+    "label": "benign",
+    "category": "utility"
+  },
+  {
+    "name": "calculate",
+    "description": "Evaluate a mathematical expression and return the numeric result",
+    "inputSchema": { "type": "object", "properties": { "expression": { "type": "string" } } },
+    "label": "benign",
+    "category": "utility"
+  },
+  {
+    "name": "translate_text",
+    "description": "Translate text from one language to another using the translation service",
+    "inputSchema": { "type": "object", "properties": { "text": { "type": "string" }, "from": { "type": "string" }, "to": { "type": "string" } } },
+    "label": "benign",
+    "category": "utility"
+  },
+  {
+    "name": "generate_uuid",
+    "description": "Generate a new random UUID v4 identifier",
+    "inputSchema": { "type": "object", "properties": {} },
+    "label": "benign",
+    "category": "utility"
+  },
+  {
+    "name": "hash_text",
+    "description": "Compute a SHA-256 hash of the provided text string",
+    "inputSchema": { "type": "object", "properties": { "text": { "type": "string" } } },
+    "label": "benign",
+    "category": "utility"
+  },
+  {
+    "name": "json_parse",
+    "description": "Parse a JSON string and return the structured object representation",
+    "inputSchema": { "type": "object", "properties": { "json": { "type": "string" } } },
+    "label": "benign",
+    "category": "utility"
+  },
+  {
+    "name": "image_resize",
+    "description": "Resize an image to the specified dimensions while maintaining aspect ratio",
+    "inputSchema": { "type": "object", "properties": { "path": { "type": "string" }, "width": { "type": "number" }, "height": { "type": "number" } } },
+    "label": "benign",
+    "category": "utility"
+  },
+  {
+    "name": "pdf_extract",
+    "description": "Extract text content from a PDF file at the given path",
+    "inputSchema": { "type": "object", "properties": { "path": { "type": "string" } } },
+    "label": "benign",
+    "category": "utility"
+  },
+  {
+    "name": "git_status",
+    "description": "Show the working tree status of the current git repository",
+    "inputSchema": { "type": "object", "properties": { "path": { "type": "string" } } },
+    "label": "benign",
+    "category": "version_control"
+  },
+  {
+    "name": "git_commit",
+    "description": "Create a git commit with the specified message for staged changes",
+    "inputSchema": { "type": "object", "properties": { "message": { "type": "string" } } },
+    "label": "benign",
+    "category": "version_control"
+  },
+  {
+    "name": "git_diff",
+    "description": "Show differences between the working directory and the last commit",
+    "inputSchema": { "type": "object", "properties": { "path": { "type": "string" } } },
+    "label": "benign",
+    "category": "version_control"
+  },
+  {
+    "name": "git_log",
+    "description": "Display the commit history log for the current branch",
+    "inputSchema": { "type": "object", "properties": { "count": { "type": "number" } } },
+    "label": "benign",
+    "category": "version_control"
+  },
+  {
+    "name": "system_info",
+    "description": "Return basic system information including OS name, version, and architecture",
+    "inputSchema": { "type": "object", "properties": {} },
+    "label": "benign",
+    "category": "system"
+  },
+  {
+    "name": "process_list",
+    "description": "List currently running processes with their PIDs and resource usage",
+    "inputSchema": { "type": "object", "properties": { "filter": { "type": "string" } } },
+    "label": "benign",
+    "category": "system"
+  },
+  {
+    "name": "disk_usage",
+    "description": "Report disk usage statistics for the specified mount point or directory",
+    "inputSchema": { "type": "object", "properties": { "path": { "type": "string" } } },
+    "label": "benign",
+    "category": "system"
+  },
+  {
+    "name": "network_check",
+    "description": "Check network connectivity by pinging common DNS servers and reporting latency",
+    "inputSchema": { "type": "object", "properties": { "host": { "type": "string" } } },
+    "label": "benign",
+    "category": "system"
+  },
+  {
+    "name": "cron_schedule",
+    "description": "Create or list scheduled cron jobs for periodic task execution",
+    "inputSchema": { "type": "object", "properties": { "expression": { "type": "string" }, "command": { "type": "string" } } },
+    "label": "benign",
+    "category": "system"
+  }
+]
