@@ -75,13 +75,24 @@ describe("InMemoryApprovalStore", () => {
     expect(store.getAll()).toHaveLength(2);
   });
 
-  it("put stores a copy — mutations to original do not affect store", async () => {
+  it("put throws TypeError when called with a string argument (misuse guard #90)", async () => {
     const store = new InMemoryApprovalStore();
-    const req = makeRequest();
-    await store.put(req);
-    req.status = "approved";
-    const retrieved = await store.get("req-001");
-    expect(retrieved?.status).toBe("pending");
+    await expect(
+      // Simulate JS misuse: store.put(id, request) — first arg is a string
+      (store.put as any)("some-id")
+    ).rejects.toThrow(TypeError);
+  });
+
+  it("put throws TypeError when called with null", async () => {
+    const store = new InMemoryApprovalStore();
+    await expect((store.put as any)(null)).rejects.toThrow(TypeError);
+  });
+
+  it("put throws TypeError when called with an object missing requestId", async () => {
+    const store = new InMemoryApprovalStore();
+    await expect(
+      (store.put as any)({ agentId: "a", runId: "r", toolName: "t", op: "o" })
+    ).rejects.toThrow(TypeError);
   });
 });
 
@@ -157,5 +168,25 @@ describe("CloudflareKvApprovalStore", () => {
     await store.put(makeRequest({ requestId: "r42" }));
     expect(data.has("custom:r42")).toBe(true);
     expect(data.has("approval:r42")).toBe(false);
+  });
+
+  it("put throws TypeError when called with a string argument (misuse guard #90)", async () => {
+    const { kv } = createMockKv();
+    const store = new CloudflareKvApprovalStore(kv);
+    await expect((store.put as any)("some-id")).rejects.toThrow(TypeError);
+  });
+
+  it("put throws TypeError when called with null", async () => {
+    const { kv } = createMockKv();
+    const store = new CloudflareKvApprovalStore(kv);
+    await expect((store.put as any)(null)).rejects.toThrow(TypeError);
+  });
+
+  it("put throws TypeError when called with an object missing requestId", async () => {
+    const { kv } = createMockKv();
+    const store = new CloudflareKvApprovalStore(kv);
+    await expect(
+      (store.put as any)({ agentId: "a", runId: "r", toolName: "t", op: "o" })
+    ).rejects.toThrow(TypeError);
   });
 });

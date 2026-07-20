@@ -97,6 +97,7 @@ export { renderTaintedObservation, taintObservation } from "./taint.js";
 export type {
   AdversarialHit,
   AdversarialResult,
+  FindingType,
   RiskCategory,
   RiskRecommendation,
   RiskSeverity,

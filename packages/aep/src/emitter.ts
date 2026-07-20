@@ -57,6 +57,8 @@ export interface AEPEmitterOptions {
   recordingMode?: RecordingMode;
   /** Default side_effect_class for actions added without an explicit side_effect_class. */
   sideEffectClass?: SideEffectClass;
+  /** When true, emit() will not throw if no actions have been recorded. */
+  allowEmptyActions?: boolean;
 }
 
 export class AEPEmitter {
@@ -177,6 +179,12 @@ export class AEPEmitter {
     if (!signer) {
       throw new Error(
         "AEPEmitter.emit() requires a signer. Pass `signer` in AEPEmitterOptions or use build() for unsigned records."
+      );
+    }
+    if (this.#actions.length === 0 && !this.#opts.allowEmptyActions) {
+      throw new Error(
+        "AEPEmitter.emit() called with no actions recorded. " +
+          "Call addAction() at least once before emitting, or pass { allowEmptyActions: true } to the constructor."
       );
     }
     const unsigned = this.#buildUnsigned(createdAtMs);
