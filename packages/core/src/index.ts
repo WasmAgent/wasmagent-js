@@ -208,6 +208,7 @@ export {
   bm25Tokenize,
   coreMemoryTools,
   createMemoryTool,
+  FileStructuredKv,
   HybridRetriever,
   hybridRetriever,
   InMemoryStructuredKv,

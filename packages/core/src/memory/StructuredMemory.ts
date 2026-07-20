@@ -185,7 +185,14 @@ export class StructuredMemory {
     await this.#backend.put(backendKey(ns, key), JSON.stringify(record));
   }
 
-  async get<T>(key: string, namespace: MemoryNamespace = "episodic"): Promise<T | null> {
+  async get<T>(
+    key: string,
+    namespaceOrOpts?: MemoryNamespace | { namespace?: MemoryNamespace }
+  ): Promise<T | null> {
+    const namespace: MemoryNamespace =
+      typeof namespaceOrOpts === "string"
+        ? namespaceOrOpts
+        : (namespaceOrOpts?.namespace ?? "episodic");
     const raw = await this.#backend.get(backendKey(namespace, key));
     if (!raw) return null;
     let record: MemoryRecord<T>;
@@ -211,7 +218,14 @@ export class StructuredMemory {
     return record.value;
   }
 
-  async delete(key: string, namespace: MemoryNamespace = "episodic"): Promise<void> {
+  async delete(
+    key: string,
+    namespaceOrOpts?: MemoryNamespace | { namespace?: MemoryNamespace }
+  ): Promise<void> {
+    const namespace: MemoryNamespace =
+      typeof namespaceOrOpts === "string"
+        ? namespaceOrOpts
+        : (namespaceOrOpts?.namespace ?? "episodic");
     await this.#backend.delete(backendKey(namespace, key));
   }
 
@@ -314,7 +328,11 @@ export class StructuredMemory {
   }
 
   /** Total entry count across (or within) a namespace. */
-  async count(namespace?: MemoryNamespace): Promise<number> {
+  async count(
+    namespaceOrOpts?: MemoryNamespace | { namespace?: MemoryNamespace }
+  ): Promise<number> {
+    const namespace: MemoryNamespace | undefined =
+      typeof namespaceOrOpts === "string" ? namespaceOrOpts : namespaceOrOpts?.namespace;
     if (namespace) {
       return (await this.#backend.list(`mem${KEY_DELIM}${namespace}${KEY_DELIM}`)).length;
     }
@@ -327,7 +345,11 @@ export class StructuredMemory {
 }
 
 /**
- * Simple in-memory backend for tests and prototypes.
+ * In-memory implementation of StructuredKvBackend.
+ *
+ * WARNING: Data is ephemeral — lost when the process exits.
+ * Use FileStructuredKv for development persistence or a real
+ * KV backend (Cloudflare KV, Redis) for production.
  *
  * Implements both the canonical {@link KvBackend} (`put`) and the legacy
  * {@link StructuredKvBackend} (`set`) so existing test code continues to compile.
