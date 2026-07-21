@@ -213,11 +213,48 @@ describe("ObservationalMemory", () => {
       tokenThreshold: 100,
     });
     mem.noteStep(); // schedules the slow pass
-    mem.noteStep(); // should be a no-op while pending
+    mem.noteStep(); // should be buffered while pending
     mem.noteStep(); // ditto
     resolveSlow();
     await mem.flush();
-    // Only one observation should land for the three triggers.
+    // Only one observation should land (buffered calls collapse into one drain).
     expect((await mem.list()).length).toBe(1);
+  });
+
+  it("buffers noteStep calls during background pass and processes them after completion", async () => {
+    const assembler = makeAssembler();
+    for (let i = 0; i < 12; i++) assembler.addStep(userStep(`msg ${"x".repeat(200)}`));
+    let resolvePass!: () => void;
+    let callCount = 0;
+    const slowModel: Model = {
+      providerId: "mock/slow2",
+      async *generate(): AsyncGenerator<StreamEvent> {
+        callCount++;
+        if (callCount === 1) {
+          await new Promise<void>((r) => {
+            resolvePass = r;
+          });
+        }
+        yield { type: "text_delta", delta: `{"priority":"medium","text":"obs ${callCount}"}` };
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    };
+    mem = new ObservationalMemory({
+      assembler,
+      model: slowModel,
+      sessionId: "s7",
+      tokenThreshold: 100,
+    });
+    mem.noteStep(); // triggers first pass (slow)
+    // Add more steps while pass is in flight
+    for (let i = 0; i < 12; i++) assembler.addStep(userStep(`msg2 ${"y".repeat(200)}`));
+    mem.noteStep(); // should be buffered, not dropped
+    // Complete the first pass
+    resolvePass();
+    await mem.flush();
+    // Both the first pass and the buffered drain pass should have run
+    expect(callCount).toBe(2);
+    const obs = await mem.list();
+    expect(obs.length).toBe(2);
   });
 });

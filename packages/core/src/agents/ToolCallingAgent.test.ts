@@ -562,7 +562,9 @@ describe("ToolCallingAgent — outputSchema (A2)", () => {
     const events = [];
     for await (const e of agent.run("give me a number")) events.push(e);
     const finalAnswer = events.find((e) => e.event === "final_answer");
-    expect(finalAnswer?.event === "final_answer" && finalAnswer.data.answer).toEqual({ value: 42 });
+    expect(finalAnswer?.event === "final_answer" && finalAnswer.data.answer).toEqual(
+      JSON.stringify({ value: 42 })
+    );
   });
 
   it("retries when model returns invalid JSON and then succeeds", async () => {
@@ -592,9 +594,9 @@ describe("ToolCallingAgent — outputSchema (A2)", () => {
     const events = [];
     for await (const e of agent.run("task")) events.push(e);
     const finalAnswer = events.find((e) => e.event === "final_answer");
-    expect(finalAnswer?.event === "final_answer" && finalAnswer.data.answer).toEqual({
-      result: "fixed",
-    });
+    expect(finalAnswer?.event === "final_answer" && finalAnswer.data.answer).toEqual(
+      JSON.stringify({ result: "fixed" })
+    );
     expect(callCount).toBeGreaterThan(1);
   });
 
@@ -1197,5 +1199,89 @@ describe("ToolCallingAgent — SI-8 agentConfig in checkpoint snapshot", () => {
     expect((startEvt?.data as { agentConfig: { maxSteps: number } })?.agentConfig?.maxSteps).toBe(
       5
     );
+  });
+});
+
+// ── Bug #112: final_answer type field for structured output ────────────────────
+describe("ToolCallingAgent — Bug #112 final_answer type field", () => {
+  it("final_answer.data.answer is string and type is 'string' when no outputSchema", async () => {
+    const agent = new ToolCallingAgent({
+      tools: [],
+      model: textAnswerModel("hello world"),
+      maxSteps: 3,
+    });
+    const events = [];
+    for await (const e of agent.run("task")) events.push(e);
+    const finalAnswer = events.find((e) => e.event === "final_answer");
+    expect(finalAnswer).toBeDefined();
+    const data = finalAnswer?.data as { answer: unknown; type: string };
+    expect(typeof data.answer).toBe("string");
+    expect(data.type).toBe("string");
+  });
+
+  it("final_answer.data.answer is JSON string and type is 'object' when outputSchema produces object", async () => {
+    const schema = z.object({ value: z.number() });
+    const agent = new ToolCallingAgent({
+      tools: [],
+      model: textAnswerModel(JSON.stringify({ value: 99 })),
+      maxSteps: 3,
+      outputSchema: schema,
+    });
+    const events = [];
+    for await (const e of agent.run("task")) events.push(e);
+    const finalAnswer = events.find((e) => e.event === "final_answer");
+    expect(finalAnswer).toBeDefined();
+    const data = finalAnswer?.data as { answer: unknown; type: string };
+    expect(data.type).toBe("object");
+    // answer should be a JSON-serialized string for SSE compatibility
+    expect(typeof data.answer).toBe("string");
+    expect(JSON.parse(data.answer as string)).toEqual({ value: 99 });
+  });
+});
+
+// ── Bug #117: run() should not reset assembler when pre-injected history exists ─
+describe("ToolCallingAgent — Bug #117 preserves pre-injected history", () => {
+  it("does not wipe pre-injected history when assembler has steps before run()", async () => {
+    const assembler = new MessageAssembler({
+      systemPrompt: "test",
+      toolsSchema: [],
+    });
+    // Pre-inject a step before run() is called
+    assembler.addStep({ type: "user_message", content: "pre-injected context" });
+    const initialLength = assembler.historyLength;
+    expect(initialLength).toBe(1);
+
+    const agent = new ToolCallingAgent({
+      tools: [],
+      model: textAnswerModel("done"),
+      maxSteps: 3,
+      assembler,
+    });
+    const events = [];
+    for await (const e of agent.run("new task")) events.push(e);
+    // Should have the pre-injected step + the new user message + final_answer
+    expect(assembler.historyLength).toBeGreaterThan(initialLength);
+    // The pre-injected step should still be present (not wiped by reset)
+    const steps = assembler.steps;
+    expect(steps[0]).toEqual({ type: "user_message", content: "pre-injected context" });
+  });
+
+  it("still resets when assembler is freshly constructed (empty)", async () => {
+    const assembler = new MessageAssembler({
+      systemPrompt: "test",
+      toolsSchema: [],
+    });
+    // No pre-injected steps
+    const agent = new ToolCallingAgent({
+      tools: [],
+      model: textAnswerModel("done"),
+      maxSteps: 3,
+      assembler,
+    });
+    const events = [];
+    for await (const e of agent.run("task")) events.push(e);
+    // Only the user_message from run() + final_answer
+    const steps = assembler.steps;
+    expect(steps[0]).toEqual({ type: "user_message", content: "task" });
   });
 });

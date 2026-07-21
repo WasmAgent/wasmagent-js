@@ -65,6 +65,32 @@ describe("ApprovalPolicy", () => {
     expect(p.needsApproval({ op: "write", path: "lib/foo.ts", sizeChars: 0 })).toBe(true);
   });
 
+  it("path matching does not do bare prefix — 'submit' should NOT match 'submit_pr'", () => {
+    const p = new ApprovalPolicy({
+      defaultVerdict: "allow",
+      rules: [{ id: "gate-submit", match: { paths: ["submit"] }, verdict: "require" }],
+    });
+    // Exact match triggers
+    expect(p.needsApproval({ op: "write", path: "submit", sizeChars: 0 })).toBe(true);
+    // Directory child triggers
+    expect(p.needsApproval({ op: "write", path: "submit/foo.ts", sizeChars: 0 })).toBe(true);
+    // Bare prefix must NOT match a different path that starts with the same characters
+    expect(p.needsApproval({ op: "write", path: "submit_pr", sizeChars: 0 })).toBe(false);
+    expect(p.needsApproval({ op: "write", path: "submit_pr/foo", sizeChars: 0 })).toBe(false);
+  });
+
+  it("path ending with '/' matches anything under that directory prefix", () => {
+    const p = new ApprovalPolicy({
+      defaultVerdict: "allow",
+      rules: [{ id: "gate-dir", match: { paths: [".github/"] }, verdict: "require" }],
+    });
+    expect(p.needsApproval({ op: "write", path: ".github/workflows/ci.yml", sizeChars: 0 })).toBe(
+      true
+    );
+    expect(p.needsApproval({ op: "write", path: ".github/", sizeChars: 0 })).toBe(true);
+    expect(p.needsApproval({ op: "write", path: ".githubx/foo", sizeChars: 0 })).toBe(false);
+  });
+
   it("minSizeChars rule fires only when size threshold is met", () => {
     const p = new ApprovalPolicy({
       defaultVerdict: "allow",

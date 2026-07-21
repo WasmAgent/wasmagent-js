@@ -97,7 +97,10 @@ export class ApprovalPolicy {
     }
     if (m.paths !== undefined && m.paths.length > 0) {
       const matchPath = m.paths.some(
-        (p) => query.path === p || query.path.startsWith(`${p}/`) || query.path.startsWith(p)
+        (p) =>
+          query.path === p ||
+          query.path.startsWith(`${p}/`) ||
+          (p.endsWith("/") && query.path.startsWith(p))
       );
       if (!matchPath) return false;
     }

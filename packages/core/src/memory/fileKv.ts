@@ -5,17 +5,47 @@
  * development and CLI tools where data should survive process restarts
  * without requiring an external database.
  *
- * NOT recommended for production — no locking, no atomicity guarantees.
- * Use Cloudflare KV, Redis, or Durable Objects for production workloads.
+ * Uses an in-process async mutex to serialize write operations, preventing
+ * concurrent writes from corrupting the JSON file.
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import type { KvBackend } from "../checkpoint/index.js";
 import type { StructuredKvBackend } from "./StructuredMemory.js";
 
+/**
+ * Simple in-process async mutex. Serializes operations that acquire it
+ * so only one runs at a time. Suitable for single-process scenarios
+ * (no cross-process locking).
+ */
+class AsyncMutex {
+  #queue: Array<() => void> = [];
+  #locked = false;
+
+  async acquire(): Promise<void> {
+    if (!this.#locked) {
+      this.#locked = true;
+      return;
+    }
+    return new Promise<void>((resolve) => {
+      this.#queue.push(resolve);
+    });
+  }
+
+  release(): void {
+    const next = this.#queue.shift();
+    if (next) {
+      next();
+    } else {
+      this.#locked = false;
+    }
+  }
+}
+
 export class FileStructuredKv implements StructuredKvBackend, Required<KvBackend> {
   readonly #path: string;
   #data: Map<string, string>;
+  readonly #mutex = new AsyncMutex();
 
   constructor(path: string) {
     this.#path = path;
@@ -35,19 +65,34 @@ export class FileStructuredKv implements StructuredKvBackend, Required<KvBackend
   }
 
   async set(key: string, value: string): Promise<void> {
-    this.#data.set(key, value);
-    this.#flush();
+    await this.#mutex.acquire();
+    try {
+      this.#data.set(key, value);
+      this.#flush();
+    } finally {
+      this.#mutex.release();
+    }
   }
 
   /** Canonical KvBackend write — alias of set(). */
   async put(key: string, value: string): Promise<void> {
-    this.#data.set(key, value);
-    this.#flush();
+    await this.#mutex.acquire();
+    try {
+      this.#data.set(key, value);
+      this.#flush();
+    } finally {
+      this.#mutex.release();
+    }
   }
 
   async delete(key: string): Promise<void> {
-    this.#data.delete(key);
-    this.#flush();
+    await this.#mutex.acquire();
+    try {
+      this.#data.delete(key);
+      this.#flush();
+    } finally {
+      this.#mutex.release();
+    }
   }
 
   async list(prefix: string): Promise<string[]> {
