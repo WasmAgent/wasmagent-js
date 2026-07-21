@@ -3,14 +3,10 @@
   "changelog": "@changesets/changelog-git",
   "commit": false,
   "fixed": [],
-  "linked": [
-    [
-      "@wasmagent/*"
-    ]
-  ],
+  "linked": [],
   "access": "public",
   "baseBranch": "main",
-  "updateInternalDependencies": "patch",
+  "updateInternalDependencies": "none",
   "ignore": [
     "@wasmagent/cloudflare-worker",
     "dangerous-tool-demo",

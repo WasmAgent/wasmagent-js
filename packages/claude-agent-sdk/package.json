@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/claude-agent-sdk",
   "version": "1.0.3",
-  "description": "Drop wasmagent sandbox kernels into the Anthropic Claude Agent SDK — edge-safe code execution with one capability manifest, reusing your MCP server policy",
+  "description": "Drop wasmagent sandbox kernels into the Anthropic Claude Agent SDK \u2014 edge-safe code execution with one capability manifest, reusing your MCP server policy",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "^1.0.3"
+    "@wasmagent/core": "workspace:*"
   },
   "peerDependencies": {
     "@anthropic-ai/sdk": ">=0.40.0"

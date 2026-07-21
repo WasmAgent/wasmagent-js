@@ -3,7 +3,7 @@
  *
  * Validates the full data path that bscode uses:
  *
- *   1. Compose a system prompt from @wasmagent/agent-prompts fragments.
+ *   1. Compose a system prompt from @wasmagent/core/prompts fragments.
  *   2. Simulate an AI reply (bare D2 / Markdown — testing the auto-upgrade path).
  *   3. Run upgradeCardSyntax (from @wasmagent/ui-cards) to wrap content.
  *   4. Run parseCardBlocks (also @wasmagent/ui-cards) to extract card structure.
@@ -24,7 +24,7 @@ import {
   OUTPUT_CONTRACT_FINAL_ANSWER,
   REASONING_FIRST,
   SANDBOX_QUICKJS,
-} from "@wasmagent/agent-prompts";
+} from "@wasmagent/core/prompts";
 import { parseCardBlocks, upgradeCardSyntax } from "@wasmagent/ui-cards";
 
 describe("cross-package integration: prompts → AI reply → upgrade → parse", () => {

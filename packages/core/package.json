@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/core",
   "version": "1.19.0",
-  "description": "Core runtime for wasmagent — agents, executor, memory, models, tools",
+  "description": "Core runtime for wasmagent \u2014 agents, executor, memory, models, tools",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -30,6 +30,10 @@
       "import": "./dist/models/index.js",
       "types": "./dist/models/index.d.ts"
     },
+    "./prompts": {
+      "import": "./dist/prompts/index.js",
+      "types": "./dist/prompts/index.d.ts"
+    },
     "./schemas/rollout-wire": "./src/ranking/schemas/rollout-wire.schema.json",
     "./schemas/training-record": "./src/ranking/schemas/training-record.schema.json"
   },
@@ -40,7 +44,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/agent-prompts": "^1.0.3",
+    "@wasmagent/agent-prompts": "workspace:*",
     "zod": "^3.23.0",
     "zod-to-json-schema": "^3.25.2"
   },

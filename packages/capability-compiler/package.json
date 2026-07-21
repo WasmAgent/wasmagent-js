@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "^1.7.0"
+    "@wasmagent/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",

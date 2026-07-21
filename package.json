@@ -2,7 +2,7 @@
   "name": "wasmagent-js",
   "version": "0.1.0",
   "private": true,
-  "description": "WASM Agent Kernel & Portable Code Executor — three-tier sandboxed execution, prompt-cache optimization, edge-native TypeScript.",
+  "description": "WASM Agent Kernel & Portable Code Executor \u2014 three-tier sandboxed execution, prompt-cache optimization, edge-native TypeScript.",
   "license": "Apache-2.0",
   "keywords": [
     "wasm",
@@ -72,8 +72,5 @@
     "turbo": "^2.3.0",
     "typescript": "^5.7.0",
     "vitepress": "^1.6.4"
-  },
-  "dependencies": {
-    "@noble/ed25519": "^3.1.0"
   }
 }

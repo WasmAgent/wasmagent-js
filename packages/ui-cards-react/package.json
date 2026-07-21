@@ -33,7 +33,7 @@
     }
   },
   "dependencies": {
-    "@wasmagent/ui-cards": "^1.0.3"
+    "@wasmagent/ui-cards": "workspace:*"
   },
   "devDependencies": {
     "@terrastruct/d2": "^0.1.33",

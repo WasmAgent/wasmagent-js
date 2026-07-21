@@ -1,0 +1,117 @@
+{
+  "name": "@wasmagent/models",
+  "version": "1.0.0",
+  "description": "Consolidated model adapters for wasmagent — re-exports anthropic, openai, deepseek, doubao, minimax, moonshot, qwen, zhipu adapters",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./anthropic": {
+      "import": "./dist/anthropic.js",
+      "types": "./dist/anthropic.d.ts"
+    },
+    "./openai": {
+      "import": "./dist/openai.js",
+      "types": "./dist/openai.d.ts"
+    },
+    "./deepseek": {
+      "import": "./dist/deepseek.js",
+      "types": "./dist/deepseek.d.ts"
+    },
+    "./doubao": {
+      "import": "./dist/doubao.js",
+      "types": "./dist/doubao.d.ts"
+    },
+    "./minimax": {
+      "import": "./dist/minimax.js",
+      "types": "./dist/minimax.d.ts"
+    },
+    "./moonshot": {
+      "import": "./dist/moonshot.js",
+      "types": "./dist/moonshot.d.ts"
+    },
+    "./qwen": {
+      "import": "./dist/qwen.js",
+      "types": "./dist/qwen.d.ts"
+    },
+    "./zhipu": {
+      "import": "./dist/zhipu.js",
+      "types": "./dist/zhipu.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@wasmagent/core": "workspace:*",
+    "@wasmagent/model-anthropic": "workspace:*",
+    "@wasmagent/model-deepseek": "workspace:*",
+    "@wasmagent/model-doubao": "workspace:*",
+    "@wasmagent/model-minimax": "workspace:*",
+    "@wasmagent/model-moonshot": "workspace:*",
+    "@wasmagent/model-openai": "workspace:*",
+    "@wasmagent/model-qwen": "workspace:*",
+    "@wasmagent/model-zhipu": "workspace:*"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.55.0",
+    "openai": ">=4.80.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/sdk": {
+      "optional": true
+    },
+    "openai": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.55.0",
+    "openai": "^4.90.0",
+    "typescript": "^5.7.0"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
+    "directory": "packages/models"
+  },
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/models#readme",
+  "bugs": {
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "wasmagent",
+    "wasm",
+    "agent",
+    "model",
+    "llm",
+    "openai",
+    "anthropic",
+    "deepseek",
+    "typescript"
+  ],
+  "wasmagent": {
+    "tier": "tier-2",
+    "stability": "stable"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "author": "wasmagent contributors"
+}
