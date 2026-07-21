@@ -1,5 +1,21 @@
 # agentkit-integration-smoke
 
+## 0.0.26
+
+### Patch Changes
+
+- Updated dependencies [6553c88]
+- Updated dependencies [1692c19]
+- Updated dependencies [9df44c1]
+  - @wasmagent/core@1.20.0
+  - @wasmagent/aisdk@1.0.4
+  - @wasmagent/cli@1.3.5
+  - @wasmagent/devtools@1.7.1
+  - @wasmagent/evals-runner@1.10.1
+  - @wasmagent/kernel-quickjs@1.2.1
+  - @wasmagent/mastra-sandbox@1.0.4
+  - @wasmagent/mcp-server@1.1.2
+
 ## 0.0.25
 
 ### Patch Changes

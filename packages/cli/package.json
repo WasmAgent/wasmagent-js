@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/cli",
-  "version": "1.3.4",
-  "description": "CLI for wasmagent \u2014 mirrors smolagents' `smolagent` CLI (D6)",
+  "version": "1.3.5",
+  "description": "CLI for wasmagent — mirrors smolagents' `smolagent` CLI (D6)",
   "type": "module",
   "bin": {
     "wasmagent": "./dist/index.js",

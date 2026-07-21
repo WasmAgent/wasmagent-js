@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/a2a",
-  "version": "1.0.3",
-  "description": "A2A (Agent2Agent) adapter for wasmagent \u2014 expose agents as A2A servers and call remote A2A agents",
+  "version": "1.0.4",
+  "description": "A2A (Agent2Agent) adapter for wasmagent — expose agents as A2A servers and call remote A2A agents",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

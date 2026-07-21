@@ -1,5 +1,34 @@
 # @agentkit-js/core
 
+## 1.20.0
+
+### Minor Changes
+
+- 1692c19: feat: guardrails accept CompletionFunction as lightweight alternative to full Model (#108, #116)
+  feat: standalone factory functions for custom agent loops (#109)
+  feat: ToolCallingAgent exposes getTokenBudget() and tokenStats (#110)
+  feat: ToolCallingAgent.run() accepts history option for conversation context injection (#113)
+  feat: parseStopPolicy throws on unrecognised descriptors instead of returning null (#115)
+  feat: AnthropicModel accepts defaultHeaders option (#118)
+
+### Patch Changes
+
+- 6553c88: fix: batch bug fixes (#107, #111, #112, #117, #119)
+
+  - #107: ApprovalPolicy path matching no longer uses overly broad prefix (e.g. 'submit' no longer matches 'submit_pr')
+  - #111: ObservationalMemory.noteStep() buffers calls during background passes instead of silently dropping them
+  - #112: ToolCallingAgent final_answer event always serializes answer to string and includes a `type` field for SSE consumers
+  - #117: ToolCallingAgent.run() no longer unconditionally resets the assembler when pre-injected history exists
+  - #119: FileStructuredKv uses an async mutex to serialize write operations, preventing concurrent write corruption
+
+- 9df44c1: chore: repo hygiene — dependency cleanup, changeset decoupling, models consolidation
+
+  - #120: Remove unused root-level `@noble/ed25519` production dependency (belongs in @wasmagent/aep)
+  - #121: Convert all internal @wasmagent/_ dependency ranges to `workspace:_` for consistent monorepo resolution
+  - #122: Remove `linked` and set `updateInternalDependencies: "none"` in changeset config to decouple release cascade (version coherence is enforced by check-version-coherence.mjs)
+  - #123: Create `@wasmagent/models` consolidated re-export package for all model adapters (except model-local which has native deps)
+  - #124: Fold `@wasmagent/agent-prompts` into `@wasmagent/core/prompts` subpath export; agent-prompts package kept as deprecated backward-compat shim
+
 ## 1.19.0
 
 ### Patch Changes

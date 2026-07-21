@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/kernel-quickjs",
-  "version": "1.2.0",
-  "description": "QuickJS-in-WASM kernel for wasmagent \u2014 safe for Cloudflare Workers and serverless environments that lack node:vm",
+  "version": "1.2.1",
+  "description": "QuickJS-in-WASM kernel for wasmagent — safe for Cloudflare Workers and serverless environments that lack node:vm",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
