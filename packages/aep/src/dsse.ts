@@ -3,6 +3,30 @@ import * as ed from "@noble/ed25519";
 /**
  * DSSE (Dead Simple Signing Envelope) — industry standard from in-toto/SLSA.
  * @see https://github.com/secure-systems-lab/dsse/blob/master/envelope.md
+ *
+ * ## subject[] Semantics
+ *
+ * The `subject` array in the in-toto Statement contains entries of the form:
+ *
+ * ```json
+ * [{ "name": "urn:wasmagent:run:<session_id>", "digest": { "sha256": "<record_hash>" } }]
+ * ```
+ *
+ * - `name`: The session/run ID as a URN — provides **session binding** so the
+ *   attestation is cryptographically tied to a specific agent execution.
+ * - `digest.sha256`: SHA-256 hash of the canonicalized AEP record bytes
+ *   (produced by `canonical.ts`'s sorted-key JSON.stringify).
+ *
+ * ## Alignment with in-toto Attestation Framework
+ *
+ * - We use `subject[].name` for session identity (not file/artifact paths),
+ *   which extends the in-toto model to runtime attestation use cases.
+ * - Our canonicalization is sorted-key JSON.stringify, NOT RFC 8785 (JCS).
+ *   The `predicateType` version (v0.4) signals this to verifiers.
+ * - Session binding is achieved solely via the subject name field — no
+ *   separate session-binding extension is needed.
+ *
+ * See `docs/aep-dsse-alignment.md` for full gap analysis.
  */
 export interface DSSEEnvelope {
   payloadType: string; // "application/vnd.in-toto+json"
