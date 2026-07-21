@@ -10,7 +10,7 @@
     },
     {
       "fixture": "fixtures/data-loop/manifest.json",
-      "sha256": "27563a49f1298e9de42202818f3a5f46bdb5c0dc589d78fd4161618b57d59bf3"
+      "sha256": "c6ab0555bbd7d76c247a6db172062ce7b97be72e659cd61832317c335e231fc7"
     },
     {
       "fixture": "fixtures/data-loop/ppo-training.v1.jsonl",
@@ -26,7 +26,7 @@
     },
     {
       "fixture": "fixtures/data-loop/smoke.test.ts",
-      "sha256": "d526a1bf57d957e4ca94199bef72d520fcf74beceb40e00b84f329dbbe4f4a91"
+      "sha256": "b54f22f012fb2aebd6f7d76405d7ede76843f81e1597d7f6c64a9bd343e99952"
     }
   ]
 }
