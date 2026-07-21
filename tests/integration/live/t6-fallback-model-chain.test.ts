@@ -12,12 +12,8 @@
 
 import { describe, expect, it } from "bun:test";
 import { AnthropicModel, FallbackModel, OpenAIModel, ToolCallingAgent } from "@wasmagent/core";
-import {
-  RolloutForkRunner,
-  RolloutRanker,
-  toDpoRecord,
-} from "@wasmagent/core/beta";
 import type { RolloutBranchResult } from "@wasmagent/core/beta";
+import { RolloutForkRunner, RolloutRanker, toDpoRecord } from "@wasmagent/core/beta";
 
 // ── Skip guards ───────────────────────────────────────────────────────────────
 
@@ -73,8 +69,7 @@ describe("T6-S1 · FallbackModel(evomerge → haiku) returns non-empty answer", 
         trajectory.push(ev);
         if (ev.event === "final_answer") {
           const data = ev.data as { answer: unknown };
-          finalAnswer =
-            typeof data.answer === "string" ? data.answer : JSON.stringify(data.answer);
+          finalAnswer = typeof data.answer === "string" ? data.answer : JSON.stringify(data.answer);
         }
       }
 
@@ -166,8 +161,7 @@ describe("T6-S2 · 2-branch rollout: evomerge vs haiku on multiplication QA", ()
       if (!branch0Result || !branch1Result) return;
 
       // Score each branch: 1 if answer contains "56", else 0
-      const score = (r: RolloutBranchResult): 0 | 1 =>
-        r.finalAnswer.includes("56") ? 1 : 0;
+      const score = (r: RolloutBranchResult): 0 | 1 => (r.finalAnswer.includes("56") ? 1 : 0);
 
       const b0Score = score(branch0Result);
       const b1Score = score(branch1Result);
@@ -259,8 +253,7 @@ describe("T6-S3 · FallbackModel event log — identify model from events", () =
         events.push(ev);
         if (ev.event === "final_answer") {
           const data = ev.data as { answer: unknown };
-          finalAnswer =
-            typeof data.answer === "string" ? data.answer : JSON.stringify(data.answer);
+          finalAnswer = typeof data.answer === "string" ? data.answer : JSON.stringify(data.answer);
         }
       }
 
@@ -289,7 +282,9 @@ describe("T6-S3 · FallbackModel event log — identify model from events", () =
       if (activeProvider === primaryModel.providerId) {
         console.log("T6-S3 Primary model responded — no escalation needed.");
       } else {
-        console.log("T6-S3 Fallback model (haiku) was used — primary may have failed or not available.");
+        console.log(
+          "T6-S3 Fallback model (haiku) was used — primary may have failed or not available."
+        );
       }
     },
     120_000

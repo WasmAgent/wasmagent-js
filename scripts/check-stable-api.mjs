@@ -10,8 +10,8 @@
  * Exit 0 = unchanged; Exit 1 = breaking removal detected.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -64,7 +64,9 @@ for (const line of lines) {
 
     // Extract all identifiers inside the block (words followed by optional " as alias" or comma/newline)
     // Match: identifier possibly followed by " as alias"
-    const matches = line.matchAll(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)\b(?:\s+as\s+\b([a-zA-Z_$][a-zA-Z0-9_$]*)\b)?/g);
+    const matches = line.matchAll(
+      /\b([a-zA-Z_$][a-zA-Z0-9_$]*)\b(?:\s+as\s+\b([a-zA-Z_$][a-zA-Z0-9_$]*)\b)?/g
+    );
     for (const m of matches) {
       const ident = m[2] ?? m[1]; // use alias if present
       // Skip keywords and structural tokens

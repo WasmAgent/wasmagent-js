@@ -13,17 +13,13 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AnthropicModel } from "@wasmagent/core";
-import {
-  DEFAULT_REWARD_FUNCTIONS,
-  RolloutForkRunner,
-  RolloutRanker,
-} from "@wasmagent/core/beta";
 import type { RolloutBranchResult } from "@wasmagent/core/beta";
+import { DEFAULT_REWARD_FUNCTIONS, RolloutForkRunner, RolloutRanker } from "@wasmagent/core/beta";
 
 // ── Skip guard ────────────────────────────────────────────────────────────────
 
@@ -100,9 +96,11 @@ describe("T7-S1 · wasmagent-js rollout → rollout-wire/v1 JSONL → evomerge P
               tool_call_sequence: b.toolCallSequence,
               final_answer: b.finalAnswer,
               build_result: null,
-              objective_score: withScores.find((w) => w.branchIndex === b.branchIndex)?.objectiveScore ?? 0,
+              objective_score:
+                withScores.find((w) => w.branchIndex === b.branchIndex)?.objectiveScore ?? 0,
               rank: ranked.ranked.find((r) => r.branchIndex === b.branchIndex)?.rank ?? 0,
-              total_score: ranked.ranked.find((r) => r.branchIndex === b.branchIndex)?.totalScore ?? 0,
+              total_score:
+                ranked.ranked.find((r) => r.branchIndex === b.branchIndex)?.totalScore ?? 0,
             })
           )
           .join("\n") + "\n";
@@ -125,7 +123,7 @@ describe("T7-S1 · wasmagent-js rollout → rollout-wire/v1 JSONL → evomerge P
           "for p in ppo:",
           "    print(f'PPO branch={p.provenance[\"branch_index\"]} reward={p.reward:.2f}')",
           "if dpo:",
-          "    print(f'DPO chosen={dpo[0].provenance[\"chosen_branch\"]} rejected={dpo[0].provenance[\"rejected_branch\"]}')",
+          '    print(f\'DPO chosen={dpo[0].provenance["chosen_branch"]} rejected={dpo[0].provenance["rejected_branch"]}\')',
         ].join("\n")
       );
 
@@ -166,102 +164,97 @@ describe("T7-S1 · wasmagent-js rollout → rollout-wire/v1 JSONL → evomerge P
 // ── S2 — bscode trajectoryExport format → evomerge ───────────────────────────
 
 describe("T7-S2 · bscode trajectoryExport format → evomerge Python round-trip", () => {
-  it(
-    "bscode rollout-wire/v1 records load correctly into evomerge (2 records, no crash)",
-    async () => {
-      // Dynamically import bscode trajectoryExport (JS build output)
-      const bscodeExportPath =
-        "/Users/I041705/github/bscode/apps/worker/src/trajectoryExport.js";
+  it("bscode rollout-wire/v1 records load correctly into evomerge (2 records, no crash)", async () => {
+    // Dynamically import bscode trajectoryExport (JS build output)
+    const bscodeExportPath = "/Users/I041705/github/bscode/apps/worker/src/trajectoryExport.js";
 
-      let buildRolloutRecord: (opts: {
-        jobId: string;
-        jobSpec: { task: string };
-        sessionId: string;
-        branchIndex: number;
-        buildResult: { status: string; ranAtMs: number } | null;
-        toolCallSequence?: unknown[];
-        finalAnswer?: string;
-      }) => unknown;
-      let bscodeToJsonl: (records: unknown[]) => string;
+    let buildRolloutRecord: (opts: {
+      jobId: string;
+      jobSpec: { task: string };
+      sessionId: string;
+      branchIndex: number;
+      buildResult: { status: string; ranAtMs: number } | null;
+      toolCallSequence?: unknown[];
+      finalAnswer?: string;
+    }) => unknown;
+    let bscodeToJsonl: (records: unknown[]) => string;
 
-      try {
-        const mod = await import(bscodeExportPath);
-        buildRolloutRecord = mod.buildRolloutRecord;
-        bscodeToJsonl = mod.toJsonl;
-      } catch (e: unknown) {
-        const err = e as { message?: string };
-        console.warn("T7-S2 SKIP: could not import bscode trajectoryExport:", err.message);
-        // Not a hard failure — bscode may not be built
-        return;
-      }
+    try {
+      const mod = await import(bscodeExportPath);
+      buildRolloutRecord = mod.buildRolloutRecord;
+      bscodeToJsonl = mod.toJsonl;
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      console.warn("T7-S2 SKIP: could not import bscode trajectoryExport:", err.message);
+      // Not a hard failure — bscode may not be built
+      return;
+    }
 
-      const r0 = buildRolloutRecord({
-        jobId: "job-test00000001",
-        jobSpec: { task: "add 3 and 4" },
-        sessionId: "session-12345678",
-        branchIndex: 0,
-        buildResult: { status: "success", ranAtMs: 1750000000000 },
+    const r0 = buildRolloutRecord({
+      jobId: "job-test00000001",
+      jobSpec: { task: "add 3 and 4" },
+      sessionId: "session-12345678",
+      branchIndex: 0,
+      buildResult: { status: "success", ranAtMs: 1750000000000 },
+    });
+
+    const r1 = buildRolloutRecord({
+      jobId: "job-test00000002",
+      jobSpec: { task: "add 3 and 4" },
+      sessionId: "session-12345678",
+      branchIndex: 1,
+      buildResult: { status: "failed", ranAtMs: 1750000000001 },
+    });
+
+    const jsonlStr = bscodeToJsonl([r0, r1]);
+    expect(jsonlStr.trim().split("\n").length).toBe(2);
+
+    const bscodeJsonlPath = join(tmpdir(), "t7-s2-bscode.jsonl");
+    writeFileSync(bscodeJsonlPath, jsonlStr);
+
+    // Verify bscode records have schema_version
+    const lines = jsonlStr.trim().split("\n");
+    for (const line of lines) {
+      const rec = JSON.parse(line) as { schema_version: string; provenance: { source: string } };
+      expect(rec.schema_version).toBe("rollout-wire/v1");
+      expect(rec.provenance.source).toBe("bscode");
+    }
+
+    // Write Python script to temp file to avoid `;` line-joining issues
+    const pyScriptPath2 = join(tmpdir(), "t7-s2-evomerge.py");
+    writeFileSync(
+      pyScriptPath2,
+      [
+        "import sys",
+        `sys.path.insert(0, '${EVOMERGE_SRC}')`,
+        "from datafactory.exporter import TrainingDataExporter",
+        "e = TrainingDataExporter(eval_items_path=None)",
+        `records = e.load_rollouts('${bscodeJsonlPath}')`,
+        "print(f'BSCODE_LOADED:{len(records)}')",
+        "for r in records:",
+        "    print(f'rec branch={r.branch_index} score={r.objective_score} rank={r.rank}')",
+      ].join("\n")
+    );
+
+    let pyOutput: string;
+    try {
+      pyOutput = execSync(`python3 "${pyScriptPath2}"`, {
+        encoding: "utf8",
+        timeout: 15_000,
       });
+    } catch (e: unknown) {
+      const err = e as { stdout?: string; stderr?: string; message?: string };
+      console.error("Python stderr:", err.stderr);
+      throw new Error(`Python failed: ${err.message}`);
+    }
 
-      const r1 = buildRolloutRecord({
-        jobId: "job-test00000002",
-        jobSpec: { task: "add 3 and 4" },
-        sessionId: "session-12345678",
-        branchIndex: 1,
-        buildResult: { status: "failed", ranAtMs: 1750000000001 },
-      });
+    console.log("  T7-S2 Python output:", pyOutput.trim());
+    expect(pyOutput).toContain("BSCODE_LOADED:2");
 
-      const jsonlStr = bscodeToJsonl([r0, r1]);
-      expect(jsonlStr.trim().split("\n").length).toBe(2);
-
-      const bscodeJsonlPath = join(tmpdir(), "t7-s2-bscode.jsonl");
-      writeFileSync(bscodeJsonlPath, jsonlStr);
-
-      // Verify bscode records have schema_version
-      const lines = jsonlStr.trim().split("\n");
-      for (const line of lines) {
-        const rec = JSON.parse(line) as { schema_version: string; provenance: { source: string } };
-        expect(rec.schema_version).toBe("rollout-wire/v1");
-        expect(rec.provenance.source).toBe("bscode");
-      }
-
-      // Write Python script to temp file to avoid `;` line-joining issues
-      const pyScriptPath2 = join(tmpdir(), "t7-s2-evomerge.py");
-      writeFileSync(
-        pyScriptPath2,
-        [
-          "import sys",
-          `sys.path.insert(0, '${EVOMERGE_SRC}')`,
-          "from datafactory.exporter import TrainingDataExporter",
-          "e = TrainingDataExporter(eval_items_path=None)",
-          `records = e.load_rollouts('${bscodeJsonlPath}')`,
-          "print(f'BSCODE_LOADED:{len(records)}')",
-          "for r in records:",
-          "    print(f'rec branch={r.branch_index} score={r.objective_score} rank={r.rank}')",
-        ].join("\n")
-      );
-
-      let pyOutput: string;
-      try {
-        pyOutput = execSync(`python3 "${pyScriptPath2}"`, {
-          encoding: "utf8",
-          timeout: 15_000,
-        });
-      } catch (e: unknown) {
-        const err = e as { stdout?: string; stderr?: string; message?: string };
-        console.error("Python stderr:", err.stderr);
-        throw new Error(`Python failed: ${err.message}`);
-      }
-
-      console.log("  T7-S2 Python output:", pyOutput.trim());
-      expect(pyOutput).toContain("BSCODE_LOADED:2");
-
-      const recLines = pyOutput.split("\n").filter((l) => l.startsWith("rec branch="));
-      expect(recLines.length).toBe(2);
-      console.log("T7-S2 PASS — evomerge loaded 2 bscode records");
-    },
-    30_000
-  );
+    const recLines = pyOutput.split("\n").filter((l) => l.startsWith("rec branch="));
+    expect(recLines.length).toBe(2);
+    console.log("T7-S2 PASS — evomerge loaded 2 bscode records");
+  }, 30_000);
 });
 
 // ── S3 — Schema drift detection ───────────────────────────────────────────────
@@ -272,14 +265,16 @@ describe("T7-S3 · Schema drift detection: wasmagent vs evomerge rollout-wire.sc
     // depending on whether the test is invoked from the repo root or from
     // tests/integration/ (turbo invokes from the package dir, which broke
     // the previous cwd-relative path).
-    const wasmagentSchemaPath =
-      `${import.meta.dir}/../../../packages/core/src/ranking/schemas/rollout-wire.schema.json`;
-    const evomergeSchemaPath =
-      "/tmp/evomerge-public-repo/src/datafactory/rollout-wire.schema.json";
+    const wasmagentSchemaPath = `${import.meta.dir}/../../../packages/core/src/ranking/schemas/rollout-wire.schema.json`;
+    const evomergeSchemaPath = "/tmp/evomerge-public-repo/src/datafactory/rollout-wire.schema.json";
 
     // Skip if local evomerge clone isn't present (CI doesn't have it at /tmp)
     if (!existsSync(evomergeSchemaPath)) {
-      console.log("T7-S3 SKIP — evomerge schema not found at", evomergeSchemaPath, "(CI environment)");
+      console.log(
+        "T7-S3 SKIP — evomerge schema not found at",
+        evomergeSchemaPath,
+        "(CI environment)"
+      );
       return;
     }
 

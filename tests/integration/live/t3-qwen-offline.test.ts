@@ -9,9 +9,9 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { z } from "zod";
 import { CodeAgent, JsKernel, OpenAIModel, ToolCallingAgent } from "@wasmagent/core";
 import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+import { z } from "zod";
 
 // ── Ollama availability check ─────────────────────────────────────────────────
 
@@ -65,8 +65,7 @@ describe("T3-S1 · ToolCallingAgent with qwen2.5:0.5b and add tool", () => {
         trajectory.push(ev);
         if (ev.event === "final_answer") {
           const data = ev.data as { answer: unknown };
-          finalAnswer =
-            typeof data.answer === "string" ? data.answer : JSON.stringify(data.answer);
+          finalAnswer = typeof data.answer === "string" ? data.answer : JSON.stringify(data.answer);
         }
       }
 
@@ -117,8 +116,7 @@ describe("T3-S2 · CodeAgent + JsKernel — first 5 primes (qwen2.5:0.5b)", () =
         trajectory.push(ev);
         if (ev.event === "final_answer") {
           const data = ev.data as { answer: unknown };
-          finalAnswer =
-            typeof data.answer === "string" ? data.answer : JSON.stringify(data.answer);
+          finalAnswer = typeof data.answer === "string" ? data.answer : JSON.stringify(data.answer);
         }
       }
 
@@ -170,42 +168,43 @@ describe("T3-S2 · CodeAgent + JsKernel — first 5 primes (qwen2.5:0.5b)", () =
 // Pure kernel test — no model required.
 
 describe("T3-S3 · QuickJSKernel — allowedHosts:[] blocks fetch", () => {
-  it(
-    "returns error or undefined (not a live HTTP response) when fetch is not injected",
-    async () => {
-      const kernel = new QuickJSKernel({ timeoutMs: 3_000 });
+  it("returns error or undefined (not a live HTTP response) when fetch is not injected", async () => {
+    const kernel = new QuickJSKernel({ timeoutMs: 3_000 });
 
-      // When allowedHosts is omitted or empty, fetch is NOT injected into the QuickJS
-      // context at all (it stays undefined). So the script will throw ReferenceError or
-      // return the string "undefined" from typeof.
-      // We also test with allowedHosts:[] explicitly (deny-all).
-      const result = await kernel.run(
-        "typeof fetch === 'function' ? fetch('https://example.com').then(r=>r.status) : 'fetch_not_available'",
-        { allowedHosts: [] }
+    // When allowedHosts is omitted or empty, fetch is NOT injected into the QuickJS
+    // context at all (it stays undefined). So the script will throw ReferenceError or
+    // return the string "undefined" from typeof.
+    // We also test with allowedHosts:[] explicitly (deny-all).
+    const result = await kernel.run(
+      "typeof fetch === 'function' ? fetch('https://example.com').then(r=>r.status) : 'fetch_not_available'",
+      { allowedHosts: [] }
+    );
+
+    console.log("T3-S3 result.output:", result.output);
+    console.log("T3-S3 result.isFinalAnswer:", result.isFinalAnswer);
+
+    // The test passes when:
+    // (a) output is "fetch_not_available" (fetch undefined — deny-all baseline), OR
+    // (b) result has an error embedded in output (e.g. "CapabilityDenied"), OR
+    // (c) output is not a valid HTTP status code number (200, 301, etc.)
+    const outputStr = String(result.output ?? "");
+    const isLiveHttpStatus =
+      typeof result.output === "number" && result.output >= 100 && result.output < 600;
+    expect(isLiveHttpStatus).toBe(false);
+
+    if (outputStr.includes("fetch_not_available") || result.output === "fetch_not_available") {
+      console.log("T3-S3 PASS: fetch correctly absent with empty allowedHosts.");
+    } else if (
+      outputStr.toLowerCase().includes("capabilitydenied") ||
+      outputStr.toLowerCase().includes("not in allowedhosts")
+    ) {
+      console.log("T3-S3 PASS: fetch present but blocked by CapabilityDenied.");
+    } else {
+      console.log(
+        "T3-S3 output did not match expected patterns but is not a live HTTP status — pass."
       );
+    }
 
-      console.log("T3-S3 result.output:", result.output);
-      console.log("T3-S3 result.isFinalAnswer:", result.isFinalAnswer);
-
-      // The test passes when:
-      // (a) output is "fetch_not_available" (fetch undefined — deny-all baseline), OR
-      // (b) result has an error embedded in output (e.g. "CapabilityDenied"), OR
-      // (c) output is not a valid HTTP status code number (200, 301, etc.)
-      const outputStr = String(result.output ?? "");
-      const isLiveHttpStatus =
-        typeof result.output === "number" && result.output >= 100 && result.output < 600;
-      expect(isLiveHttpStatus).toBe(false);
-
-      if (outputStr.includes("fetch_not_available") || result.output === "fetch_not_available") {
-        console.log("T3-S3 PASS: fetch correctly absent with empty allowedHosts.");
-      } else if (outputStr.toLowerCase().includes("capabilitydenied") || outputStr.toLowerCase().includes("not in allowedhosts")) {
-        console.log("T3-S3 PASS: fetch present but blocked by CapabilityDenied.");
-      } else {
-        console.log("T3-S3 output did not match expected patterns but is not a live HTTP status — pass.");
-      }
-
-      await kernel[Symbol.asyncDispose]();
-    },
-    15_000
-  );
+    await kernel[Symbol.asyncDispose]();
+  }, 15_000);
 });

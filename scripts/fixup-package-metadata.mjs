@@ -13,8 +13,15 @@
  *   node scripts/fixup-package-metadata.mjs            # apply
  *   node scripts/fixup-package-metadata.mjs --check    # exit 1 if any package would change
  */
-import { readFileSync, writeFileSync, readdirSync, statSync, existsSync, copyFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import {
+  copyFileSync,
+  existsSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

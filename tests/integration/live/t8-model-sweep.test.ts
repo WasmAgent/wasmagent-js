@@ -14,8 +14,8 @@
 import { describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { z } from "zod";
 import { OpenAIModel, ToolCallingAgent } from "@wasmagent/core";
+import { z } from "zod";
 
 // ── Ollama availability ───────────────────────────────────────────────────────
 
@@ -149,9 +149,20 @@ async function runTask(modelId: string, task: Task, timeoutMs = 30_000): Promise
     // Ollama returns 400 when a model's chat template doesn't support tool-calling.
     // Treat as "tool calling not supported" rather than a hard test failure.
     const errMsg = err instanceof Error ? err.message : String(err);
-    if (errMsg.includes("400") || errMsg.includes("Unable to generate parser") || errMsg.includes("invalid_request_error")) {
-      console.warn(`  TOOL_UNSUPPORTED: ${modelId} — model template incompatible with tool-calling`);
-      return { calledTool: false, finalAnswer: "TOOL_UNSUPPORTED", score: 0, events: ["TOOL_UNSUPPORTED"] };
+    if (
+      errMsg.includes("400") ||
+      errMsg.includes("Unable to generate parser") ||
+      errMsg.includes("invalid_request_error")
+    ) {
+      console.warn(
+        `  TOOL_UNSUPPORTED: ${modelId} — model template incompatible with tool-calling`
+      );
+      return {
+        calledTool: false,
+        finalAnswer: "TOOL_UNSUPPORTED",
+        score: 0,
+        events: ["TOOL_UNSUPPORTED"],
+      };
     }
     throw err;
   }
@@ -245,15 +256,21 @@ describe("T8 · evomerge-t10-1b7 version sweep — DPO training quality comparis
       const degrading = !allZero && scores.every((s, i) => i === 0 || s <= scores[i - 1]);
 
       if (allUnsupported) {
-        console.log("  TREND: All models returned NO_TOOL_SUPPORT — Ollama chat templates do not support tool-calling for these evomerge models");
-        console.log("  NOTE: Tool-calling evaluation requires models with compatible Ollama chat templates (e.g. Qwen2.5 or Gemma4 format)");
+        console.log(
+          "  TREND: All models returned NO_TOOL_SUPPORT — Ollama chat templates do not support tool-calling for these evomerge models"
+        );
+        console.log(
+          "  NOTE: Tool-calling evaluation requires models with compatible Ollama chat templates (e.g. Qwen2.5 or Gemma4 format)"
+        );
       } else if (improving) {
         console.log("  TREND: Monotonically improving — DPO iterations appear beneficial");
       } else if (degrading) {
         console.log("  TREND: Monotonically degrading — review DPO data quality");
       } else {
         const best = SWEEP_MODELS[scores.indexOf(Math.max(...scores))];
-        console.log(`  TREND: Non-monotonic — best version: ${best} (score=${Math.max(...scores).toFixed(1)})`);
+        console.log(
+          `  TREND: Non-monotonic — best version: ${best} (score=${Math.max(...scores).toFixed(1)})`
+        );
       }
 
       // ── Write markdown report ─────────────────────────────────────────────
@@ -265,10 +282,8 @@ describe("T8 · evomerge-t10-1b7 version sweep — DPO training quality comparis
 
       const now = new Date().toISOString().slice(0, 19).replace("T", " ");
 
-      const tableHeader =
-        `| Model | ${TASKS.map((t) => t.label).join(" | ")} | Score |`;
-      const tableSep =
-        `|---|${TASKS.map(() => "---").join("|")}|---|`;
+      const tableHeader = `| Model | ${TASKS.map((t) => t.label).join(" | ")} | Score |`;
+      const tableSep = `|---|${TASKS.map(() => "---").join("|")}|---|`;
       const tableRows = SWEEP_MODELS.map((modelId) => {
         const cells = results[modelId].map((r) => cellLabel(r));
         const total = `${totalScores[modelId].toFixed(1)}/3`;
@@ -278,19 +293,29 @@ describe("T8 · evomerge-t10-1b7 version sweep — DPO training quality comparis
 
       const findingsLines: string[] = [];
       if (allUnsupported) {
-        findingsLines.push("- **All models returned `NO_TOOL_SUPPORT`**: Ollama's structured output parser cannot process these models' chat templates for tool-calling.");
-        findingsLines.push("- **Tool-calling DPO evaluation not possible** via Ollama OpenAI-compatible endpoint for evomerge-t10-1b7 models.");
-        findingsLines.push("- **Recommended next step**: Evaluate tool-calling ability using a model with a compatible chat template (e.g. qwen2.5 or gemma4 base), or test evomerge models on direct generation tasks (QA without tools).");
+        findingsLines.push(
+          "- **All models returned `NO_TOOL_SUPPORT`**: Ollama's structured output parser cannot process these models' chat templates for tool-calling."
+        );
+        findingsLines.push(
+          "- **Tool-calling DPO evaluation not possible** via Ollama OpenAI-compatible endpoint for evomerge-t10-1b7 models."
+        );
+        findingsLines.push(
+          "- **Recommended next step**: Evaluate tool-calling ability using a model with a compatible chat template (e.g. qwen2.5 or gemma4 base), or test evomerge models on direct generation tasks (QA without tools)."
+        );
       } else if (improving) {
         findingsLines.push("- **DPO training shows consistent improvement** across all versions.");
-        findingsLines.push(`- Final version (${SWEEP_MODELS[SWEEP_MODELS.length - 1].replace(":latest", "")}) achieved best score.`);
+        findingsLines.push(
+          `- Final version (${SWEEP_MODELS[SWEEP_MODELS.length - 1].replace(":latest", "")}) achieved best score.`
+        );
       } else if (degrading) {
         findingsLines.push("- **Scores degraded** across versions — review DPO data pipeline.");
         findingsLines.push("- Earlier versions may have been better starting points.");
       } else {
         const bestIdx = scores.indexOf(Math.max(...scores));
         const worstIdx = scores.indexOf(Math.min(...scores));
-        findingsLines.push(`- **Non-monotonic progression**: best=${SWEEP_MODELS[bestIdx].replace(":latest", "")} (${scores[bestIdx].toFixed(1)}/3), worst=${SWEEP_MODELS[worstIdx].replace(":latest", "")} (${scores[worstIdx].toFixed(1)}/3).`);
+        findingsLines.push(
+          `- **Non-monotonic progression**: best=${SWEEP_MODELS[bestIdx].replace(":latest", "")} (${scores[bestIdx].toFixed(1)}/3), worst=${SWEEP_MODELS[worstIdx].replace(":latest", "")} (${scores[worstIdx].toFixed(1)}/3).`
+        );
         findingsLines.push("- DPO improvements are not consistent across iterations.");
       }
 
@@ -298,12 +323,16 @@ describe("T8 · evomerge-t10-1b7 version sweep — DPO training quality comparis
         results[m].some((r) => r.finalAnswer === "TIMEOUT")
       );
       if (timeoutModels.length > 0) {
-        findingsLines.push(`- Models that hit 30s timeout: ${timeoutModels.map((m) => m.replace(":latest", "")).join(", ")}.`);
+        findingsLines.push(
+          `- Models that hit 30s timeout: ${timeoutModels.map((m) => m.replace(":latest", "")).join(", ")}.`
+        );
       }
 
       const naModels = SWEEP_MODELS.filter((m) => !availability[m]);
       if (naModels.length > 0) {
-        findingsLines.push(`- Models not available in Ollama: ${naModels.map((m) => m.replace(":latest", "")).join(", ")}.`);
+        findingsLines.push(
+          `- Models not available in Ollama: ${naModels.map((m) => m.replace(":latest", "")).join(", ")}.`
+        );
       }
 
       const reportContent = `# evomerge t10-1b7 Model Sweep — Tool Calling Accuracy
@@ -379,10 +408,15 @@ describe("T8-S2 · Pure generation QA sweep (no tool-calling)", () => {
       async function rawGenerate(model: string, prompt: string): Promise<string> {
         const r = await fetch("http://localhost:11434/api/generate", {
           method: "POST",
-          body: JSON.stringify({ model, prompt, stream: false, options: { num_predict: 50, temperature: 0 } }),
+          body: JSON.stringify({
+            model,
+            prompt,
+            stream: false,
+            options: { num_predict: 50, temperature: 0 },
+          }),
           signal: AbortSignal.timeout(25_000),
         });
-        const d = await r.json() as { response: string };
+        const d = (await r.json()) as { response: string };
         return (d.response ?? "").trim().slice(0, 80);
       }
 
@@ -396,20 +430,26 @@ describe("T8-S2 · Pure generation QA sweep (no tool-calling)", () => {
 
       for (const modelId of MODELS) {
         const available = await ollamaHas(modelId.split(":")[0]);
-        if (!available) { results[modelId] = -1; console.log(`  SKIP ${modelId} (not loaded)`); continue; }
+        if (!available) {
+          results[modelId] = -1;
+          console.log(`  SKIP ${modelId} (not loaded)`);
+          continue;
+        }
 
         let score = 0;
         for (const { prompt, expected } of tasks) {
           const answer = await rawGenerate(modelId, prompt);
           if (answer.includes(expected)) score++;
-          console.log(`  ${modelId.split("-").slice(-1)[0]} | "${prompt}" → "${answer.slice(0,40)}" [${answer.includes(expected) ? "✓" : "✗"}]`);
+          console.log(
+            `  ${modelId.split("-").slice(-1)[0]} | "${prompt}" → "${answer.slice(0, 40)}" [${answer.includes(expected) ? "✓" : "✗"}]`
+          );
         }
         results[modelId] = score;
       }
 
       console.log("\nQA Sweep results:", results);
       // At least one model must have loaded (not all -1)
-      const loaded = Object.values(results).filter(v => v >= 0);
+      const loaded = Object.values(results).filter((v) => v >= 0);
       expect(loaded.length).toBeGreaterThan(0);
       // Log without hard assertions on score (observational)
     },

@@ -20,26 +20,24 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { z } from "zod";
 import type { Model, StreamEvent, ToolDefinition } from "@wasmagent/core";
+import type { RolloutBranchResult, RolloutRecord } from "@wasmagent/core/beta";
 import {
   DEFAULT_REWARD_FUNCTIONS,
   RolloutForkRunner,
   RolloutRanker,
   toDpoRecord,
-  toPpoRecords,
   toJsonl,
+  toPpoRecords,
 } from "@wasmagent/core/beta";
-import type { RolloutBranchResult, RolloutRecord } from "@wasmagent/core/beta";
+import { z } from "zod";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Infer objective score from tool output in toolCallSequence. */
 function scoreFromToolOutput(r: RolloutBranchResult): 0 | 1 {
   const resultEvent = r.toolCallSequence.find((e) => e.event === "tool_result");
-  const output = resultEvent
-    ? String((resultEvent.data as { output: unknown }).output ?? "")
-    : "";
+  const output = resultEvent ? String((resultEvent.data as { output: unknown }).output ?? "") : "";
   return output.includes("exit_code:0") ? 1 : 0;
 }
 
@@ -388,8 +386,9 @@ describe("RLAIF adversarial edge cases", () => {
       expect(toolCalls.length).toBe(NUM_TOOL_CALLS);
       // step indices must be intact (no truncation)
       for (let i = 0; i < toolCalls.length; i++) {
-        const step = (toolCalls[i]!.data as { args?: { step?: number }; input?: { step?: number } })
-          .args?.step ?? (toolCalls[i]!.data as { input?: { step?: number } }).input?.step;
+        const step =
+          (toolCalls[i]!.data as { args?: { step?: number }; input?: { step?: number } }).args
+            ?.step ?? (toolCalls[i]!.data as { input?: { step?: number } }).input?.step;
         expect(typeof step === "number" || step === undefined).toBe(true);
       }
     }

@@ -91,9 +91,7 @@ for (const target of TARGETS) {
       if (BAD_BYTES.has(data[i])) {
         const { line, col } = lineColOf(data, i);
         const rel = relative(ROOT, file);
-        console.error(
-          `${rel}:${line}:${col}  ${describeByte(data[i])} byte at offset ${i}`
-        );
+        console.error(`${rel}:${line}:${col}  ${describeByte(data[i])} byte at offset ${i}`);
         errors++;
         break; // one report per file is enough
       }

@@ -12,8 +12,8 @@
  *   node scripts/replace-workspace-deps.mjs --check  # exit 1 if any workspace:* found
  */
 
-import { readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -28,7 +28,9 @@ for (const name of readdirSync(packagesDir)) {
   try {
     const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
     if (pkg.name && pkg.version) versionMap.set(pkg.name, pkg.version);
-  } catch { /* skip */ }
+  } catch {
+    /* skip */
+  }
 }
 
 let violations = 0;
@@ -41,11 +43,18 @@ for (const name of readdirSync(packagesDir).sort()) {
   let pkg;
   try {
     pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
-  } catch { continue; }
+  } catch {
+    continue;
+  }
   if (pkg.private) continue;
 
   let changed = false;
-  for (const field of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
+  for (const field of [
+    "dependencies",
+    "devDependencies",
+    "peerDependencies",
+    "optionalDependencies",
+  ]) {
     if (!pkg[field]) continue;
     for (const [dep, ver] of Object.entries(pkg[field])) {
       if (typeof ver === "string" && ver.startsWith("workspace:")) {
@@ -57,7 +66,9 @@ for (const name of readdirSync(packagesDir).sort()) {
         }
         const newVer = `^${resolved}`;
         if (checkOnly) {
-          console.error(`  VIOLATION: ${pkg.name} ${field}.${dep} = "${ver}" (should be "${newVer}")`);
+          console.error(
+            `  VIOLATION: ${pkg.name} ${field}.${dep} = "${ver}" (should be "${newVer}")`
+          );
           violations++;
         } else {
           pkg[field][dep] = newVer;

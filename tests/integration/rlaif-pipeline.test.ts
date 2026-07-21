@@ -16,18 +16,18 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { z } from "zod";
 import type { Model, StreamEvent, ToolDefinition } from "@wasmagent/core";
 import { BuildPassesVerifier } from "@wasmagent/core";
+import type { RolloutRecord } from "@wasmagent/core/beta";
 import {
   DEFAULT_REWARD_FUNCTIONS,
   RolloutForkRunner,
   RolloutRanker,
   toDpoRecord,
-  toPpoRecords,
   toJsonl,
+  toPpoRecords,
 } from "@wasmagent/core/beta";
-import type { RolloutRecord } from "@wasmagent/core/beta";
+import { z } from "zod";
 
 // ── Mock helpers ──────────────────────────────────────────────────────────────
 
@@ -328,7 +328,9 @@ describe("RLAIF end-to-end pipeline", () => {
       branchResults.push(r);
     }
 
-    const ranked = [{ branchIndex: 0, rank: 1, objectiveScore: 1 as const, judgeScore: 5, totalScore: 1.15 }];
+    const ranked = [
+      { branchIndex: 0, rank: 1, objectiveScore: 1 as const, judgeScore: 5, totalScore: 1.15 },
+    ];
     const dpo = toDpoRecord(branchResults, ranked, 0);
     expect(dpo).toBeNull();
 

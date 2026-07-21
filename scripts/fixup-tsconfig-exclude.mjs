@@ -3,8 +3,8 @@
  * Ensure every package's tsconfig.json excludes *.test.ts so the npm tarball
  * does not ship test files. Idempotent.
  */
-import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

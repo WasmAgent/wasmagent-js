@@ -60,7 +60,7 @@ while (attempt < MAX_ATTEMPTS) {
   if (attempt > 1) {
     const delay = BASE_DELAY_MS * 2 ** (attempt - 2);
     console.log(
-      `\n[retry-changeset-version] attempt ${attempt}/${MAX_ATTEMPTS} after ${delay} ms backoff…`,
+      `\n[retry-changeset-version] attempt ${attempt}/${MAX_ATTEMPTS} after ${delay} ms backoff…`
     );
     await sleep(delay);
   }
@@ -76,18 +76,18 @@ while (attempt < MAX_ATTEMPTS) {
 
   if (!isTransient(output)) {
     console.error(
-      `\n[retry-changeset-version] non-transient failure (exit ${code}); not retrying.`,
+      `\n[retry-changeset-version] non-transient failure (exit ${code}); not retrying.`
     );
     process.exit(code ?? 1);
   }
 
   console.warn(
-    `\n[retry-changeset-version] transient GraphQL/node-fetch error on attempt ${attempt} (see https://github.com/changesets/changesets/issues/2123).`,
+    `\n[retry-changeset-version] transient GraphQL/node-fetch error on attempt ${attempt} (see https://github.com/changesets/changesets/issues/2123).`
   );
 }
 
 console.error(
   `\n[retry-changeset-version] giving up after ${MAX_ATTEMPTS} attempts. ` +
-    `If this persists, consider upgrading to @changesets/cli v3 prerelease which removed node-fetch@2.`,
+    `If this persists, consider upgrading to @changesets/cli v3 prerelease which removed node-fetch@2.`
 );
 process.exit(1);

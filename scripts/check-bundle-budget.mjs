@@ -13,8 +13,8 @@
  * Exit 0 = all within budget; Exit 1 = one or more over budget.
  */
 
-import { statSync, readdirSync, existsSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { existsSync, readdirSync, statSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,7 +27,9 @@ function dirSize(dir) {
     if (entry.isFile()) {
       try {
         total += statSync(resolve(entry.parentPath ?? entry.path, entry.name)).size;
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
   }
   return total;

@@ -18,9 +18,9 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { z } from "zod";
 import type { Model, StreamEvent, ToolDefinition } from "@wasmagent/core";
 import { InMemoryVectorStore } from "@wasmagent/core";
+import type { RolloutBranchResult, RolloutRecord } from "@wasmagent/core/beta";
 import {
   DEFAULT_REWARD_FUNCTIONS,
   RolloutForkRunner,
@@ -29,7 +29,7 @@ import {
   toDpoRecord,
   toPpoRecords,
 } from "@wasmagent/core/beta";
-import type { RolloutBranchResult, RolloutRecord } from "@wasmagent/core/beta";
+import { z } from "zod";
 
 // ── Mock helpers ──────────────────────────────────────────────────────────────
 
@@ -303,8 +303,7 @@ describe("RLAIF multi-turn memory and sequential rollouts", () => {
       rolloutId: r.rolloutId,
       branchIndex: r.branchIndex,
       finalAnswer: r.finalAnswer,
-      objectiveScore: (r.toolCallSequence
-        .find((e) => e.event === "tool_result")
+      objectiveScore: (r.toolCallSequence.find((e) => e.event === "tool_result")
         ? String(
             (
               r.toolCallSequence.find((e) => e.event === "tool_result")!.data as {
@@ -322,8 +321,7 @@ describe("RLAIF multi-turn memory and sequential rollouts", () => {
       rolloutId: r.rolloutId,
       branchIndex: r.branchIndex,
       finalAnswer: r.finalAnswer,
-      objectiveScore: (r.toolCallSequence
-        .find((e) => e.event === "tool_result")
+      objectiveScore: (r.toolCallSequence.find((e) => e.event === "tool_result")
         ? String(
             (
               r.toolCallSequence.find((e) => e.event === "tool_result")!.data as {

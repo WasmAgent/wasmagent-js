@@ -77,9 +77,7 @@ function callTurn(name, args, narrative) {
   const msg = {
     role: "assistant",
     content: narrative ?? "",
-    tool_calls: [
-      { id, type: "function", function: { name, arguments: JSON.stringify(args) } },
-    ],
+    tool_calls: [{ id, type: "function", function: { name, arguments: JSON.stringify(args) } }],
   };
   return { msg, id };
 }
@@ -117,8 +115,8 @@ const records = [];
         c.msg,
         toolTurn(c.id, { content: "Project Aurora-Δ — internal handbook v17.\n" }),
         finalTurn("Project Aurora-Δ — internal handbook v17."),
-      ],
-    ),
+      ]
+    )
   );
 }
 // 2. fs-1step-read variant (different filename — synth-* id)
@@ -130,12 +128,8 @@ const records = [];
       "synth-fs-1step-read-1",
       "fs-1step",
       "Read the file at docs/spec.md and return its contents.",
-      [
-        c.msg,
-        toolTurn(c.id, { content: "Spec v3.1\n" }),
-        finalTurn("Spec v3.1"),
-      ],
-    ),
+      [c.msg, toolTurn(c.id, { content: "Spec v3.1\n" }), finalTurn("Spec v3.1")]
+    )
   );
 }
 // 3. fs-2step-rename canonical
@@ -143,7 +137,7 @@ const records = [];
   const c = callTurn(
     "move_file",
     { from: "notes/draft.md", to: "notes/final.md" },
-    "I'll move notes/draft.md to notes/final.md.",
+    "I'll move notes/draft.md to notes/final.md."
   );
   records.push(
     rec(
@@ -151,8 +145,8 @@ const records = [];
       "fs-2step-rename",
       "fs-2step",
       "Rename notes/draft.md to notes/final.md.",
-      [c.msg, toolTurn(c.id, { ok: true }), finalTurn()],
-    ),
+      [c.msg, toolTurn(c.id, { ok: true }), finalTurn()]
+    )
   );
 }
 // 4. fs-2step-rename WITH RECOVERY (path-shape failure mode demo)
@@ -160,17 +154,17 @@ const records = [];
   const c1 = callTurn(
     "move_file",
     { from: "/notes/draft.md", to: "/notes/final.md" },
-    "I'll try to move the file.",
+    "I'll try to move the file."
   );
   const c2 = callTurn(
     "list_files",
     {},
-    "Got an error about path. Let me list the actual files first.",
+    "Got an error about path. Let me list the actual files first."
   );
   const c3 = callTurn(
     "move_file",
     { from: "notes/draft.md", to: "notes/final.md" },
-    "Now I see the path is without the leading slash. Retry with the correct form.",
+    "Now I see the path is without the leading slash. Retry with the correct form."
   );
   records.push(
     rec(
@@ -187,47 +181,40 @@ const records = [];
         toolTurn(c3.id, { ok: true }),
         finalTurn(),
       ],
-      "recovery",
-    ),
+      "recovery"
+    )
   );
 }
 // 5. fs-2step-write canonical
 {
-  const c = callTurn(
-    "write_file",
-    { path: "logs/today.txt", content: "startup complete" },
-  );
+  const c = callTurn("write_file", { path: "logs/today.txt", content: "startup complete" });
   records.push(
     rec(
       "fs-2step-write-canonical",
       "fs-2step-write",
       "fs-2step",
       "Create a new file at logs/today.txt with the content 'startup complete'.",
-      [c.msg, toolTurn(c.id, { ok: true }), finalTurn()],
-    ),
+      [c.msg, toolTurn(c.id, { ok: true }), finalTurn()]
+    )
   );
 }
 // 6. fs-3step-archive canonical (state summary)
 {
-  const c1 = callTurn(
-    "list_files",
-    {},
-    "Let me see what files exist in inbox/.",
-  );
+  const c1 = callTurn("list_files", {}, "Let me see what files exist in inbox/.");
   const c2 = callTurn(
     "move_file",
     { from: "inbox/a.txt", to: "archive/a.txt" },
-    "Three files in inbox/: a.txt, b.txt, c.txt. Moving a.txt first.",
+    "Three files in inbox/: a.txt, b.txt, c.txt. Moving a.txt first."
   );
   const c3 = callTurn(
     "move_file",
     { from: "inbox/b.txt", to: "archive/b.txt" },
-    "a.txt moved. Moving b.txt.",
+    "a.txt moved. Moving b.txt."
   );
   const c4 = callTurn(
     "move_file",
     { from: "inbox/c.txt", to: "archive/c.txt" },
-    "b.txt moved. Moving c.txt.",
+    "b.txt moved. Moving c.txt."
   );
   records.push(
     rec(
@@ -238,13 +225,16 @@ const records = [];
       [
         c1.msg,
         toolTurn(c1.id, { paths: ["inbox/a.txt", "inbox/b.txt", "inbox/c.txt", "keep.txt"] }),
-        c2.msg, toolTurn(c2.id, { ok: true }),
-        c3.msg, toolTurn(c3.id, { ok: true }),
-        c4.msg, toolTurn(c4.id, { ok: true }),
+        c2.msg,
+        toolTurn(c2.id, { ok: true }),
+        c3.msg,
+        toolTurn(c3.id, { ok: true }),
+        c4.msg,
+        toolTurn(c4.id, { ok: true }),
         finalTurn(),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 // 7. fs-3step-cleanup
@@ -253,7 +243,7 @@ const records = [];
   const c2 = callTurn(
     "delete_file",
     { path: "a.tmp" },
-    "Three .tmp files: a.tmp, b.tmp, c.tmp. Deleting them.",
+    "Three .tmp files: a.tmp, b.tmp, c.tmp. Deleting them."
   );
   const c3 = callTurn("delete_file", { path: "b.tmp" });
   const c4 = callTurn("delete_file", { path: "c.tmp" });
@@ -264,14 +254,18 @@ const records = [];
       "fs-3step",
       "Delete every .tmp file in the sandbox.",
       [
-        c1.msg, toolTurn(c1.id, { paths: ["a.tmp", "b.tmp", "c.tmp", "keep.txt"] }),
-        c2.msg, toolTurn(c2.id, { ok: true }),
-        c3.msg, toolTurn(c3.id, { ok: true }),
-        c4.msg, toolTurn(c4.id, { ok: true }),
+        c1.msg,
+        toolTurn(c1.id, { paths: ["a.tmp", "b.tmp", "c.tmp", "keep.txt"] }),
+        c2.msg,
+        toolTurn(c2.id, { ok: true }),
+        c3.msg,
+        toolTurn(c3.id, { ok: true }),
+        c4.msg,
+        toolTurn(c4.id, { ok: true }),
         finalTurn(),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 // 8. fs-3step-summarise-write
@@ -279,8 +273,11 @@ const records = [];
   const c1 = callTurn("read_file", { path: "notes/handbook.md" });
   const c2 = callTurn(
     "write_file",
-    { path: "notes/summary.md", content: "Summary: Project Aurora-Δ handbook v17 covers internal procedures." },
-    "Got the handbook. Project codename is Aurora. Writing summary.",
+    {
+      path: "notes/summary.md",
+      content: "Summary: Project Aurora-Δ handbook v17 covers internal procedures.",
+    },
+    "Got the handbook. Project codename is Aurora. Writing summary."
   );
   records.push(
     rec(
@@ -295,14 +292,18 @@ const records = [];
         toolTurn(c2.id, { ok: true }),
         finalTurn(),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 // 9. fs-4step-organise (state summary stronger demo)
 {
   const c1 = callTurn("list_files", {});
-  const c2 = callTurn("move_file", { from: "alpha.log", to: "logs/alpha.log" }, "Two .log files (alpha, beta) and two .txt (gamma, delta). Starting with alpha.log.");
+  const c2 = callTurn(
+    "move_file",
+    { from: "alpha.log", to: "logs/alpha.log" },
+    "Two .log files (alpha, beta) and two .txt (gamma, delta). Starting with alpha.log."
+  );
   const c3 = callTurn("move_file", { from: "beta.log", to: "logs/beta.log" });
   const c4 = callTurn("move_file", { from: "gamma.txt", to: "docs/gamma.txt" });
   const c5 = callTurn("move_file", { from: "delta.txt", to: "docs/delta.txt" });
@@ -313,15 +314,22 @@ const records = [];
       "fs-4step",
       "There are .log and .txt files in /. Move every .log into logs/ (same filename) and every .txt into docs/ (same filename). Other files untouched.",
       [
-        c1.msg, toolTurn(c1.id, { paths: ["alpha.log", "beta.log", "gamma.txt", "delta.txt", "binary.bin"] }),
-        c2.msg, toolTurn(c2.id, { ok: true }),
-        c3.msg, toolTurn(c3.id, { ok: true }),
-        c4.msg, toolTurn(c4.id, { ok: true }),
-        c5.msg, toolTurn(c5.id, { ok: true }),
+        c1.msg,
+        toolTurn(c1.id, {
+          paths: ["alpha.log", "beta.log", "gamma.txt", "delta.txt", "binary.bin"],
+        }),
+        c2.msg,
+        toolTurn(c2.id, { ok: true }),
+        c3.msg,
+        toolTurn(c3.id, { ok: true }),
+        c4.msg,
+        toolTurn(c4.id, { ok: true }),
+        c5.msg,
+        toolTurn(c5.id, { ok: true }),
         finalTurn(),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 // 10. fs-4step-merge
@@ -331,7 +339,7 @@ const records = [];
   const c3 = callTurn(
     "write_file",
     { path: "merged.txt", content: "Hello, world!" },
-    "Got both parts. Writing the concatenation.",
+    "Got both parts. Writing the concatenation."
   );
   const c4 = callTurn("delete_file", { path: "part1.txt" });
   const c5 = callTurn("delete_file", { path: "part2.txt" });
@@ -342,15 +350,20 @@ const records = [];
       "fs-4step",
       "Merge the contents of part1.txt and part2.txt into one file at merged.txt (concatenated in that order, no separator), then delete the originals.",
       [
-        c1.msg, toolTurn(c1.id, { content: "Hello, " }),
-        c2.msg, toolTurn(c2.id, { content: "world!" }),
-        c3.msg, toolTurn(c3.id, { ok: true }),
-        c4.msg, toolTurn(c4.id, { ok: true }),
-        c5.msg, toolTurn(c5.id, { ok: true }),
+        c1.msg,
+        toolTurn(c1.id, { content: "Hello, " }),
+        c2.msg,
+        toolTurn(c2.id, { content: "world!" }),
+        c3.msg,
+        toolTurn(c3.id, { ok: true }),
+        c4.msg,
+        toolTurn(c4.id, { ok: true }),
+        c5.msg,
+        toolTurn(c5.id, { ok: true }),
         finalTurn(),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 
@@ -368,8 +381,8 @@ const records = [];
         c.msg,
         toolTurn(c.id, { events: [{ id: "1", title: "standup", startMin: 600, endMin: 630 }] }),
         finalTurn("standup at 10:00 (30 min)"),
-      ],
-    ),
+      ]
+    )
   );
 }
 // 2. cal-2step-create
@@ -386,8 +399,8 @@ const records = [];
       "cal-2step-create",
       "cal-2step",
       "Create a 30-minute event titled 'Lunch' on 2026-07-02 starting at 12:30.",
-      [c.msg, toolTurn(c.id, { id: "2" }), finalTurn()],
-    ),
+      [c.msg, toolTurn(c.id, { id: "2" }), finalTurn()]
+    )
   );
 }
 // 3. cal-2step-delete
@@ -396,7 +409,7 @@ const records = [];
   const c2 = callTurn(
     "delete_event",
     { id: "1" },
-    "The standup event on 2026-07-03 is id=1. Deleting.",
+    "The standup event on 2026-07-03 is id=1. Deleting."
   );
   records.push(
     rec(
@@ -405,15 +418,19 @@ const records = [];
       "cal-2step",
       "Delete the event titled 'standup' on 2026-07-03.",
       [
-        c1.msg, toolTurn(c1.id, { events: [
-          { id: "1", title: "standup", startMin: 540, endMin: 570 },
-          { id: "2", title: "review", startMin: 900, endMin: 960 },
-        ]}),
-        c2.msg, toolTurn(c2.id, { ok: true }),
+        c1.msg,
+        toolTurn(c1.id, {
+          events: [
+            { id: "1", title: "standup", startMin: 540, endMin: 570 },
+            { id: "2", title: "review", startMin: 900, endMin: 960 },
+          ],
+        }),
+        c2.msg,
+        toolTurn(c2.id, { ok: true }),
         finalTurn(),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 // 4. cal-3step-find-and-book
@@ -422,7 +439,7 @@ const records = [];
   const c2 = callTurn(
     "create_event",
     { title: "1:1", day: "2026-07-04", startMin: 660, endMin: 690 },
-    "First free slot is 11:00. Booking the 1:1 there.",
+    "First free slot is 11:00. Booking the 1:1 there."
   );
   records.push(
     rec(
@@ -431,12 +448,14 @@ const records = [];
       "cal-3step",
       "Find a free 30-minute slot on 2026-07-04 and book a meeting titled '1:1' there.",
       [
-        c1.msg, toolTurn(c1.id, { startMin: 660 }),
-        c2.msg, toolTurn(c2.id, { id: "3" }),
+        c1.msg,
+        toolTurn(c1.id, { startMin: 660 }),
+        c2.msg,
+        toolTurn(c2.id, { id: "3" }),
         finalTurn(),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 // 5. cal-3step-reschedule
@@ -445,10 +464,13 @@ const records = [];
   const c2 = callTurn(
     "delete_event",
     { id: "1" },
-    "review on 2026-07-05 is id=1. Deleting then re-creating at 16:00.",
+    "review on 2026-07-05 is id=1. Deleting then re-creating at 16:00."
   );
   const c3 = callTurn("create_event", {
-    title: "review", day: "2026-07-05", startMin: 960, endMin: 1020,
+    title: "review",
+    day: "2026-07-05",
+    startMin: 960,
+    endMin: 1020,
   });
   records.push(
     rec(
@@ -457,13 +479,16 @@ const records = [];
       "cal-3step",
       "Reschedule the 'review' meeting on 2026-07-05 from 14:00–15:00 to 16:00–17:00 the same day.",
       [
-        c1.msg, toolTurn(c1.id, { events: [{ id: "1", title: "review", startMin: 840, endMin: 900 }] }),
-        c2.msg, toolTurn(c2.id, { ok: true }),
-        c3.msg, toolTurn(c3.id, { id: "2" }),
+        c1.msg,
+        toolTurn(c1.id, { events: [{ id: "1", title: "review", startMin: 840, endMin: 900 }] }),
+        c2.msg,
+        toolTurn(c2.id, { ok: true }),
+        c3.msg,
+        toolTurn(c3.id, { id: "2" }),
         finalTurn(),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 
@@ -477,8 +502,8 @@ const records = [];
       "cart-1step-add",
       "cart-1step",
       "Add 1 unit of sku 'A1' to the cart.",
-      [c.msg, toolTurn(c.id, { ok: true }), finalTurn()],
-    ),
+      [c.msg, toolTurn(c.id, { ok: true }), finalTurn()]
+    )
   );
 }
 // 2. cart-2step-add-and-checkout
@@ -492,11 +517,13 @@ const records = [];
       "cart-2step",
       "Add 2 units of sku 'A1' to the cart, then check out.",
       [
-        c1.msg, toolTurn(c1.id, { ok: true }),
-        c2.msg, toolTurn(c2.id, { total: 10 }),
+        c1.msg,
+        toolTurn(c1.id, { ok: true }),
+        c2.msg,
+        toolTurn(c2.id, { total: 10 }),
         finalTurn("Total: 10"),
-      ],
-    ),
+      ]
+    )
   );
 }
 // 3. cart-3step-budget (premature termination demo)
@@ -505,7 +532,7 @@ const records = [];
   const c2 = callTurn(
     "add_to_cart",
     { sku: "A2", qty: 1 },
-    "Most expensive item is A2 (beta @ 12). Adding it.",
+    "Most expensive item is A2 (beta @ 12). Adding it."
   );
   const c3 = callTurn("checkout", {}, "Now checking out.");
   records.push(
@@ -515,28 +542,29 @@ const records = [];
       "cart-3step",
       "Look at the catalog. Add the most expensive item once, then check out.",
       [
-        c1.msg, toolTurn(c1.id, { items: [
-          { sku: "A1", name: "alpha", unitPrice: 5 },
-          { sku: "A2", name: "beta", unitPrice: 12 },
-          { sku: "A3", name: "gamma", unitPrice: 8 },
-        ]}),
-        c2.msg, toolTurn(c2.id, { ok: true }),
-        c3.msg, toolTurn(c3.id, { total: 12 }),
+        c1.msg,
+        toolTurn(c1.id, {
+          items: [
+            { sku: "A1", name: "alpha", unitPrice: 5 },
+            { sku: "A2", name: "beta", unitPrice: 12 },
+            { sku: "A3", name: "gamma", unitPrice: 8 },
+          ],
+        }),
+        c2.msg,
+        toolTurn(c2.id, { ok: true }),
+        c3.msg,
+        toolTurn(c3.id, { total: 12 }),
         finalTurn("Total: 12"),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 // 4. cart-3step-add-remove
 {
   const c1 = callTurn("add_to_cart", { sku: "A1", qty: 2 });
   const c2 = callTurn("add_to_cart", { sku: "A2", qty: 1 });
-  const c3 = callTurn(
-    "remove_from_cart",
-    { sku: "A1" },
-    "Cart has 2× A1 and 1× A2. Removing A1.",
-  );
+  const c3 = callTurn("remove_from_cart", { sku: "A1" }, "Cart has 2× A1 and 1× A2. Removing A1.");
   const c4 = callTurn("checkout", {});
   records.push(
     rec(
@@ -545,29 +573,25 @@ const records = [];
       "cart-3step",
       "Add 2 of A1 and 1 of A2; then remove A1 from the cart and check out.",
       [
-        c1.msg, toolTurn(c1.id, { ok: true }),
-        c2.msg, toolTurn(c2.id, { ok: true }),
-        c3.msg, toolTurn(c3.id, { ok: true }),
-        c4.msg, toolTurn(c4.id, { total: 7 }),
+        c1.msg,
+        toolTurn(c1.id, { ok: true }),
+        c2.msg,
+        toolTurn(c2.id, { ok: true }),
+        c3.msg,
+        toolTurn(c3.id, { ok: true }),
+        c4.msg,
+        toolTurn(c4.id, { total: 7 }),
         finalTurn("Total: 7"),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 // 5. cart-3step-verify-total
 {
   const c1 = callTurn("add_to_cart", { sku: "A1", qty: 4 });
-  const c2 = callTurn(
-    "view_cart",
-    {},
-    "Added 4× A1. Verifying total before checkout.",
-  );
-  const c3 = callTurn(
-    "checkout",
-    {},
-    "Total is 20 as expected. Checking out.",
-  );
+  const c2 = callTurn("view_cart", {}, "Added 4× A1. Verifying total before checkout.");
+  const c3 = callTurn("checkout", {}, "Total is 20 as expected. Checking out.");
   records.push(
     rec(
       "cart-3step-verify-total-canonical",
@@ -575,13 +599,19 @@ const records = [];
       "cart-3step",
       "Add 4 of A1; verify with view_cart that the running total is exactly 20; then check out.",
       [
-        c1.msg, toolTurn(c1.id, { ok: true }),
-        c2.msg, toolTurn(c2.id, { items: [{ sku: "A1", name: "alpha", qty: 4, lineTotal: 20 }], total: 20 }),
-        c3.msg, toolTurn(c3.id, { total: 20 }),
+        c1.msg,
+        toolTurn(c1.id, { ok: true }),
+        c2.msg,
+        toolTurn(c2.id, {
+          items: [{ sku: "A1", name: "alpha", qty: 4, lineTotal: 20 }],
+          total: 20,
+        }),
+        c3.msg,
+        toolTurn(c3.id, { total: 20 }),
         finalTurn("Total: 20"),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 // 6. cart-4step-bulk
@@ -598,19 +628,26 @@ const records = [];
       "cart-4step",
       "Add 1 of every item in the catalog, then check out.",
       [
-        c1.msg, toolTurn(c1.id, { items: [
-          { sku: "A1", name: "alpha", unitPrice: 5 },
-          { sku: "A2", name: "beta", unitPrice: 7 },
-          { sku: "A3", name: "gamma", unitPrice: 9 },
-        ]}),
-        c2.msg, toolTurn(c2.id, { ok: true }),
-        c3.msg, toolTurn(c3.id, { ok: true }),
-        c4.msg, toolTurn(c4.id, { ok: true }),
-        c5.msg, toolTurn(c5.id, { total: 21 }),
+        c1.msg,
+        toolTurn(c1.id, {
+          items: [
+            { sku: "A1", name: "alpha", unitPrice: 5 },
+            { sku: "A2", name: "beta", unitPrice: 7 },
+            { sku: "A3", name: "gamma", unitPrice: 9 },
+          ],
+        }),
+        c2.msg,
+        toolTurn(c2.id, { ok: true }),
+        c3.msg,
+        toolTurn(c3.id, { ok: true }),
+        c4.msg,
+        toolTurn(c4.id, { ok: true }),
+        c5.msg,
+        toolTurn(c5.id, { total: 21 }),
         finalTurn("Total: 21"),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 
@@ -621,7 +658,7 @@ const records = [];
   const c2 = callTurn(
     "create_event",
     { title: "Q3 board sync", day: "2026-07-09", startMin: 840, endMin: 870 },
-    "First line of agenda is 'Q3 board sync'. Creating event.",
+    "First line of agenda is 'Q3 board sync'. Creating event."
   );
   records.push(
     rec(
@@ -630,12 +667,14 @@ const records = [];
       "mixed-3step",
       "Read the contents of notes/agenda.md and create a 30-minute calendar event on 2026-07-09 at 14:00 whose title equals the first line of that file.",
       [
-        c1.msg, toolTurn(c1.id, { content: "Q3 board sync\nSecond line is ignored." }),
-        c2.msg, toolTurn(c2.id, { id: "1" }),
+        c1.msg,
+        toolTurn(c1.id, { content: "Q3 board sync\nSecond line is ignored." }),
+        c2.msg,
+        toolTurn(c2.id, { id: "1" }),
         finalTurn(),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 // 2. mixed-3step-archive-day
@@ -651,17 +690,23 @@ const records = [];
       "mixed-3step",
       "Delete every event on 2026-07-10 from the calendar AND create a file at archive/2026-07-10.txt whose content is the literal word 'cleared'.",
       [
-        c1.msg, toolTurn(c1.id, { events: [
-          { id: "1", title: "noisy", startMin: 540, endMin: 600 },
-          { id: "2", title: "noisier", startMin: 720, endMin: 780 },
-        ]}),
-        c2.msg, toolTurn(c2.id, { ok: true }),
-        c3.msg, toolTurn(c3.id, { ok: true }),
-        c4.msg, toolTurn(c4.id, { ok: true }),
+        c1.msg,
+        toolTurn(c1.id, {
+          events: [
+            { id: "1", title: "noisy", startMin: 540, endMin: 600 },
+            { id: "2", title: "noisier", startMin: 720, endMin: 780 },
+          ],
+        }),
+        c2.msg,
+        toolTurn(c2.id, { ok: true }),
+        c3.msg,
+        toolTurn(c3.id, { ok: true }),
+        c4.msg,
+        toolTurn(c4.id, { ok: true }),
         finalTurn(),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 
@@ -675,12 +720,8 @@ const records = [];
       "synth-premature-term-1",
       "premature-term",
       "Read doc.md and return its contents.",
-      [
-        c1.msg,
-        toolTurn(c1.id, { content: "Hello." }),
-        finalTurn("Hello."),
-      ],
-    ),
+      [c1.msg, toolTurn(c1.id, { content: "Hello." }), finalTurn("Hello.")]
+    )
   );
 }
 // 2. After tool 1 success, model continues to tool 2 (does NOT terminate prematurely).
@@ -689,7 +730,7 @@ const records = [];
   const c2 = callTurn(
     "write_file",
     { path: "b.txt", content: "y" },
-    "First file written. Continuing with second.",
+    "First file written. Continuing with second."
   );
   records.push(
     rec(
@@ -697,13 +738,9 @@ const records = [];
       "synth-premature-term-2",
       "premature-term",
       "Create a.txt with content 'x' and b.txt with content 'y'.",
-      [
-        c1.msg, toolTurn(c1.id, { ok: true }),
-        c2.msg, toolTurn(c2.id, { ok: true }),
-        finalTurn(),
-      ],
-      "state_summary",
-    ),
+      [c1.msg, toolTurn(c1.id, { ok: true }), c2.msg, toolTurn(c2.id, { ok: true }), finalTurn()],
+      "state_summary"
+    )
   );
 }
 // 3. 3-step task; model does all three before final_answer.
@@ -718,33 +755,28 @@ const records = [];
       "premature-term",
       "Create three files: step1.txt with '1', step2.txt with '2', step3.txt with '3'.",
       [
-        c1.msg, toolTurn(c1.id, { ok: true }),
-        c2.msg, toolTurn(c2.id, { ok: true }),
-        c3.msg, toolTurn(c3.id, { ok: true }),
+        c1.msg,
+        toolTurn(c1.id, { ok: true }),
+        c2.msg,
+        toolTurn(c2.id, { ok: true }),
+        c3.msg,
+        toolTurn(c3.id, { ok: true }),
         finalTurn(),
       ],
-      "state_summary",
-    ),
+      "state_summary"
+    )
   );
 }
 
 // === Recovery family (5 more items beyond fs-2step-rename-recovery) ===
 // 1. cart wrong-sku recovery
 {
-  const c1 = callTurn(
-    "add_to_cart",
-    { sku: "ZZ", qty: 1 },
-    "Trying to add ZZ.",
-  );
-  const c2 = callTurn(
-    "list_catalog",
-    {},
-    "ZZ doesn't exist. Listing catalog to see real SKUs.",
-  );
+  const c1 = callTurn("add_to_cart", { sku: "ZZ", qty: 1 }, "Trying to add ZZ.");
+  const c2 = callTurn("list_catalog", {}, "ZZ doesn't exist. Listing catalog to see real SKUs.");
   const c3 = callTurn(
     "add_to_cart",
     { sku: "A1", qty: 1 },
-    "Catalog has A1, A2, A3. The user wants the alpha item, that's A1.",
+    "Catalog has A1, A2, A3. The user wants the alpha item, that's A1."
   );
   records.push(
     rec(
@@ -753,36 +785,33 @@ const records = [];
       "recovery",
       "Add the alpha item to the cart.",
       [
-        c1.msg, toolTurn(c1.id, "ERROR: unknown sku: ZZ", true),
-        c2.msg, toolTurn(c2.id, { items: [
-          { sku: "A1", name: "alpha", unitPrice: 5 },
-          { sku: "A2", name: "beta", unitPrice: 7 },
-          { sku: "A3", name: "gamma", unitPrice: 9 },
-        ]}),
-        c3.msg, toolTurn(c3.id, { ok: true }),
+        c1.msg,
+        toolTurn(c1.id, "ERROR: unknown sku: ZZ", true),
+        c2.msg,
+        toolTurn(c2.id, {
+          items: [
+            { sku: "A1", name: "alpha", unitPrice: 5 },
+            { sku: "A2", name: "beta", unitPrice: 7 },
+            { sku: "A3", name: "gamma", unitPrice: 9 },
+          ],
+        }),
+        c3.msg,
+        toolTurn(c3.id, { ok: true }),
         finalTurn(),
       ],
-      "recovery",
-    ),
+      "recovery"
+    )
   );
 }
 // 2. calendar wrong-event-id recovery
 {
-  const c1 = callTurn(
-    "delete_event",
-    { id: "999" },
-    "Trying to delete event 999.",
-  );
+  const c1 = callTurn("delete_event", { id: "999" }, "Trying to delete event 999.");
   const c2 = callTurn(
     "list_events",
     { day: "2026-07-15" },
-    "999 doesn't exist. Let me check what events are on the day.",
+    "999 doesn't exist. Let me check what events are on the day."
   );
-  const c3 = callTurn(
-    "delete_event",
-    { id: "5" },
-    "The standup event is id=5. Deleting.",
-  );
+  const c3 = callTurn("delete_event", { id: "5" }, "The standup event is id=5. Deleting.");
   records.push(
     rec(
       "cal-recovery-wrong-id",
@@ -790,13 +819,16 @@ const records = [];
       "recovery",
       "Delete the standup event on 2026-07-15.",
       [
-        c1.msg, toolTurn(c1.id, "ERROR: no such event: 999", true),
-        c2.msg, toolTurn(c2.id, { events: [{ id: "5", title: "standup", startMin: 540, endMin: 570 }] }),
-        c3.msg, toolTurn(c3.id, { ok: true }),
+        c1.msg,
+        toolTurn(c1.id, "ERROR: no such event: 999", true),
+        c2.msg,
+        toolTurn(c2.id, { events: [{ id: "5", title: "standup", startMin: 540, endMin: 570 }] }),
+        c3.msg,
+        toolTurn(c3.id, { ok: true }),
         finalTurn(),
       ],
-      "recovery",
-    ),
+      "recovery"
+    )
   );
 }
 // 3. fs read-after-delete recovery
@@ -811,13 +843,16 @@ const records = [];
       "recovery",
       "Read the contents of active.txt.",
       [
-        c1.msg, toolTurn(c1.id, "ERROR: no such file: deleted.txt", true),
-        c2.msg, toolTurn(c2.id, { paths: ["active.txt", "other.txt"] }),
-        c3.msg, toolTurn(c3.id, { content: "Hello" }),
+        c1.msg,
+        toolTurn(c1.id, "ERROR: no such file: deleted.txt", true),
+        c2.msg,
+        toolTurn(c2.id, { paths: ["active.txt", "other.txt"] }),
+        c3.msg,
+        toolTurn(c3.id, { content: "Hello" }),
         finalTurn("Hello"),
       ],
-      "recovery",
-    ),
+      "recovery"
+    )
   );
 }
 // 4. cart double-checkout recovery
@@ -827,7 +862,7 @@ const records = [];
   const c3 = callTurn(
     "checkout",
     {},
-    "Already checked out — but the user might want a fresh attempt. Let me confirm.",
+    "Already checked out — but the user might want a fresh attempt. Let me confirm."
   );
   records.push(
     rec(
@@ -836,13 +871,16 @@ const records = [];
       "recovery",
       "Add A1 and check out. Then check out again to confirm it stays committed.",
       [
-        c1.msg, toolTurn(c1.id, { ok: true }),
-        c2.msg, toolTurn(c2.id, { total: 5 }),
-        c3.msg, toolTurn(c3.id, "ERROR: cart already checked out", true),
+        c1.msg,
+        toolTurn(c1.id, { ok: true }),
+        c2.msg,
+        toolTurn(c2.id, { total: 5 }),
+        c3.msg,
+        toolTurn(c3.id, "ERROR: cart already checked out", true),
         finalTurn("Cart was checked out at total 5. Second attempt correctly errored."),
       ],
-      "recovery",
-    ),
+      "recovery"
+    )
   );
 }
 // 5. Premature-error recovery (model receives error mid-sequence, recovers)
@@ -851,17 +889,17 @@ const records = [];
   const c2 = callTurn(
     "delete_file",
     { path: "missing.txt" },
-    "Wrote first.txt. Now trying to delete missing.txt.",
+    "Wrote first.txt. Now trying to delete missing.txt."
   );
   const c3 = callTurn(
     "list_files",
     {},
-    "missing.txt doesn't exist. Listing files to verify state and continue.",
+    "missing.txt doesn't exist. Listing files to verify state and continue."
   );
   const c4 = callTurn(
     "write_file",
     { path: "second.txt", content: "2" },
-    "first.txt is there as expected. Continuing with the second write.",
+    "first.txt is there as expected. Continuing with the second write."
   );
   records.push(
     rec(
@@ -870,14 +908,18 @@ const records = [];
       "recovery",
       "Create first.txt with '1', delete missing.txt (skip if not present), create second.txt with '2'.",
       [
-        c1.msg, toolTurn(c1.id, { ok: true }),
-        c2.msg, toolTurn(c2.id, "ERROR: no such file: missing.txt", true),
-        c3.msg, toolTurn(c3.id, { paths: ["first.txt"] }),
-        c4.msg, toolTurn(c4.id, { ok: true }),
+        c1.msg,
+        toolTurn(c1.id, { ok: true }),
+        c2.msg,
+        toolTurn(c2.id, "ERROR: no such file: missing.txt", true),
+        c3.msg,
+        toolTurn(c3.id, { paths: ["first.txt"] }),
+        c4.msg,
+        toolTurn(c4.id, { ok: true }),
         finalTurn(),
       ],
-      "recovery",
-    ),
+      "recovery"
+    )
   );
 }
 
@@ -916,9 +958,13 @@ const surfaceVariants = [
     task: "List all events on 2026-08-15.",
     turns: () => {
       const c = callTurn("list_events", { day: "2026-08-15" });
-      return [c.msg, toolTurn(c.id, { events: [
-        { id: "1", title: "summer planning", startMin: 600, endMin: 660 },
-      ]}), finalTurn("summer planning at 10:00 (60 min)")];
+      return [
+        c.msg,
+        toolTurn(c.id, {
+          events: [{ id: "1", title: "summer planning", startMin: 600, endMin: 660 }],
+        }),
+        finalTurn("summer planning at 10:00 (60 min)"),
+      ];
     },
     cat: "cal-1step",
   },
@@ -927,7 +973,10 @@ const surfaceVariants = [
     task: "Create a 60-minute event titled 'design review' on 2026-09-01 starting at 14:00.",
     turns: () => {
       const c = callTurn("create_event", {
-        title: "design review", day: "2026-09-01", startMin: 840, endMin: 900,
+        title: "design review",
+        day: "2026-09-01",
+        startMin: 840,
+        endMin: 900,
       });
       return [c.msg, toolTurn(c.id, { id: "10" }), finalTurn()];
     },
@@ -948,7 +997,13 @@ const surfaceVariants = [
     turns: () => {
       const c1 = callTurn("add_to_cart", { sku: "B7", qty: 1 });
       const c2 = callTurn("checkout", {});
-      return [c1.msg, toolTurn(c1.id, { ok: true }), c2.msg, toolTurn(c2.id, { total: 7 }), finalTurn("Total: 7")];
+      return [
+        c1.msg,
+        toolTurn(c1.id, { ok: true }),
+        c2.msg,
+        toolTurn(c2.id, { total: 7 }),
+        finalTurn("Total: 7"),
+      ];
     },
     cat: "cart-2step",
   },
@@ -960,9 +1015,12 @@ const surfaceVariants = [
       const c2 = callTurn("delete_file", { path: "old1.bak" }, "Two .bak files. Deleting both.");
       const c3 = callTurn("delete_file", { path: "old2.bak" });
       return [
-        c1.msg, toolTurn(c1.id, { paths: ["old1.bak", "old2.bak", "current.txt"] }),
-        c2.msg, toolTurn(c2.id, { ok: true }),
-        c3.msg, toolTurn(c3.id, { ok: true }),
+        c1.msg,
+        toolTurn(c1.id, { paths: ["old1.bak", "old2.bak", "current.txt"] }),
+        c2.msg,
+        toolTurn(c2.id, { ok: true }),
+        c3.msg,
+        toolTurn(c3.id, { ok: true }),
         finalTurn(),
       ];
     },
@@ -976,11 +1034,13 @@ const surfaceVariants = [
       const c2 = callTurn(
         "create_event",
         { title: "weekly sync", day: "2026-10-01", startMin: 540, endMin: 570 },
-        "First line is 'weekly sync'. Creating event.",
+        "First line is 'weekly sync'. Creating event."
       );
       return [
-        c1.msg, toolTurn(c1.id, { content: "weekly sync\n- agenda" }),
-        c2.msg, toolTurn(c2.id, { id: "1" }),
+        c1.msg,
+        toolTurn(c1.id, { content: "weekly sync\n- agenda" }),
+        c2.msg,
+        toolTurn(c2.id, { id: "1" }),
         finalTurn(),
       ];
     },
@@ -996,8 +1056,8 @@ for (const [i, v] of surfaceVariants.entries()) {
       v.cat,
       v.task,
       v.turns(),
-      v.cat.includes("3step") || v.cat.includes("4step") ? "state_summary" : "default",
-    ),
+      v.cat.includes("3step") || v.cat.includes("4step") ? "state_summary" : "default"
+    )
   );
 }
 

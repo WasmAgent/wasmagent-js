@@ -170,7 +170,9 @@ function validateV2(v2) {
   return issues;
 }
 
-const lines = readFileSync(SRC, "utf8").split("\n").filter((l) => l.length > 0);
+const lines = readFileSync(SRC, "utf8")
+  .split("\n")
+  .filter((l) => l.length > 0);
 const v2records = [];
 const errors = [];
 

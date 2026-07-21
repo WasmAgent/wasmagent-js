@@ -9,9 +9,15 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { z } from "zod";
-import { JsKernel, OpenAIModel, ProgrammaticOrchestrator, ToolCallingAgent, ToolRegistry } from "@wasmagent/core";
+import {
+  JsKernel,
+  OpenAIModel,
+  ProgrammaticOrchestrator,
+  ToolCallingAgent,
+  ToolRegistry,
+} from "@wasmagent/core";
 import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+import { z } from "zod";
 
 // ── Ollama availability check ─────────────────────────────────────────────────
 

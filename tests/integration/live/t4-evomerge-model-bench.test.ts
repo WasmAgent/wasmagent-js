@@ -11,8 +11,8 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { z } from "zod";
 import { OpenAIModel, ToolCallingAgent } from "@wasmagent/core";
+import { z } from "zod";
 
 // ── Ollama availability ───────────────────────────────────────────────────────
 
@@ -110,9 +110,20 @@ async function runWithTimeout(
     // Ollama returns 400 when the model's chat template doesn't support tool-calling
     // (e.g. "Unable to generate parser for this template"). Treat as tool-unsupported.
     const errMsg = err instanceof Error ? err.message : String(err);
-    if (errMsg.includes("400") || errMsg.includes("Unable to generate parser") || errMsg.includes("invalid_request_error")) {
-      console.warn(`  TOOL_UNSUPPORTED: ${modelId} returned 400 — model template does not support tool-calling via Ollama`);
-      return { modelId, calledTool: false, finalAnswer: "TOOL_UNSUPPORTED", events: ["TOOL_UNSUPPORTED"] };
+    if (
+      errMsg.includes("400") ||
+      errMsg.includes("Unable to generate parser") ||
+      errMsg.includes("invalid_request_error")
+    ) {
+      console.warn(
+        `  TOOL_UNSUPPORTED: ${modelId} returned 400 — model template does not support tool-calling via Ollama`
+      );
+      return {
+        modelId,
+        calledTool: false,
+        finalAnswer: "TOOL_UNSUPPORTED",
+        events: ["TOOL_UNSUPPORTED"],
+      };
     }
     throw err;
   }
@@ -185,8 +196,12 @@ describe("T4-S1 · Tool-calling: trained vs base model (evomerge qwen3-4b)", () 
       const baseUnsupported = baseResult.finalAnswer === "TOOL_UNSUPPORTED";
 
       if (trainedUnsupported || baseUnsupported) {
-        console.log("  NOTE: One or both models returned TOOL_UNSUPPORTED (Ollama chat template incompatibility)");
-        console.log("  This is expected for evomerge models — tool-calling requires template support in Ollama");
+        console.log(
+          "  NOTE: One or both models returned TOOL_UNSUPPORTED (Ollama chat template incompatibility)"
+        );
+        console.log(
+          "  This is expected for evomerge models — tool-calling requires template support in Ollama"
+        );
         console.log("  S2 (QA accuracy without tools) will still run.");
       } else if (trainedCalledTool && !baseCalledTool) {
         console.log("  FINDING: DPO training improved tool-calling (trained called, base did not)");
@@ -195,7 +210,9 @@ describe("T4-S1 · Tool-calling: trained vs base model (evomerge qwen3-4b)", () 
       } else if (trainedCalledTool && baseCalledTool) {
         console.log("  FINDING: Both models called the tool");
       } else {
-        console.log("  FINDING: Neither model called the tool — may need larger model or stronger prompt");
+        console.log(
+          "  FINDING: Neither model called the tool — may need larger model or stronger prompt"
+        );
       }
 
       // Soft assertions — don't fail test if models don't call tools (they're small)
@@ -244,8 +261,7 @@ describe("T4-S2 · QA accuracy: v11 trained model only (base excluded — comple
     { question: "What is 100 ÷ 4? Answer with just the number.", correct: "25", label: "100÷4" },
     { question: "What is 2^10? Answer with just the number.", correct: "1024", label: "2^10" },
     {
-      question:
-        "If a=5, b=3, what is a+b+a×b? Show only the final number.",
+      question: "If a=5, b=3, what is a+b+a×b? Show only the final number.",
       correct: "23",
       label: "a+b+a×b",
     },
@@ -278,7 +294,9 @@ describe("T4-S2 · QA accuracy: v11 trained model only (base excluded — comple
       }
 
       console.log("\n── T4-S2 QA Accuracy (v11 only) ────────────────────────────────");
-      console.log(`  ${"Question".padEnd(12)} | ${"Correct".padEnd(6)} | ${"v11 Answer".padEnd(40)} | v11✓`);
+      console.log(
+        `  ${"Question".padEnd(12)} | ${"Correct".padEnd(6)} | ${"v11 Answer".padEnd(40)} | v11✓`
+      );
       console.log(`  ${"-".repeat(80)}`);
       for (const r of rows) {
         console.log(
@@ -351,35 +369,40 @@ describe("T4-S3 · Context retention: does the model remember injected facts?", 
 // expect(isFormatBleed).toBe(false).
 
 describe("T4-S4 · Training format bleed detection", () => {
-  it.skipIf(!V11_LIVE)("detects whether v11 returns JSON-wrapped output (known issue)", async () => {
-    const model = new OpenAIModel("evomerge-t10-qwen3-4b-v11:latest", {
-      baseURL: "http://localhost:11434/v1", apiKey: "ollama",
-    });
-    const agent = new ToolCallingAgent({ model, tools: [], maxSteps: 3 });
+  it.skipIf(!V11_LIVE)(
+    "detects whether v11 returns JSON-wrapped output (known issue)",
+    async () => {
+      const model = new OpenAIModel("evomerge-t10-qwen3-4b-v11:latest", {
+        baseURL: "http://localhost:11434/v1",
+        apiKey: "ollama",
+      });
+      const agent = new ToolCallingAgent({ model, tools: [], maxSteps: 3 });
 
-    let finalAnswer = "";
-    for await (const ev of agent.run("What is 7 times 8? Reply with just the number.")) {
-      if (ev.event === "final_answer") finalAnswer = (ev.data as { answer: string }).answer;
-    }
+      let finalAnswer = "";
+      for await (const ev of agent.run("What is 7 times 8? Reply with just the number.")) {
+        if (ev.event === "final_answer") finalAnswer = (ev.data as { answer: string }).answer;
+      }
 
-    const isFormatBleed = /^\{.*"choice".*\}$/s.test(finalAnswer.trim());
-    const hasCorrectAnswer = finalAnswer.includes("56");
+      const isFormatBleed = /^\{.*"choice".*\}$/s.test(finalAnswer.trim());
+      const hasCorrectAnswer = finalAnswer.includes("56");
 
-    console.log("T4-S4 v11 answer:", JSON.stringify(finalAnswer));
-    console.log("T4-S4 format bleed detected:", isFormatBleed);
-    console.log("T4-S4 correct answer (56):", hasCorrectAnswer);
+      console.log("T4-S4 v11 answer:", JSON.stringify(finalAnswer));
+      console.log("T4-S4 format bleed detected:", isFormatBleed);
+      console.log("T4-S4 correct answer (56):", hasCorrectAnswer);
 
-    if (isFormatBleed) {
-      console.warn(
-        "WARNING: v11 exhibits training format bleed — outputs {\"choice\":...} for QA tasks. " +
-        "Root cause: ARM-F SFT training data overfit. " +
-        "See docs/eval-reports/model-sweep-1b7.md for details."
-      );
-    }
+      if (isFormatBleed) {
+        console.warn(
+          'WARNING: v11 exhibits training format bleed — outputs {"choice":...} for QA tasks. ' +
+            "Root cause: ARM-F SFT training data overfit. " +
+            "See docs/eval-reports/model-sweep-1b7.md for details."
+        );
+      }
 
-    // Test passes regardless — this is a DIAGNOSTIC test, not a regression guard.
-    // The metric we track is whether format bleed is present or absent.
-    expect(finalAnswer.length).toBeGreaterThan(0);
-    // Log result for CI visibility (do not fail — issue is known and documented)
-  }, 30_000);
+      // Test passes regardless — this is a DIAGNOSTIC test, not a regression guard.
+      // The metric we track is whether format bleed is present or absent.
+      expect(finalAnswer.length).toBeGreaterThan(0);
+      // Log result for CI visibility (do not fail — issue is known and documented)
+    },
+    30_000
+  );
 });

@@ -11,8 +11,8 @@
  * Re-running is safe: it skips packages that already have README.md.
  * Pass --force to overwrite (use only when you've intentionally removed one).
  */
-import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -67,7 +67,8 @@ front-ends and agent IDEs can drive runs over a standard transport.`,
   },
 
   "agent-prompts": {
-    tagline: "Reusable system prompt templates for wasmagent-js — code/tool/framework prompts with D2 + Markdown card conventions.",
+    tagline:
+      "Reusable system prompt templates for wasmagent-js — code/tool/framework prompts with D2 + Markdown card conventions.",
     install: `npm install @wasmagent/agent-prompts`,
     body: `\`\`\`ts
 import { composePrompt, codeAgentPrompt, cardConventions } from "@wasmagent/agent-prompts";
@@ -77,7 +78,7 @@ const system = composePrompt([codeAgentPrompt(), cardConventions()]);
   },
 
   cli: {
-    tagline: "\`wasmagent\` command-line interface — run a single agent task from your shell.",
+    tagline: "`wasmagent` command-line interface — run a single agent task from your shell.",
     install: `npm install -g @wasmagent/cli`,
     body: `\`\`\`bash
 export ANTHROPIC_API_KEY=sk-ant-...
@@ -86,7 +87,7 @@ wasmagent run "What is 12 * 13?"
   },
 
   devtools: {
-    tagline: "Time-travel debugger — \`EventLogReplay\` engine + opt-in \`<DevTools />\` React UI.",
+    tagline: "Time-travel debugger — `EventLogReplay` engine + opt-in `<DevTools />` React UI.",
     install: `npm install @wasmagent/devtools @wasmagent/core`,
     body: `Step-replay any \`EventLog\` and **fork from any step**. The React surface is opt-in via
 the \`/react\` subpath (peer-depends on React, but never required for the core engine).
@@ -100,7 +101,8 @@ See [docs/guides/devtools.md](https://github.com/WasmAgent/wasmagent-js/blob/mai
   },
 
   "kernel-pyodide": {
-    tagline: "CPython-in-WASM kernel (Pyodide) — run real Python code from agents on Node, Bun, and CF Workers.",
+    tagline:
+      "CPython-in-WASM kernel (Pyodide) — run real Python code from agents on Node, Bun, and CF Workers.",
     install: `npm install @wasmagent/kernel-pyodide @wasmagent/core pyodide`,
     body: `\`\`\`ts
 import { PyodideKernel } from "@wasmagent/kernel-pyodide";
@@ -121,7 +123,7 @@ See the [kernel decision tree](https://github.com/WasmAgent/wasmagent-js/blob/ma
   },
 
   "kernel-quickjs": {
-    tagline: "QuickJS-in-WASM kernel — sandboxed JavaScript, edge-safe, no \`node:vm\` required.",
+    tagline: "QuickJS-in-WASM kernel — sandboxed JavaScript, edge-safe, no `node:vm` required.",
     install: `npm install @wasmagent/kernel-quickjs @wasmagent/core quickjs-emscripten @jitl/quickjs-wasmfile-release-sync`,
     body: `\`\`\`ts
 import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
@@ -141,7 +143,7 @@ See the [kernel decision tree](https://github.com/WasmAgent/wasmagent-js/blob/ma
   },
 
   "kernel-wasmtime": {
-    tagline: "True WASM sandbox via Javy + WASI — language-level isolation with zero \`node:vm\`.",
+    tagline: "True WASM sandbox via Javy + WASI — language-level isolation with zero `node:vm`.",
     install: `npm install @wasmagent/kernel-wasmtime @wasmagent/core`,
     body: `Compile JavaScript to WebAssembly via [Javy](https://github.com/bytecodealliance/javy) and run
 it under a WASI host. Strongest sandboxing tier short of a microVM.
@@ -152,7 +154,8 @@ See the [kernel decision tree](https://github.com/WasmAgent/wasmagent-js/blob/ma
   },
 
   "kernel-remote": {
-    tagline: "Remote sandbox kernel — execute agent code in E2B, Cloudflare Sandbox, or any HTTP-driven microVM.",
+    tagline:
+      "Remote sandbox kernel — execute agent code in E2B, Cloudflare Sandbox, or any HTTP-driven microVM.",
     install: `npm install @wasmagent/kernel-remote @wasmagent/core`,
     body: `\`\`\`ts
 import { RemoteSandboxKernel } from "@wasmagent/kernel-remote";
@@ -208,7 +211,8 @@ const model = new OpenAIModel(OpenAIModels.GPT_4_1, {
   },
 
   "model-doubao": {
-    tagline: "Doubao / Volcengine Ark adapter — thinking tiers + \`auto-prefix\` / \`ark-context\` cache strategies.",
+    tagline:
+      "Doubao / Volcengine Ark adapter — thinking tiers + `auto-prefix` / `ark-context` cache strategies.",
     install: `npm install @wasmagent/model-doubao @wasmagent/core`,
     body: `\`\`\`ts
 import { DoubaoModel, DoubaoModels } from "@wasmagent/model-doubao";
@@ -223,7 +227,7 @@ const model = new DoubaoModel(DoubaoModels.DOUBAO_SEED_1_6, {
   },
 
   "model-deepseek": {
-    tagline: "DeepSeek V4 adapter — \`thinking: { type, effort }\` + auto-prefix prompt cache.",
+    tagline: "DeepSeek V4 adapter — `thinking: { type, effort }` + auto-prefix prompt cache.",
     install: `npm install @wasmagent/model-deepseek @wasmagent/core`,
     body: `\`\`\`ts
 import { DeepSeekModel, DeepSeekModels } from "@wasmagent/model-deepseek";
@@ -238,7 +242,8 @@ const model = new DeepSeekModel(DeepSeekModels.V4, {
   },
 
   "model-moonshot": {
-    tagline: "Moonshot / Kimi K2.6 adapter — per-version reasoning field handling + auto-prefix cache.",
+    tagline:
+      "Moonshot / Kimi K2.6 adapter — per-version reasoning field handling + auto-prefix cache.",
     install: `npm install @wasmagent/model-moonshot @wasmagent/core`,
     body: `\`\`\`ts
 import { MoonshotModel, KimiModels } from "@wasmagent/model-moonshot";
@@ -253,7 +258,8 @@ const model = new MoonshotModel(KimiModels.K2_6, {
   },
 
   "model-qwen": {
-    tagline: "Qwen3 (Alibaba DashScope) adapter — \`enable_thinking\` + \`thinking_budget\`, intl region routing.",
+    tagline:
+      "Qwen3 (Alibaba DashScope) adapter — `enable_thinking` + `thinking_budget`, intl region routing.",
     install: `npm install @wasmagent/model-qwen @wasmagent/core`,
     body: `\`\`\`ts
 import { QwenModel, QwenModels } from "@wasmagent/model-qwen";
@@ -270,7 +276,7 @@ const model = new QwenModel(QwenModels.QWEN3_MAX, {
   },
 
   "model-zhipu": {
-    tagline: "Zhipu GLM-5 adapter — \`thinking: { type }\` via \`extra_body\`, auto-prefix cache.",
+    tagline: "Zhipu GLM-5 adapter — `thinking: { type }` via `extra_body`, auto-prefix cache.",
     install: `npm install @wasmagent/model-zhipu @wasmagent/core`,
     body: `\`\`\`ts
 import { ZhipuModel, GLMModels } from "@wasmagent/model-zhipu";
@@ -284,7 +290,7 @@ const model = new ZhipuModel(GLMModels.GLM_5, {
   },
 
   "model-minimax": {
-    tagline: "MiniMax M2/M3 adapter — \`reasoning_split\` + \`<think>\` tag parsing.",
+    tagline: "MiniMax M2/M3 adapter — `reasoning_split` + `<think>` tag parsing.",
     install: `npm install @wasmagent/model-minimax @wasmagent/core`,
     body: `\`\`\`ts
 import { MiniMaxModel, MiniMaxModels } from "@wasmagent/model-minimax";
@@ -298,14 +304,15 @@ const model = new MiniMaxModel(MiniMaxModels.M3, {
   },
 
   "otel-exporter": {
-    tagline: "OpenTelemetry exporter — wire wasmagent-js \`EventLog\` into Jaeger / Tempo / any OTLP collector.",
+    tagline:
+      "OpenTelemetry exporter — wire wasmagent-js `EventLog` into Jaeger / Tempo / any OTLP collector.",
     install: `npm install @wasmagent/otel-exporter @wasmagent/core`,
     body: `Bridges agent events (model calls, tool calls, kernel executions) to OTLP traces with
 correct parent/child span relationships. See \`examples/otel-jaeger\`.`,
   },
 
   react: {
-    tagline: "React hook — \`useAgentRun()\` for streaming SSE agent events in Next.js / React apps.",
+    tagline: "React hook — `useAgentRun()` for streaming SSE agent events in Next.js / React apps.",
     install: `npm install @wasmagent/react @wasmagent/core`,
     body: `\`\`\`tsx
 import { useAgentRun } from "@wasmagent/react";
@@ -315,7 +322,8 @@ const { events, finalAnswer, isRunning } = useAgentRun({ url: "/api/run" });
   },
 
   "tools-browser": {
-    tagline: "Browser automation tools — Playwright session + CDP-bridge session, 5 tools (navigate / click / fill / screenshot / extract).",
+    tagline:
+      "Browser automation tools — Playwright session + CDP-bridge session, 5 tools (navigate / click / fill / screenshot / extract).",
     install: `npm install @wasmagent/tools-browser @wasmagent/core`,
     body: `Two interchangeable sessions: \`PlaywrightSession\` for local headless work,
 \`CdpSession\` for connecting to an existing browser via the Chrome DevTools Protocol
@@ -323,7 +331,7 @@ const { events, finalAnswer, isRunning } = useAgentRun({ url: "/api/run" });
   },
 
   "tools-rag": {
-    tagline: "RAG tools — \`HttpEmbedder\` + \`ragTool\` + Pinecone / Qdrant / in-memory connectors.",
+    tagline: "RAG tools — `HttpEmbedder` + `ragTool` + Pinecone / Qdrant / in-memory connectors.",
     install: `npm install @wasmagent/tools-rag @wasmagent/core`,
     body: `\`\`\`ts
 import { ragTool, HttpEmbedder, InMemoryVectorStore } from "@wasmagent/tools-rag";
@@ -331,7 +339,8 @@ import { ragTool, HttpEmbedder, InMemoryVectorStore } from "@wasmagent/tools-rag
   },
 
   "tools-web": {
-    tagline: "Web search tool adapters — Tavily, Brave, Perplexity (LRU-cached, \`readOnly: true\`, \`idempotent: true\`).",
+    tagline:
+      "Web search tool adapters — Tavily, Brave, Perplexity (LRU-cached, `readOnly: true`, `idempotent: true`).",
     install: `npm install @wasmagent/tools-web @wasmagent/core`,
     body: `\`\`\`ts
 import { tavilySearch, braveSearch, perplexitySearch } from "@wasmagent/tools-web";
@@ -339,7 +348,8 @@ import { tavilySearch, braveSearch, perplexitySearch } from "@wasmagent/tools-we
   },
 
   "ui-cards": {
-    tagline: "Card block parser — extracts \`\`\`card:* fenced blocks (Markdown / D2 / extensible) from AI replies.",
+    tagline:
+      "Card block parser — extracts ```card:* fenced blocks (Markdown / D2 / extensible) from AI replies.",
     install: `npm install @wasmagent/ui-cards`,
     body: `\`\`\`ts
 import { parseCards } from "@wasmagent/ui-cards";
@@ -348,7 +358,7 @@ const cards = parseCards(modelText);
   },
 
   "ui-cards-react": {
-    tagline: "React components — \`MarkdownCard\`, \`D2Card\`, \`CardRenderer\`, \`ChatMessage\`.",
+    tagline: "React components — `MarkdownCard`, `D2Card`, `CardRenderer`, `ChatMessage`.",
     install: `npm install @wasmagent/ui-cards-react @wasmagent/ui-cards react react-dom`,
     body: `\`\`\`tsx
 import { ChatMessage } from "@wasmagent/ui-cards-react";

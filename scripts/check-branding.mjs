@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * check-branding.mjs — ensure no @agentkit-js/* imports or agentkit-js brand
  * strings have crept back into tracked source files.
@@ -8,8 +9,8 @@
  *   node scripts/check-branding.mjs --list  # print violations and exit 1
  */
 
-import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 // Files/path prefixes that are explicitly allowed to mention these strings.
 const ALLOWED_EXACT = new Set([
@@ -25,7 +26,7 @@ const ALLOWED_EXACT = new Set([
 const ALLOWED_PREFIXES = [
   // Historical changelogs capture old package names verbatim.
   "CHANGELOG.md",
-  "packages/",   // per-package CHANGELOG.md files (matched via suffix below)
+  "packages/", // per-package CHANGELOG.md files (matched via suffix below)
   "tests/integration/CHANGELOG.md",
 ];
 

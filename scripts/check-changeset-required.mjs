@@ -36,8 +36,8 @@
  */
 
 import { execSync } from "node:child_process";
-import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(fileURLToPath(import.meta.url), "..", "..");
@@ -74,9 +74,10 @@ let changedFiles;
 if (explicitFiles) {
   changedFiles = explicitFiles.split(",").filter(Boolean);
 } else {
-  const base = explicitBase || process.env.GITHUB_BASE_REF
-    ? `origin/${process.env.GITHUB_BASE_REF || "main"}`
-    : "origin/main";
+  const base =
+    explicitBase || process.env.GITHUB_BASE_REF
+      ? `origin/${process.env.GITHUB_BASE_REF || "main"}`
+      : "origin/main";
 
   // On CI for a PR, GITHUB_BASE_REF is set. On push to main, fall back
   // to the previous commit so we still flag direct pushes that skipped

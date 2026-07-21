@@ -18,8 +18,8 @@
  * Exit codes: 0 = pass, 1 = violations found.
  */
 
-import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -59,7 +59,7 @@ const coreVersions = CORE_FOUR.map((name) => ({
 const coreViolations = [];
 
 const uniqueVersions = new Set(
-  coreVersions.filter((c) => c.version !== null).map((c) => c.version),
+  coreVersions.filter((c) => c.version !== null).map((c) => c.version)
 );
 
 // Pending-changeset escape hatch: if a markdown file under .changeset/ names
@@ -71,9 +71,7 @@ function hasPendingChangesetFor(packages) {
   try {
     const dir = ".changeset";
     if (!existsSync(dir)) return false;
-    const files = readdirSync(dir).filter(
-      (f) => f.endsWith(".md") && f !== "README.md",
-    );
+    const files = readdirSync(dir).filter((f) => f.endsWith(".md") && f !== "README.md");
     for (const f of files) {
       const src = readFileSync(`${dir}/${f}`, "utf8");
       const fm = src.match(/^---\n([\s\S]*?)\n---/);
@@ -93,22 +91,18 @@ function hasPendingChangesetFor(packages) {
 }
 
 if (uniqueVersions.size !== 1) {
-  const outOfSync = coreVersions
-    .filter((c) => c.version !== null)
-    .map((c) => c.name);
+  const outOfSync = coreVersions.filter((c) => c.version !== null).map((c) => c.name);
   if (hasPendingChangesetFor(outOfSync)) {
     if (verbose) {
       console.log(
-        `Core-four versions out of sync but a pending changeset covers all ${outOfSync.length} packages — will reconcile on next release. ✓`,
+        `Core-four versions out of sync but a pending changeset covers all ${outOfSync.length} packages — will reconcile on next release. ✓`
       );
     }
   } else {
     coreViolations.push(
       `Core-four packages must all share the same version. Found:\n` +
-        coreVersions
-          .map((c) => `    ${c.name}: ${c.version ?? "(not found)"}`)
-          .join("\n") +
-        `\n  Either bump them in lockstep or add a changeset listing all four packages.`,
+        coreVersions.map((c) => `    ${c.name}: ${c.version ?? "(not found)"}`).join("\n") +
+        `\n  Either bump them in lockstep or add a changeset listing all four packages.`
     );
   }
 } else {
@@ -139,17 +133,10 @@ function semverSatisfied(range, localVersion) {
   if (range === "workspace:*" || range === "*") return true;
 
   // Parse localVersion into [major, minor, patch, prerelease]
-  const localMatch = localVersion.match(
-    /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/,
-  );
+  const localMatch = localVersion.match(/^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/);
   if (!localMatch) return false; // non-standard version — skip
   const [, lMaj, lMin, lPat, lPre] = localMatch;
-  const local = [
-    Number(lMaj),
-    Number(lMin),
-    Number(lPat),
-    lPre ?? null,
-  ];
+  const local = [Number(lMaj), Number(lMin), Number(lPat), lPre ?? null];
 
   // Helper: compare two parsed version tuples as numbers
   const cmp = ([aMaj, aMin, aPat], [bMaj, bMin, bPat]) => {
@@ -178,17 +165,11 @@ function semverSatisfied(range, localVersion) {
       }
       // ^0.y.z → >=0.y.z <0.(y+1).0
       return (
-        loc[0] === 0 &&
-        loc[1] === Number(rMin) &&
-        cmp(loc, req) >= 0 &&
-        loc[1] < Number(rMin) + 1
+        loc[0] === 0 && loc[1] === Number(rMin) && cmp(loc, req) >= 0 && loc[1] < Number(rMin) + 1
       );
     }
     // ^x.y.z (x>0) → >=x.y.z <(x+1).0.0
-    return (
-      local[0] === Number(rMaj) &&
-      cmp(loc, req) >= 0
-    );
+    return local[0] === Number(rMaj) && cmp(loc, req) >= 0;
   }
 
   const tildeMatch = range.match(/^~(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/);
@@ -197,11 +178,7 @@ function semverSatisfied(range, localVersion) {
     const req = [Number(rMaj), Number(rMin), Number(rPat)];
     const loc = [local[0], local[1], local[2]];
     // ~1.2.3 → >=1.2.3 <1.3.0
-    return (
-      loc[0] === Number(rMaj) &&
-      loc[1] === Number(rMin) &&
-      cmp(loc, req) >= 0
-    );
+    return loc[0] === Number(rMaj) && loc[1] === Number(rMin) && cmp(loc, req) >= 0;
   }
 
   const gteMatch = range.match(/^>=(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/);
@@ -218,12 +195,7 @@ function semverSatisfied(range, localVersion) {
 }
 
 const depViolations = [];
-const DEP_FIELDS = [
-  "dependencies",
-  "devDependencies",
-  "peerDependencies",
-  "optionalDependencies",
-];
+const DEP_FIELDS = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
 
 for (const dir of readdirSync(packagesDir).sort()) {
   const pkgPath = join(packagesDir, dir, "package.json");
@@ -247,13 +219,13 @@ for (const dir of readdirSync(packagesDir).sort()) {
       if (verbose) {
         const mark = ok ? "✓" : "✗";
         console.log(
-          `  ${mark} ${pkg.name} ${field}.${depName}: "${depRange}" vs local ${localVer}`,
+          `  ${mark} ${pkg.name} ${field}.${depName}: "${depRange}" vs local ${localVer}`
         );
       }
       if (!ok) {
         depViolations.push(
           `${pkg.name ?? dir} → ${depName}: ` +
-            `"${depRange}" does not satisfy local version ${localVer}`,
+            `"${depRange}" does not satisfy local version ${localVer}`
         );
       }
     }
@@ -273,7 +245,7 @@ if (allViolations.length === 0) {
   console.log(
     `Version coherence check PASSED.\n` +
       `  Core-four packages: ${coreSummary}\n` +
-      `  All @wasmagent/* dependency ranges: satisfied by local versions`,
+      `  All @wasmagent/* dependency ranges: satisfied by local versions`
   );
   process.exit(0);
 }

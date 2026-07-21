@@ -16,13 +16,13 @@
  *   - docs/reports/ 有 wasmagent 体验轴结果
  */
 
-import { readFileSync, writeFileSync, existsSync } from "fs";
-import { join, dirname } from "path";
+import { existsSync, readFileSync, writeFileSync } from "fs";
+import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const EVOMERGE_ROOT = join(__dirname, "..");  // wasmagent root
-const EVOMERGE_PROJ = join(__dirname, "..", "..", "evomerge");  // evomerge project root
+const EVOMERGE_ROOT = join(__dirname, ".."); // wasmagent root
+const EVOMERGE_PROJ = join(__dirname, "..", "..", "evomerge"); // evomerge project root
 
 // ── Load evomerge clean eval results ─────────────────────────────────────────
 
@@ -56,11 +56,14 @@ function loadExperienceAxis() {
   }
   const md = readFileSync(reportFile, "utf8");
   const rows = [];
-  let inTable = false;
+  const inTable = false;
   for (const line of md.split("\n")) {
     // Find the summary table rows: | `multi-turn-memory` | `model` | acc | ...
     if (line.includes("|") && line.includes("%") && line.includes("`")) {
-      const cols = line.split("|").map((c) => c.trim()).filter(Boolean);
+      const cols = line
+        .split("|")
+        .map((c) => c.trim())
+        .filter(Boolean);
       if (cols.length >= 3) {
         // cols[1] is model id in backticks
         const modelId = cols[1].replace(/`/g, "").trim();
@@ -94,12 +97,18 @@ function renderThreeAxisReport(cleanEval, experienceRows) {
   if (cleanEval) {
     lines.push("| 候选 | acc | 说明 |");
     lines.push("|---|---:|---|");
-    lines.push(`| LoRA v2' (clean MMLU train) | ${(cleanEval.loraAcc * 100).toFixed(1)}% | train ∩ eval = ∅ (G3 PASS) |`);
-    lines.push(`| Instruct 基线 | ${(cleanEval.baseAcc * 100).toFixed(1)}% | Qwen2.5-1.5B-Instruct |`);
+    lines.push(
+      `| LoRA v2' (clean MMLU train) | ${(cleanEval.loraAcc * 100).toFixed(1)}% | train ∩ eval = ∅ (G3 PASS) |`
+    );
+    lines.push(
+      `| Instruct 基线 | ${(cleanEval.baseAcc * 100).toFixed(1)}% | Qwen2.5-1.5B-Instruct |`
+    );
     if (cleanEval.comp) {
       const { delta, mcnemar_p, b, c } = cleanEval.comp;
       lines.push("");
-      lines.push(`**Δ = ${(delta * 100).toFixed(1)}pp**, b=${b}, c=${c}, McNemar p=${mcnemar_p.toFixed(4)}`);
+      lines.push(
+        `**Δ = ${(delta * 100).toFixed(1)}pp**, b=${b}, c=${c}, McNemar p=${mcnemar_p.toFixed(4)}`
+      );
       lines.push(p_interpretation(mcnemar_p, delta));
     }
   } else {
@@ -134,7 +143,9 @@ function renderThreeAxisReport(cleanEval, experienceRows) {
   lines.push("|---|---|---|");
   if (cleanEval && cleanEval.comp) {
     const sig = cleanEval.comp.mcnemar_p < 0.05 ? "显著" : "不显著";
-    lines.push(`| 能力轴（MMLU）| Δ=${(cleanEval.comp.delta * 100).toFixed(1)}pp, p=${cleanEval.comp.mcnemar_p.toFixed(3)} (${sig}) | 1 seed, clean data, ✅ |`);
+    lines.push(
+      `| 能力轴（MMLU）| Δ=${(cleanEval.comp.delta * 100).toFixed(1)}pp, p=${cleanEval.comp.mcnemar_p.toFixed(3)} (${sig}) | 1 seed, clean data, ✅ |`
+    );
   }
   lines.push(`| 体验轴（multi-turn-memory）| n=6, p=0.5, 不显著 | ⚠️ n 太小，仅参考 |`);
   lines.push(`| 稳健轴（扰动集）| 未完成（P16-6 待做）| ❌ 缺失 |`);

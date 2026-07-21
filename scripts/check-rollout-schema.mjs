@@ -9,7 +9,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -66,10 +66,7 @@ for (const f of SCHEMA_FILES) {
 // ── 3. rollout-wire.schema.json provenance fields match source code ──────────
 
 const wireSchema = JSON.parse(
-  readFileSync(
-    resolve(ROOT, "packages/core/src/ranking/schemas/rollout-wire.schema.json"),
-    "utf8"
-  )
+  readFileSync(resolve(ROOT, "packages/core/src/ranking/schemas/rollout-wire.schema.json"), "utf8")
 );
 
 const dpoProvFields = Object.keys(wireSchema.$defs.DpoProvenance.properties);
@@ -95,7 +92,9 @@ for (const f of [...dpoProvFields, ...ppoProvFields]) {
 if (errors.length > 0) {
   console.error("Schema governance violations found:\n");
   for (const e of errors) console.error(`  ✗ ${e}`);
-  console.error(`\n${errors.length} violation(s). See docs/schemas/GOVERNANCE.md for the change process.`);
+  console.error(
+    `\n${errors.length} violation(s). See docs/schemas/GOVERNANCE.md for the change process.`
+  );
   process.exit(1);
 } else {
   console.log("✓ Schema governance checks passed");

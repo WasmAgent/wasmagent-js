@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execSync } from "node:child_process";
 /**
  * check-release-cadence.mjs — CI gate for release cadence policy.
  *
@@ -13,8 +14,7 @@
  *   node scripts/check-release-cadence.mjs --warn-only # exit 0 but print warning
  */
 import { readFileSync } from "node:fs";
-import { execSync } from "node:child_process";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -35,9 +35,7 @@ if (!unreleasedMatch) {
 const unreleasedBody = unreleasedMatch[1];
 
 // Count non-empty bullet items (lines starting with "- " that have content)
-const bullets = unreleasedBody
-  .split("\n")
-  .filter((l) => /^[-*]\s+\S/.test(l.trim()));
+const bullets = unreleasedBody.split("\n").filter((l) => /^[-*]\s+\S/.test(l.trim()));
 
 if (bullets.length === 0) {
   console.log("✓ [Unreleased] is empty — no release pending.");
@@ -50,11 +48,14 @@ console.log(`[Unreleased] has ${bullets.length} item(s). Checking last tag date.
 
 let lastTagDateMs;
 try {
-  const tagLine = execSync("git log --tags --simplify-by-decoration --pretty='%ai %D' | grep 'tag:' | head -1", {
-    cwd: root,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  }).trim();
+  const tagLine = execSync(
+    "git log --tags --simplify-by-decoration --pretty='%ai %D' | grep 'tag:' | head -1",
+    {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }
+  ).trim();
 
   if (!tagLine) {
     console.log("✓ No tags found — first release cycle, cadence check skipped.");
@@ -85,4 +86,6 @@ if (daysSinceTag > STALE_DAYS) {
   process.exit(1);
 }
 
-console.log(`✓ Release cadence OK: last tag was ${daysSinceTag} day(s) ago (${STALE_DAYS}-day policy).`);
+console.log(
+  `✓ Release cadence OK: last tag was ${daysSinceTag} day(s) ago (${STALE_DAYS}-day policy).`
+);

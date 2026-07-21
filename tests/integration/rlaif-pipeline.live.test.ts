@@ -14,18 +14,23 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { z } from "zod";
-import { AnthropicModel, BuildPassesVerifier, InMemoryVectorStore, ScalarLLMJudgeVerifier } from "@wasmagent/core";
+import {
+  AnthropicModel,
+  BuildPassesVerifier,
+  InMemoryVectorStore,
+  ScalarLLMJudgeVerifier,
+} from "@wasmagent/core";
+import type { RolloutRecord } from "@wasmagent/core/beta";
 import {
   DEFAULT_REWARD_FUNCTIONS,
   RolloutForkRunner,
   RolloutMemoryStore,
   RolloutRanker,
   toDpoRecord,
-  toPpoRecords,
   toJsonl,
+  toPpoRecords,
 } from "@wasmagent/core/beta";
-import type { RolloutRecord } from "@wasmagent/core/beta";
+import { z } from "zod";
 
 // ── Skip guard ────────────────────────────────────────────────────────────────
 
@@ -55,7 +60,8 @@ const addTool = {
 
 const buildCheckTool = {
   name: "check_exit_code",
-  description: "Simulate a build check. Returns exit_code:0 for small inputs, exit_code:1 otherwise.",
+  description:
+    "Simulate a build check. Returns exit_code:0 for small inputs, exit_code:1 otherwise.",
   inputSchema: z.object({ size: z.number() }),
   readOnly: true,
   idempotent: true,
@@ -122,7 +128,8 @@ describe("RLAIF live pipeline (real API)", () => {
       });
 
       // 明显好的答案 vs 明显差的答案
-      const goodAnswer = "The sum of 17 and 25 is 42. I computed this using the add tool which returned 42.";
+      const goodAnswer =
+        "The sum of 17 and 25 is 42. I computed this using the add tool which returned 42.";
       const badAnswer = "I cannot answer this question.";
 
       const result = await judge.comparePair({

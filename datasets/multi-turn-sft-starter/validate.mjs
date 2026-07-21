@@ -22,7 +22,9 @@ const ALLOWED_SPLIT = new Set(["train", "val", "eval"]);
 const ALLOWED_LOSS = new Set(["default", "recovery", "state_summary"]);
 const ALLOWED_ROLES = new Set(["system", "user", "assistant", "tool"]);
 
-const lines = readFileSync(FILE, "utf8").split("\n").filter((l) => l.length > 0);
+const lines = readFileSync(FILE, "utf8")
+  .split("\n")
+  .filter((l) => l.length > 0);
 const errors = [];
 const byCategory = {};
 const byLossWeight = {};
@@ -49,7 +51,9 @@ for (let i = 0; i < lines.length; i++) {
   idsSeen.add(r.id);
 
   if (!Array.isArray(r.messages) || r.messages.length < 3)
-    errors.push(`L${lineNo} (${r.id}): messages must be array with ≥3 entries (system+user+assistant)`);
+    errors.push(
+      `L${lineNo} (${r.id}): messages must be array with ≥3 entries (system+user+assistant)`
+    );
   else {
     if (r.messages[0].role !== "system")
       errors.push(`L${lineNo} (${r.id}): first message must be system`);
@@ -63,8 +67,11 @@ for (let i = 0; i < lines.length; i++) {
           if (!tc.id || !tc.function?.name || typeof tc.function.arguments !== "string") {
             errors.push(`L${lineNo} (${r.id}) msg[${j}]: malformed tool_call`);
           } else {
-            try { JSON.parse(tc.function.arguments); }
-            catch { errors.push(`L${lineNo} (${r.id}) msg[${j}]: tool_call.arguments not JSON`); }
+            try {
+              JSON.parse(tc.function.arguments);
+            } catch {
+              errors.push(`L${lineNo} (${r.id}) msg[${j}]: tool_call.arguments not JSON`);
+            }
           }
         }
       }
@@ -82,7 +89,8 @@ for (let i = 0; i < lines.length; i++) {
     if (r.provenance.v1_item_id.startsWith("synth-")) synthIdsSeen.add(r.provenance.v1_item_id);
     else v1IdsSeen.add(r.provenance.v1_item_id);
   }
-  if (!r.provenance?.n_gram_hash) errors.push(`L${lineNo} (${r.id}): missing provenance.n_gram_hash`);
+  if (!r.provenance?.n_gram_hash)
+    errors.push(`L${lineNo} (${r.id}): missing provenance.n_gram_hash`);
 
   byCategory[r.category] = (byCategory[r.category] ?? 0) + 1;
   byLossWeight[r.loss_weight_tokens] = (byLossWeight[r.loss_weight_tokens] ?? 0) + 1;

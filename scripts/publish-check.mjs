@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execSync } from "node:child_process";
 /**
  * Pre-publish health check for every public package.
  *
@@ -13,16 +14,23 @@
  *
  * Does NOT publish.
  */
-import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..");
 const packagesDir = join(repoRoot, "packages");
 
-const REQUIRED_FIELDS = ["name", "version", "license", "repository", "homepage", "publishConfig", "files"];
+const REQUIRED_FIELDS = [
+  "name",
+  "version",
+  "license",
+  "repository",
+  "homepage",
+  "publishConfig",
+  "files",
+];
 
 const results = [];
 let failed = 0;
@@ -57,7 +65,9 @@ for (const name of readdirSync(packagesDir).sort()) {
       issues.push(`wasmagent.tier must be tier-0..tier-3, got: ${wm.tier}`);
     }
     if (!["stable", "beta", "alpha", "demo", "research"].includes(wm.stability)) {
-      issues.push(`wasmagent.stability must be one of "stable","beta","alpha","demo","research", got: ${wm.stability}`);
+      issues.push(
+        `wasmagent.stability must be one of "stable","beta","alpha","demo","research", got: ${wm.stability}`
+      );
     }
   }
 

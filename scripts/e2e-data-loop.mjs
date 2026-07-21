@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * e2e-data-loop.mjs — End-to-end data-loop smoke test.
  *
@@ -19,11 +20,11 @@
  *                            (default: <os.tmpdir()>/wasmagent-data-loop-<timestamp>)
  */
 
-import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -211,7 +212,11 @@ try {
   fail(`Python export step failed:\n  ${e.message}`);
 } finally {
   // Clean up temp script file
-  try { rmSync(pyScriptFile); } catch (_) { /* ignore */ }
+  try {
+    rmSync(pyScriptFile);
+  } catch (_) {
+    /* ignore */
+  }
 }
 
 console.log(`  → DPO records exported: ${pyResult.dpo}`);
@@ -225,10 +230,7 @@ console.log(`  → wrote ${manifestFile}`);
 step(4, "Validate DPO/PPO files against schema rules");
 
 // Load rollout-wire.schema.json (used for intermediate ranked-rollouts validation)
-const wireSchemaFile = resolve(
-  ROOT,
-  "packages/core/src/ranking/schemas/rollout-wire.schema.json"
-);
+const wireSchemaFile = resolve(ROOT, "packages/core/src/ranking/schemas/rollout-wire.schema.json");
 // Load training-record.schema.json (used for final DPO/PPO output from Python exporter)
 const trainingSchemaFile = resolve(
   ROOT,
@@ -305,9 +307,7 @@ for (let i = 0; i < dpoRecords.length; i++) {
   // snake_case check on provenance keys
   for (const key of Object.keys(prov)) {
     if (/[A-Z]/.test(key)) {
-      validationErrors.push(
-        `DPO record ${i}: provenance field "${key}" must use snake_case`
-      );
+      validationErrors.push(`DPO record ${i}: provenance field "${key}" must use snake_case`);
     }
   }
   // source must be "wasmagent-rollout"
@@ -360,9 +360,7 @@ for (let i = 0; i < ppoRecords.length; i++) {
   // snake_case check
   for (const key of Object.keys(prov)) {
     if (/[A-Z]/.test(key)) {
-      validationErrors.push(
-        `PPO record ${i}: provenance field "${key}" must use snake_case`
-      );
+      validationErrors.push(`PPO record ${i}: provenance field "${key}" must use snake_case`);
     }
   }
   // source check

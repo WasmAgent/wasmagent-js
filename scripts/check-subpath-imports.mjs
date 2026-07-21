@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * check-subpath-imports.mjs — enforce that beta/experimental symbols are
  * imported from the correct @wasmagent/core sub-path, not from main.
@@ -12,55 +13,111 @@
  *   node scripts/check-subpath-imports.mjs --fix     # auto-fix (adds /beta suffix)
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
 
 // Symbols that live in @wasmagent/core/beta (not main entry)
 const BETA_SYMBOLS = new Set([
   // Enhancement runners
-  "BudgetForcingRunner", "ParallelForkJoinRunner", "ReflectRefineRunner",
-  "RolloutForkRunner", "RolloutMemoryStore", "SelfConsistencyRunner",
+  "BudgetForcingRunner",
+  "ParallelForkJoinRunner",
+  "ReflectRefineRunner",
+  "RolloutForkRunner",
+  "RolloutMemoryStore",
+  "SelfConsistencyRunner",
   "resolveEnhancement",
   // Enhancement types
-  "BudgetForcingOptions", "BudgetForcingResult", "EnhancementPreset",
-  "ParallelForkJoinOptions", "ParallelForkJoinResult",
-  "ReflectRefineOptions", "ReflectRefineResult",
-  "RolloutBranchResult", "RolloutForkRunnerOptions",
-  "RolloutMemory", "RolloutMemoryRecord", "RolloutMemoryStoreOptions",
-  "SelfConsistencyOptions", "SelfConsistencyResult",
+  "BudgetForcingOptions",
+  "BudgetForcingResult",
+  "EnhancementPreset",
+  "ParallelForkJoinOptions",
+  "ParallelForkJoinResult",
+  "ReflectRefineOptions",
+  "ReflectRefineResult",
+  "RolloutBranchResult",
+  "RolloutForkRunnerOptions",
+  "RolloutMemory",
+  "RolloutMemoryRecord",
+  "RolloutMemoryStoreOptions",
+  "SelfConsistencyOptions",
+  "SelfConsistencyResult",
   // Evals
-  "runEval", "exactMatch", "finalAnswerLength", "toolCallAccuracy",
-  "trajectoryValidity", "judgeScorer", "llmJudge", "llmJudgeAsync",
-  "compositeScorer", "constraintScorer", "efficiencyScorer",
-  "faithfulnessScorer", "faithfulnessScorerAsync", "relevanceScorer",
-  "relevanceScorerAsync", "guardrailCompliance", "guardrailComplianceAsync",
-  "runJudgeScorer", "collectTrace", "answerCompletenessJudge",
-  "trajectoryQualityJudge", "recoveryScorer",
+  "runEval",
+  "exactMatch",
+  "finalAnswerLength",
+  "toolCallAccuracy",
+  "trajectoryValidity",
+  "judgeScorer",
+  "llmJudge",
+  "llmJudgeAsync",
+  "compositeScorer",
+  "constraintScorer",
+  "efficiencyScorer",
+  "faithfulnessScorer",
+  "faithfulnessScorerAsync",
+  "relevanceScorer",
+  "relevanceScorerAsync",
+  "guardrailCompliance",
+  "guardrailComplianceAsync",
+  "runJudgeScorer",
+  "collectTrace",
+  "answerCompletenessJudge",
+  "trajectoryQualityJudge",
+  "recoveryScorer",
   // Error classification
-  "buildFixRetryMessage", "classifyExecutionError",
-  "ErrorRecoveryStrategy", "MAX_REFINEMENT_STEPS",
+  "buildFixRetryMessage",
+  "classifyExecutionError",
+  "ErrorRecoveryStrategy",
+  "MAX_REFINEMENT_STEPS",
   // RLAIF ranking
-  "RolloutRanker", "DEFAULT_REWARD_FUNCTIONS", "toDpoRecord",
-  "toPpoRecords", "toJsonl", "RolloutExporter",
+  "RolloutRanker",
+  "DEFAULT_REWARD_FUNCTIONS",
+  "toDpoRecord",
+  "toPpoRecords",
+  "toJsonl",
+  "RolloutExporter",
   // Workflow
-  "LocalWorkflowEngine", "KvWorkflowStateStore", "MemoryKvBackend",
-  "WorkflowDefinition", "WorkflowRunHandle", "WorkflowStateStore",
-  "WorkflowStep", "WorkflowEvent", "WorkflowRunRecord",
+  "LocalWorkflowEngine",
+  "KvWorkflowStateStore",
+  "MemoryKvBackend",
+  "WorkflowDefinition",
+  "WorkflowRunHandle",
+  "WorkflowStateStore",
+  "WorkflowStep",
+  "WorkflowEvent",
+  "WorkflowRunRecord",
   // File management (beta)
-  "FileTreeManager", "globalFileTree", "FileLockManager", "globalFileLock",
+  "FileTreeManager",
+  "globalFileTree",
+  "FileLockManager",
+  "globalFileLock",
   // Skills
-  "ProjectInstructions", "makeKvAgentsMdLoader", "SkillRegistry",
-  "BranchableWorkspace", "openOrCreateRoot",
+  "ProjectInstructions",
+  "makeKvAgentsMdLoader",
+  "SkillRegistry",
+  "BranchableWorkspace",
+  "openOrCreateRoot",
   // Types for above
-  "Scorer", "RolloutRecord", "AgentRunner", "AgentTrace",
-  "EvalSample", "EvalRunResult", "JudgeBreakdown",
+  "Scorer",
+  "RolloutRecord",
+  "AgentRunner",
+  "AgentTrace",
+  "EvalSample",
+  "EvalRunResult",
+  "JudgeBreakdown",
 ]);
 
 // Symbols that live in @wasmagent/core/experimental
 const EXPERIMENTAL_SYMBOLS = new Set([
-  "OtelBridge", "withOtel", "InMemorySpanExporter",
-  "OtelBridgeOptions", "GenAiMetricPoint", "MetricExporter",
-  "ReadableSpan", "SpanAttributes", "SpanExporter",
+  "OtelBridge",
+  "withOtel",
+  "InMemorySpanExporter",
+  "OtelBridgeOptions",
+  "GenAiMetricPoint",
+  "MetricExporter",
+  "ReadableSpan",
+  "SpanAttributes",
+  "SpanExporter",
 ]);
 
 const fix = process.argv.includes("--fix");
@@ -71,22 +128,36 @@ const files = execSync("git ls-files -- '*.ts'", { encoding: "utf8" })
   .filter((f) => f && !f.includes("/dist/") && !f.startsWith(".claude/"));
 
 let violations = 0;
-let fixed = 0;
+const fixed = 0;
 
 for (const file of files) {
   let text;
-  try { text = readFileSync(file, "utf8"); } catch { continue; }
+  try {
+    text = readFileSync(file, "utf8");
+  } catch {
+    continue;
+  }
   if (!text.includes('"@wasmagent/core"') && !text.includes("'@wasmagent/core'")) continue;
 
   // Parse import statements that use @wasmagent/core (main entry)
-  const importRe = /import\s+(?:type\s+)?(?:\{([^}]+)\}[^"']*|([A-Za-z_$][A-Za-z0-9_$]*)(?:\s+as\s+\S+)?\s+from\s+)["']@wasmagent\/core["']/g;
+  const importRe =
+    /import\s+(?:type\s+)?(?:\{([^}]+)\}[^"']*|([A-Za-z_$][A-Za-z0-9_$]*)(?:\s+as\s+\S+)?\s+from\s+)["']@wasmagent\/core["']/g;
   let match;
   const betaViolations = [];
   const expViolations = [];
 
   while ((match = importRe.exec(text)) !== null) {
     const importList = match[1] ?? match[2] ?? "";
-    const symbols = importList.split(",").map((s) => s.trim().replace(/^type\s+/, "").split(/\s+as\s+/)[0]?.trim()).filter(Boolean);
+    const symbols = importList
+      .split(",")
+      .map((s) =>
+        s
+          .trim()
+          .replace(/^type\s+/, "")
+          .split(/\s+as\s+/)[0]
+          ?.trim()
+      )
+      .filter(Boolean);
     for (const sym of symbols) {
       if (BETA_SYMBOLS.has(sym)) betaViolations.push({ sym, importStatement: match[0] });
       if (EXPERIMENTAL_SYMBOLS.has(sym)) expViolations.push({ sym, importStatement: match[0] });

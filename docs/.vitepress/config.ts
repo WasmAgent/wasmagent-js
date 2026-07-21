@@ -152,9 +152,7 @@ const zhSidebar = {
     },
     {
       text: "RLAIF 数据流水线",
-      items: [
-        { text: "RLAIF rollout 流水线", link: "/zh/guides/rlaif-rollout" },
-      ],
+      items: [{ text: "RLAIF rollout 流水线", link: "/zh/guides/rlaif-rollout" }],
     },
     {
       text: "Kernel",

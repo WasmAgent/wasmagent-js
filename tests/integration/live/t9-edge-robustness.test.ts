@@ -14,11 +14,10 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { writeFileSync, mkdtempSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { z } from "zod";
 import {
   AnthropicModel,
   JsKernel,
@@ -27,14 +26,15 @@ import {
   ToolCallingAgent,
   ToolRegistry,
 } from "@wasmagent/core";
-import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+import type { RolloutBranchResult } from "@wasmagent/core/beta";
 import {
   DEFAULT_REWARD_FUNCTIONS,
   RolloutRanker,
   toDpoRecord,
   toPpoRecords,
 } from "@wasmagent/core/beta";
-import type { RolloutBranchResult } from "@wasmagent/core/beta";
+import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+import { z } from "zod";
 
 // ── Skip guards ───────────────────────────────────────────────────────────────
 
@@ -174,10 +174,7 @@ describe("T9-E3 · ProgrammaticOrchestrator throws when maxToolCalls exceeded", 
 
     expect(error).toBeDefined();
     expect(error!.message).toContain("maxToolCalls");
-    console.log(
-      "T9-E3 PASS — maxToolCalls enforced, error:",
-      error!.message.slice(0, 80)
-    );
+    console.log("T9-E3 PASS — maxToolCalls enforced, error:", error!.message.slice(0, 80));
   }, 20_000);
 });
 
@@ -212,46 +209,51 @@ describe("T9-E4 · QuickJSKernel enforces CPU timeout on infinite loop", () => {
 
 // Only runs when the evomerge public repo is present at /tmp/evomerge-public-repo
 import { existsSync } from "node:fs";
+
 const EVOMERGE_AVAILABLE = existsSync(EVOMERGE_SRC);
 
 describe("T9-E5 · evomerge TrainingDataExporter handles empty JSONL gracefully", () => {
-  it.skipIf(!EVOMERGE_AVAILABLE)("load_rollouts returns 0 records and export produces empty DPO/PPO", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "t9-edge-"));
-    const emptyPath = join(tempDir, "empty.jsonl");
-    writeFileSync(emptyPath, "");
+  it.skipIf(!EVOMERGE_AVAILABLE)(
+    "load_rollouts returns 0 records and export produces empty DPO/PPO",
+    () => {
+      const tempDir = mkdtempSync(join(tmpdir(), "t9-edge-"));
+      const emptyPath = join(tempDir, "empty.jsonl");
+      writeFileSync(emptyPath, "");
 
-    // Write Python script to temp file to avoid `;` line-joining issues
-    const pyScriptPath = join(tempDir, "e5-empty.py");
-    writeFileSync(
-      pyScriptPath,
-      [
-        "import sys",
-        `sys.path.insert(0, '${EVOMERGE_SRC}')`,
-        "from datafactory.exporter import TrainingDataExporter",
-        "e = TrainingDataExporter(eval_items_path=None)",
-        `records = e.load_rollouts('${emptyPath}')`,
-        "dpo, ppo = e.export(records, mode='fixture')",
-        "print(f'RECORDS:{len(records)} DPO:{len(dpo)} PPO:{len(ppo)}')",
-      ].join("\n")
-    );
+      // Write Python script to temp file to avoid `;` line-joining issues
+      const pyScriptPath = join(tempDir, "e5-empty.py");
+      writeFileSync(
+        pyScriptPath,
+        [
+          "import sys",
+          `sys.path.insert(0, '${EVOMERGE_SRC}')`,
+          "from datafactory.exporter import TrainingDataExporter",
+          "e = TrainingDataExporter(eval_items_path=None)",
+          `records = e.load_rollouts('${emptyPath}')`,
+          "dpo, ppo = e.export(records, mode='fixture')",
+          "print(f'RECORDS:{len(records)} DPO:{len(dpo)} PPO:{len(ppo)}')",
+        ].join("\n")
+      );
 
-    let result: string;
-    try {
-      result = execSync(`python3 "${pyScriptPath}"`, {
-        encoding: "utf8",
-        timeout: 15_000,
-      });
-    } catch (e: unknown) {
-      const err = e as { stdout?: string; stderr?: string; message?: string };
-      throw new Error(`Python failed: ${err.message}\nstderr: ${err.stderr}`);
-    }
+      let result: string;
+      try {
+        result = execSync(`python3 "${pyScriptPath}"`, {
+          encoding: "utf8",
+          timeout: 15_000,
+        });
+      } catch (e: unknown) {
+        const err = e as { stdout?: string; stderr?: string; message?: string };
+        throw new Error(`Python failed: ${err.message}\nstderr: ${err.stderr}`);
+      }
 
-    console.log("  T9-E5 output:", result.trim());
-    expect(result).toContain("RECORDS:0");
-    expect(result).toContain("DPO:0");
-    expect(result).toContain("PPO:0");
-    console.log("T9-E5 PASS — empty JSONL produces 0 records, 0 DPO, 0 PPO");
-  }, 15_000);
+      console.log("  T9-E5 output:", result.trim());
+      expect(result).toContain("RECORDS:0");
+      expect(result).toContain("DPO:0");
+      expect(result).toContain("PPO:0");
+      console.log("T9-E5 PASS — empty JSONL produces 0 records, 0 DPO, 0 PPO");
+    },
+    15_000
+  );
 });
 
 // ── E6 — All-failing branches: toDpoRecord returns null ──────────────────────

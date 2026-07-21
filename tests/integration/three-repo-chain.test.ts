@@ -16,12 +16,11 @@
  *      new required field added without updating the fixture.
  */
 
+import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "bun:test";
+import type { RankedBranch, RolloutBranchResult, RolloutRecord } from "@wasmagent/core/beta";
 import { toDpoRecord, toPpoRecords } from "@wasmagent/core/beta";
-import type { RolloutBranchResult, RolloutRecord } from "@wasmagent/core/beta";
-import type { RankedBranch } from "@wasmagent/core/beta";
 
 // ── Fixture paths ─────────────────────────────────────────────────────────────
 
@@ -70,7 +69,7 @@ function fixtureRecordToRolloutRecord(rec: Record<string, unknown>): RolloutReco
     rolloutId: String(rec.rollout_id ?? ""),
     branchIndex: Number(rec.branch_index ?? 0),
     finalAnswer: String(rec.final_answer ?? ""),
-    objectiveScore: (Number(rec.objective_score ?? 0) as 0 | 1),
+    objectiveScore: Number(rec.objective_score ?? 0) as 0 | 1,
     task: String(rec.task ?? ""),
   };
 }
@@ -82,7 +81,7 @@ function fixtureRecordToRankedBranch(rec: Record<string, unknown>): RankedBranch
   return {
     branchIndex: Number(rec.branch_index ?? 0),
     rank: Number(rec.rank ?? 1),
-    objectiveScore: (Number(rec.objective_score ?? 0) as 0 | 1),
+    objectiveScore: Number(rec.objective_score ?? 0) as 0 | 1,
     judgeScore: 5,
     totalScore: Number(rec.total_score ?? 0),
   };
@@ -110,9 +109,7 @@ describe("three-repo cross-repo data chain", () => {
 
     const branches = rolloutLines.map(fixtureRecordToBranchResult);
     const rolloutRecords = rolloutLines.map(fixtureRecordToRolloutRecord);
-    const ranked = rolloutLines
-      .map(fixtureRecordToRankedBranch)
-      .sort((a, b) => a.rank - b.rank);
+    const ranked = rolloutLines.map(fixtureRecordToRankedBranch).sort((a, b) => a.rank - b.rank);
 
     // Run the TypeScript pipeline
     const dpo = toDpoRecord(branches, ranked, 0);
@@ -208,7 +205,14 @@ describe("three-repo cross-repo data chain", () => {
     );
     const schema = JSON.parse(readFileSync(schemaPath, "utf8")) as {
       $id?: string;
-      $defs?: Record<string, { required?: string[]; additionalProperties?: boolean; properties?: Record<string, unknown> }>;
+      $defs?: Record<
+        string,
+        {
+          required?: string[];
+          additionalProperties?: boolean;
+          properties?: Record<string, unknown>;
+        }
+      >;
     };
 
     const rolloutLines = readJsonlLines("rollout-branches.v1.jsonl");
@@ -220,8 +224,15 @@ describe("three-repo cross-repo data chain", () => {
     const requiredFields: string[] = branchDef?.required ?? [];
     expect(requiredFields.length).toBeGreaterThan(0);
     // Spot-check: the canonical required fields must be present in schema
-    const expectedRequired = ["rollout_id", "task", "branch_index", "temperature",
-                              "session_id", "tool_call_sequence", "final_answer"];
+    const expectedRequired = [
+      "rollout_id",
+      "task",
+      "branch_index",
+      "temperature",
+      "session_id",
+      "tool_call_sequence",
+      "final_answer",
+    ];
     for (const field of expectedRequired) {
       expect(requiredFields).toContain(field);
     }
