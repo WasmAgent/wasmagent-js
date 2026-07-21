@@ -175,6 +175,26 @@ per-package, pointing to `WasmAgent/wasmagent-js` +
 and `NPM_TOKEN` env from release.yml; `permissions: id-token: write`
 is already in place. Eliminates the entire E404-token-scope class
 of failures.
+## Repository Boundaries
+
+**This repository owns:**
+- runtime (WASM kernels, KernelPool, executor)
+- MCP gateway / firewall (`@wasmagent/mcp-gateway`, `@wasmagent/mcp-firewall`)
+- AEP emitter and signature (`@wasmagent/aep`)
+- Capability manifest and attestation (`@wasmagent/mcp-attestation`)
+- Compliance verifier and repair loop (`@wasmagent/compliance`) — produces `ComplianceEvalRecord`
+- Core agent framework (`@wasmagent/core`)
+- Integrations and adapters (AI SDK, Mastra, OTel exporter)
+
+**Other repositories own — do not duplicate here:**
+
+| Capability | Owner |
+|---|---|
+| AgentBOM / MCP Posture / Trust Passport specifications | `agent-trust-infra` |
+| Enterprise audit reports, regulatory control mapping (OWASP/EU AI Act/NIST) | `open-agent-audit` |
+| Training data pipeline (SFT/DPO export) | `trace-pipeline` |
+| Dynamic evaluation protocol (FAEP) | `fresharena` |
+
 ## Key modules (2026-06-26)
 
 | Module | Location |

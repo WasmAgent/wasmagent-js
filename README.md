@@ -5,9 +5,9 @@
 [![CI](https://github.com/WasmAgent/wasmagent-js/actions/workflows/ci.yml/badge.svg)](https://github.com/WasmAgent/wasmagent-js/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-vitepress-brightgreen.svg)](https://WasmAgent.github.io/wasmagent-js/)
 
-> **WasmAgent adds a verifiable evidence layer to agent tool use: protect tool calls, record what happened, audit the result, and turn trusted traces into training data.**
+> **WasmAgent adds a verifiable evidence layer to agent tool use: protect tool calls, record what happened, audit the result, and admit trusted traces into downstream systems.**
 
-**Protect → Record → Audit → Train**
+**Protect → Record → Audit → Admit**
 
 ---
 
@@ -19,7 +19,7 @@ Pick your entry point:
 |---|---|
 | **Protect tools** — runtime firewall, policy enforcement, taint tracking | `npm add @wasmagent/mcp-firewall` |
 | **Record evidence** — signed AEP records after every agent run | `npm add @wasmagent/aep` |
-| **Train from traces** — compliance scoring + DPO/PPO export | `npm add @wasmagent/aep @wasmagent/compliance` |
+| **Admit from traces** — compliance scoring produces `ComplianceEvalRecord`s for downstream training | `npm add @wasmagent/aep @wasmagent/compliance` |
 
 **Trust Pack — 30-minute end-to-end: [docs/quickstarts/trust-pack-30min.md](./docs/quickstarts/trust-pack-30min.md)**
 
