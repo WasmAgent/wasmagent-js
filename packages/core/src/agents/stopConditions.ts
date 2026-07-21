@@ -65,22 +65,32 @@ export function callFingerprint(name: string, args: Record<string, unknown>): st
  */
 export type StopPolicyDescriptor = string;
 
-/** Parse a single descriptor into a StopCondition, or null if unrecognised. */
-export function parseStopPolicy(desc: StopPolicyDescriptor): StopCondition | null {
+/** Parse a single descriptor into a StopCondition. Throws on unrecognised descriptors. */
+export function parseStopPolicy(desc: StopPolicyDescriptor): StopCondition {
   const d = desc.trim();
   if (d === "noProgress") return noProgress(3);
   const colonIdx = d.indexOf(":");
-  if (colonIdx === -1) return null;
+  if (colonIdx === -1) {
+    throw new Error(
+      `Unrecognised stop policy descriptor: "${d}". Accepted formats: "steps:N", "cost:N", "noProgress", "noProgress:K".`
+    );
+  }
   const key = d.slice(0, colonIdx);
   const val = Number(d.slice(colonIdx + 1));
-  if (Number.isNaN(val)) return null;
+  if (Number.isNaN(val)) {
+    throw new Error(
+      `Invalid numeric value in stop policy descriptor: "${d}". The value after ":" must be a number.`
+    );
+  }
   if (key === "steps" || key === "stepCount") return stepCountIs(val);
   if (key === "cost" || key === "costBudget") return costBudget(val);
   if (key === "noProgress") return noProgress(val);
-  return null;
+  throw new Error(
+    `Unrecognised stop policy key: "${key}" in descriptor "${d}". Accepted keys: steps, stepCount, cost, costBudget, noProgress.`
+  );
 }
 
-/** Parse an array of descriptors, silently dropping any unrecognised entries. */
+/** Parse an array of descriptors. Throws on any unrecognised entry. */
 export function parseStopPolicies(descs: string[]): StopCondition[] {
-  return descs.map(parseStopPolicy).filter((c): c is StopCondition => c !== null);
+  return descs.map(parseStopPolicy);
 }

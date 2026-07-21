@@ -130,6 +130,11 @@ export interface AnthropicModelOptions {
    * Only relevant when at least one registered tool has deferLoading: true.
    */
   toolSearchVariant?: "regex" | "bm25";
+  /**
+   * Custom default headers to include with every Anthropic API request.
+   * Useful for routing proxies, tagging requests, or injecting auth tokens.
+   */
+  defaultHeaders?: Record<string, string>;
 }
 
 export class AnthropicModel implements Model {
@@ -189,6 +194,7 @@ export class AnthropicModel implements Model {
       this.#client = new Anthropic({
         apiKey: this.#opts.apiKey,
         ...(this.#opts.baseURL ? { baseURL: this.#opts.baseURL } : {}),
+        ...(this.#opts.defaultHeaders ? { defaultHeaders: this.#opts.defaultHeaders } : {}),
       });
     }
     const client = this.#client as InstanceType<typeof Anthropic>;

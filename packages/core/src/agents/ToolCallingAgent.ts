@@ -10,7 +10,7 @@ import { runInputGuardrails, runOutputGuardrails, runToolGuardrails } from "../g
 import { LazyObservationHandle } from "../memory/LazyObservationHandle.js";
 import { MessageAssembler } from "../memory/MessageAssembler.js";
 import { repairJson } from "../models/OpenAIModel.js";
-import type { EnhancementPolicy, Model } from "../models/types.js";
+import type { EnhancementPolicy, Model, ModelMessage } from "../models/types.js";
 import { TokenBudget } from "../models/types.js";
 import { deriveDependencies } from "../scheduler/deriveDeps.js";
 import type { IRNode } from "../scheduler/ir.js";
@@ -210,6 +210,8 @@ export class ToolCallingAgent {
   readonly #onVerifierResult: ToolCallingAgentOptions["onVerifierResult"];
   /** SI-6+8 — active config snapshot, built at construction and emitted at run_start. */
   readonly #runConfig: Omit<AgentRunConfig, "signal">;
+  /** Cumulative token budget tracking across all runs. */
+  #budget: TokenBudget = new TokenBudget();
 
   constructor(opts: ToolCallingAgentOptions) {
     this.#tools = new ToolRegistry();
@@ -263,10 +265,20 @@ export class ToolCallingAgent {
     return this.#assembler;
   }
 
+  /** Get the cumulative TokenBudget for this agent (tracks usage across all runs). */
+  getTokenBudget(): TokenBudget {
+    return this.#budget;
+  }
+
+  /** Convenience accessor: current token usage stats (input, output, cache, calls). */
+  get tokenStats() {
+    return this.#budget.toStats();
+  }
+
   async *run(
     task: string,
     parentTraceId: string | null = null,
-    opts: { signal?: AbortSignal } = {}
+    opts: { signal?: AbortSignal; history?: ModelMessage[] } = {}
   ): AsyncGenerator<AgentEvent> {
     // SI-7: run() opts take precedence over the constructor-bound signal.
     const signal = opts.signal ?? this.#signal;
@@ -287,10 +299,20 @@ export class ToolCallingAgent {
     if (this.#assembler.historyLength === 0) {
       this.#assembler.reset();
     }
+
+    // Inject pre-existing history before the task message.
+    if (opts.history && opts.history.length > 0) {
+      for (const msg of opts.history) {
+        this.#assembler.addRawMessage(msg);
+      }
+    }
+
     const seedStep: UserMessageStep = { type: "user_message", content: task };
     this.#assembler.addStep(seedStep);
 
-    const budget = new TokenBudget();
+    // Reset and link the cumulative budget for this run.
+    this.#budget = new TokenBudget();
+    const budget = this.#budget;
     const budgetMaxTokens = this.#policy?.budget?.maxTokens;
     const runStartMs = Date.now();
     const budgetMaxDurationMs = this.#policy?.budget?.maxDurationMs;

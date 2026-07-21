@@ -12,6 +12,15 @@
 
 import type { ModelMessage } from "../models/types.js";
 
+/**
+ * A simple function type that accepts messages and returns an async generator of text deltas.
+ * Use this as a lightweight alternative to a full Model object when configuring guardrails.
+ */
+export type CompletionFunction = (
+  messages: ModelMessage[],
+  opts?: { maxTokens?: number }
+) => AsyncGenerator<{ type: string; delta?: string }>;
+
 // ── Core types ─────────────────────────────────────────────────────────────────
 
 /** Result from a single guardrail check. */
@@ -108,13 +117,19 @@ export interface ClassifierGuardrailOptions {
   /**
    * A ModelAdapter-compatible generate function.
    * Use any provider via `new OpenAICompatModel(...)` or `new AnthropicModel(...)`.
+   * Either `model` or `completionFn` must be provided.
    */
-  model: {
+  model?: {
     generate(
       messages: ModelMessage[],
       opts?: { stream?: boolean; maxTokens?: number }
     ): AsyncGenerator<{ type: string; delta?: string }>;
   };
+  /**
+   * Lightweight alternative to `model` — a simple completion function.
+   * If both `model` and `completionFn` are provided, `model` takes precedence.
+   */
+  completionFn?: CompletionFunction;
   /**
    * Classification policy. Describes what constitutes a violation.
    * Example: "You are a safety classifier. Respond with JSON {safe: boolean, reason: string}.
@@ -186,6 +201,15 @@ export function classifierGuardrail(
   const policy = opts.policy ?? DEFAULT_CLASSIFIER_POLICY;
   const parseResult = opts.parseResult ?? defaultParseClassifierResult;
 
+  const generateFn = opts.model
+    ? (msgs: ModelMessage[], o?: { maxTokens?: number }) =>
+        opts.model!.generate(msgs, { stream: true, ...o })
+    : opts.completionFn;
+
+  if (!generateFn) {
+    throw new Error("classifierGuardrail requires either `model` or `completionFn`.");
+  }
+
   async function classify(content: string): Promise<GuardrailResult> {
     const messages: ModelMessage[] = [
       { role: "system", content: policy },
@@ -194,7 +218,7 @@ export function classifierGuardrail(
 
     let response = "";
     try {
-      for await (const ev of opts.model.generate(messages, { stream: true, maxTokens: 256 })) {
+      for await (const ev of generateFn!(messages, { maxTokens: 256 })) {
         if (ev.type === "text_delta" && typeof ev.delta === "string") {
           response += ev.delta;
         }
@@ -253,15 +277,36 @@ export interface IntentAlignmentGuardrailOptions {
   /**
    * A model that can judge whether a proposed action aligns with the original task.
    * Should be an isolated model that only sees the task and the action (not the full history).
+   * Either `model` or `completionFn` must be provided.
    */
-  model: {
+  model?: {
     generate(
       messages: ModelMessage[],
       opts?: { stream?: boolean; maxTokens?: number }
     ): AsyncGenerator<{ type: string; delta?: string }>;
   };
+  /**
+   * Lightweight alternative to `model` — a simple completion function.
+   * If both `model` and `completionFn` are provided, `model` takes precedence.
+   */
+  completionFn?: CompletionFunction;
   /** Guardrail name. Default: "intentAlignmentGuardrail". */
   name?: string;
+  /**
+   * Custom rules appended to the alignment policy prompt.
+   * Each rule is a plain-text sentence describing what to flag.
+   */
+  customRules?: string[];
+  /**
+   * Few-shot examples for the alignment judge to improve accuracy.
+   * Each example describes an input scenario and whether it should be considered aligned.
+   */
+  fewShotExamples?: Array<{ input: string; aligned: boolean }>;
+  /**
+   * A full policy document that replaces the default INTENT_ALIGNMENT_POLICY.
+   * When provided, customRules are appended after policyDocument.
+   */
+  policyDocument?: string;
 }
 
 const INTENT_ALIGNMENT_POLICY = `You are a security judge for an AI agent. Your task is to determine if a proposed tool action is consistent with the user's original task.
@@ -278,6 +323,33 @@ Respond ONLY with valid JSON: {"aligned": true} or {"aligned": false, "reason": 
 export function intentAlignmentGuardrail(opts: IntentAlignmentGuardrailOptions): ToolGuardrail {
   const name = opts.name ?? "intentAlignmentGuardrail";
 
+  const generateFn = opts.model
+    ? (msgs: ModelMessage[], o?: { maxTokens?: number }) =>
+        opts.model!.generate(msgs, { stream: true, ...o })
+    : opts.completionFn;
+
+  if (!generateFn) {
+    throw new Error("intentAlignmentGuardrail requires either `model` or `completionFn`.");
+  }
+
+  // Build the policy from policyDocument or default, with optional custom rules.
+  let policy = opts.policyDocument ?? INTENT_ALIGNMENT_POLICY;
+  if (opts.customRules && opts.customRules.length > 0) {
+    policy += `\n\nAdditional rules:\n${opts.customRules.map((r) => `- ${r}`).join("\n")}`;
+  }
+
+  // Build few-shot example messages.
+  const fewShotMessages: ModelMessage[] = [];
+  if (opts.fewShotExamples && opts.fewShotExamples.length > 0) {
+    for (const ex of opts.fewShotExamples) {
+      fewShotMessages.push({ role: "user", content: ex.input });
+      fewShotMessages.push({
+        role: "assistant",
+        content: JSON.stringify({ aligned: ex.aligned }),
+      });
+    }
+  }
+
   return {
     name,
     async check(
@@ -290,7 +362,8 @@ export function intentAlignmentGuardrail(opts: IntentAlignmentGuardrailOptions):
         ctx?.proposedAction ?? `Call tool "${toolName}" with arguments: ${JSON.stringify(input)}`;
 
       const messages: ModelMessage[] = [
-        { role: "system", content: INTENT_ALIGNMENT_POLICY },
+        { role: "system", content: policy },
+        ...fewShotMessages,
         {
           role: "user",
           content: `Original task: ${originalTask}\n\nProposed action: ${proposedAction}`,
@@ -299,7 +372,7 @@ export function intentAlignmentGuardrail(opts: IntentAlignmentGuardrailOptions):
 
       let response = "";
       try {
-        for await (const ev of opts.model.generate(messages, { stream: true, maxTokens: 256 })) {
+        for await (const ev of generateFn!(messages, { maxTokens: 256 })) {
           if (ev.type === "text_delta" && typeof ev.delta === "string") {
             response += ev.delta;
           }

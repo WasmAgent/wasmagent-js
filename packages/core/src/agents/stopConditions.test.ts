@@ -129,14 +129,17 @@ describe("parseStopPolicy", () => {
     expect(cond!({ ...base, callHistory: five })).toBe(true);
   });
 
-  it("returns null for unknown descriptors", () => {
-    expect(parseStopPolicy("unknown")).toBeNull();
-    expect(parseStopPolicy("steps:notanumber")).toBeNull();
-    expect(parseStopPolicy("")).toBeNull();
+  it("throws for unknown descriptors", () => {
+    expect(() => parseStopPolicy("unknown")).toThrow(/Unrecognised stop policy descriptor/);
+    expect(() => parseStopPolicy("steps:notanumber")).toThrow(/Invalid numeric value/);
+    expect(() => parseStopPolicy("")).toThrow(/Unrecognised stop policy descriptor/);
   });
 
-  it("parseStopPolicies filters nulls and returns valid conditions", () => {
-    const conds = parseStopPolicies(["steps:2", "bad-descriptor", "cost:100"]);
+  it("parseStopPolicies throws on invalid entries", () => {
+    expect(() => parseStopPolicies(["steps:2", "bad-descriptor", "cost:100"])).toThrow(
+      /Unrecognised stop policy descriptor/
+    );
+    const conds = parseStopPolicies(["steps:2", "cost:100"]);
     expect(conds).toHaveLength(2);
   });
 });

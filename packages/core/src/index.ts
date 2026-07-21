@@ -155,6 +155,7 @@ export {
 export type {
   ClassifierGuardrailOptions,
   CodeGuardrailOptions,
+  CompletionFunction,
   GuardrailResult,
   InputGuardrail,
   IntentAlignmentGuardrailOptions,
@@ -326,3 +327,12 @@ export type {
 // Beta and experimental APIs are available via sub-path imports:
 //   import { ... } from "@wasmagent/core/beta"
 //   import { ... } from "@wasmagent/core/experimental"
+
+// Standalone factories for custom agent loops [stable]
+export type { CreateCheckpointableRunOptions } from "./factories.js";
+export {
+  createCheckpointableRun,
+  createMessageAssembler,
+  createObservationalMemory,
+  createTokenBudget,
+} from "./factories.js";
