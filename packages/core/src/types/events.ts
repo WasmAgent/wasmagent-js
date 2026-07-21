@@ -127,7 +127,7 @@ export type AgentEvent =
       event: "planning";
       data: { step: number; plan: string; facts: string };
     })
-  | (AgentEventBase & { channel: "text"; event: "final_answer"; data: { answer: unknown } })
+  | (AgentEventBase & { channel: "text"; event: "final_answer"; data: { answer: unknown; type?: string } })
   | (AgentEventBase & { channel: "text"; event: "error"; data: { error: string; step?: number } })
   | (AgentEventBase & {
       channel: "status";

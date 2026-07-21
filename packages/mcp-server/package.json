@@ -2,7 +2,7 @@
   "name": "@wasmagent/mcp-server",
   "version": "1.1.1",
   "mcpName": "io.github.telleroutlook/mcp-server",
-  "description": "Expose any wasmagent agent as a Model Context Protocol (MCP) server — sync tools/call + 2025-11-25 Tasks for long-running agent work",
+  "description": "Expose any wasmagent agent as a Model Context Protocol (MCP) server \u2014 sync tools/call + 2025-11-25 Tasks for long-running agent work",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -26,7 +26,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "^1.0.3"
+    "@wasmagent/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",

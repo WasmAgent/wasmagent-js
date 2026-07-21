@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/tools-web",
   "version": "1.0.3",
-  "description": "Web search tools for wasmagent — Tavily, Brave, Perplexity adapters",
+  "description": "Web search tools for wasmagent \u2014 Tavily, Brave, Perplexity adapters",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "^1.0.3",
+    "@wasmagent/core": "workspace:*",
     "zod": "^3.23.0"
   },
   "devDependencies": {

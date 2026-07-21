@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/compliance",
   "version": "1.19.0",
-  "description": "WasmAgent Compliance Engine — TaskSpec-driven verification, local repair, and evidence export for LLM agent runs.",
+  "description": "WasmAgent Compliance Engine \u2014 TaskSpec-driven verification, local repair, and evidence export for LLM agent runs.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -23,11 +23,11 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "^1.18.0",
+    "@wasmagent/core": "workspace:*",
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@wasmagent/model-local": "^1.0.3",
+    "@wasmagent/model-local": "workspace:*",
     "typescript": "^5.7.0"
   },
   "license": "Apache-2.0",
