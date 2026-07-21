@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/kernel-pyodide",
-  "version": "1.0.3",
-  "description": "PyodideKernel \u2014 CPython-in-WASM kernel for wasmagent",
+  "version": "1.0.4",
+  "description": "PyodideKernel — CPython-in-WASM kernel for wasmagent",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

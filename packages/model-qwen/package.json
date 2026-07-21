@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/model-qwen",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Qwen (Alibaba DashScope) model adapter for wasmagent",
   "type": "module",
   "main": "./dist/index.js",

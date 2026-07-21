@@ -1,6 +1,6 @@
 {
   "name": "openai-agents-quickjs",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "D5 — OpenAI Agents JS + WasmAgent QuickJS kernel (StackBlitz-runnable)",
   "type": "module",

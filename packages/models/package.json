@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/models",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Consolidated model adapters for wasmagent — re-exports anthropic, openai, deepseek, doubao, minimax, moonshot, qwen, zhipu adapters",
   "type": "module",
   "main": "./dist/index.js",

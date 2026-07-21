@@ -1,5 +1,11 @@
 # chat-cards
 
+## 0.1.6
+
+### Patch Changes
+
+- @wasmagent/react@1.3.5
+
 ## 0.1.5
 
 ### Patch Changes

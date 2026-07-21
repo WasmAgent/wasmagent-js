@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/tools-rag",
-  "version": "1.0.3",
-  "description": "RAG / embedding tools for wasmagent \u2014 ModelEmbedder + ragTool + Pinecone/Qdrant/Local connectors",
+  "version": "1.0.4",
+  "description": "RAG / embedding tools for wasmagent — ModelEmbedder + ragTool + Pinecone/Qdrant/Local connectors",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

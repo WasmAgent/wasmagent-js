@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/claude-agent-sdk",
-  "version": "1.0.3",
-  "description": "Drop wasmagent sandbox kernels into the Anthropic Claude Agent SDK \u2014 edge-safe code execution with one capability manifest, reusing your MCP server policy",
+  "version": "1.0.4",
+  "description": "Drop wasmagent sandbox kernels into the Anthropic Claude Agent SDK — edge-safe code execution with one capability manifest, reusing your MCP server policy",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

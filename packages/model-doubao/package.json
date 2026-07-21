@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/model-doubao",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Doubao (Volcengine Ark) model adapter for wasmagent",
   "type": "module",
   "main": "./dist/index.js",

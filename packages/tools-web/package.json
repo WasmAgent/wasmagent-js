@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/tools-web",
-  "version": "1.0.3",
-  "description": "Web search tools for wasmagent \u2014 Tavily, Brave, Perplexity adapters",
+  "version": "1.0.4",
+  "description": "Web search tools for wasmagent — Tavily, Brave, Perplexity adapters",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

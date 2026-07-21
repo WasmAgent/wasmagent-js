@@ -1,5 +1,12 @@
 # openai-agents-quickjs
 
+## 0.1.4
+
+### Patch Changes
+
+- @wasmagent/kernel-quickjs@1.2.1
+- @wasmagent/openai-agents@1.0.4
+
 ## 0.1.3
 
 ### Patch Changes

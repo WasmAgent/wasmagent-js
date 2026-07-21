@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/kernel-wasmtime",
-  "version": "1.19.0",
-  "description": "WasmtimeKernel \u2014 true WASM sandbox for wasmagent via Javy (QuickJS\u2192WASM) + Node's native WebAssembly API",
+  "version": "1.19.1",
+  "description": "WasmtimeKernel — true WASM sandbox for wasmagent via Javy (QuickJS→WASM) + Node's native WebAssembly API",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
