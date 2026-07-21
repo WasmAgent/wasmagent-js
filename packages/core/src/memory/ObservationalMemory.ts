@@ -165,6 +165,8 @@ export class ObservationalMemory {
   #pending: Promise<void> | null = null;
   /** Most recent error message from the observer — surfaced via getLastError(). */
   #lastError: string | null = null;
+  /** Queue of noteStep() calls that arrived while a background pass was in flight. */
+  #pendingQueue: boolean[] = [];
   /**
    * The number of steps the assembler had at the start of the most recent
    * compression run. Used so subsequent runs only compress *new* steps,
@@ -189,9 +191,16 @@ export class ObservationalMemory {
    *
    * Cheap: a single estimateMessagesTokens call. The observer pass runs in
    * the background and never blocks the caller.
+   *
+   * If an observer pass is already in flight, the call is buffered and
+   * will be processed once the current pass completes.
    */
   noteStep(): void {
-    if (this.#pending) return; // observer is already running
+    if (this.#pending) {
+      // Buffer the signal so it's replayed after the current pass finishes.
+      this.#pendingQueue.push(true);
+      return;
+    }
     const messages = this.#assembler.build();
     if (estimateMessagesTokens(messages) < this.#tokenThreshold) return;
     this.#pending = this.#runObserverPass()
@@ -200,7 +209,19 @@ export class ObservationalMemory {
       })
       .finally(() => {
         this.#pending = null;
+        this.#drainQueue();
       });
+  }
+
+  /**
+   * Drain the pending queue after a background pass completes.
+   * Processes at most one buffered noteStep (which may trigger another pass).
+   */
+  #drainQueue(): void {
+    if (this.#pendingQueue.length > 0) {
+      this.#pendingQueue = [];
+      this.noteStep();
+    }
   }
 
   /**
@@ -330,5 +351,6 @@ export class ObservationalMemory {
     this.#pending = null;
     this.#lastError = null;
     this.#lastObservedAtStepIdx = 0;
+    this.#pendingQueue = [];
   }
 }

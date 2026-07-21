@@ -112,4 +112,52 @@ describe("FileStructuredKv", () => {
       cleanup(p);
     }
   });
+
+  it("serializes concurrent writes without corruption", async () => {
+    const p = tmpPath();
+    try {
+      const kv = new FileStructuredKv(p);
+      // Fire many concurrent writes — without the mutex they could corrupt the file
+      const promises: Promise<void>[] = [];
+      for (let i = 0; i < 50; i++) {
+        promises.push(kv.put(`key-${i}`, `value-${i}`));
+      }
+      await Promise.all(promises);
+
+      // Verify all keys are present and file is not corrupt
+      const kv2 = new FileStructuredKv(p);
+      for (let i = 0; i < 50; i++) {
+        expect(await kv2.get(`key-${i}`)).toBe(`value-${i}`);
+      }
+    } finally {
+      cleanup(p);
+    }
+  });
+
+  it("serializes concurrent mixed operations (set, put, delete)", async () => {
+    const p = tmpPath();
+    try {
+      const kv = new FileStructuredKv(p);
+      // Pre-populate
+      await kv.put("a", "1");
+      await kv.put("b", "2");
+      await kv.put("c", "3");
+
+      // Concurrent mixed ops
+      await Promise.all([
+        kv.set("d", "4"),
+        kv.delete("a"),
+        kv.put("e", "5"),
+        kv.set("b", "updated"),
+      ]);
+
+      expect(await kv.get("a")).toBeNull();
+      expect(await kv.get("b")).toBe("updated");
+      expect(await kv.get("c")).toBe("3");
+      expect(await kv.get("d")).toBe("4");
+      expect(await kv.get("e")).toBe("5");
+    } finally {
+      cleanup(p);
+    }
+  });
 });

@@ -283,7 +283,10 @@ export class ToolCallingAgent {
       timestampMs: Date.now(),
     };
 
-    this.#assembler.reset();
+    // Only reset if no messages have been manually added (preserve pre-injected history).
+    if (this.#assembler.historyLength === 0) {
+      this.#assembler.reset();
+    }
     const seedStep: UserMessageStep = { type: "user_message", content: task };
     this.#assembler.addStep(seedStep);
 
@@ -682,7 +685,10 @@ export class ToolCallingAgent {
           parentTraceId,
           channel: "text",
           event: "final_answer",
-          data: { answer: parsedAnswer },
+          data: {
+            answer: typeof parsedAnswer === "string" ? parsedAnswer : JSON.stringify(parsedAnswer),
+            type: typeof parsedAnswer === "string" ? "string" : "object",
+          },
           timestampMs: Date.now(),
         };
         return;
