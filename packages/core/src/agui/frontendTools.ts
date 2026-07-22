@@ -225,6 +225,9 @@ function applyOne(target: unknown, op: StateDeltaOp): unknown {
   if (op.op === "remove") {
     if (Array.isArray(parent)) {
       const idx = pointerIndex(last, parent.length);
+      if (idx < 0 || idx >= parent.length) {
+        throw new Error(`remove: index ${idx} out of bounds (length ${parent.length})`);
+      }
       parent.splice(idx, 1);
     } else if (parent && typeof parent === "object") {
       delete (parent as Record<string, unknown>)[last];
@@ -236,7 +239,12 @@ function applyOne(target: unknown, op: StateDeltaOp): unknown {
     const idx =
       last === "-" ? parent.length : pointerIndex(last, parent.length + (op.op === "add" ? 1 : 0));
     if (op.op === "add") parent.splice(idx, 0, value);
-    else parent[idx] = value;
+    else {
+      if (idx < 0 || idx >= parent.length) {
+        throw new Error(`replace: index ${idx} out of bounds (length ${parent.length})`);
+      }
+      parent[idx] = value;
+    }
   } else if (parent && typeof parent === "object") {
     const obj = parent as Record<string, unknown>;
     if (op.op === "replace" && !(last in obj)) {
