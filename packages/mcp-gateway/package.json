@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/mcp-gateway",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "MCP Gateway — identity propagation, server card validation, policy enforcement, AEP evidence emission for MCP tool invocations",
   "type": "module",
   "main": "./dist/index.js",

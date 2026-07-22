@@ -1,6 +1,6 @@
 {
   "name": "basic-agent",
-  "version": "0.1.25",
+  "version": "0.1.26",
   "private": true,
   "description": "5-line WasmAgent example (D5 doctest)",
   "type": "module",

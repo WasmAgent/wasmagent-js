@@ -1,5 +1,13 @@
 # @wasmagent/evals-runner
 
+## 1.10.2
+
+### Patch Changes
+
+- Updated dependencies [27571bf]
+  - @wasmagent/core@1.21.0
+  - @wasmagent/devtools@1.7.2
+
 ## 1.10.1
 
 ### Patch Changes

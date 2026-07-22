@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/devtools",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "description": "DevTools for wasmagent — event timeline, step-replay, fork-from-checkpoint",
   "type": "module",
   "main": "./dist/index.js",

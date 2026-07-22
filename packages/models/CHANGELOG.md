@@ -1,5 +1,20 @@
 # @wasmagent/models
 
+## 1.1.1
+
+### Patch Changes
+
+- Updated dependencies [27571bf]
+  - @wasmagent/core@1.21.0
+  - @wasmagent/model-anthropic@1.0.5
+  - @wasmagent/model-deepseek@1.0.5
+  - @wasmagent/model-doubao@1.0.5
+  - @wasmagent/model-minimax@1.0.5
+  - @wasmagent/model-moonshot@1.0.5
+  - @wasmagent/model-openai@1.0.5
+  - @wasmagent/model-qwen@1.0.5
+  - @wasmagent/model-zhipu@1.0.5
+
 ## 1.1.0
 
 ### Minor Changes
