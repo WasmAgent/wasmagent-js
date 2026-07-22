@@ -34,6 +34,10 @@
       "import": "./dist/prompts/index.js",
       "types": "./dist/prompts/index.d.ts"
     },
+    "./shared-state": {
+      "import": "./dist/shared-state/index.js",
+      "types": "./dist/shared-state/index.d.ts"
+    },
     "./schemas/rollout-wire": "./src/ranking/schemas/rollout-wire.schema.json",
     "./schemas/training-record": "./src/ranking/schemas/training-record.schema.json"
   },
