@@ -1,5 +1,12 @@
 # claude-agent-quickjs
 
+## 0.1.5
+
+### Patch Changes
+
+- @wasmagent/claude-agent-sdk@1.0.5
+- @wasmagent/kernel-quickjs@1.2.2
+
 ## 0.1.4
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/model-openai",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "OpenAI model adapter for wasmagent",
   "type": "module",
   "main": "./dist/index.js",

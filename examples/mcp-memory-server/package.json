@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent-example/mcp-memory-server",
-  "version": "0.1.26",
+  "version": "0.1.27",
   "private": true,
   "type": "module",
   "description": "Minimal MCP memory server backed by @wasmagent/core StructuredMemory. Drop into any MCP host (Claude Desktop, Cursor, Glama).",

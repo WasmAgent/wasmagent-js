@@ -1,5 +1,11 @@
 # @wasmagent/mcp-firewall
 
+## 1.20.1
+
+### Patch Changes
+
+- @wasmagent/mcp-server@1.1.3
+
 ## 1.19.1
 
 ### Patch Changes
