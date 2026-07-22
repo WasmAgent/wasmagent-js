@@ -202,6 +202,34 @@ describe("applyStateDelta", () => {
     ).toThrow(/out of bounds/);
   });
 
+  it("replace at index === array length throws (RFC 6902: target must exist)", () => {
+    expect(() =>
+      applyStateDelta({ items: ["a", "b"] }, [
+        { op: "replace", path: "/items/2", value: "x" } as StateDeltaOp,
+      ])
+    ).toThrow(/out of bounds/);
+  });
+
+  it("replace at index past array end throws", () => {
+    expect(() =>
+      applyStateDelta({ items: ["a"] }, [
+        { op: "replace", path: "/items/5", value: "x" } as StateDeltaOp,
+      ])
+    ).toThrow(/out of bounds/);
+  });
+
+  it("remove at index === array length throws (RFC 6902: target must exist)", () => {
+    expect(() =>
+      applyStateDelta({ items: ["a", "b"] }, [{ op: "remove", path: "/items/2" } as StateDeltaOp])
+    ).toThrow(/out of bounds/);
+  });
+
+  it("remove at index past array end throws", () => {
+    expect(() =>
+      applyStateDelta({ items: ["a"] }, [{ op: "remove", path: "/items/5" } as StateDeltaOp])
+    ).toThrow(/out of bounds/);
+  });
+
   it("multiple ops apply in order; later ops see the result of earlier ones", () => {
     const after = applyStateDelta({ items: [] as string[] }, [
       { op: "add", path: "/items/-", value: "a" } as StateDeltaOp,
