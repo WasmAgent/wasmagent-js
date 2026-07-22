@@ -7,7 +7,7 @@
 
 > **WasmAgent adds a verifiable evidence layer to agent tool use: protect tool calls, record what happened, audit the result, and admit trusted traces into downstream systems.**
 
-**Protect → Record → Audit → Admit**
+**Protect → Record → Audit → Admit**  ·  **Sync** — agent↔UI shared state
 
 ---
 
@@ -20,6 +20,7 @@ Pick your entry point:
 | **Protect tools** — runtime firewall, policy enforcement, taint tracking | `npm add @wasmagent/mcp-firewall` |
 | **Record evidence** — signed AEP records after every agent run | `npm add @wasmagent/aep` |
 | **Admit from traces** — compliance scoring produces `ComplianceEvalRecord`s for downstream training | `npm add @wasmagent/aep @wasmagent/compliance` |
+| **Sync state** — reducer-backed agent↔UI shared state, agent reads projections + writes intent | `npm add @wasmagent/core` (`/shared-state` subpath) |
 
 **Trust Pack — 30-minute end-to-end: [docs/quickstarts/trust-pack-30min.md](./docs/quickstarts/trust-pack-30min.md)**
 
@@ -96,6 +97,39 @@ const codeTool = sandboxedJsTool({ kernel: new QuickJSKernel() });
 ```
 
 → [Kernel comparison](./docs/kernels/comparison.md) · [Getting started](./docs/guides/getting-started.md)
+
+### Path 4 — Sync: Human-agent shared state
+
+Reducer-backed collaborative state where the LLM reads projections, dispatches semantic actions, and respects affordances — all through standard tools.
+
+```bash
+npm install @wasmagent/core
+```
+
+```ts
+import { defineStateModel, SharedStateStore, stateTools } from "@wasmagent/core/shared-state";
+
+// 1. One reducer, shared by both UI and agent.
+const model = defineStateModel({
+  initial: () => ({ page: "list", selectedId: null as string | null }),
+  reduce: (s, a) => {
+    if (a.type === "SELECT") return { ...s, page: "detail", selectedId: a.id };
+    if (a.type === "BACK")   return { ...s, page: "list", selectedId: null };
+    return s;
+  },
+  project: (s) => ({ page: s.page, selectedId: s.selectedId }),
+  affordances: (s) => s.page === "list" ? ["SELECT"] : ["BACK"],
+});
+
+// 2. Server-side store keyed by session.
+const store = new SharedStateStore(model);
+
+// 3. Give the agent read_state + dispatch_action tools.
+const tools = stateTools(store, "session-001");
+// Pass `tools` to any ToolCallingAgent — the LLM reads state and dispatches intent.
+```
+
+The semantic action stream doubles as AEP evidence — every dispatch is a provenance-ready record (see [#141](../../issues/141) for the full confluence design).
 
 ---
 
@@ -266,6 +300,7 @@ wasmagent evidence export --input aep-records.jsonl --format json
 
 | Capability | Guide |
 |---|---|
+| Shared state — reducer-backed agent↔UI sync, projections, affordances | [packages/core/src/shared-state/](./packages/core/src/shared-state/) |
 | MCP firewall — vetTool, ScopeLease, ApprovalReceipt | [docs/guides/mcp-guard.md](./docs/guides/mcp-guard.md) |
 | AEP v0.2 evidence — causal chain, scope lease, taint, memory refs | [packages/aep/src/types.ts](./packages/aep/src/types.ts) |
 | OWASP MCP Top 10 crosswalk | [docs/security/standards-crosswalk.yaml](./docs/security/standards-crosswalk.yaml) |
