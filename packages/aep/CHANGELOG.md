@@ -1,5 +1,10 @@
 # @wasmagent/aep
 
+## 1.21.0
+
+### Patch Changes
+
+- Align version with core-four coherence policy
 
 ## 1.19.0
 
