@@ -19,7 +19,8 @@
     "@wasmagent/core": "workspace:*",
     "@wasmagent/kernel-quickjs": "workspace:*",
     "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
-    "quickjs-emscripten-core": "0.32.0"
+    "quickjs-emscripten-core": "0.32.0",
+    "@wasmagent/models": "workspace:*"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.55.0",

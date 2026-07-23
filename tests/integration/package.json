@@ -11,7 +11,8 @@
     "@wasmagent/kernel-quickjs": "workspace:*",
     "@wasmagent/protocol": "^0.1.5",
     "@wasmagent/ui-cards": "workspace:*",
-    "zod": "^3.0.0"
+    "zod": "^3.0.0",
+    "@wasmagent/models": "workspace:*"
   },
   "devDependencies": {}
 }

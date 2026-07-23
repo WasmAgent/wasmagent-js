@@ -1,5 +1,5 @@
 import { describe, expect, it, mock, spyOn } from "bun:test";
-import { withRetry, withRetryGenerator } from "../models/retry.js";
+import { withRetry, withRetryGenerator } from "./retry.js";
 
 // ── withRetry ────────────────────────────────────────────────────────────────
 

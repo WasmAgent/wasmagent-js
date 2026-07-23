@@ -138,6 +138,22 @@ mock.module("@wasmagent/core", () => ({
   },
 }));
 
+mock.module("@wasmagent/models", () => ({
+  AnthropicModel: class {
+    static lastArgs: { modelId: unknown; opts: unknown }[] = [];
+    constructor(modelId: unknown, opts: unknown) {
+      (this.constructor as typeof Object & { lastArgs: unknown[] }).lastArgs = (
+        this.constructor as { lastArgs: { modelId: unknown; opts: unknown }[] }
+      ).lastArgs.concat([{ modelId, opts }]);
+    }
+  },
+  AnthropicModels: {
+    OPUS_LATEST: "claude-opus-4-8",
+    SONNET_LATEST: "claude-sonnet-4-6",
+    HAIKU_LATEST: "claude-haiku-4-5-20251001",
+  },
+}));
+
 // ── parseEventsFilter ─────────────────────────────────────────────────────────
 
 describe("parseEventsFilter", () => {

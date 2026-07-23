@@ -1,5 +1,5 @@
+import type { ModelMessage } from "@wasmagent/core/models";
 import { convertCompatMessages } from "./OpenAICompatModel.js";
-import type { ModelMessage } from "./types.js";
 
 describe("convertCompatMessages", () => {
   it("passes through system messages", () => {

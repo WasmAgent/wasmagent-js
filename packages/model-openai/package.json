@@ -18,14 +18,15 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "workspace:*"
+    "@wasmagent/models": "workspace:*"
   },
   "peerDependencies": {
     "openai": ">=4.90.0"
   },
   "devDependencies": {
     "openai": "^4.90.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "@wasmagent/core": "workspace:*"
   },
   "license": "Apache-2.0",
   "repository": {

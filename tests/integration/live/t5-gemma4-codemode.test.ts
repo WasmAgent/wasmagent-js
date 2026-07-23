@@ -11,11 +11,11 @@
 import { describe, expect, it } from "bun:test";
 import {
   JsKernel,
-  OpenAIModel,
   ProgrammaticOrchestrator,
   ToolCallingAgent,
   ToolRegistry,
 } from "@wasmagent/core";
+import { OpenAIModel } from "@wasmagent/models";
 import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 import { z } from "zod";
 

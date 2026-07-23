@@ -1,5 +1,3 @@
-import type { RetryPolicy } from "./retry.js";
-import { withRetryGenerator } from "./retry.js";
 import type {
   GenerateOptions,
   Model,
@@ -7,8 +5,10 @@ import type {
   ModelMessage,
   StreamEvent,
   TokenUsage,
-} from "./types.js";
-import { CACHE_MIN_TOKENS, estimateTokens, getModelMeta } from "./types.js";
+} from "@wasmagent/core/models";
+import { CACHE_MIN_TOKENS, estimateTokens, getModelMeta } from "@wasmagent/core/models";
+import type { RetryPolicy } from "./retry.js";
+import { withRetryGenerator } from "./retry.js";
 
 const ANTHROPIC_MAX_CACHE_BREAKPOINTS = 4;
 

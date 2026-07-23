@@ -14,7 +14,8 @@
 import { describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { OpenAIModel, ToolCallingAgent } from "@wasmagent/core";
+import { ToolCallingAgent } from "@wasmagent/core";
+import { OpenAIModel } from "@wasmagent/models";
 import { z } from "zod";
 
 // ── Ollama availability ───────────────────────────────────────────────────────

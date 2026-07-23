@@ -35,8 +35,6 @@ import type { RunAgentInput } from "@wasmagent/ag-ui";
 import { fromRunAgentInput, toAgUiSseStream, wantsAgUiSse } from "@wasmagent/ag-ui";
 import type { AgentEvent } from "@wasmagent/core";
 import {
-  AnthropicModel,
-  AnthropicModels,
   CheckpointableRun,
   CodeAgent,
   EventLog,
@@ -47,6 +45,7 @@ import {
 } from "@wasmagent/core";
 import type { QuickJSKernelOptions } from "@wasmagent/kernel-quickjs";
 import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
+import { AnthropicModel, AnthropicModels } from "@wasmagent/models/anthropic";
 import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
 
 // Cloudflare Workflows engine — same WorkflowDefinition/WorkflowRunHandle

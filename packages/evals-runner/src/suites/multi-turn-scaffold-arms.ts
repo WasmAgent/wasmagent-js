@@ -36,12 +36,12 @@
 
 import type { AgentEvent, Model, ModelMessage, ToolDefinition } from "@wasmagent/core";
 import {
-  GenericOpenAICompatModel,
   ProgrammaticOrchestrator,
   ToolCallingAgent,
   ToolRegistry,
   toStrictJsonSchema,
 } from "@wasmagent/core";
+import { GenericOpenAICompatModel } from "@wasmagent/models";
 import type { BenchmarkSuite, ModelSpec, RunItemResult } from "../types.js";
 import { __test__, multiTurnToolExecSuite } from "./multi-turn-tool-exec.js";
 

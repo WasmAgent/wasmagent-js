@@ -41,7 +41,8 @@
  */
 
 import type { Model, ToolDefinition } from "@wasmagent/core";
-import { GenericOpenAICompatModel, GoalDirectedAgent, type WorkspaceReader } from "@wasmagent/core";
+import { GoalDirectedAgent, type WorkspaceReader } from "@wasmagent/core";
+import { GenericOpenAICompatModel } from "@wasmagent/models";
 import { z } from "zod";
 import type { BenchmarkItem, BenchmarkSuite, ModelSpec, RunItemResult } from "../types.js";
 

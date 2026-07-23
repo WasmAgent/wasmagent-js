@@ -18,7 +18,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "workspace:*"
+    "@wasmagent/models": "workspace:*"
   },
   "peerDependencies": {
     "openai": ">=4.80.0"

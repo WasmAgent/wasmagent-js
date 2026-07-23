@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import type { ModelMessage, StreamEvent } from "../models/types.js";
+import type { ModelMessage, StreamEvent } from "@wasmagent/core/models";
 
 // ── Shared mutable mock state ─────────────────────────────────────────────────
 
@@ -20,7 +20,7 @@ mock.module("@anthropic-ai/sdk", () => {
 });
 
 // Import AFTER mock.module() so Bun intercepts the require.
-import { ANTHROPIC_BETAS, AnthropicModel } from "../models/AnthropicModel.js";
+import { ANTHROPIC_BETAS, AnthropicModel } from "./AnthropicModel.js";
 
 // ── Mock helpers ──────────────────────────────────────────────────────────────
 

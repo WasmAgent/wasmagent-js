@@ -9,7 +9,8 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { CodeAgent, JsKernel, OpenAIModel, ToolCallingAgent } from "@wasmagent/core";
+import { CodeAgent, JsKernel, ToolCallingAgent } from "@wasmagent/core";
+import { OpenAIModel } from "@wasmagent/models";
 import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
 import { z } from "zod";
 

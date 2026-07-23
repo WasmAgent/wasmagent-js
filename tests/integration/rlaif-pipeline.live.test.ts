@@ -15,11 +15,11 @@
 
 import { describe, expect, it } from "bun:test";
 import {
-  AnthropicModel,
   BuildPassesVerifier,
   InMemoryVectorStore,
   ScalarLLMJudgeVerifier,
 } from "@wasmagent/core";
+import { AnthropicModel } from "@wasmagent/models";
 import type { RolloutRecord } from "@wasmagent/core/beta";
 import {
   DEFAULT_REWARD_FUNCTIONS,

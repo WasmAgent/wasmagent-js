@@ -3,7 +3,8 @@
  * underlying FallbackModel and don't introduce new behaviour.
  */
 
-import { FallbackModel, type Model } from "@wasmagent/core/models";
+import type { Model } from "@wasmagent/core/models";
+import { FallbackModel } from "@wasmagent/models";
 import { devLocalOr, localFirst, offlineOnly } from "./presets.js";
 
 const okModel = (id: string, output: string): Model => ({

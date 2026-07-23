@@ -1,2 +1,2 @@
-export type { OpenAIModelId, OpenAIModelOptions } from "@wasmagent/model-openai";
-export { OpenAIModel, OpenAIModels } from "@wasmagent/model-openai";
+export type { OpenAIModelId, OpenAIModelOptions } from "./OpenAIModel.js";
+export { OpenAIModel, OpenAIModels } from "./OpenAIModel.js";

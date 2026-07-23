@@ -11,7 +11,8 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { OpenAIModel, ToolCallingAgent } from "@wasmagent/core";
+import { ToolCallingAgent } from "@wasmagent/core";
+import { OpenAIModel } from "@wasmagent/models";
 import { z } from "zod";
 
 // ── Ollama availability ───────────────────────────────────────────────────────

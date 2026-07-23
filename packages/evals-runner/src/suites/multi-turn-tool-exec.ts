@@ -49,7 +49,8 @@
  */
 
 import type { AgentEvent, Model, ToolDefinition } from "@wasmagent/core";
-import { GenericOpenAICompatModel, ToolCallingAgent } from "@wasmagent/core";
+import { ToolCallingAgent } from "@wasmagent/core";
+import { GenericOpenAICompatModel } from "@wasmagent/models";
 import { z } from "zod";
 import type { BenchmarkItem, BenchmarkSuite, ModelSpec, RunItemResult } from "../types.js";
 

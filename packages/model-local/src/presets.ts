@@ -15,7 +15,8 @@
  * has to look up the arguments; `localFirst(local, cloud)` cannot be misread.
  */
 
-import { FallbackModel, type Model } from "@wasmagent/core/models";
+import type { Model } from "@wasmagent/core/models";
+import { FallbackModel } from "@wasmagent/models";
 
 /**
  * Try the local model first; on any error, fall through to the cloud model.

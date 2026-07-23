@@ -18,7 +18,7 @@ import { createRequire } from "node:module";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AnthropicModel } from "@wasmagent/core";
+import { AnthropicModel } from "@wasmagent/models";
 import type { RolloutBranchResult } from "@wasmagent/core/beta";
 import { DEFAULT_REWARD_FUNCTIONS, RolloutForkRunner, RolloutRanker } from "@wasmagent/core/beta";
 
