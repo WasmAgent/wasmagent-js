@@ -105,6 +105,11 @@ export const ActionEvidenceSchema = z.object({
   state_changing: z.boolean(),
   precondition_digest: z.string().optional(),
   result_digest: z.string().optional(),
+  // Tool call outcome capture (#163): outcome label, process exit code,
+  // and SHA-256 digest of the tool call arguments.
+  outcome: z.string().optional(),
+  exit_code: z.number().int().optional(),
+  arguments_digest: z.string().optional(),
   evidence_refs: z.array(z.string()).default([]),
   capability_decision: CapabilityDecisionSchema.optional(),
   timestamp_ms: z.number(),
