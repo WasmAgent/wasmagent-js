@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/aisdk",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Drop wasmagent sandbox kernels into the Vercel AI SDK as a `tool()` — edge-safe code execution with one capability manifest, no E2B / OS sandbox needed",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/ag-ui",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "AG-UI protocol adapter for @wasmagent/core — maps private AgentEvent stream to AG-UI 16-class events",
   "type": "module",
   "main": "./dist/index.js",
