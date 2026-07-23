@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "openai": "^4.80.0",
-    "typescript": "^5.7.0"
+    "typescript": "^7.0.2"
   },
   "license": "Apache-2.0",
   "repository": {
