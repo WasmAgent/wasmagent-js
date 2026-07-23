@@ -45,7 +45,7 @@ import {
 } from "@wasmagent/core";
 import type { QuickJSKernelOptions } from "@wasmagent/kernel-quickjs";
 import { QuickJSKernel } from "@wasmagent/kernel-quickjs";
-import { AnthropicModel, AnthropicModels } from "@wasmagent/models";
+import { AnthropicModel, AnthropicModels } from "@wasmagent/models/anthropic";
 import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
 
 // Cloudflare Workflows engine — same WorkflowDefinition/WorkflowRunHandle
