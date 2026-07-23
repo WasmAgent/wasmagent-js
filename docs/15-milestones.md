@@ -33,9 +33,9 @@
 ## Milestone 4: Shared State Sync Package
 
 ### Deliverables
-- [ ] Implement reducer-backed shared state primitives in the `@wasmagent/core/shared-state` subpath
-- [ ] Add projection APIs so agents can read restricted state views
-- [ ] Implement intent write APIs with validation before reducer dispatch
-- [ ] Add state change event subscriptions for UI synchronization
-- [ ] Add TypeScript types for reducers, projections, intents, and state snapshots
-- [ ] Add tests for reducer updates, projection filtering, invalid intents, and UI subscription notifications
+- [x] Implement reducer-backed shared state primitives in the `@wasmagent/core/shared-state` subpath
+- [x] Add projection APIs so agents can read restricted state views
+- [x] Implement intent write APIs with validation before reducer dispatch
+- [x] Add state change event subscriptions for UI synchronization
+- [x] Add TypeScript types for reducers, projections, intents, and state snapshots
+- [x] Add tests for reducer updates, projection filtering, invalid intents, and UI subscription notifications
