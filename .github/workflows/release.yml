@@ -30,6 +30,17 @@ jobs:
         with:
           bun-version: "1.3.14"
 
+      # Node 24 provides an npm new enough (>= 11.5.1) for OIDC trusted
+      # publishing, which `changeset publish` invokes under the hood. We keep
+      # NPM_TOKEN auth for now (works until npm's 2FA-token deprecation); this
+      # only makes the runner OIDC-ready so the eventual token->OIDC switch is a
+      # config change, not a toolchain upgrade. Requires per-package trusted
+      # publishers configured on npmjs.com before dropping NPM_TOKEN.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
       - name: Install
         run: bun install --frozen-lockfile
 
