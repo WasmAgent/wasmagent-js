@@ -1,0 +1,17 @@
+commands:
+  - name: install
+    cmd: "if command -v bun >/dev/null 2>&1; then bun install --frozen-lockfile 2>/dev/null || bun install; else npm ci 2>/dev/null || npm install; fi"
+    timeout: 3m
+    level: 1
+  - name: biome
+    cmd: "if [ -f biome.json ] || [ -f biome.jsonc ]; then npx --yes @biomejs/biome check . ; else echo \"no biome config, skipping\"; fi"
+    timeout: 5m
+    level: 2
+  - name: build
+    cmd: "if command -v bun >/dev/null 2>&1; then bun run build; else npm run build; fi"
+    timeout: 3m
+    level: 1
+  - name: test
+    cmd: "if command -v bun >/dev/null 2>&1; then bun run test; else npm test; fi"
+    timeout: 5m
+    level: 3
