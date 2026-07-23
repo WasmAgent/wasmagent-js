@@ -74,6 +74,34 @@ jobs:
         continue-on-error: true
         run: bun run publish:check
 
+
+      - name: Deprecate legacy model-* shims
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # Deprecate the 8 model-* shim packages that now re-export from
+          # @wasmagent/models. Only deprecates versions that exist on npm;
+          # skips with a warning if the package/version was never published.
+          SHIMS="
+            @wasmagent/model-anthropic
+            @wasmagent/model-openai
+            @wasmagent/model-deepseek
+            @wasmagent/model-doubao
+            @wasmagent/model-minimax
+            @wasmagent/model-moonshot
+            @wasmagent/model-qwen
+            @wasmagent/model-zhipu
+          "
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+          for pkg in $SHIMS; do
+            msg="Deprecated: use @wasmagent/models instead. See https://github.com/WasmAgent/wasmagent-js/issues/123"
+            if npm deprecate "$pkg" "$msg" 2>&1; then
+              echo "✓ deprecated $pkg"
+            else
+              echo "⚠ could not deprecate $pkg (may not be published yet — will retry on next release)"
+            fi
+          done
       - name: Create GitHub Release (aggregate)
         if: steps.changesets.outputs.published == 'true'
         env:
