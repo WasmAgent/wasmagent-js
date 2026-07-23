@@ -32,7 +32,7 @@
  *
  * Phase-0 contract. Add fields liberally during alpha; rename them only
  * with a Changeset note. The wire shape is mirrored in
- * `schemas/constraint-ir.schema.json` — keep the two in sync.
+ * `@wasmagent/protocol` (schemas/compliance/constraint-ir.schema.json) — the canonical source.
  */
 
 import type { Criterion } from "@wasmagent/core";

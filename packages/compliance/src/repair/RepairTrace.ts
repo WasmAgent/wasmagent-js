@@ -1,7 +1,7 @@
 /**
  * RepairTrace — one record per repair round.
  *
- * Mirrors `schemas/repair-trace.schema.json` field-for-field; this is
+ * Mirrors `@wasmagent/protocol` (schemas/compliance/repair-trace.schema.json) field-for-field; this is
  * the TS-typed view of the same wire shape.
  *
  * # Why "per round", not "per violation"
