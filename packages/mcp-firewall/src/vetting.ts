@@ -17,7 +17,7 @@
  * minimum a "high / ask" finding even if the keyword bag misses it.
  */
 
-import type { McpToolEntry } from "@wasmagent/mcp-server";
+import type { McpToolEntry, ToolDescriptorSnapshot } from "@wasmagent/mcp-server";
 import type { SemanticDetector } from "./semanticDetector.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -522,6 +522,21 @@ function fieldHash(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex").slice(0, 16);
 }
 
+/**
+ * Full SHA-256 hex of a descriptor field value.
+ *
+ * This MUST match `hashContent()` in `@wasmagent/mcp-server` (used by
+ * `snapshotTool()`) byte-for-byte, so that a baseline captured at
+ * registration time can be compared against the current descriptor to
+ * detect rug-pulls. Unlike `fieldHash`, this is not truncated.
+ *
+ * Exported (rather than kept file-private) so the cross-package hash
+ * contract can be asserted directly in tests — see `firewall.test.ts`.
+ */
+export function descriptorHash(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
 function excerpt(text: string, max = 120): string {
   return text.length <= max ? text : text.slice(0, max) + "…";
 }
@@ -648,14 +663,64 @@ export function buildVettingCacheKey(entry: McpToolEntry, serverIdentity = ""): 
 
 /**
  * Run all static vetting rules against a single MCP tool entry.
+ *
+ * Covers three risk classes:
+ *   1. Prompt injection / tool poisoning — keyword bag + n-gram classifier.
+ *   2. Data exfiltration — sensitive environment / filesystem / credential
+ *      patterns plus adversarial n-gram signals.
+ *   3. Descriptor mutation (rug-pull) — when a `baseline` snapshot is supplied,
+ *      any drift in the description or inputSchema hash since first-seen is
+ *      flagged so the tool is re-reviewed before use.
+ *
  * No network calls, no ML — purely deterministic.
+ *
+ * @param entry    The MCP tool descriptor to vet.
+ * @param baseline Optional prior descriptor snapshot (e.g. from `snapshotTool()`
+ *   in `@wasmagent/mcp-server`). When provided, a `rug_pull` finding is emitted
+ *   for every field whose hash has changed since the snapshot was taken.
  */
-export function vetTool(entry: McpToolEntry): VettingResult {
+export function vetTool(entry: McpToolEntry, baseline?: ToolDescriptorSnapshot): VettingResult {
   const findings: ToolRiskFinding[] = [
     ...scanText(entry.description, "description", entry.name),
     ...scanText(JSON.stringify(entry.inputSchema), "inputSchema", entry.name),
     ...scanText(entry.name, "name", entry.name),
   ];
+
+  // ── Descriptor mutation (rug-pull) check ───────────────────────────────────
+  // A tool whose descriptor changed after registration/approval is a rug-pull
+  // signal: even a benign-looking new description must be re-reviewed, because
+  // the host approved a *different* descriptor. We recompute the same SHA-256
+  // hashes `snapshotTool()` stores and flag every field that has drifted.
+  if (baseline) {
+    const descHash = descriptorHash(entry.description);
+    if (descHash !== baseline.descriptionHash) {
+      findings.push({
+        severity: "high",
+        category: "rug_pull",
+        type: "rug_pull",
+        field: "description",
+        evidenceExcerpt: excerpt(
+          `descriptor mutation: description changed (hash ${baseline.descriptionHash.slice(0, 8)}→${descHash.slice(0, 8)})`
+        ),
+        evidenceHash: descHash.slice(0, 16),
+        recommendation: "ask",
+      });
+    }
+    const schemaHash = descriptorHash(JSON.stringify(entry.inputSchema));
+    if (schemaHash !== baseline.inputSchemaHash) {
+      findings.push({
+        severity: "high",
+        category: "rug_pull",
+        type: "rug_pull",
+        field: "inputSchema",
+        evidenceExcerpt: excerpt(
+          `descriptor mutation: inputSchema changed (hash ${baseline.inputSchemaHash.slice(0, 8)}→${schemaHash.slice(0, 8)})`
+        ),
+        evidenceHash: schemaHash.slice(0, 16),
+        recommendation: "ask",
+      });
+    }
+  }
 
   const recommendation = worstRecommendation(findings);
   return {
@@ -670,7 +735,9 @@ export function vetTool(entry: McpToolEntry): VettingResult {
  * Vet a batch of tools. Returns one VettingResult per tool.
  */
 export function vetTools(entries: McpToolEntry[]): VettingResult[] {
-  return entries.map(vetTool);
+  // Arrow wrapper so Array.map's (value, index, array) callback shape is not
+  // passed into vetTool()'s optional `baseline` parameter.
+  return entries.map((entry) => vetTool(entry));
 }
 
 // ── Async vetting with semantic detection ───────────────────────────────────
@@ -686,6 +753,13 @@ export interface VetToolOptions {
    * warn threshold, a `semantic_paraphrase` finding is added.
    */
   semanticDetector?: SemanticDetector;
+  /**
+   * Optional prior descriptor snapshot (e.g. from `snapshotTool()` in
+   * `@wasmagent/mcp-server`). When provided, the synchronous phase emits a
+   * `rug_pull` finding for every descriptor field whose hash has drifted since
+   * the snapshot was taken — see {@link vetTool}.
+   */
+  baseline?: ToolDescriptorSnapshot;
 }
 
 /**
@@ -702,8 +776,8 @@ export async function vetToolAsync(
   entry: McpToolEntry,
   options?: VetToolOptions
 ): Promise<VettingResult> {
-  // Phase 1 + 2: synchronous keyword + n-gram detection
-  const result = vetTool(entry);
+  // Phase 1 + 2: synchronous keyword + n-gram detection (+ descriptor mutation)
+  const result = vetTool(entry, options?.baseline);
 
   // Phase 3: semantic detection (optional, async)
   if (!options?.semanticDetector) return result;
