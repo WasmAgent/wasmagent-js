@@ -68,7 +68,7 @@
     "@cyclonedx/cyclonedx-npm": "^1.20.0",
     "@types/node": "^26.1.1",
     "@wasmagent/protocol": "^0.1.5",
-    "happy-dom": "^14.0.0",
+    "happy-dom": "^20.11.1",
     "node-llama-cpp": "^3.18.1",
     "turbo": "^2.3.0",
     "typescript": "^5.7.0",
