@@ -75,7 +75,7 @@ export interface ComplianceRunOptions {
 
 /**
  * Eval record emitted by one run. Wire-shape mirrored in
- * `schemas/compliance-eval-record.schema.json`. Kept self-contained
+ * `@wasmagent/protocol` (schemas/compliance/compliance-eval-record.schema.json). Kept self-contained
  * for Phase 0 — Phase 1 will embed this into RolloutMemoryStore JSONL.
  *
  * `error` is non-null when the run failed *infrastructurally* (model

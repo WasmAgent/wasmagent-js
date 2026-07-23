@@ -10,7 +10,7 @@ import type { RolloutSFTAnnotator, TurnAnnotation } from "./RolloutSFTAnnotator.
 // rollout wire format consumed by evomerge/datafactory/exporter.py.
 // Field names use snake_case to match the JSON wire format and Python conventions.
 // When changing these types:
-//   1. Update packages/core/src/ranking/schemas/rollout-wire.schema.json
+//   1. Update rollout-wire.schema.json in @wasmagent/protocol (schemas/compliance/)
 //   2. Notify evomerge maintainers to update exporter.py + schema copy
 // See docs/schemas/GOVERNANCE.md for the full change process.
 

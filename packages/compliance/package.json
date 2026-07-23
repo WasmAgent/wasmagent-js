@@ -9,12 +9,7 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
-    },
-    "./schemas/task-spec": "./schemas/task-spec.schema.json",
-    "./schemas/constraint-ir": "./schemas/constraint-ir.schema.json",
-    "./schemas/constraint-violation": "./schemas/constraint-violation.schema.json",
-    "./schemas/repair-trace": "./schemas/repair-trace.schema.json",
-    "./schemas/compliance-eval-record": "./schemas/compliance-eval-record.schema.json"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -24,6 +19,7 @@
   },
   "dependencies": {
     "@wasmagent/core": "workspace:*",
+    "@wasmagent/protocol": "0.1.5",
     "zod": "^3.23.0"
   },
   "devDependencies": {

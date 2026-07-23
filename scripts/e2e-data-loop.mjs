@@ -21,6 +21,7 @@
  */
 
 import { execSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { dirname, resolve } from "node:path";
@@ -230,7 +231,9 @@ console.log(`  → wrote ${manifestFile}`);
 step(4, "Validate DPO/PPO files against schema rules");
 
 // Load rollout-wire.schema.json (used for intermediate ranked-rollouts validation)
-const wireSchemaFile = resolve(ROOT, "packages/core/src/ranking/schemas/rollout-wire.schema.json");
+const wireSchemaFile = createRequire(import.meta.url).resolve(
+  "@wasmagent/protocol/schemas/compliance/rollout-wire.schema.json"
+);
 // Load training-record.schema.json (used for final DPO/PPO output from Python exporter)
 const trainingSchemaFile = resolve(
   ROOT,
