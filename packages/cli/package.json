@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@wasmagent/model-local": "workspace:*",
-    "@anthropic-ai/sdk": "^0.37.0",
+    "@anthropic-ai/sdk": "^0.113.0",
     "typescript": "^5.7.0"
   },
   "license": "Apache-2.0",
