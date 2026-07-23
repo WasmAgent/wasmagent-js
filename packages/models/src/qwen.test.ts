@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import type { StreamEvent } from "@wasmagent/models";
+import type { StreamEvent } from "@wasmagent/core/models";
 
 type OAIChunk = {
   choices: Array<{
@@ -49,7 +49,7 @@ mock.module("openai", () => {
   };
 });
 
-import { QWEN_BASE_URL, QWEN_INTL_BASE_URL, QwenModel, QwenModels } from "./index.js";
+import { QWEN_BASE_URL, QWEN_INTL_BASE_URL, QwenModel, QwenModels } from "./qwen.js";
 
 async function collectEvents(
   chunks: OAIChunk[],

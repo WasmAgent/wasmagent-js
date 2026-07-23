@@ -8,7 +8,8 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { AnthropicModel, InMemoryVectorStore, ScalarLLMJudgeVerifier } from "@wasmagent/core";
+import { InMemoryVectorStore, ScalarLLMJudgeVerifier } from "@wasmagent/core";
+import { AnthropicModel } from "@wasmagent/models";
 import type { RolloutBranchResult } from "@wasmagent/core/beta";
 import {
   DEFAULT_REWARD_FUNCTIONS,

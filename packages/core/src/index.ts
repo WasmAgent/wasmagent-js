@@ -225,41 +225,26 @@ export {
   TfidfEmbedder,
 } from "./memory/index.js";
 export type {
-  AnthropicModelId,
-  AnthropicModelOptions,
   ContentBlock,
   EnhancementPolicy,
-  FallbackModelOptions,
   GenerateOptions,
-  GenericOpenAICompatModelOptions,
   ImageBlock,
   Model,
   ModelCapabilities,
   ModelMessage,
-  OpenAICompatModelOptions,
-  OpenAIModelId,
-  OpenAIModelOptions,
   ResourceBudget,
   ResponseFormat,
-  RetryPolicy,
   StreamEvent,
   TokenUsage,
 } from "./models/index.js";
-// Models [stable]
-// Canonical import: @wasmagent/model-anthropic / @wasmagent/model-openai / etc.
-// The exports below are batteries-included shortcuts — same implementations,
-// re-exported here so single-package installs work without provider packages.
+// Model contracts + token utilities [stable]
+// BREAKING (v3): the concrete adapters (AnthropicModel, OpenAIModel, FallbackModel,
+// GenericOpenAICompatModel, OpenAICompatModel, …) moved to @wasmagent/models.
+//   import { AnthropicModel } from "@wasmagent/models";
 export {
-  AnthropicModel,
-  AnthropicModels,
   CACHE_MIN_TOKENS,
   estimateMessagesTokens,
   estimateTokens,
-  FallbackModel,
-  GenericOpenAICompatModel,
-  OpenAICompatModel,
-  OpenAIModel,
-  OpenAIModels,
   repairJson,
   TokenBudget,
 } from "./models/index.js";

@@ -1,13 +1,13 @@
-import type { RetryPolicy } from "./retry.js";
-import { withRetryGenerator } from "./retry.js";
 import type {
   GenerateOptions,
   Model,
   ModelCapabilities,
   ModelMessage,
   StreamEvent,
-} from "./types.js";
-import { getModelMeta } from "./types.js";
+} from "@wasmagent/core/models";
+import { getModelMeta } from "@wasmagent/core/models";
+import type { RetryPolicy } from "./retry.js";
+import { withRetryGenerator } from "./retry.js";
 
 /**
  * Base class for OpenAI Chat Completions-compatible endpoints (B1).
@@ -326,7 +326,7 @@ export abstract class OpenAICompatModel implements Model {
     }
 
     if (inputTokens > 0 || outputTokens > 0 || cacheReadTokens > 0) {
-      const usage: import("./types.js").TokenUsage = { inputTokens, outputTokens };
+      const usage: import("@wasmagent/core/models").TokenUsage = { inputTokens, outputTokens };
       if (cacheReadTokens > 0) usage.cacheReadTokens = cacheReadTokens;
       yield { type: "usage", usage };
     }
@@ -430,7 +430,7 @@ export interface OpenAICompatModelOptions {
    * Override the cache strategy declared in capabilities.
    * Subclasses pass this to customize without overriding extraCapabilities().
    */
-  cacheStrategy?: import("./types.js").CacheStrategy;
+  cacheStrategy?: import("@wasmagent/core/models").CacheStrategy;
   /** Whether this adapter supports per-request reasoning effort control. */
   supportsReasoningEffort?: boolean;
   /**

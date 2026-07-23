@@ -11,7 +11,8 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { AnthropicModel, FallbackModel, OpenAIModel, ToolCallingAgent } from "@wasmagent/core";
+import { ToolCallingAgent } from "@wasmagent/core";
+import { AnthropicModel, FallbackModel, OpenAIModel } from "@wasmagent/models";
 import type { RolloutBranchResult } from "@wasmagent/core/beta";
 import { RolloutForkRunner, RolloutRanker, toDpoRecord } from "@wasmagent/core/beta";
 

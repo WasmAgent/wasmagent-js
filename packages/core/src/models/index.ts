@@ -1,20 +1,20 @@
-export type { AnthropicModelId, AnthropicModelOptions } from "./AnthropicModel.js";
-export {
-  AnthropicModel,
-  AnthropicModels,
-  CACHE_MIN_TOKENS as ANTHROPIC_CACHE_MIN_TOKENS,
-} from "./AnthropicModel.js";
-export type { FallbackModelOptions } from "./FallbackModel.js";
-export { FallbackModel } from "./FallbackModel.js";
-export type {
-  GenericOpenAICompatModelOptions,
-  OpenAICompatModelOptions,
-} from "./OpenAICompatModel.js";
-export { GenericOpenAICompatModel, OpenAICompatModel } from "./OpenAICompatModel.js";
-export type { OpenAIModelId, OpenAIModelOptions } from "./OpenAIModel.js";
-export { OpenAIModel, OpenAIModels, repairJson } from "./OpenAIModel.js";
+/**
+ * @wasmagent/core/models — stable model *contracts* only.
+ *
+ * The volatile provider adapters (AnthropicModel, OpenAIModel, FallbackModel,
+ * OpenAICompatModel, the OpenAI-compat providers, …) have moved to
+ * **@wasmagent/models** so that provider churn no longer forces a core release.
+ *
+ * BREAKING (v3): the adapter classes are no longer re-exported here. Import them
+ * from @wasmagent/models (or @wasmagent/models/<provider>) instead:
+ *   import { AnthropicModel } from "@wasmagent/models";
+ *   import { DeepSeekModel } from "@wasmagent/models/deepseek";
+ *
+ * This module exports only the contracts every adapter implements, plus the
+ * generic JSON-repair helper (used by core agents).
+ */
 
-export type { RetryPolicy } from "./retry.js";
+export { repairJson } from "../util/repairJson.js";
 export type {
   CacheBreakpoint,
   CacheStrategy,

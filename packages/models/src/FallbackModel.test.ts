@@ -1,5 +1,5 @@
+import type { Model, StreamEvent } from "@wasmagent/core/models";
 import { FallbackModel } from "./FallbackModel.js";
-import type { Model, StreamEvent } from "./types.js";
 
 function mockModel(responses: Array<{ events?: StreamEvent[]; error?: Error }>): Model {
   let callCount = 0;

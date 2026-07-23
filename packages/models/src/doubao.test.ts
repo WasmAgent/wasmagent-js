@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test";
-import type { StreamEvent } from "@wasmagent/models";
+import type { StreamEvent } from "@wasmagent/core/models";
 
 // ── Shared mutable mock state ────────────────────────────────────────────────
 // mock.module() is hoisted and must be declared before the module-under-test
@@ -27,7 +27,7 @@ mock.module("openai", () => {
 });
 
 // Import the module-under-test AFTER mock.module() so the mock applies.
-import { DOUBAO_BASE_URL, DoubaoModel, DoubaoModels } from "./index.js";
+import { DOUBAO_BASE_URL, DoubaoModel, DoubaoModels } from "./doubao.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

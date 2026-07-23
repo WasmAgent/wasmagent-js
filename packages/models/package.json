@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/models",
   "version": "1.1.2",
-  "description": "Consolidated model adapters for wasmagent — re-exports anthropic, openai, deepseek, doubao, minimax, moonshot, qwen, zhipu adapters",
+  "description": "Model adapters for wasmagent \u2014 the home of the anthropic, openai, deepseek, doubao, minimax, moonshot, qwen, and zhipu adapters plus OpenAICompatModel and FallbackModel",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -50,15 +50,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/core": "workspace:*",
-    "@wasmagent/model-anthropic": "workspace:*",
-    "@wasmagent/model-deepseek": "workspace:*",
-    "@wasmagent/model-doubao": "workspace:*",
-    "@wasmagent/model-minimax": "workspace:*",
-    "@wasmagent/model-moonshot": "workspace:*",
-    "@wasmagent/model-openai": "workspace:*",
-    "@wasmagent/model-qwen": "workspace:*",
-    "@wasmagent/model-zhipu": "workspace:*"
+    "@wasmagent/core": "workspace:*"
   },
   "peerDependencies": {
     "@anthropic-ai/sdk": ">=0.55.0",

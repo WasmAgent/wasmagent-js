@@ -19,13 +19,12 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  AnthropicModel,
   JsKernel,
-  OpenAIModel,
   ProgrammaticOrchestrator,
   ToolCallingAgent,
   ToolRegistry,
 } from "@wasmagent/core";
+import { AnthropicModel, OpenAIModel } from "@wasmagent/models";
 import type { RolloutBranchResult } from "@wasmagent/core/beta";
 import {
   DEFAULT_REWARD_FUNCTIONS,

@@ -303,7 +303,7 @@
       "name": "@wasmagent/ag-ui",
       "version": "1.0.6",
       "dependencies": {
-        "@wasmagent/core": "^1.0.3",
+        "@wasmagent/core": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^26.1.1",
@@ -377,6 +377,7 @@
         "@wasmagent/core": "workspace:*",
         "@wasmagent/devtools": "workspace:*",
         "@wasmagent/evals-runner": "workspace:*",
+        "@wasmagent/models": "workspace:*",
         "zod": "^3.23.0",
       },
       "devDependencies": {
@@ -399,6 +400,7 @@
         "@wasmagent/ag-ui": "workspace:*",
         "@wasmagent/core": "workspace:*",
         "@wasmagent/kernel-quickjs": "workspace:*",
+        "@wasmagent/models": "workspace:*",
         "quickjs-emscripten-core": "0.32.0",
       },
       "devDependencies": {
@@ -494,6 +496,7 @@
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/devtools": "workspace:*",
+        "@wasmagent/models": "workspace:*",
         "zod": "^3.23.0",
       },
       "devDependencies": {
@@ -645,7 +648,7 @@
       "name": "@wasmagent/model-anthropic",
       "version": "1.0.6",
       "dependencies": {
-        "@wasmagent/core": "workspace:*",
+        "@wasmagent/models": "workspace:*",
       },
       "devDependencies": {
         "@anthropic-ai/sdk": "^0.55.0",
@@ -659,7 +662,7 @@
       "name": "@wasmagent/model-deepseek",
       "version": "1.0.6",
       "dependencies": {
-        "@wasmagent/core": "workspace:*",
+        "@wasmagent/models": "workspace:*",
       },
       "devDependencies": {
         "openai": "^4.80.0",
@@ -673,7 +676,7 @@
       "name": "@wasmagent/model-doubao",
       "version": "1.0.6",
       "dependencies": {
-        "@wasmagent/core": "workspace:*",
+        "@wasmagent/models": "workspace:*",
       },
       "devDependencies": {
         "openai": "^4.80.0",
@@ -688,6 +691,7 @@
       "version": "1.0.6",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
+        "@wasmagent/models": "workspace:*",
       },
       "devDependencies": {
         "typescript": "^5.7.0",
@@ -704,7 +708,7 @@
       "name": "@wasmagent/model-minimax",
       "version": "1.0.6",
       "dependencies": {
-        "@wasmagent/core": "workspace:*",
+        "@wasmagent/models": "workspace:*",
       },
       "devDependencies": {
         "openai": "^4.80.0",
@@ -718,7 +722,7 @@
       "name": "@wasmagent/model-moonshot",
       "version": "1.0.6",
       "dependencies": {
-        "@wasmagent/core": "workspace:*",
+        "@wasmagent/models": "workspace:*",
       },
       "devDependencies": {
         "openai": "^4.80.0",
@@ -732,7 +736,7 @@
       "name": "@wasmagent/model-openai",
       "version": "1.0.6",
       "dependencies": {
-        "@wasmagent/core": "workspace:*",
+        "@wasmagent/models": "workspace:*",
       },
       "devDependencies": {
         "openai": "^4.90.0",
@@ -746,7 +750,7 @@
       "name": "@wasmagent/model-qwen",
       "version": "1.0.6",
       "dependencies": {
-        "@wasmagent/core": "workspace:*",
+        "@wasmagent/models": "workspace:*",
       },
       "devDependencies": {
         "openai": "^4.80.0",
@@ -760,7 +764,7 @@
       "name": "@wasmagent/model-zhipu",
       "version": "1.0.6",
       "dependencies": {
-        "@wasmagent/core": "workspace:*",
+        "@wasmagent/models": "workspace:*",
       },
       "devDependencies": {
         "openai": "^4.80.0",
@@ -775,14 +779,6 @@
       "version": "1.1.2",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
-        "@wasmagent/model-anthropic": "workspace:*",
-        "@wasmagent/model-deepseek": "workspace:*",
-        "@wasmagent/model-doubao": "workspace:*",
-        "@wasmagent/model-minimax": "workspace:*",
-        "@wasmagent/model-moonshot": "workspace:*",
-        "@wasmagent/model-openai": "workspace:*",
-        "@wasmagent/model-qwen": "workspace:*",
-        "@wasmagent/model-zhipu": "workspace:*",
       },
       "devDependencies": {
         "@anthropic-ai/sdk": "^0.55.0",
@@ -928,6 +924,7 @@
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/kernel-quickjs": "workspace:*",
+        "@wasmagent/models": "workspace:*",
         "@wasmagent/protocol": "^0.1.5",
         "@wasmagent/ui-cards": "workspace:*",
         "zod": "^3.0.0",

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import type { StreamEvent } from "@wasmagent/models";
+import type { StreamEvent } from "@wasmagent/core/models";
 
 type OAIChunk = {
   choices: Array<{
@@ -24,7 +24,7 @@ mock.module("openai", () => ({
 }));
 
 // Import after mock.module so the mock is in place
-import { GLMModels, ZhipuModel } from "./index.js";
+import { GLMModels, ZhipuModel } from "./zhipu.js";
 
 function makeChunkStream(chunks: OAIChunk[]): AsyncIterable<OAIChunk> {
   return {

@@ -1,15 +1,13 @@
-import type { RetryPolicy } from "./retry.js";
-import { withRetryGenerator } from "./retry.js";
 import type {
   GenerateOptions,
   Model,
   ModelCapabilities,
   ModelMessage,
   StreamEvent,
-} from "./types.js";
-import { getModelMeta } from "./types.js";
-
-export { repairJson } from "../util/repairJson.js";
+} from "@wasmagent/core/models";
+import { getModelMeta } from "@wasmagent/core/models";
+import type { RetryPolicy } from "./retry.js";
+import { withRetryGenerator } from "./retry.js";
 
 export interface OpenAIModelOptions {
   apiKey?: string;
@@ -23,7 +21,7 @@ export interface OpenAIModelOptions {
      * Full range: "none" | "minimal" | "standard" | "low" | "medium" | "high" | "xhigh" | "max"
      * OpenAI wire values: none/minimal/low/medium/high/xhigh (standard→medium, max→xhigh).
      */
-    reasoningEffort?: import("./types.js").ReasoningEffort;
+    reasoningEffort?: import("@wasmagent/core/models").ReasoningEffort;
     /**
      * Output verbosity for GPT-5+ models (A2).
      * "low" = terse, "medium" = default, "high" = detailed.
@@ -71,7 +69,7 @@ export type OpenAIModelId = (typeof OpenAIModels)[keyof typeof OpenAIModels] | (
  * OpenAI supports: "none" | "low" | "medium" | "high" | "xhigh"
  * (minimal → low, standard → medium, max → xhigh)
  */
-function toOpenAIEffort(effort: import("./types.js").ReasoningEffort): string {
+function toOpenAIEffort(effort: import("@wasmagent/core/models").ReasoningEffort): string {
   switch (effort) {
     case "none":
       return "none";
@@ -89,6 +87,8 @@ function toOpenAIEffort(effort: import("./types.js").ReasoningEffort): string {
       return "xhigh";
     case "max":
       return "xhigh";
+    default:
+      return effort as string;
   }
 }
 
@@ -326,7 +326,7 @@ export class OpenAIModel implements Model {
     }
 
     if (inputTokens > 0 || outputTokens > 0) {
-      const usage: import("./types.js").TokenUsage = { inputTokens, outputTokens };
+      const usage: import("@wasmagent/core/models").TokenUsage = { inputTokens, outputTokens };
       if (cacheReadTokens > 0) usage.cacheReadTokens = cacheReadTokens;
       yield { type: "usage", usage };
     }
@@ -472,7 +472,7 @@ export class OpenAIModel implements Model {
     }
 
     if (inputTokens > 0 || outputTokens > 0) {
-      const usage: import("./types.js").TokenUsage = { inputTokens, outputTokens };
+      const usage: import("@wasmagent/core/models").TokenUsage = { inputTokens, outputTokens };
       if (cacheReadTokens > 0) usage.cacheReadTokens = cacheReadTokens;
       yield { type: "usage", usage };
     }

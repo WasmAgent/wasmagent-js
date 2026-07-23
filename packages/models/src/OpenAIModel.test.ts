@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import type { ModelMessage, StreamEvent } from "../models/types.js";
+import type { ModelMessage, StreamEvent } from "@wasmagent/core/models";
 
 /**
  * OpenAIModel tests — mock the `openai` dynamic import so no network calls.
@@ -41,7 +41,7 @@ mock.module("openai", () => {
   };
 });
 
-import { OpenAIModel } from "../models/OpenAIModel.js";
+import { OpenAIModel } from "./OpenAIModel.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -235,7 +235,7 @@ describe("OpenAIModel streaming", () => {
  * OpenAIModel message conversion tests — test convertMessages indirectly
  * through MessageAssembler producing ModelMessage[] with structured blocks.
  */
-import { MessageAssembler } from "../memory/MessageAssembler.js";
+import { MessageAssembler } from "@wasmagent/core";
 
 describe("OpenAIModel convertMessages (via MessageAssembler)", () => {
   it("system message content is passed as string", () => {

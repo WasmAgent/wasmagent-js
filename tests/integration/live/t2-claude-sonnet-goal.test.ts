@@ -11,7 +11,8 @@ import { describe, expect, it } from "bun:test";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AnthropicModel, ScalarLLMJudgeVerifier, ToolCallingAgent } from "@wasmagent/core";
+import { ScalarLLMJudgeVerifier, ToolCallingAgent } from "@wasmagent/core";
+import { AnthropicModel } from "@wasmagent/models";
 import type { RolloutBranchResult } from "@wasmagent/core/beta";
 import {
   DEFAULT_REWARD_FUNCTIONS,

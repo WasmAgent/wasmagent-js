@@ -20,7 +20,7 @@ import type {
   ModelCapabilities,
   ModelMessage,
   StreamEvent,
-} from "./types.js";
+} from "@wasmagent/core/models";
 
 // ── FallbackModel ──────────────────────────────────────────────────────────────
 
