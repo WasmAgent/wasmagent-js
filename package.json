@@ -65,7 +65,7 @@
     "@biomejs/biome": "^2.4.16",
     "@changesets/changelog-github": "^0.7.0",
     "@changesets/cli": "^2.31.0",
-    "@cyclonedx/cyclonedx-npm": "^1.20.0",
+    "@cyclonedx/cyclonedx-npm": "^6.0.0",
     "@types/node": "^26.1.1",
     "@wasmagent/protocol": "^0.1.5",
     "happy-dom": "^14.0.0",
