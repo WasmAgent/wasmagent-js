@@ -711,6 +711,7 @@
         "@wasmagent/models": "workspace:*",
       },
       "devDependencies": {
+        "@wasmagent/core": "workspace:*",
         "openai": "^4.80.0",
         "typescript": "^5.7.0",
       },
