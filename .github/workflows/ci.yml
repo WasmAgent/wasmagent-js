@@ -161,7 +161,7 @@ jobs:
         run: bun run build
       - name: Run MCPTox-aligned benchmark
         run: node examples/security-benchmark/mcptox-eval.mjs --report
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: mcptox-benchmark-report
           path: docs/eval-reports/mcptox-baseline-*.md
