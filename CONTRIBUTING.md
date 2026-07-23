@@ -104,6 +104,22 @@ maintainer tags `v<version>` on `main`. Do not hand-publish from a
 dev machine. The current version manifest is `packages/*/package.json`;
 align bumps via changesets when bumping more than one package.
 
+### Changeset bump levels
+
+When authoring a changeset, choose the bump level that matches what users
+*actually have to do*:
+
+| Level | When to use |
+|-------|-------------|
+| `patch` | Bug fix, internal refactor, doc update — no public API change |
+| `minor` | New feature or export added; old imports still work |
+| `major` | **Only** when you are certain a user must change their code — a public export removed with no shim, an incompatible signature change, or similar hard breaking change |
+
+**Default to `minor`, not `major`.** Moving code between packages while keeping
+re-export shims does not warrant `major` — the user's existing imports still
+resolve. Overusing `major` produces misleading semver signals and forces
+unnecessary lock-step bumps in dependents.
+
 ## Generic-first discipline (S4)
 
 Anything that is not strictly product-specific lands in `wasmagent`
