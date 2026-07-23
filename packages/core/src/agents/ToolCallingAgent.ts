@@ -9,7 +9,6 @@ import type { InputGuardrail, OutputGuardrail, ToolGuardrail } from "../guardrai
 import { runInputGuardrails, runOutputGuardrails, runToolGuardrails } from "../guardrails/index.js";
 import { LazyObservationHandle } from "../memory/LazyObservationHandle.js";
 import { MessageAssembler } from "../memory/MessageAssembler.js";
-import { repairJson } from "../models/OpenAIModel.js";
 import type { EnhancementPolicy, Model, ModelMessage } from "../models/types.js";
 import { TokenBudget } from "../models/types.js";
 import { deriveDependencies } from "../scheduler/deriveDeps.js";
@@ -26,6 +25,7 @@ import type {
   ToolUseStep,
   UserMessageStep,
 } from "../types/events.js";
+import { repairJson } from "../util/repairJson.js";
 import { randomUUID } from "../util/runtime.js";
 import { runPlanningStep, TOOL_DEP_INSTRUCTIONS } from "./prompts.js";
 import type { StopCondition } from "./stopConditions.js";
