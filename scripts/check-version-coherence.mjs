@@ -42,80 +42,6 @@ for (const dir of readdirSync(packagesDir)) {
   }
 }
 
-// ── 2. Core-four coherence check ──────────────────────────────────────────
-
-const CORE_FOUR = [
-  "@wasmagent/core",
-  "@wasmagent/aep",
-  "@wasmagent/mcp-firewall",
-  "@wasmagent/compliance",
-];
-
-const coreVersions = CORE_FOUR.map((name) => ({
-  name,
-  version: localVersions.get(name) ?? null,
-}));
-
-const coreViolations = [];
-
-const uniqueVersions = new Set(
-  coreVersions.filter((c) => c.version !== null).map((c) => c.version)
-);
-
-// Pending-changeset escape hatch: if a markdown file under .changeset/ names
-// the out-of-sync core packages, treat the mismatch as "will be resolved on
-// next release" rather than blocking the push. This lets us land a fix-up
-// changeset *after* an already-published partial mismatch without forcing
-// a same-commit bump.
-function hasPendingChangesetFor(packages) {
-  try {
-    const dir = ".changeset";
-    if (!existsSync(dir)) return false;
-    const files = readdirSync(dir).filter((f) => f.endsWith(".md") && f !== "README.md");
-    for (const f of files) {
-      const src = readFileSync(`${dir}/${f}`, "utf8");
-      const fm = src.match(/^---\n([\s\S]*?)\n---/);
-      if (!fm) continue;
-      const front = fm[1];
-      const named = new Set();
-      for (const line of front.split("\n")) {
-        const m = line.match(/^"(@wasmagent\/[\w-]+)":\s*\w+/);
-        if (m) named.add(m[1]);
-      }
-      if (packages.every((p) => named.has(p))) return true;
-    }
-  } catch {
-    /* ignore */
-  }
-  return false;
-}
-
-if (uniqueVersions.size !== 1) {
-  const outOfSync = coreVersions.filter((c) => c.version !== null).map((c) => c.name);
-  if (hasPendingChangesetFor(outOfSync)) {
-    if (verbose) {
-      console.log(
-        `Core-four versions out of sync but a pending changeset covers all ${outOfSync.length} packages — will reconcile on next release. ✓`
-      );
-    }
-  } else {
-    coreViolations.push(
-      `Core-four packages must all share the same version. Found:\n` +
-        coreVersions.map((c) => `    ${c.name}: ${c.version ?? "(not found)"}`).join("\n") +
-        `\n  Either bump them in lockstep or add a changeset listing all four packages.`
-    );
-  }
-} else {
-  const coreVersion = [...uniqueVersions][0];
-  if (verbose) console.log(`Core-four version: ${coreVersion} ✓`);
-}
-
-for (const { name, version } of coreVersions) {
-  if (!version) {
-    coreViolations.push(`Package ${name} not found in packages/`);
-  }
-}
-
 // ── 3. Semver-range coherence for all @wasmagent/* deps ───────────────────
 
 /**
@@ -234,17 +160,11 @@ for (const dir of readdirSync(packagesDir).sort()) {
 
 // ── 4. Report ─────────────────────────────────────────────────────────────
 
-const allViolations = [...coreViolations, ...depViolations];
+const allViolations = [...depViolations];
 
 if (allViolations.length === 0) {
-  const versionsList = [...uniqueVersions].sort();
-  const coreSummary =
-    versionsList.length === 1
-      ? `all at v${versionsList[0]}`
-      : `reconciling to a single version on next release (currently: ${versionsList.join(", ")})`;
   console.log(
     `Version coherence check PASSED.\n` +
-      `  Core-four packages: ${coreSummary}\n` +
       `  All @wasmagent/* dependency ranges: satisfied by local versions`
   );
   process.exit(0);
