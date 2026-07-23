@@ -1,5 +1,8 @@
 ---
 "@wasmagent/core": major
+"@wasmagent/aep": patch
+"@wasmagent/mcp-firewall": patch
+"@wasmagent/compliance": patch
 "@wasmagent/models": major
 "@wasmagent/model-anthropic": major
 "@wasmagent/model-openai": major
