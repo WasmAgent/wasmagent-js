@@ -7,7 +7,7 @@
 - [ ] Add JSON Schema validation for `aep/v0.1` records in `@wasmagent/aep`
 - [ ] Implement `AEPEmitter.addAction()` for tool name, outcome, exit code, arguments hash, and result hash capture
 - [ ] Add deterministic canonical serialization for signed evidence payloads
-- [ ] Implement record signing and signature verification utilities
+- [x] Implement record signing and signature verification utilities
 - [ ] Add unit tests for valid records, invalid records, signature verification, and malformed action entries
 
 ## Milestone 2: MCP Firewall Protection Layer
