@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { hashField, hashUiText, InMemoryConsentLedger } from "./consent.js";
-import { evaluatePolicy } from "./policy.js";
+import { evaluatePolicy, InMemoryConsentStore, lookupConsent } from "./policy.js";
 import { renderTaintedObservation, taintObservation } from "./taint.js";
 import { vetTool } from "./vetting.js";
 
@@ -108,6 +108,125 @@ describe("evaluatePolicy", () => {
       },
     ];
     const d = evaluatePolicy("run_code", {}, vetting, consent, undefined, "new-hash-after-change");
+    expect(d.decision).toBe("ask_user");
+  });
+});
+
+// ── consent store (storage + lookup for repeated policy decisions) ───────────
+
+describe("InMemoryConsentStore", () => {
+  it("records and looks up a valid consent record", () => {
+    const store = new InMemoryConsentStore();
+    store.record({
+      userIdHash: "user1",
+      toolName: "run_code",
+      toolSnapshotHash: "snap1",
+    });
+    expect(store.lookup("run_code", "user1", "snap1")).toBeDefined();
+    expect(store.lookup("run_code", "user1", "snap1")?.toolSnapshotHash).toBe("snap1");
+  });
+
+  it("returns undefined for an unknown tool", () => {
+    const store = new InMemoryConsentStore();
+    store.record({ userIdHash: "user1", toolName: "run_code", toolSnapshotHash: "snap1" });
+    expect(store.lookup("other_tool", "user1", "snap1")).toBeUndefined();
+  });
+
+  it("returns undefined when the snapshot hash changed (rug-pull guard)", () => {
+    const store = new InMemoryConsentStore();
+    store.record({ userIdHash: "user1", toolName: "run_code", toolSnapshotHash: "snap1" });
+    expect(store.lookup("run_code", "user1", "changed-snap")).toBeUndefined();
+    // No snapshot hash supplied → any snapshot still valid.
+    expect(store.lookup("run_code", "user1")).toBeDefined();
+  });
+
+  it("returns undefined for an expired record", () => {
+    const store = new InMemoryConsentStore();
+    store.record({
+      userIdHash: "user1",
+      toolName: "run_code",
+      toolSnapshotHash: "snap1",
+      expiresAt: new Date(Date.now() - 1000).toISOString(),
+    });
+    expect(store.lookup("run_code", "user1", "snap1")).toBeUndefined();
+  });
+
+  it("scopes lookup by userIdHash", () => {
+    const store = new InMemoryConsentStore();
+    store.record({ userIdHash: "user1", toolName: "run_code", toolSnapshotHash: "snap1" });
+    store.record({ userIdHash: "user2", toolName: "run_code", toolSnapshotHash: "snap1" });
+    expect(store.lookup("run_code", "user1", "snap1")?.userIdHash).toBe("user1");
+    expect(store.lookup("run_code", "user2", "snap1")?.userIdHash).toBe("user2");
+    expect(store.lookup("run_code", "nobody", "snap1")).toBeUndefined();
+  });
+
+  it("revoke expires all non-expiring consent for a tool", () => {
+    const store = new InMemoryConsentStore();
+    store.record({ userIdHash: "user1", toolName: "run_code", toolSnapshotHash: "snap1" });
+    store.record({ userIdHash: "user2", toolName: "run_code", toolSnapshotHash: "snap1" });
+    store.revoke("run_code");
+    expect(store.lookup("run_code", "user1", "snap1")).toBeUndefined();
+    expect(store.lookup("run_code", "user2", "snap1")).toBeUndefined();
+  });
+
+  it("revoke can target a single user", () => {
+    const store = new InMemoryConsentStore();
+    store.record({ userIdHash: "user1", toolName: "run_code", toolSnapshotHash: "snap1" });
+    store.record({ userIdHash: "user2", toolName: "run_code", toolSnapshotHash: "snap1" });
+    store.revoke("run_code", "user1");
+    expect(store.lookup("run_code", "user1", "snap1")).toBeUndefined();
+    expect(store.lookup("run_code", "user2", "snap1")).toBeDefined();
+  });
+
+  it("recordsFor and all do not leak the internal array", () => {
+    const store = new InMemoryConsentStore();
+    store.record({ userIdHash: "user1", toolName: "run_code", toolSnapshotHash: "snap1" });
+    const all = store.all();
+    const forTool = store.recordsFor("run_code");
+    all.push({ userIdHash: "x", toolName: "x", toolSnapshotHash: "x" });
+    expect(store.all()).toHaveLength(1);
+    expect(forTool).toHaveLength(1);
+    expect(store.recordsFor("run_code")).toHaveLength(1);
+  });
+});
+
+describe("lookupConsent", () => {
+  it("finds the first valid record applying the same rules as the store", () => {
+    const records = [
+      { userIdHash: "user1", toolName: "run_code", toolSnapshotHash: "snap1" },
+      { userIdHash: "user2", toolName: "web_fetch", toolSnapshotHash: "snap2" },
+    ];
+    expect(lookupConsent(records, "run_code", "snap1")?.userIdHash).toBe("user1");
+    expect(lookupConsent(records, "web_fetch")?.userIdHash).toBe("user2");
+    expect(lookupConsent(records, "run_code", "snap1", "user2")).toBeUndefined();
+  });
+});
+
+describe("evaluatePolicy with a ConsentStore (repeated decisions)", () => {
+  it("asks the first time, then allows on repeat once consent is recorded", () => {
+    const risky = { ...SAFE_TOOL, description: "reads the api key from environment" };
+    const vetting = vetTool(risky);
+    const store = new InMemoryConsentStore();
+
+    // First evaluation — no consent on file → must ask the user.
+    const first = evaluatePolicy("run_code", {}, vetting, store, undefined, "snap1");
+    expect(first.decision).toBe("ask_user");
+
+    // User approves → record consent once.
+    store.record({ userIdHash: "user1", toolName: "run_code", toolSnapshotHash: "snap1" });
+
+    // Repeated evaluation reuses stored consent → no re-ask.
+    const second = evaluatePolicy("run_code", {}, vetting, store, undefined, "snap1");
+    expect(second.decision).toBe("allow");
+    expect(second.userConsentRef).toBe("snap1");
+  });
+
+  it("still re-asks when the stored consent no longer matches the snapshot", () => {
+    const risky = { ...SAFE_TOOL, description: "reads the api key from environment" };
+    const vetting = vetTool(risky);
+    const store = new InMemoryConsentStore();
+    store.record({ userIdHash: "user1", toolName: "run_code", toolSnapshotHash: "snap1" });
+    const d = evaluatePolicy("run_code", {}, vetting, store, undefined, "rug-pulled-snap");
     expect(d.decision).toBe("ask_user");
   });
 });

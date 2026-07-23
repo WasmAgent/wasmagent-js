@@ -75,6 +75,7 @@ export {
 // Per-call policy
 export type {
   ConsentRecord,
+  ConsentStore,
   InvocationDecision,
   PolicyRule,
   ToolInvocationDecision,
@@ -84,6 +85,8 @@ export {
   DEFAULT_RULES,
   DENY_BLOCKED_RULE,
   evaluatePolicy,
+  InMemoryConsentStore,
+  lookupConsent,
 } from "./policy.js";
 // Semantic detection (phase 3)
 export type {

@@ -39,6 +39,40 @@ export interface ConsentRecord {
   toolSnapshotHash: string;
 }
 
+/**
+ * Persistent storage + lookup for {@link ConsentRecord}s, so that repeated
+ * policy decisions on the same tool reuse prior consent instead of re-asking
+ * the user on every call. {@link evaluatePolicy} accepts a `ConsentStore`
+ * directly in place of the inline `ConsentRecord[]`.
+ *
+ * A record is considered valid for lookup only when it has not expired and,
+ * when a `currentSnapshotHash` is supplied, its snapshot hash matches —
+ * preventing rug-pull attacks where the tool descriptor changes after consent.
+ */
+export interface ConsentStore {
+  /** Persist a consent record for later lookup. */
+  record(consent: ConsentRecord): void;
+  /**
+   * Find a valid (non-expired, snapshot-matching) consent record for a tool.
+   * Returns undefined when none is on file.
+   *
+   * @param userIdHash         When provided, only records for this user match.
+   * @param currentSnapshotHash  When provided, only records whose snapshot hash
+   *   matches are returned.
+   */
+  lookup(
+    toolName: string,
+    userIdHash?: string,
+    currentSnapshotHash?: string
+  ): ConsentRecord | undefined;
+  /** All records recorded for a tool, including expired ones (useful for audit). */
+  recordsFor(toolName: string): ConsentRecord[];
+  /** Revoke (expire immediately) all non-expiring consent for a tool + user. */
+  revoke(toolName: string, userIdHash?: string): void;
+  /** Snapshot copy of every recorded consent record. */
+  all(): ConsentRecord[];
+}
+
 // ── Built-in rules ───────────────────────────────────────────────────────────
 
 /**
@@ -90,7 +124,10 @@ function worstDecision(decisions: InvocationDecision[]): InvocationDecision {
  * @param toolName  Name of the tool being called.
  * @param args      Arguments the agent is passing.
  * @param vetting   Result of static vetting (null if not yet vetted).
- * @param consent   Active consent records for this session.
+ * @param consent   Either an inline array of consent records for this session,
+ *   or a persistent {@link ConsentStore}. A store lets consent recorded for one
+ *   call be reused on repeated policy decisions for the same tool without
+ *   re-asking the user.
  * @param rules     Policy rules to apply (defaults to DEFAULT_RULES).
  * @param currentSnapshotHash  Current tool descriptor hash — consent is only
  *   valid when it matches, preventing rug-pull after consent was granted.
@@ -99,10 +136,14 @@ export function evaluatePolicy(
   toolName: string,
   args: Record<string, unknown>,
   vetting: VettingResult | null,
-  consent: ConsentRecord[],
+  consent: ConsentRecord[] | ConsentStore,
   rules: PolicyRule[] = DEFAULT_RULES,
   currentSnapshotHash?: string
 ): ToolInvocationDecision {
+  // Normalize to an array. When a store is passed we read its current contents;
+  // the lookup below filters to the relevant, still-valid record.
+  const consentRecords = Array.isArray(consent) ? consent : consent.all();
+
   const decisions: InvocationDecision[] = [];
   const matchedPolicyIds: string[] = [];
   const reasons: string[] = [];
@@ -120,12 +161,7 @@ export function evaluatePolicy(
   // Check consent records — if valid consent exists, downgrade ask_user → allow.
   // Consent is only honoured when the tool's snapshot hash matches, preventing
   // rug-pull attacks where the MCP server changes tool behavior post-consent.
-  const validConsent = consent.find(
-    (c) =>
-      c.toolName === toolName &&
-      (!c.expiresAt || new Date(c.expiresAt) > new Date()) &&
-      (!currentSnapshotHash || c.toolSnapshotHash === currentSnapshotHash)
-  );
+  const validConsent = lookupConsent(consentRecords, toolName, currentSnapshotHash);
   if (validConsent) {
     const idx = decisions.indexOf("ask_user");
     if (idx !== -1) decisions.splice(idx, 1);
@@ -146,4 +182,82 @@ export function evaluatePolicy(
     matchedPolicyIds,
     ...(validConsent ? { userConsentRef: validConsent.toolSnapshotHash } : {}),
   };
+}
+
+// ── Consent storage + lookup ─────────────────────────────────────────────────
+
+/**
+ * Find a valid (non-expired, snapshot-matching) consent record for a tool
+ * within the given records. Shared by {@link evaluatePolicy} and
+ * {@link ConsentStore.lookup} so "what counts as valid consent" has a single
+ * definition.
+ *
+ * @param consent             Records to search (typically already session-scoped).
+ * @param toolName            Tool the policy decision is for.
+ * @param currentSnapshotHash  When provided, only records whose snapshot hash
+ *   matches are returned (rug-pull guard).
+ * @param userIdHash          When provided, only records for this user match.
+ *   Omit to match any user (e.g. when the caller has already scoped the array).
+ */
+export function lookupConsent(
+  consent: ConsentRecord[],
+  toolName: string,
+  currentSnapshotHash?: string,
+  userIdHash?: string
+): ConsentRecord | undefined {
+  const now = new Date();
+  return consent.find(
+    (c) =>
+      c.toolName === toolName &&
+      (userIdHash === undefined || c.userIdHash === userIdHash) &&
+      (!c.expiresAt || new Date(c.expiresAt) > now) &&
+      (!currentSnapshotHash || c.toolSnapshotHash === currentSnapshotHash)
+  );
+}
+
+/**
+ * In-memory {@link ConsentStore}. Consent recorded here persists across repeated
+ * `evaluatePolicy` calls for the lifetime of the instance, so a user only has to
+ * approve a high-risk tool once even when the policy engine evaluates it many
+ * times. Pass the same instance as `evaluatePolicy`'s `consent` argument, or
+ * call {@link InMemoryConsentStore.lookup} directly.
+ *
+ * For production use, back this with KV or a database by implementing
+ * {@link ConsentStore} directly.
+ */
+export class InMemoryConsentStore implements ConsentStore {
+  private readonly _records: ConsentRecord[] = [];
+
+  record(consent: ConsentRecord): void {
+    this._records.push(consent);
+  }
+
+  lookup(
+    toolName: string,
+    userIdHash?: string,
+    currentSnapshotHash?: string
+  ): ConsentRecord | undefined {
+    return lookupConsent(this._records, toolName, currentSnapshotHash, userIdHash);
+  }
+
+  recordsFor(toolName: string): ConsentRecord[] {
+    return this._records.filter((c) => c.toolName === toolName);
+  }
+
+  revoke(toolName: string, userIdHash?: string): void {
+    const now = new Date().toISOString();
+    for (const c of this._records) {
+      if (
+        c.toolName === toolName &&
+        (userIdHash === undefined || c.userIdHash === userIdHash) &&
+        !c.expiresAt
+      ) {
+        c.expiresAt = now; // expire immediately
+      }
+    }
+  }
+
+  all(): ConsentRecord[] {
+    return [...this._records];
+  }
 }
