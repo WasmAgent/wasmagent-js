@@ -203,6 +203,15 @@
               "result_digest": {
                 "type": "string"
               },
+              "outcome": {
+                "type": "string"
+              },
+              "exit_code": {
+                "type": "integer"
+              },
+              "arguments_digest": {
+                "type": "string"
+              },
               "evidence_refs": {
                 "type": "array",
                 "items": {

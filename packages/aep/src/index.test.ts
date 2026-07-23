@@ -848,6 +848,153 @@ describe("AEP v0.3 — argument_drift (#7 Gap 3)", () => {
   });
 });
 
+describe("AEPEmitter.addAction() — tool outcome capture (#163)", () => {
+  it("captures outcome on an action and round-trips it through build()", () => {
+    const emitter = new AEPEmitter({ run_id: "run-outcome-001" });
+    emitter.addAction({
+      tool_name: "bash",
+      state_changing: false,
+      outcome: "success",
+    });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.tool_name).toBe("bash");
+    expect(record.actions[0]?.outcome).toBe("success");
+  });
+
+  it("captures exit_code for both success (0) and failure (non-zero)", () => {
+    const emitter = new AEPEmitter({ run_id: "run-exit-001" });
+    emitter.addAction({
+      tool_name: "bash",
+      state_changing: false,
+      outcome: "success",
+      exit_code: 0,
+    });
+    emitter.addAction({
+      tool_name: "bash",
+      state_changing: false,
+      outcome: "error",
+      exit_code: 127,
+    });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.exit_code).toBe(0);
+    expect(record.actions[1]?.exit_code).toBe(127);
+  });
+
+  it("captures arguments_digest (hash of the tool call arguments)", () => {
+    const emitter = new AEPEmitter({ run_id: "run-argdigest-001" });
+    const argsDigest = AEPEmitter.digestContent(JSON.stringify({ path: "/tmp/x", mode: "w" }));
+    emitter.addAction({
+      tool_name: "write_file",
+      state_changing: true,
+      arguments_digest: argsDigest,
+    });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.arguments_digest).toBe(argsDigest);
+    expect(record.actions[0]?.arguments_digest).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("captures the full bullet set — tool name, outcome, exit code, arguments hash, result hash", () => {
+    const emitter = new AEPEmitter({ run_id: "run-full-capture-001" });
+    const argsDigest = AEPEmitter.digestContent(JSON.stringify({ command: "npm run build" }));
+    const resultDigest = AEPEmitter.digestContent("build output bytes");
+    emitter.addAction({
+      tool_name: "bash",
+      state_changing: true,
+      outcome: "success",
+      exit_code: 0,
+      arguments_digest: argsDigest,
+      result_digest: resultDigest,
+    });
+    const record = emitter.build(1_700_000_000_000);
+    const action = record.actions[0];
+    expect(action?.tool_name).toBe("bash");
+    expect(action?.outcome).toBe("success");
+    expect(action?.exit_code).toBe(0);
+    expect(action?.arguments_digest).toBe(argsDigest);
+    expect(action?.result_digest).toBe(resultDigest);
+  });
+
+  it("outcome, exit_code, and arguments_digest are optional and backwards compatible", () => {
+    const emitter = new AEPEmitter({ run_id: "run-optional-001" });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.actions[0]?.outcome).toBeUndefined();
+    expect(record.actions[0]?.exit_code).toBeUndefined();
+    expect(record.actions[0]?.arguments_digest).toBeUndefined();
+  });
+
+  it("schema validation accepts an action with outcome, exit_code, and arguments_digest", () => {
+    const raw = {
+      schema_version: "aep/v0.3",
+      run_id: "run-schema-outcome",
+      created_at_ms: 1_700_000_000_000,
+      actions: [
+        {
+          action_id: "action-0",
+          tool_name: "bash",
+          state_changing: true,
+          timestamp_ms: 1_700_000_000_000,
+          outcome: "error",
+          exit_code: 2,
+          arguments_digest: "a".repeat(64),
+          result_digest: "b".repeat(64),
+        },
+      ],
+      signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+    };
+    const result = AEPRecordSchema.safeParse(raw);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.actions[0]?.outcome).toBe("error");
+      expect(result.data.actions[0]?.exit_code).toBe(2);
+      expect(result.data.actions[0]?.arguments_digest).toBe("a".repeat(64));
+    }
+  });
+
+  it("schema validation rejects a non-integer exit_code", () => {
+    const raw = {
+      schema_version: "aep/v0.3",
+      run_id: "run-schema-bad-exit",
+      created_at_ms: 1_700_000_000_000,
+      actions: [
+        {
+          action_id: "action-0",
+          tool_name: "bash",
+          state_changing: true,
+          timestamp_ms: 1_700_000_000_000,
+          exit_code: 1.5,
+        },
+      ],
+      signature: { alg: "ed25519", key_id: "k1", sig: "dGVzdA==" },
+    };
+    const result = AEPRecordSchema.safeParse(raw);
+    expect(result.success).toBe(false);
+  });
+
+  it("captured fields are included in the signed record and verified (tamper detection)", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({ run_id: "run-sign-outcome", signer });
+    emitter.addAction({
+      tool_name: "bash",
+      state_changing: false,
+      outcome: "success",
+      exit_code: 0,
+      arguments_digest: "c".repeat(64),
+    });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    const publicKey = await signer.getPublicKey();
+    expect(await verifyAEPRecord(record, publicKey)).toBe(true);
+
+    // Tampering with a captured field must invalidate the signature
+    const tampered = {
+      ...record,
+      actions: [{ ...record.actions[0]!, exit_code: 1 }],
+    };
+    expect(await verifyAEPRecord(tampered as any, publicKey)).toBe(false);
+  });
+});
+
 describe("AEP v0.3 — approval_mode + approval_extension + deny_reason_class (#7 Gap 4)", () => {
   it("approval_mode defaults to 'none' on capability decisions", () => {
     const raw = {
