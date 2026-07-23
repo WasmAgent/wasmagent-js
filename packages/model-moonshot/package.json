@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/model-moonshot",
-  "version": "1.0.6",
+  "version": "2.0.0",
   "description": "Moonshot (Kimi) model adapter for wasmagent",
   "type": "module",
   "main": "./dist/index.js",
