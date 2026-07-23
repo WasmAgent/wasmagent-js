@@ -14,6 +14,7 @@
 
 import { describe, expect, it } from "bun:test";
 import { execSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -265,7 +266,9 @@ describe("T7-S3 · Schema drift detection: wasmagent vs evomerge rollout-wire.sc
     // depending on whether the test is invoked from the repo root or from
     // tests/integration/ (turbo invokes from the package dir, which broke
     // the previous cwd-relative path).
-    const wasmagentSchemaPath = `${import.meta.dir}/../../../packages/core/src/ranking/schemas/rollout-wire.schema.json`;
+    const wasmagentSchemaPath = createRequire(import.meta.url).resolve(
+      "@wasmagent/protocol/schemas/compliance/rollout-wire.schema.json"
+    );
     const evomergeSchemaPath = "/tmp/evomerge-public-repo/src/datafactory/rollout-wire.schema.json";
 
     // Skip if local evomerge clone isn't present (CI doesn't have it at /tmp)

@@ -19,6 +19,7 @@
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { createRequire } from "node:module";
 import type { RankedBranch, RolloutBranchResult, RolloutRecord } from "@wasmagent/core/beta";
 import { toDpoRecord, toPpoRecords } from "@wasmagent/core/beta";
 
@@ -198,10 +199,9 @@ describe("three-repo cross-repo data chain", () => {
     //   2. additionalProperties:true allows unknown fields without error
     //   3. Removing a required field causes a validation failure (guard check)
 
-    // Load the schema from the packages directory (SSOT)
-    const schemaPath = join(
-      import.meta.dir,
-      "../../packages/core/src/ranking/schemas/rollout-wire.schema.json"
+    // Load the canonical schema from @wasmagent/protocol (single source of truth).
+    const schemaPath = createRequire(import.meta.url).resolve(
+      "@wasmagent/protocol/schemas/compliance/rollout-wire.schema.json"
     );
     const schema = JSON.parse(readFileSync(schemaPath, "utf8")) as {
       $id?: string;
@@ -244,16 +244,15 @@ describe("three-repo cross-repo data chain", () => {
       }
     }
 
-    // ── 3. schema_version in fixture must match the $id pattern ───────────────
-    // The schema $id is "https://wasmagent.dev/schemas/rollout-wire/v1"
-    // The fixture schema_version is "rollout-wire/v1" (the path component after /schemas/)
+    // ── 3. schema_version in fixture must reference the rollout-wire/v1 tag ────
+    // The canonical $id (from @wasmagent/protocol) identifies the schema by
+    // filename, not version — the version tag lives in the record's
+    // schema_version field ("rollout-wire/v1"), which is what we assert on.
     const schemaId = String(schema.$id ?? "");
     expect(schemaId).toContain("rollout-wire");
     for (const rec of rolloutLines) {
       const sv = String(rec.schema_version ?? "");
       expect(sv).toContain("rollout-wire");
-      // Both should reference the same version tag "v1"
-      expect(schemaId).toContain("v1");
       expect(sv).toContain("v1");
     }
 
