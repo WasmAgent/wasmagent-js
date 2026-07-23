@@ -1,5 +1,19 @@
 # @agentkit-js/model-local
 
+## 1.0.7
+
+### Patch Changes
+
+- e74c032: Update imports to use `@wasmagent/models` instead of `@wasmagent/core`
+
+  Internal import path change only — no public API change. Adapter classes
+  (`AnthropicModel`, `OpenAIModel`, `GenericOpenAICompatModel`, `FallbackModel`)
+  moved to `@wasmagent/models` as part of the #123 extraction.
+
+- Updated dependencies [e74c032]
+  - @wasmagent/core@3.0.0
+  - @wasmagent/models@2.0.0
+
 ## 1.0.6
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "chat-cards",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "private": true,
   "description": "WasmAgent chat UI demo with card rendering (Markdown + D2)",
   "type": "module",

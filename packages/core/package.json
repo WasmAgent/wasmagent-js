@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/core",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Core runtime for wasmagent — agents, executor, memory, models, tools",
   "type": "module",
   "main": "./dist/index.js",

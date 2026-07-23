@@ -1,5 +1,12 @@
 # @agentkit-js/react
 
+## 1.3.8
+
+### Patch Changes
+
+- Updated dependencies [e74c032]
+  - @wasmagent/core@3.0.0
+
 ## 1.3.7
 
 ### Patch Changes

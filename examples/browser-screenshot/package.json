@@ -1,6 +1,6 @@
 {
   "name": "example-browser-screenshot",
-  "version": "0.1.27",
+  "version": "0.1.28",
   "private": true,
   "description": "Headless Chromium screenshot via @wasmagent/tools-browser",
   "type": "module",
