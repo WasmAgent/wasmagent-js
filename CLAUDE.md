@@ -12,6 +12,38 @@ Three public entry points: `@wasmagent/mcp-firewall` (protect), `@wasmagent/aep`
 - A universal RAG / workflow engine
 - A training framework (TRL / Axolotl territory) — we produce training *data*, not training *code*
 
+## Repository Boundaries
+
+This runtime is one repo in a tree with sharp edges. Do not re-implement what
+another repo owns; call it instead.
+
+### This repository owns
+- The agent **runtime** — kernels (QuickJS/Pyodide/Wasmtime/Remote), executor,
+  orchestration (`agent.run()`, supervisor, subagents, handoff, teams)
+- **MCP firewall / gateway / attestation** — process-level policy enforcement
+- **AEP evidence emission** (`@wasmagent/aep`) — recording signed evidence at runtime
+- Model adapters, smartrouter, tools, and the developer-facing SDK surface
+
+### Other repositories own — do not duplicate here
+
+| Capability | Owner |
+|---|---|
+| AEP + compliance **schema definitions** (ConstraintIR, task-spec, rollout-wire, etc.) | `wasmagent-protocol` (`@wasmagent/protocol`) |
+| Symbolic **verification** engine (CEL / wazero sandbox / Z3 SMT) | `symkernel` (HTTP service) |
+| Gateway-level HTTP evidence (Proxy-Wasm) | `wasmagent-proxy` |
+| Training-data pipeline | `trace-pipeline` |
+| AgentBOM / MCP Posture / Trust Passport | `agent-trust-infra` / `open-agent-audit` |
+
+### Allowed cross-repo patterns
+- **Schemas:** consume `@wasmagent/protocol` — never copy or inline schema JSON
+  into this repo. Need a change? Open it against `wasmagent-protocol`.
+- **Verification:** heavy symbolic checks (CEL/Z3/hard-isolation sandbox) call
+  `symkernel` over HTTP via the Criterion/ConstraintIR protocol. Keep a light
+  inline fast path here; the authority is symkernel.
+- This runtime **emits** AEP records; it does not define their schema and does
+  not run the verification engine.
+
+
 ## Test Commands
 
 **IMPORTANT: This project uses `bun test` (not `npx vitest run`, not `npm test`).**
