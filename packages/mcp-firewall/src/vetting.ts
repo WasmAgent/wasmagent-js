@@ -529,8 +529,11 @@ function fieldHash(value: string): string {
  * `snapshotTool()`) byte-for-byte, so that a baseline captured at
  * registration time can be compared against the current descriptor to
  * detect rug-pulls. Unlike `fieldHash`, this is not truncated.
+ *
+ * Exported (rather than kept file-private) so the cross-package hash
+ * contract can be asserted directly in tests — see `firewall.test.ts`.
  */
-function descriptorHash(value: string): string {
+export function descriptorHash(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
