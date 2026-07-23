@@ -1,5 +1,12 @@
 # @agentkit-js/ag-ui
 
+## 1.0.6
+
+### Patch Changes
+
+- Updated dependencies [6a62876]
+  - @wasmagent/core@2.0.0
+
 ## 1.0.5
 
 ### Patch Changes

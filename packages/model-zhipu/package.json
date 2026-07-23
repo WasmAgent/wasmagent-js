@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/model-zhipu",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Zhipu (GLM) model adapter for wasmagent",
   "type": "module",
   "main": "./dist/index.js",

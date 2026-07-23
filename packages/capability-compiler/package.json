@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/capability-compiler",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "description": "Compile CapabilityManifest to MCP tool schema, runtime policy rules, and trace validator specs",
   "type": "module",
   "main": "./dist/index.js",

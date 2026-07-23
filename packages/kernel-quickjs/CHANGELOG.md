@@ -1,5 +1,12 @@
 # @agentkit-js/kernel-quickjs
 
+## 1.2.3
+
+### Patch Changes
+
+- Updated dependencies [6a62876]
+  - @wasmagent/core@2.0.0
+
 ## 1.2.2
 
 ### Patch Changes

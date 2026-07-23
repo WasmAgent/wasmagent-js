@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/evals-runner",
-  "version": "1.10.2",
+  "version": "1.10.3",
   "description": "Evaluation runner for wasmagent — multi-model multi-axis benchmark harness with paired statistics + Pareto report. Targets the gaps in evomerge-style single-axis evaluation: long-context recall, multi-turn memory, agent trajectory, latency, cost.",
   "type": "module",
   "main": "./dist/index.js",

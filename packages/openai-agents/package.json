@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/openai-agents",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Drop wasmagent sandbox kernels into the OpenAI Agents JS SDK as a Tool — edge-safe code execution with one capability manifest, no E2B sandbox needed",
   "type": "module",
   "main": "./dist/index.js",
