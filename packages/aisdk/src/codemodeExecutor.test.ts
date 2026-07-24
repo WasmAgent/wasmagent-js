@@ -219,6 +219,22 @@ describe("createCodemodeExecutor — bounds", () => {
     );
     await kernel[Symbol.asyncDispose]();
   });
+
+  it("terminates an asynchronous infinite loop via kernel timeout", async () => {
+    // An async infinite loop (while(true) with await) should also be
+    // caught by the kernel's wall-clock timeout, which terminates the
+    // worker thread regardless of whether the loop yields to the
+    // microtask queue.
+    const kernel = new JsKernel({ timeoutMs: 500 });
+    const exec = createCodemodeExecutor({ kernel, capabilities: { cpuMs: 300 } });
+    await expect(
+      exec.execute(
+        `async function f() { while (true) { await Promise.resolve(); } } return f();`,
+        {}
+      )
+    ).rejects.toThrow(/timeout|timed out|KernelError/i);
+    await kernel[Symbol.asyncDispose]();
+  });
 });
 
 describe("createCodemodeExecutor — blocked host access", () => {
