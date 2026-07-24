@@ -209,6 +209,64 @@ describe("SharedStateStore", () => {
     expect(events).toHaveLength(1);
   });
 
+  // ── #198 — Global UI synchronization subscriptions ─────────────────────────
+
+  it("subscribeToAll receives change events for any session", async () => {
+    const store = new SharedStateStore(todoModel);
+    const events: ChangeEvent<TodoState>[] = [];
+    store.subscribeToAll((evt) => events.push(evt));
+
+    await store.dispatch("s1", { type: "add", text: "a" }, { source: "user" });
+    await store.dispatch("s2", { type: "add", text: "b" }, { source: "agent" });
+
+    expect(events).toHaveLength(2);
+    expect(events[0]!.sessionId).toBe("s1");
+    expect(events[1]!.sessionId).toBe("s2");
+    expect(events[0]!.action).toEqual({ type: "add", text: "a" });
+    expect(events[1]!.source).toBe("agent");
+  });
+
+  it("subscribeToAll receives replace events", async () => {
+    const store = new SharedStateStore(todoModel);
+    const events: ChangeEvent<TodoState>[] = [];
+    store.subscribeToAll((evt) => events.push(evt));
+
+    const replaced: TodoState = { items: [{ id: "1", text: "x", done: true }], nextId: 2 };
+    await store.replace("s1", replaced, { source: "admin" });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]!.sessionId).toBe("s1");
+    expect(events[0]!.source).toBe("admin");
+    expect(events[0]!.state).toEqual(replaced);
+    expect(events[0]!.action).toBeUndefined();
+  });
+
+  it("subscribeToAll and per-session subscribe fire independently", async () => {
+    const store = new SharedStateStore(todoModel);
+    const globalEvents: ChangeEvent<TodoState>[] = [];
+    const sessionEvents: ChangeEvent<TodoState>[] = [];
+
+    const unsubGlobal = store.subscribeToAll((evt) => globalEvents.push(evt));
+    const unsubSession = store.subscribe("s1", (evt) => sessionEvents.push(evt));
+
+    // A change to the subscribed session reaches both listeners
+    await store.dispatch("s1", { type: "add", text: "x" }, { source: "u" });
+    expect(globalEvents).toHaveLength(1);
+    expect(sessionEvents).toHaveLength(1);
+
+    // A change to a different session reaches only the global listener
+    await store.dispatch("s2", { type: "add", text: "y" }, { source: "u" });
+    expect(globalEvents).toHaveLength(2);
+    expect(sessionEvents).toHaveLength(1);
+
+    unsubGlobal();
+    unsubSession();
+
+    await store.dispatch("s1", { type: "add", text: "z" }, { source: "u" });
+    expect(globalEvents).toHaveLength(2);
+    expect(sessionEvents).toHaveLength(1);
+  });
+
   it("concurrent dispatches are serialized", async () => {
     const store = new SharedStateStore(todoModel);
     const order: string[] = [];
