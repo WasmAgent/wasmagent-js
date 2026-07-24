@@ -6,7 +6,16 @@
  * and optionally narrates changes for human/agent consumption.
  */
 
-import type { StateModel } from "./StateModel.js";
+import type { Action, StateModel } from "./StateModel.js";
+
+// ── Projection type alias ───────────────────────────────────────────────────
+
+/**
+ * Function that projects internal state into a read-friendly view.
+ * The view type `V` defaults to `unknown` when the projection shape
+ * is not statically known.
+ */
+export type ProjectionFn<S, V = unknown> = (state: S) => V;
 
 /** Represents the structural difference between two projections. */
 export interface ProjectionDelta {
@@ -35,7 +44,7 @@ export interface ProjectionPipeline<S> {
  * Uses the model's `project` function (or identity if not defined)
  * and performs field-level structural comparison for diffs.
  */
-export function createProjectionPipeline<S, A extends { type: string }>(
+export function createProjectionPipeline<S, A extends Action>(
   model: StateModel<S, A>,
   opts?: { narrator?: (delta: ProjectionDelta) => string }
 ): ProjectionPipeline<S> {

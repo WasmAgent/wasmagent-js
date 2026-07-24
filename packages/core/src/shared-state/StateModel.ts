@@ -6,11 +6,45 @@
  * via semantic actions, and respects affordances.
  */
 
+// ── Foundational type aliases ──────────────────────────────────────────────
+
+/**
+ * Base interface for all semantic actions (intents).
+ * Every action dispatched through a StateModel must have a string discriminator.
+ */
+export interface Action {
+  /** Discriminator identifying the kind of action. */
+  type: string;
+}
+
+/**
+ * Pure reducer function: given current state and an action, returns the next state.
+ * Must not mutate the input state.
+ */
+export type Reducer<S, A extends Action = Action> = (state: S, action: A) => S;
+
+/**
+ * Point-in-time capture of state with provenance metadata.
+ * Used for persistence, audit trails, and event-sourcing replay.
+ */
+export interface StateSnapshot<S, A extends Action = Action> {
+  /** The state at this point in time. */
+  state: S;
+  /** The action that produced this state (absent for the initial state). */
+  action?: A;
+  /** Source that produced the state change (e.g. "agent", "user", "transport"). */
+  source: string;
+  /** Epoch-millisecond timestamp when this snapshot was taken. */
+  timestamp: number;
+}
+
+// ── StateModel contract ─────────────────────────────────────────────────────
+
 /**
  * Core state model contract. Defines how state evolves via actions,
  * how it is projected for consumers, and which actions are currently valid.
  */
-export interface StateModel<S, A extends { type: string }> {
+export interface StateModel<S, A extends Action> {
   /** Produce the initial state for a fresh session. */
   initial(): S;
 
@@ -39,9 +73,7 @@ export interface StateModel<S, A extends { type: string }> {
 /**
  * Identity helper for defining a state model with full type inference.
  */
-export function defineStateModel<S, A extends { type: string }>(
-  model: StateModel<S, A>
-): StateModel<S, A> {
+export function defineStateModel<S, A extends Action>(model: StateModel<S, A>): StateModel<S, A> {
   return model;
 }
 
@@ -49,7 +81,7 @@ export function defineStateModel<S, A extends { type: string }>(
  * Replay a sequence of actions against a model to reconstruct state.
  * Useful for event-sourcing recovery and testing.
  */
-export function replayActions<S, A extends { type: string }>(
+export function replayActions<S, A extends Action>(
   model: StateModel<S, A>,
   actions: A[],
   from?: S
@@ -66,11 +98,7 @@ export function replayActions<S, A extends { type: string }>(
  * Freezes input state via JSON round-trip + Object.freeze, then calls reduce.
  * If reduce attempts mutation on the frozen object, it will throw.
  */
-export function assertPure<S, A extends { type: string }>(
-  model: StateModel<S, A>,
-  state: S,
-  action: A
-): S {
+export function assertPure<S, A extends Action>(model: StateModel<S, A>, state: S, action: A): S {
   const frozen = JSON.parse(JSON.stringify(state)) as S;
   deepFreeze(frozen);
   const next = model.reduce(frozen, action);
