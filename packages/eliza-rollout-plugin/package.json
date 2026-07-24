@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/eliza-rollout-plugin",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "elizaOS plugin that captures agent runs as rollout-wire/v1 training records for DPO/PPO fine-tuning",
   "type": "module",
   "main": "./dist/index.js",

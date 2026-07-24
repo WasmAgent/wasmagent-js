@@ -1,5 +1,23 @@
 # @wasmagent/aep
 
+## 2.0.0
+
+### Major Changes
+
+- 0263bde: Align core-four packages to the same major version (v3)
+
+  @wasmagent/aep, @wasmagent/mcp-firewall, and @wasmagent/compliance were left
+  at 1.x/2.x after the @wasmagent/core 3.0.0 release in #155. This changeset
+  brings all four to the same major so the version-coherence gate passes.
+
+  No API changes; the bump is structural only.
+
+### Minor Changes
+
+- e0e0220: feat(aep): capture tool outcome, exit code, and arguments digest in addAction (#163)
+
+  - `ActionEvidence` gains three optional fields — `outcome`, `exit_code`, and `arguments_digest` — so `AEPEmitter.addAction()` can capture the full tool-call evidence set: tool name, outcome, exit code, arguments hash, and result hash (`result_digest`). Fields are optional and backward compatible; existing records and callers are unaffected.
+
 ## 1.21.1
 
 ### Patch Changes
