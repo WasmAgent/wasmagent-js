@@ -38,6 +38,8 @@ export class SharedStateStore<S, A extends { type: string }> {
   readonly #backend: KvBackend | undefined;
   readonly #memory: Map<string, S>;
   readonly #listeners: Map<string, Set<(evt: ChangeEvent<S>) => void>>;
+  /** #198 — Listeners notified on changes to ANY session (UI synchronization). */
+  readonly #globalListeners: Set<(evt: ChangeEvent<S>) => void>;
   readonly #locks: Map<string, Promise<void>>;
   readonly #accessOrder: Map<string, number>;
   readonly #maxSessions: number;
@@ -48,6 +50,7 @@ export class SharedStateStore<S, A extends { type: string }> {
     this.#backend = opts?.backend;
     this.#memory = new Map();
     this.#listeners = new Map();
+    this.#globalListeners = new Set();
     this.#locks = new Map();
     this.#accessOrder = new Map();
     this.#maxSessions = opts?.maxSessions ?? 1000;
@@ -120,6 +123,25 @@ export class SharedStateStore<S, A extends { type: string }> {
     };
   }
 
+  /**
+   * #198 — Subscribe to state changes across ALL sessions.
+   *
+   * Unlike {@link subscribe}, which is scoped to a single known session, this
+   * fires for every dispatch/replace regardless of sessionId. Intended for UI
+   * synchronization layers (dashboards, devtools, transport bridges) that must
+   * react to any change without tracking session IDs up front.
+   *
+   * The emitted {@link ChangeEvent} always carries `sessionId`, so global
+   * listeners can route updates to the right component. Returns an unsubscribe
+   * function.
+   */
+  subscribeToAll(listener: (evt: ChangeEvent<S>) => void): () => void {
+    this.#globalListeners.add(listener);
+    return () => {
+      this.#globalListeners.delete(listener);
+    };
+  }
+
   // ── Internal ──────────────────────────────────────────────────────────────
 
   async #persist(sessionId: string, state: S): Promise<void> {
@@ -132,10 +154,19 @@ export class SharedStateStore<S, A extends { type: string }> {
   }
 
   #notify(sessionId: string, state: S, action: unknown | undefined, source: string): void {
-    const set = this.#listeners.get(sessionId);
-    if (!set) return;
+    const perSession = this.#listeners.get(sessionId);
+    // Nothing to do if no listeners at all — skip event construction.
+    if (!perSession && this.#globalListeners.size === 0) return;
+
     const evt: ChangeEvent<S> = { sessionId, state, action, source };
-    for (const listener of set) {
+    this.#fanout(perSession, evt);
+    this.#fanout(this.#globalListeners, evt);
+  }
+
+  /** Invoke each listener, swallowing errors so one bad listener can't break the dispatch chain. */
+  #fanout(listeners: Set<(evt: ChangeEvent<S>) => void> | undefined, evt: ChangeEvent<S>): void {
+    if (!listeners) return;
+    for (const listener of listeners) {
       try {
         listener(evt);
       } catch {
