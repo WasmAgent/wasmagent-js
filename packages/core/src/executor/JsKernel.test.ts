@@ -1,4 +1,4 @@
-import { JsKernel } from "../executor/JsKernel.js";
+import { JsKernel, memoryBytesToResourceLimits } from "../executor/JsKernel.js";
 
 describe("JsKernel (worker_threads isolation)", () => {
   let kernel: JsKernel;
@@ -82,5 +82,52 @@ describe("JsKernel (worker_threads isolation)", () => {
   it("[Symbol.asyncDispose] terminates the worker cleanly", async () => {
     await kernel.run("var d = 99;");
     await expect(kernel[Symbol.asyncDispose]()).resolves.toBeUndefined();
+  });
+
+  // ── Issue #192: configurable CPU time and memory limits ────────────────────
+  // CPU time is already bounded by `timeoutMs` / per-call `cpuMs` (see the
+  // "cpuMs override" tests in capabilities.test.ts). These tests pin the memory
+  // half: a hard V8 heap cap on the worker via node:worker_threads resourceLimits.
+  it("memoryLimitBytes: a runaway allocation is rejected when it blows the heap cap (issue #192)", async () => {
+    // 16 MiB cap: enough for worker bootstrap, but a tight allocation loop
+    // exhausts the old-generation heap within a few iterations. V8 aborts the
+    // worker with a FATAL OOM; JsKernel surfaces that worker exit as a run()
+    // rejection rather than waiting out the timeout.
+    const capped = new JsKernel({ maxMemoryBytes: 16 * 1024 * 1024 });
+    try {
+      await expect(
+        capped.run(`
+          var sink = [];
+          while (true) { sink.push("x".repeat(2 * 1024 * 1024)); }
+        `)
+      ).rejects.toThrow(/KernelError/);
+    } finally {
+      await capped[Symbol.asyncDispose]();
+    }
+  }, 15_000);
+
+  it("memoryLimitBytes does not break normal execution when the cap is generous (issue #192)", async () => {
+    const capped = new JsKernel({ maxMemoryBytes: 64 * 1024 * 1024 });
+    try {
+      const result = await capped.run("var a = [1,2,3]; a.reduce((x,y) => x+y, 0)");
+      expect(result.output).toBe(6);
+    } finally {
+      await capped[Symbol.asyncDispose]();
+    }
+  });
+});
+
+describe("memoryBytesToResourceLimits (issue #192)", () => {
+  it("returns undefined when no limit is configured", () => {
+    expect(memoryBytesToResourceLimits(undefined)).toBeUndefined();
+    expect(memoryBytesToResourceLimits(0)).toBeUndefined();
+    expect(memoryBytesToResourceLimits(-1)).toBeUndefined();
+  });
+
+  it("rounds UP to whole MiB so the cap is never silently widened", () => {
+    expect(memoryBytesToResourceLimits(1)).toEqual({ maxOldGenerationSizeMb: 1 });
+    expect(memoryBytesToResourceLimits(1024 * 1024)).toEqual({ maxOldGenerationSizeMb: 1 });
+    expect(memoryBytesToResourceLimits(1024 * 1024 + 1)).toEqual({ maxOldGenerationSizeMb: 2 });
+    expect(memoryBytesToResourceLimits(5 * 1024 * 1024)).toEqual({ maxOldGenerationSizeMb: 5 });
   });
 });

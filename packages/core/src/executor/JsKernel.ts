@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { Worker } from "node:worker_threads";
+import { type ResourceLimits, Worker } from "node:worker_threads";
 import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from "./types.js";
 
 // Q10: use new URL() for robust sibling resolution — cross-platform, no string hacks.
@@ -12,6 +12,26 @@ function resolveWorkerPath(): string {
   const path = fileURLToPath(workerUrl);
   // Vitest transforms TS in-place; path will contain /src/executor/ in that case.
   return path.replace(/[/\\]src[/\\]executor[/\\]/, "/dist/executor/");
+}
+
+/**
+ * Translate a memory ceiling in bytes into node:worker_threads `resourceLimits`
+ * (issue #192 — configurable memory limits for the default kernel).
+ *
+ * V8 enforces `maxOldGenerationSizeMb` as a HARD cap on the worker's
+ * old-generation (long-lived) heap. A guest that exhausts it aborts with a
+ * FATAL OOM, terminating the worker — which JsKernel surfaces as a `run()`
+ * rejection (see the `exit` handler in `run()`). V8 accepts heap limits only in
+ * whole-MiB granularity, so we round UP (never down) to avoid silently widening
+ * the cap below what the caller asked for.
+ *
+ * Returns `undefined` when no limit is configured, so callers can pass the
+ * result straight to `new Worker(path, { resourceLimits })` with no branch.
+ */
+export function memoryBytesToResourceLimits(bytes?: number): ResourceLimits | undefined {
+  if (bytes === undefined || bytes <= 0) return undefined;
+  const mib = Math.max(1, Math.ceil(bytes / (1024 * 1024)));
+  return { maxOldGenerationSizeMb: mib };
 }
 
 /**
@@ -38,10 +58,18 @@ export class JsKernel implements WasmKernel {
   #worker: Worker | null = null;
   #disposed = false;
   readonly #timeoutMs: number;
+  readonly #maxMemoryBytes: number | undefined;
   #serial = 0;
 
   constructor(opts?: KernelOptions) {
     this.#timeoutMs = opts?.timeoutMs ?? 5_000;
+    // Issue #192: hard memory cap for the default kernel. Honoured at worker
+    // spawn via V8 resourceLimits — a live worker's heap limit cannot be
+    // resized, so this is constructor-level only (a per-call memoryLimitBytes
+    // passed to run() is advisory). `maxMemoryBytes` (KernelOptions) takes
+    // precedence; otherwise fall back to a capability manifest pinned at
+    // construction time.
+    this.#maxMemoryBytes = opts?.maxMemoryBytes ?? opts?.capabilities?.memoryLimitBytes;
     // Q9: do NOT spawn worker here — defer to first run() call.
     // Constructing JsKernel (or CodeAgent) should not fork an OS thread;
     // the cost is paid only when the kernel is actually used.
@@ -53,7 +81,11 @@ export class JsKernel implements WasmKernel {
   }
 
   #spawnWorker(): Worker {
-    const w = new Worker(resolveWorkerPath());
+    const w = new Worker(resolveWorkerPath(), {
+      // Issue #192: V8 enforces this as a hard old-generation heap cap on the
+      // worker. `undefined` (no limit configured) leaves the default heap alone.
+      resourceLimits: memoryBytesToResourceLimits(this.#maxMemoryBytes),
+    });
     // Suppress "Worker exited" errors that fire when we intentionally terminate on timeout.
     w.on("error", () => {});
     return w;
@@ -79,7 +111,7 @@ export class JsKernel implements WasmKernel {
         ? Math.min(this.#timeoutMs, capabilities.cpuMs)
         : this.#timeoutMs;
 
-    // Single promise that resolves/rejects when the worker responds OR times out.
+    // Single promise that resolves/rejects when the worker responds OR dies/times out.
     return new Promise<KernelResult>((resolve, reject) => {
       const handler = (msg: {
         type: "result" | "error";
@@ -91,6 +123,7 @@ export class JsKernel implements WasmKernel {
       }) => {
         if (msg.serial !== serial) return;
         worker.off("message", handler);
+        worker.off("exit", onExit);
         clearTimeout(timer);
         if (msg.type === "error") {
           reject(new Error(`KernelError: ${msg.message ?? "unknown"}`));
@@ -105,12 +138,31 @@ export class JsKernel implements WasmKernel {
 
       const timer = setTimeout(() => {
         worker.off("message", handler);
+        worker.off("exit", onExit);
         worker.terminate().catch(() => {});
         this.#worker = null;
         reject(new Error(`KernelError: Script execution timed out after ${perCallTimeout}ms`));
       }, perCallTimeout);
 
+      // Issue #192: if the worker dies before responding — most often a V8
+      // FATAL OOM when it blows past resourceLimits.maxOldGenerationSizeMb —
+      // reject promptly with a clear message instead of waiting out the timeout.
+      // Declared after `handler`/`timer` because all three close over each other
+      // and are only invoked asynchronously (after every binding is initialised).
+      const onExit = (code: number) => {
+        worker.off("message", handler);
+        worker.off("exit", onExit);
+        clearTimeout(timer);
+        this.#worker = null;
+        const hint =
+          this.#maxMemoryBytes !== undefined
+            ? " — sandbox likely exceeded its memoryLimitBytes"
+            : "";
+        reject(new Error(`KernelError: sandbox worker exited with code ${code}${hint}`));
+      };
+
       worker.on("message", handler);
+      worker.once("exit", onExit);
       worker.postMessage({
         type: "run",
         code,
