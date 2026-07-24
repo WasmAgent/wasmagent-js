@@ -29,14 +29,19 @@ export interface KernelResult {
  *   extraCapabilities     ✅          ✅             ✅              ✅               ✅
  *   env                   ✅          ✅             ✅              ✅               ✅
  *   cpuMs                 ✅(timeout) ✅(deadline)   ⚠️(advisory)    ✅(per-call)     ✅(per-call)
- *   memoryLimitBytes      ⚠️         ✅             ⚠️             ⚠️(no native)    ✅(via E2B)
+ *   memoryLimitBytes      ✅(V8 heap) ✅             ⚠️             ⚠️(no native)    ✅(via E2B)
  *
  *   (*) FS access in WASM kernels lands on the host via an explicit __fs__
  *   bridge (see buildCapabilityGlobals); the bridge enforces allowedReadPaths
  *   / allowedWritePaths identically to JsKernel.
- *   ⚠️ Means the runtime does not expose a hard memory limit (Node V8 vm
- *   inherits the host process limit); the field is accepted but a runtime
- *   warning is logged so the caller is not silently misled.
+ *   ⚠️ Means the runtime does not expose a hard memory limit the host can apply
+ *   at that call site (Pyodide and Javy/Wasmtime inherit the host process heap);
+ *   the field is accepted but a runtime warning is logged so the caller is not
+ *   silently misled. JsKernel is NOT in this category (issue #192): it enforces
+ *   a HARD V8 heap cap at worker spawn via node:worker_threads `resourceLimits`
+ *   — constructor-level only, because a live worker's heap limit cannot be
+ *   resized between run() calls, so a per-call `memoryLimitBytes` smaller than
+ *   the constructor cap is advisory.
  */
 export interface CapabilityManifest {
   /**
@@ -69,9 +74,14 @@ export interface CapabilityManifest {
   cpuMs?: number;
   /**
    * Soft ceiling on memory usage, in bytes. Honoured by kernels that expose a
-   * runtime memory limit (QuickJS, Wasmtime, Remote). On kernels without a
-   * native limit (JsKernel, Pyodide), this is recorded but not enforced — see
-   * the matrix above; calling code should treat enforcement as best-effort.
+   * runtime memory limit (QuickJS, Remote). On kernels without a per-call limit
+   * (Pyodide, Javy/Wasmtime) this is recorded but not enforced — see the matrix
+   * above; calling code should treat enforcement as best-effort there.
+   *
+   * JsKernel honours this at CONSTRUCTION time (via `KernelOptions.capabilities`
+   * or `KernelOptions.maxMemoryBytes`) as a hard V8 heap cap on the worker; a
+   * per-call `memoryLimitBytes` passed to `run()` cannot shrink a live worker's
+   * heap and is therefore advisory (issue #192).
    */
   memoryLimitBytes?: number;
 }
@@ -149,7 +159,9 @@ export interface KernelOptions {
    * this limit, `memory.grow` returns -1 (allocation failure).
    *
    * Default when omitted: no explicit cap (module-defined or engine default).
-   * Currently honoured by: WasmtimeKernel (via WASM binary rewrite).
+   * Currently honoured by: WasmtimeKernel (via WASM binary rewrite) and
+   * JsKernel (as a hard V8 heap cap via node:worker_threads `resourceLimits`,
+   * rounded up to the nearest MiB — issue #192).
    */
   maxMemoryBytes?: number;
   /**
