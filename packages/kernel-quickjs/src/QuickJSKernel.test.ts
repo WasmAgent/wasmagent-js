@@ -237,4 +237,78 @@ describe("QuickJSKernel (edge-safe, no node:vm)", () => {
     const result = await kernel.run('({ a: 1, b: [2, 3], c: "hello" })');
     expect(result.output).toEqual({ a: 1, b: [2, 3], c: "hello" });
   });
+
+  // ---------------------------------------------------------------------------
+  // Milestone 3 (Sandboxed Execution Runtime) — explicit coverage for the
+  // remaining bullet categories not exercised above:
+  //   - runtime errors  (thrown / TypeError / ReferenceError surfaced as KernelError)
+  //   - blocked host access (deny-all baseline: process/require/fs/global absent)
+  //   - disposal behaviour (run() after dispose rejects; dispose is idempotent)
+  // "successful execution" and "infinite-loop timeout" are already covered by
+  // the tests above; the fetch host-check is covered by the W5 suite.
+  // ---------------------------------------------------------------------------
+
+  describe("runtime errors surface as KernelError", () => {
+    it("wraps an explicit throw as KernelError, preserving the original message", async () => {
+      await expect(kernel.run('throw new Error("kaboom-12345")')).rejects.toThrow(/KernelError/);
+      await expect(kernel.run('throw new Error("kaboom-12345")')).rejects.toThrow(/kaboom-12345/);
+    });
+
+    it("wraps a TypeError (null dereference) as KernelError", async () => {
+      await expect(kernel.run("null.foo")).rejects.toThrow(/KernelError/);
+    });
+
+    it("wraps a ReferenceError (undeclared variable read) as KernelError", async () => {
+      await expect(kernel.run("__nope_truly_undefined_var__")).rejects.toThrow(/KernelError/);
+    });
+
+    it("kernel stays usable after a runtime error (context not corrupted)", async () => {
+      await expect(kernel.run("throw new Error('transient')")).rejects.toThrow();
+      const result = await kernel.run("40 + 2");
+      expect(result.output).toBe(42);
+    });
+  });
+
+  describe("blocked host access (deny-all baseline)", () => {
+    it("does not expose Node host primitives (process / require / global / __dirname / Deno)", async () => {
+      const result = await kernel.run(
+        "JSON.stringify([typeof process, typeof require, typeof global, typeof __dirname, typeof Deno])"
+      );
+      expect(JSON.parse(result.output as string)).toEqual([
+        "undefined",
+        "undefined",
+        "undefined",
+        "undefined",
+        "undefined",
+      ]);
+    });
+
+    it("globalThis.process and globalThis.require are absent", async () => {
+      const result = await kernel.run(
+        "JSON.stringify([typeof globalThis.process, typeof globalThis.require])"
+      );
+      expect(JSON.parse(result.output as string)).toEqual(["undefined", "undefined"]);
+    });
+
+    it("filesystem primitives (readFileSync / writeFileSync / fs) are absent", async () => {
+      const result = await kernel.run(
+        "JSON.stringify([typeof readFileSync, typeof writeFileSync, typeof fs])"
+      );
+      expect(JSON.parse(result.output as string)).toEqual(["undefined", "undefined", "undefined"]);
+    });
+  });
+
+  describe("disposal behaviour", () => {
+    it("run() after [Symbol.asyncDispose]() rejects with KernelError, and dispose is idempotent", async () => {
+      // One local kernel for the whole group — minimises QuickJS runtime
+      // init/dispose cycles (see file-header note on WASM GC assertions).
+      const k = new QuickJSKernel();
+      await k.run("1 + 1"); // initialise the runtime/context
+      await k[Symbol.asyncDispose]();
+      // Further use after disposal must fail loudly, not silently no-op.
+      await expect(k.run("1 + 1")).rejects.toThrow(/disposed/);
+      // Disposing an already-disposed kernel must not throw.
+      await expect(k[Symbol.asyncDispose]()).resolves.toBeUndefined();
+    });
+  });
 });
