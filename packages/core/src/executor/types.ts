@@ -1,12 +1,70 @@
 /**
+ * Structured error details captured when guest code throws a runtime error that
+ * the kernel surfaces inside the result rather than rejecting `run()` with
+ * (Milestone 3 — "error details" portion of structured execution results).
+ *
+ * Mirrors the salient fields of a JS/Python throwable without dragging the host
+ * `Error` object (and its non-cloneable handles) across the kernel boundary.
+ */
+export interface KernelExecutionError {
+  /** Error class / exception type name (e.g. "RangeError", "ValueError"). */
+  name: string;
+  /** Human-readable error message. */
+  message: string;
+  /** Stack trace, when the kernel captures one. Omitted if unavailable. */
+  stack?: string;
+}
+
+/**
  * Result returned by any WasmKernel execution (A1).
  * Maps to smolagents' LocalPythonExecutor return contract:
  * (code) -> {output, logs, is_final_answer}
+ *
+ * The optional fields below are the Milestone 3 structured-execution-result
+ * surface (stdout, stderr, return value, timeout status, error details). They
+ * are optional so existing kernels that only populate the original three fields
+ * keep type-checking; callers that want the richer view read them defensively
+ * (absent = "the kernel did not capture / it did not occur").
  */
 export interface KernelResult {
   output: unknown;
   logs: string[];
   isFinalAnswer: boolean;
+  /**
+   * Captured stdout stream from the sandboxed execution — the concatenated
+   * bytes the guest wrote to its stdout-equivalent channel. Empty/absent when
+   * the kernel produced no stdout or does not expose a stream. Distinct from
+   * `logs` (host-side run log) and from `returnValue` (explicit return).
+   */
+  stdout?: string;
+  /**
+   * Captured stderr stream from the sandboxed execution — the concatenated
+   * bytes the guest wrote to its stderr-equivalent channel. Distinct from
+   * `error` (a thrown exception's details): stderr is the stream the guest
+   * wrote to, regardless of whether it threw.
+   */
+  stderr?: string;
+  /**
+   * The explicit return value of the executed code, when the kernel
+   * distinguishes a real `return` value from REPL "output" (the last
+   * evaluated expression). Absent when the kernel does not separate the two;
+   * in that case `output` already carries whatever the kernel produced.
+   */
+  returnValue?: unknown;
+  /**
+   * Whether this run was terminated because it exceeded its CPU / wall
+   * deadline. `true` only when the kernel *returned* a result describing a
+   * timed-out run; a hard timeout that aborts the sandbox still surfaces as a
+   * rejected `run()` promise on kernels that cannot produce a partial result.
+   */
+  timedOut?: boolean;
+  /**
+   * Structured error details when the guest threw a runtime error that the
+   * kernel captured into the result instead of rejecting `run()`. Absent on a
+   * clean run; a rejected promise and an in-result `error` are mutually
+   * exclusive by convention (a kernel does both only to aid debugging).
+   */
+  error?: KernelExecutionError;
 }
 
 /**

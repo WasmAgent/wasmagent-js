@@ -20,6 +20,7 @@ export type {
   ActionLanguage,
   CapabilityManifest,
   KernelEngine,
+  KernelExecutionError,
   KernelOptions,
   KernelResult,
   WasmKernel,
