@@ -1,9 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { paeEncode, verifyDSSEEnvelope, wrapInTotoStatement } from "./dsse.js";
 import { AEPEmitter } from "./emitter.js";
+import { InMemoryEvidenceStore } from "./evidenceStore.js";
 import { resolveRepoCommit } from "./resolve-repo-commit.js";
 import { createLocalSignerFromSeed } from "./signer.js";
 import { LocalTimestamper } from "./timestamperLocal.js";
+import type { AEPRecord, SideEffectClass } from "./types.js";
 import { AEPRecordSchema } from "./types.js";
 import { isStateChangingTool, STATE_CHANGING_PATTERNS } from "./utils.js";
 import { verifyAEPChain, verifyAEPRecord } from "./verify.js";
@@ -1777,5 +1779,208 @@ describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
 
     const result = verifyAEPChain([r1, r2]);
     expect(result.valid).toBe(true);
+  });
+});
+
+describe("InMemoryEvidenceStore", () => {
+  async function makeRecord(
+    overrides: {
+      run_id?: string;
+      model_id?: string;
+      created_at_ms?: number;
+      tool_name?: string;
+      side_effect_class?: SideEffectClass;
+    } = {}
+  ): Promise<AEPRecord> {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: overrides.run_id ?? "run-default",
+      model_id: overrides.model_id,
+      signer,
+    });
+    emitter.addAction({
+      tool_name: overrides.tool_name ?? "default_tool",
+      state_changing: false,
+      side_effect_class: overrides.side_effect_class ?? "read",
+    });
+    return emitter.emit(overrides.created_at_ms ?? 1_700_000_000_000);
+  }
+
+  it("append and size work correctly", async () => {
+    const store = new InMemoryEvidenceStore();
+    expect(store.size()).toBe(0);
+
+    const r1 = await makeRecord();
+    store.append(r1);
+    expect(store.size()).toBe(1);
+
+    const r2 = await makeRecord({ run_id: "run-other" });
+    store.append(r2);
+    expect(store.size()).toBe(2);
+  });
+
+  it("query with no filter returns all records", async () => {
+    const store = new InMemoryEvidenceStore();
+    store.append(await makeRecord({ run_id: "run-a" }));
+    store.append(await makeRecord({ run_id: "run-b" }));
+
+    const results = store.query();
+    expect(results).toHaveLength(2);
+  });
+
+  it("query by run_id", async () => {
+    const store = new InMemoryEvidenceStore();
+    store.append(await makeRecord({ run_id: "run-alpha" }));
+    store.append(await makeRecord({ run_id: "run-beta" }));
+    store.append(await makeRecord({ run_id: "run-alpha" }));
+
+    const results = store.query({ run_id: "run-alpha" });
+    expect(results).toHaveLength(2);
+    for (const r of results) {
+      expect(r.run_id).toBe("run-alpha");
+    }
+  });
+
+  it("getByRunId is a shorthand for query by run_id", async () => {
+    const store = new InMemoryEvidenceStore();
+    store.append(await makeRecord({ run_id: "run-x" }));
+    store.append(await makeRecord({ run_id: "run-y" }));
+    store.append(await makeRecord({ run_id: "run-x" }));
+
+    expect(store.getByRunId("run-x")).toHaveLength(2);
+    expect(store.getByRunId("run-y")).toHaveLength(1);
+    expect(store.getByRunId("nonexistent")).toHaveLength(0);
+  });
+
+  it("query by model_id", async () => {
+    const store = new InMemoryEvidenceStore();
+    store.append(await makeRecord({ model_id: "claude-sonnet-5" }));
+    store.append(await makeRecord({ model_id: "gpt-4o" }));
+    store.append(await makeRecord()); // no model_id
+
+    const results = store.query({ model_id: "claude-sonnet-5" });
+    expect(results).toHaveLength(1);
+    expect(results[0]!.model_id).toBe("claude-sonnet-5");
+  });
+
+  it("query by time range (created_after_ms and created_before_ms)", async () => {
+    const store = new InMemoryEvidenceStore();
+    store.append(await makeRecord({ created_at_ms: 100 }));
+    store.append(await makeRecord({ created_at_ms: 200 }));
+    store.append(await makeRecord({ created_at_ms: 300 }));
+    store.append(await makeRecord({ created_at_ms: 400 }));
+
+    // Only after 200 (inclusive)
+    expect(store.query({ created_after_ms: 200 })).toHaveLength(3);
+    // Only before 300 (inclusive)
+    expect(store.query({ created_before_ms: 300 })).toHaveLength(3);
+    // Range [200, 300]
+    expect(store.query({ created_after_ms: 200, created_before_ms: 300 })).toHaveLength(2);
+  });
+
+  it("query by action_type (side_effect_class)", async () => {
+    const store = new InMemoryEvidenceStore();
+    store.append(await makeRecord({ tool_name: "read_file", side_effect_class: "read" }));
+    store.append(await makeRecord({ tool_name: "write_file", side_effect_class: "mutate-local" }));
+    store.append(await makeRecord({ tool_name: "http_call", side_effect_class: "network-egress" }));
+
+    const mutateResults = store.query({ action_type: "mutate-local" });
+    expect(mutateResults).toHaveLength(1);
+    expect(mutateResults[0]!.actions[0]!.tool_name).toBe("write_file");
+
+    const readResults = store.query({ action_type: "read" });
+    expect(readResults).toHaveLength(1);
+  });
+
+  it("query by tool_name", async () => {
+    const store = new InMemoryEvidenceStore();
+    store.append(await makeRecord({ tool_name: "bash" }));
+    store.append(await makeRecord({ tool_name: "read_file" }));
+    store.append(await makeRecord({ tool_name: "bash" }));
+
+    const results = store.query({ tool_name: "bash" });
+    expect(results).toHaveLength(2);
+  });
+
+  it("combines multiple filters with AND logic", async () => {
+    const store = new InMemoryEvidenceStore();
+    store.append(
+      await makeRecord({
+        run_id: "run-1",
+        model_id: "claude-sonnet-5",
+        tool_name: "bash",
+        side_effect_class: "mutate-local",
+        created_at_ms: 100,
+      })
+    );
+    store.append(
+      await makeRecord({
+        run_id: "run-1",
+        model_id: "gpt-4o",
+        tool_name: "bash",
+        side_effect_class: "mutate-local",
+        created_at_ms: 200,
+      })
+    );
+    store.append(
+      await makeRecord({
+        run_id: "run-2",
+        model_id: "claude-sonnet-5",
+        tool_name: "read_file",
+        side_effect_class: "read",
+        created_at_ms: 300,
+      })
+    );
+
+    // run_id + model_id
+    expect(store.query({ run_id: "run-1", model_id: "claude-sonnet-5" })).toHaveLength(1);
+    // run_id + time range
+    expect(store.query({ run_id: "run-1", created_before_ms: 150 })).toHaveLength(1);
+    // model_id + action_type
+    expect(store.query({ model_id: "claude-sonnet-5", action_type: "mutate-local" })).toHaveLength(
+      1
+    );
+    // tool_name + action_type
+    expect(store.query({ tool_name: "bash", action_type: "mutate-local" })).toHaveLength(2);
+    // All filters -> no match
+    expect(
+      store.query({
+        run_id: "run-2",
+        model_id: "claude-sonnet-5",
+        action_type: "mutate-local",
+      })
+    ).toHaveLength(0);
+  });
+
+  it("returns a copy from query, mutations do not affect the store", async () => {
+    const store = new InMemoryEvidenceStore();
+    store.append(await makeRecord());
+
+    const results = store.query();
+    expect(results).toHaveLength(1);
+    results.pop();
+    expect(store.size()).toBe(1);
+  });
+
+  it("action_type filter matches records with multiple actions", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({ run_id: "run-multi", signer });
+    emitter.addAction({ tool_name: "read_file", state_changing: false, side_effect_class: "read" });
+    emitter.addAction({
+      tool_name: "write_file",
+      state_changing: true,
+      side_effect_class: "mutate-local",
+    });
+    const record = await emitter.emit();
+
+    const store = new InMemoryEvidenceStore();
+    store.append(record);
+
+    // Should match because one action has side_effect_class "read"
+    expect(store.query({ action_type: "read" })).toHaveLength(1);
+    // Should also match because one action has side_effect_class "mutate-local"
+    expect(store.query({ action_type: "mutate-local" })).toHaveLength(1);
+    // Should not match
+    expect(store.query({ action_type: "network-egress" })).toHaveLength(0);
   });
 });
