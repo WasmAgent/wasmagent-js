@@ -36,18 +36,28 @@ Layer 3: Training Record (training-record.schema.json)
 
 ## Schema files (single source of truth)
 
-| File | Location (canonical) | Mirror |
-|------|----------------------|--------|
-| `rollout-wire.schema.json` | `wasmagent-js/packages/core/src/ranking/schemas/` | `evomerge/datafactory/` |
-| `training-record.schema.json` | `wasmagent-js/packages/core/src/ranking/schemas/` | `evomerge/datafactory/` |
+Cross-repo schemas are **owned by `WasmAgent/wasmagent-protocol`** and consumed
+here via the versioned `@wasmagent/protocol` package — never copied or forked.
 
-The **canonical copy** lives in `wasmagent-js`. The evomerge copies are
-mirrors that must be kept in sync manually (verified by CI).
+| Schema | Canonical source | How this repo consumes it |
+|--------|------------------|---------------------------|
+| `rollout-wire` | `@wasmagent/protocol` (`schemas/compliance/rollout-wire.schema.json`) | `import` from the package; see `scripts/check-rollout-schema.mjs` |
+| `constraint-ir`, `constraint-violation`, `repair-trace`, `task-spec`, `compliance-eval-record` | `@wasmagent/protocol` | mirrored field-for-field by the `packages/compliance` types, validated against the package |
+| `training-record.schema.json` | `wasmagent-js/packages/core/src/ranking/schemas/` | **repo-local** — single consumer (this repo + trace-pipeline training pipeline), intentionally not centralized |
+
+> Historical note: `rollout-wire` and the compliance family used to live in this
+> repo and were mirrored into evomerge/trace-pipeline by hand. That is the drift
+> `wasmagent-protocol` was created (2026-07-23) to eliminate. They now live only
+> in `wasmagent-protocol`; this repo depends on the published package.
 
 ## Schema owner
 
-The `wasmagent-js` team owns the schema. Breaking changes require coordination
-before merging.
+`wasmagent-js` is the **domain steward** for the AEP and compliance schema family:
+it drives the design, but the canonical JSON lives in `wasmagent-protocol`.
+Changes flow through the protocol
+[contract-change process](https://github.com/WasmAgent/wasmagent-protocol/blob/main/docs/CONTRACT-CHANGE-PROCESS.md)
+(edit schema + fixtures in `wasmagent-protocol`, bump the package, then update
+consumers). `training-record.schema.json` remains owned outright by this repo.
 
 ## Change process
 
@@ -136,6 +146,7 @@ end-to-end command chain is documented in:
 
 **`WasmAgent/trace-pipeline` → `docs/data-loop-contract.md`**
 
-That document is the binding contract. `GOVERNANCE.md` (this file) covers the
-schema SSOT and field naming conventions for the wasmagent-js side.
+That document is the binding contract. `GOVERNANCE.md` (this file) covers how
+this repo consumes the canonical schemas and its field-naming conventions. The
+schema JSON itself is owned by `wasmagent-protocol`, not this repo.
 
