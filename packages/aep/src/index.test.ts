@@ -2192,3 +2192,117 @@ describe("FilesystemEvidenceStore", () => {
     ]);
   });
 });
+
+describe("AEPEmitter evidenceStore streaming", () => {
+  it("streams emitted record to a configured InMemoryEvidenceStore", async () => {
+    const store = new InMemoryEvidenceStore();
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-stream-test",
+      signer,
+      evidenceStore: store,
+    });
+    emitter.addAction({
+      tool_name: "read_file",
+      state_changing: false,
+      side_effect_class: "read",
+    });
+    const record = await emitter.emit(1_700_000_000_000);
+    expect(store.size()).toBe(1);
+    expect(store.all[0]!.run_id).toBe("run-stream-test");
+    // The stored record is the exact same object returned by emit
+    expect(store.all[0]).toBe(record);
+  });
+
+  it("streams multiple sequential emits preserving insertion order", async () => {
+    const store = new InMemoryEvidenceStore();
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-multi-emit",
+      signer,
+      evidenceStore: store,
+    });
+    emitter.addAction({
+      tool_name: "step_one",
+      state_changing: false,
+      side_effect_class: "read",
+    });
+    await emitter.emit(1_700_000_000_000);
+
+    emitter.addAction({
+      tool_name: "step_two",
+      state_changing: true,
+      side_effect_class: "mutate-local",
+    });
+    await emitter.emit(1_700_000_001_000);
+
+    expect(store.size()).toBe(2);
+    // Second emit includes both actions since the emitter accumulates
+    expect(store.all.map((r) => r.actions.length)).toEqual([1, 2]);
+    expect(store.all[0]!.actions[0]!.tool_name).toBe("step_one");
+    expect(store.all[1]!.actions[1]!.tool_name).toBe("step_two");
+    // Verify hash chain continuity across stored records
+    expect(store.all[1]!.prev_record_hash).not.toBeNull();
+  });
+
+  it("does not stream when no evidenceStore is configured", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-no-store",
+      signer,
+    });
+    emitter.addAction({
+      tool_name: "read_file",
+      state_changing: false,
+    });
+    const record = await emitter.emit(1_700_000_000_000);
+    expect(record.run_id).toBe("run-no-store");
+    // No store configured — emit still works fine
+    expect(record.signature.sig).toBeTruthy();
+  });
+
+  it("streams DSSE-wrapped records to the evidence store", async () => {
+    const store = new InMemoryEvidenceStore();
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-dsse-stream",
+      signer,
+      evidenceStore: store,
+      useDsse: true,
+    });
+    emitter.addAction({
+      tool_name: "write_file",
+      state_changing: true,
+      side_effect_class: "mutate-external",
+    });
+    const record = await emitter.emit(1_700_000_000_000);
+    expect(store.size()).toBe(1);
+    expect(store.all[0]!.schema_version).toBe("aep/v0.4");
+    expect(store.all[0]!.dsse_envelope).toBeDefined();
+    expect(store.all[0]).toBe(record);
+  });
+
+  it("works with async evidence stores (FilesystemEvidenceStore)", async () => {
+    const logFile = join(tmpdir(), `aep-stream-test-${Date.now()}.ndjson`);
+    const store = new FilesystemEvidenceStore(logFile);
+    await store.ready();
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-fs-stream",
+      signer,
+      evidenceStore: store,
+    });
+    emitter.addAction({
+      tool_name: "bash",
+      state_changing: false,
+      side_effect_class: "mutate-local",
+    });
+    const record = await emitter.emit(1_700_000_000_000);
+    expect(await store.size()).toBe(1);
+    const stored = (await store.query({ run_id: "run-fs-stream" }))[0];
+    expect(stored!.run_id).toBe("run-fs-stream");
+    expect(stored!.signature.sig).toBe(record.signature.sig);
+    // Cleanup
+    rmSync(logFile, { force: true });
+  });
+});
