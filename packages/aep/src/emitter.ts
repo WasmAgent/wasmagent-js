@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { canonicalBytes } from "./canonical.js";
 import type { DSSEEnvelope } from "./dsse.js";
 import { paeEncode, wrapInTotoStatement } from "./dsse.js";
+import type { EvidenceStore } from "./evidenceStore.js";
 import type { AEPSigner } from "./signer.js";
 import type { AEPTimestamper } from "./timestamper.js";
 import type {
@@ -63,6 +64,11 @@ export interface AEPEmitterOptions {
   allowEmptyActions?: boolean;
   /** When true, emit() wraps the record in a DSSE/in-toto envelope (v0.4). Default: false. */
   useDsse?: boolean;
+  /**
+   * Optional evidence store. When provided, emit() automatically appends
+   * the signed record to the store after signing and before returning.
+   */
+  evidenceStore?: EvidenceStore;
 }
 
 export class AEPEmitter {
@@ -271,6 +277,11 @@ export class AEPEmitter {
       const recordBytes = canonicalBytes(recordUnsigned);
       this.#prevRecordHash = createHash("sha256").update(recordBytes).digest("hex");
 
+      // Stream to evidence store if configured
+      if (this.#opts.evidenceStore) {
+        await this.#opts.evidenceStore.append(record);
+      }
+
       return record;
     }
 
@@ -296,6 +307,11 @@ export class AEPEmitter {
     const { signature: _sig, dsse_envelope: _dsse, ...recordUnsigned } = record;
     const recordBytes = canonicalBytes(recordUnsigned);
     this.#prevRecordHash = createHash("sha256").update(recordBytes).digest("hex");
+
+    // Stream to evidence store if configured
+    if (this.#opts.evidenceStore) {
+      await this.#opts.evidenceStore.append(record);
+    }
 
     return record;
   }
