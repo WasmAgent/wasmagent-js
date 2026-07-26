@@ -1,7 +1,10 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { paeEncode, verifyDSSEEnvelope, wrapInTotoStatement } from "./dsse.js";
 import { AEPEmitter } from "./emitter.js";
-import { InMemoryEvidenceStore } from "./evidenceStore.js";
+import { FilesystemEvidenceStore, InMemoryEvidenceStore } from "./evidenceStore.js";
 import { resolveRepoCommit } from "./resolve-repo-commit.js";
 import { createLocalSignerFromSeed } from "./signer.js";
 import { LocalTimestamper } from "./timestamperLocal.js";
@@ -1982,5 +1985,210 @@ describe("InMemoryEvidenceStore", () => {
     expect(store.query({ action_type: "mutate-local" })).toHaveLength(1);
     // Should not match
     expect(store.query({ action_type: "network-egress" })).toHaveLength(0);
+  });
+});
+
+describe("FilesystemEvidenceStore", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "wasmagent-aep-fs-"));
+  });
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  function logPath(): string {
+    return join(dir, "evidence.ndjson");
+  }
+
+  async function makeRecord(
+    overrides: {
+      run_id?: string;
+      model_id?: string;
+      created_at_ms?: number;
+      tool_name?: string;
+      side_effect_class?: SideEffectClass;
+    } = {}
+  ): Promise<AEPRecord> {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: overrides.run_id ?? "run-default",
+      model_id: overrides.model_id,
+      signer,
+    });
+    emitter.addAction({
+      tool_name: overrides.tool_name ?? "default_tool",
+      state_changing: false,
+      side_effect_class: overrides.side_effect_class ?? "read",
+    });
+    return emitter.emit(overrides.created_at_ms ?? 1_700_000_000_000);
+  }
+
+  it("starts empty when the log file does not exist yet", async () => {
+    const store = new FilesystemEvidenceStore(logPath());
+    await store.ready();
+    expect(await store.size()).toBe(0);
+    expect(await store.query()).toHaveLength(0);
+    expect(await store.getByRunId("anything")).toHaveLength(0);
+  });
+
+  it("append and size work correctly", async () => {
+    const store = new FilesystemEvidenceStore(logPath());
+    expect(await store.size()).toBe(0);
+
+    await store.append(await makeRecord());
+    expect(await store.size()).toBe(1);
+
+    await store.append(await makeRecord({ run_id: "run-other" }));
+    expect(await store.size()).toBe(2);
+  });
+
+  it("persists records across sessions (durable AEP record persistence)", async () => {
+    const filePath = logPath();
+    const store1 = new FilesystemEvidenceStore(filePath);
+    await store1.append(
+      await makeRecord({ run_id: "run-a", model_id: "claude-sonnet-5", created_at_ms: 100 })
+    );
+    await store1.append(await makeRecord({ run_id: "run-b", created_at_ms: 200 }));
+
+    // Simulate a new process session: a fresh store over the same log file
+    // must rehydrate the previously-written records from disk.
+    const store2 = new FilesystemEvidenceStore(filePath);
+    await store2.ready();
+    expect(await store2.size()).toBe(2);
+
+    const all = await store2.query();
+    expect(all.map((r) => r.run_id)).toEqual(["run-a", "run-b"]);
+    // Records round-trip with full fidelity, signature included.
+    expect(all[0]!.model_id).toBe("claude-sonnet-5");
+    expect(all[0]!.signature.sig).toBeTruthy();
+    expect(all[0]!.signature.key_id).toBe(TEST_KEY_ID);
+  });
+
+  it("appends to an existing log across sessions, preserving order", async () => {
+    const filePath = logPath();
+    const store1 = new FilesystemEvidenceStore(filePath);
+    await store1.append(await makeRecord({ run_id: "run-a" }));
+
+    const store2 = new FilesystemEvidenceStore(filePath);
+    await store2.ready();
+    expect(await store2.size()).toBe(1);
+    await store2.append(await makeRecord({ run_id: "run-b" }));
+    await store2.append(await makeRecord({ run_id: "run-c" }));
+
+    const store3 = new FilesystemEvidenceStore(filePath);
+    await store3.ready();
+    expect(await store3.size()).toBe(3);
+    expect((await store3.query()).map((r) => r.run_id)).toEqual(["run-a", "run-b", "run-c"]);
+  });
+
+  it("query filters behave identically to the in-memory backend", async () => {
+    const store = new FilesystemEvidenceStore(logPath());
+    await store.append(
+      await makeRecord({
+        run_id: "run-1",
+        model_id: "claude-sonnet-5",
+        tool_name: "bash",
+        side_effect_class: "mutate-local",
+        created_at_ms: 100,
+      })
+    );
+    await store.append(
+      await makeRecord({
+        run_id: "run-2",
+        model_id: "gpt-4o",
+        tool_name: "read_file",
+        side_effect_class: "read",
+        created_at_ms: 200,
+      })
+    );
+
+    expect(await store.query({ run_id: "run-1" })).toHaveLength(1);
+    expect(await store.query({ model_id: "gpt-4o" })).toHaveLength(1);
+    expect(await store.query({ created_after_ms: 150 })).toHaveLength(1);
+    expect(await store.query({ created_before_ms: 150 })).toHaveLength(1);
+    expect(await store.query({ action_type: "read" })).toHaveLength(1);
+    expect(await store.query({ tool_name: "bash" })).toHaveLength(1);
+    expect(
+      await store.query({
+        run_id: "run-1",
+        model_id: "claude-sonnet-5",
+        action_type: "mutate-local",
+      })
+    ).toHaveLength(1);
+    expect(await store.getByRunId("run-1")).toHaveLength(1);
+    expect(await store.getByRunId("nope")).toHaveLength(0);
+  });
+
+  it("creates parent directories that do not yet exist on first append", async () => {
+    const filePath = join(dir, "nested", "deep", "evidence.ndjson");
+    const store = new FilesystemEvidenceStore(filePath);
+    await store.append(await makeRecord());
+    expect(await store.size()).toBe(1);
+
+    // Re-open across sessions to confirm durability with nested paths.
+    const store2 = new FilesystemEvidenceStore(filePath);
+    await store2.ready();
+    expect(await store2.size()).toBe(1);
+  });
+
+  it("returns copies from query; mutations do not affect the store", async () => {
+    const store = new FilesystemEvidenceStore(logPath());
+    await store.append(await makeRecord());
+
+    const results = await store.query();
+    expect(results).toHaveLength(1);
+    results.pop();
+    expect(await store.size()).toBe(1);
+  });
+
+  it("serializes concurrent appends without interleaving records", async () => {
+    const store = new FilesystemEvidenceStore(logPath());
+    // Fire many appends concurrently; the queue must serialize them so each
+    // record lands as exactly one intact NDJSON line.
+    const records = await Promise.all(
+      Array.from({ length: 10 }, (_, i) => makeRecord({ run_id: `run-${i}` }))
+    );
+    await Promise.all(records.map((r) => store.append(r)));
+    expect(await store.size()).toBe(10);
+
+    // Re-open to confirm the on-disk log parses cleanly into 10 records.
+    const store2 = new FilesystemEvidenceStore(logPath());
+    await store2.ready();
+    expect(await store2.size()).toBe(10);
+  });
+
+  it("round-tripped records still pass signature verification", async () => {
+    const filePath = logPath();
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const publicKey = await signer.getPublicKey();
+
+    const store1 = new FilesystemEvidenceStore(filePath);
+    await store1.append(await makeRecord({ run_id: "run-verify" }));
+
+    const store2 = new FilesystemEvidenceStore(filePath);
+    await store2.ready();
+    const loaded = (await store2.query())[0]!;
+    // The signature must still verify against the original public key,
+    // proving the filesystem backend does not mutate record contents on
+    // the wire.
+    expect(await verifyAEPRecord(loaded, publicKey)).toBe(true);
+  });
+
+  it("loads an existing NDJSON log written outside the store", async () => {
+    const filePath = logPath();
+    const r1 = await makeRecord({ run_id: "run-external-1" });
+    const r2 = await makeRecord({ run_id: "run-external-2" });
+    // Hand-write an NDJSON file the way another process might have.
+    writeFileSync(filePath, `${JSON.stringify(r1)}\n${JSON.stringify(r2)}\n`, "utf8");
+
+    const store = new FilesystemEvidenceStore(filePath);
+    await store.ready();
+    expect(await store.size()).toBe(2);
+    expect((await store.query()).map((r) => r.run_id)).toEqual([
+      "run-external-1",
+      "run-external-2",
+    ]);
   });
 });

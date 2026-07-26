@@ -1,3 +1,5 @@
+import { promises as fs } from "node:fs";
+import * as path from "node:path";
 import type { AEPRecord, SideEffectClass } from "./types.js";
 
 /**
@@ -74,6 +76,108 @@ export class InMemoryEvidenceStore implements EvidenceStore {
    */
   get all(): ReadonlyArray<AEPRecord> {
     return this.#records;
+  }
+}
+
+/**
+ * Filesystem-backed EvidenceStore.
+ *
+ * Persists AEP records as an append-only NDJSON log (one JSON record per
+ * line) on disk, so records survive across process sessions. The log is
+ * rehydrated on construction: any records already present in the file are
+ * loaded into memory before the first query.
+ *
+ * Each `append()` appends a single line to the log file and creates parent
+ * directories as needed. Appends are serialized internally so concurrent
+ * calls never interleave bytes in the file.
+ *
+ * @param filePath - Path to the NDJSON log file. Created on first append;
+ *                   missing parent directories are created automatically.
+ *
+ * @example
+ * ```ts
+ * import { FilesystemEvidenceStore } from "@wasmagent/aep";
+ *
+ * const store = new FilesystemEvidenceStore("./.wasmagent/evidence.ndjson");
+ * await store.append(record);
+ * // ...new process session...
+ * const restored = new FilesystemEvidenceStore("./.wasmagent/evidence.ndjson");
+ * await restored.ready(); // wait for the log to be rehydrated
+ * const all = await restored.query();
+ * ```
+ */
+export class FilesystemEvidenceStore implements EvidenceStore {
+  readonly #filePath: string;
+  #records: AEPRecord[] = [];
+  #appendQueue: Promise<void> = Promise.resolve();
+  #ready: Promise<void>;
+
+  constructor(filePath: string) {
+    this.#filePath = filePath;
+    this.#ready = this.#load();
+  }
+
+  /**
+   * Resolves once the store has finished loading any pre-existing records
+   * from disk. All query/size operations await this automatically, but
+   * callers that need to observe load completion (or load errors) can
+   * await it explicitly.
+   */
+  ready(): Promise<void> {
+    return this.#ready;
+  }
+
+  async #load(): Promise<void> {
+    let content: string;
+    try {
+      content = await fs.readFile(this.#filePath, "utf8");
+    } catch (err: unknown) {
+      // ENOENT is expected for a fresh store with no records yet.
+      const code = (err as NodeJS.ErrnoException | undefined)?.code;
+      if (code === "ENOENT") return;
+      throw err;
+    }
+    // NDJSON: one record per line. Split on newlines and skip blank lines
+    // (including a trailing newline after the last record).
+    for (const line of content.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      this.#records.push(JSON.parse(trimmed) as AEPRecord);
+    }
+  }
+
+  append(record: AEPRecord): Promise<void> {
+    // Serialize appends so concurrent writes never interleave in the file.
+    // Prior failures are swallowed on the queue so a single failed append
+    // does not poison every subsequent append; the caller still observes
+    // its own rejection via the returned promise.
+    const next = this.#appendQueue.catch(() => {}).then(() => this.#writeRecord(record));
+    this.#appendQueue = next;
+    return next;
+  }
+
+  async #writeRecord(record: AEPRecord): Promise<void> {
+    await this.#ready;
+    const line = `${JSON.stringify(record)}\n`;
+    await fs.mkdir(path.dirname(this.#filePath), { recursive: true });
+    await fs.appendFile(this.#filePath, line, "utf8");
+    this.#records.push(record);
+  }
+
+  async query(filter?: EvidenceStoreQuery): Promise<AEPRecord[]> {
+    await this.#ready;
+    if (!filter) return [...this.#records];
+    return this.#records.filter((r) => matchesFilter(r, filter));
+  }
+
+  async getByRunId(runId: string): Promise<AEPRecord[]> {
+    await this.#ready;
+    return this.#records.filter((r) => r.run_id === runId);
+  }
+
+  async size(): Promise<number> {
+    await this.#ready;
+    return this.#records.length;
   }
 }
 
