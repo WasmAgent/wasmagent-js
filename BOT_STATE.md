@@ -1,14 +1,14 @@
 # Bot State
 
-_Last updated: 2026-07-26 02:49 UTC by patrol_
+_Last updated: 2026-07-26 03:15 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 1 |
+| Pending | 3 |
 | Active (running/reviewing) | 1 |
-| Blocked | 2 |
+| Blocked | 4 |
 | Completed/Merged (all time) | 29 |
 
 ## Recent Activity (last 5)
@@ -23,6 +23,8 @@ _Last updated: 2026-07-26 02:49 UTC by patrol_
 
 ## Waiting for Human
 
+- #216: Fix WasmAgent/wasmagent-js#132 ([P2] Dependency reduction: implement removals from DEPENDENCY_REDUCTION_PLAN.md): implem
+- #207: Fix WasmAgent/wasmagent-js#196 (ci-health: main CI is red on WasmAgent/wasmagent-js (workflow \
 - #140: [shared-state 7/9] Three-way merge / conflict primitives (agent wont clobber human edits)
 
 ---
