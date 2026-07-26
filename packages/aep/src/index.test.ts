@@ -12,6 +12,7 @@ import {
   serializeEvidenceBundle,
   verifyEvidenceBundle,
 } from "./exportAdapter.js";
+import { GENESIS_PREV_HASH, hashLedgerRecord, Ledger } from "./ledger.js";
 import { resolveRepoCommit } from "./resolve-repo-commit.js";
 import { createLocalSignerFromSeed } from "./signer.js";
 import { LocalTimestamper } from "./timestamperLocal.js";
@@ -2480,5 +2481,185 @@ describe("Evidence bundle export adapter (#228)", () => {
     const result = await verifyEvidenceBundle(bundle, { publicKey: await signer.getPublicKey() });
     expect(result.valid).toBe(true);
     expect(bundle.manifest.record_count).toBe(await store.size());
+  });
+});
+
+describe("Ledger — durable evidence ledger with per-record signing and hash-chaining (#235)", () => {
+  const LEDGER_SEED = "abcdef01abcdef01abcdef01abcdef01abcdef01abcdef01abcdef01abcdef01";
+  const LEDGER_KEY_ID = "ledger-key-01";
+
+  /** Helper: emit a signed AEPRecord with one action. */
+  async function emitRecord(runId = "run-ledger", toolName = "tool_a", ts = 1_700_000_000_000) {
+    const signer = createLocalSignerFromSeed(LEDGER_SEED, LEDGER_KEY_ID);
+    const emitter = new AEPEmitter({ run_id: runId, signer });
+    emitter.addAction({ tool_name: toolName, state_changing: false });
+    return emitter.emit(ts);
+  }
+
+  it("genesis record has prevHash equal to the sentinel (empty string)", async () => {
+    const ledger = new Ledger();
+    const record = await emitRecord();
+    const lr = await ledger.append(record);
+
+    expect(lr.seq).toBe(0);
+    expect(lr.prevHash).toBe(GENESIS_PREV_HASH);
+    expect(lr.hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("appending produces a correctly-signed record", async () => {
+    const ledger = new Ledger();
+    const signer = createLocalSignerFromSeed(LEDGER_SEED, LEDGER_KEY_ID);
+    const emitter = new AEPEmitter({ run_id: "run-sig-check", signer });
+    emitter.addAction({ tool_name: "bash", state_changing: true });
+    const record = await emitter.emit();
+
+    const lr = await ledger.append(record);
+
+    // Verify the inner AEPRecord's signature with the public key
+    const publicKey = await signer.getPublicKey();
+    const valid = await verifyAEPRecord(lr.record, publicKey);
+    expect(valid).toBe(true);
+  });
+
+  it("two consecutive appends yield records where record[1].prevHash == hash(record[0])", async () => {
+    const ledger = new Ledger();
+    const r0 = await emitRecord();
+    const r1 = await emitRecord();
+
+    const lr0 = await ledger.append(r0);
+    const lr1 = await ledger.append(r1);
+
+    expect(lr1.prevHash).toBe(lr0.hash);
+  });
+
+  it("seq is strictly monotonic across appends", async () => {
+    const ledger = new Ledger();
+
+    for (let i = 0; i < 5; i++) {
+      const record = await emitRecord();
+      const lr = await ledger.append(record);
+      expect(lr.seq).toBe(i);
+    }
+
+    expect(ledger.size).toBe(5);
+  });
+
+  it("hash is a 64-char hex SHA-256 string", async () => {
+    const ledger = new Ledger();
+    const record = await emitRecord();
+    const lr = await ledger.append(record);
+
+    expect(lr.hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("hashLedgerRecord is deterministic", async () => {
+    const ledger = new Ledger();
+    const record = await emitRecord();
+    const lr = await ledger.append(record);
+
+    // Compute hash again — must match
+    const recomputed = hashLedgerRecord(lr);
+    expect(recomputed).toBe(lr.hash);
+  });
+
+  it("three-record chain has correct prevHash linkage", async () => {
+    const ledger = new Ledger();
+
+    const lr0 = await ledger.append(await emitRecord());
+    const lr1 = await ledger.append(await emitRecord());
+    const lr2 = await ledger.append(await emitRecord());
+
+    // Genesis
+    expect(lr0.prevHash).toBe(GENESIS_PREV_HASH);
+    // Chain linkage
+    expect(lr1.prevHash).toBe(lr0.hash);
+    expect(lr2.prevHash).toBe(lr1.hash);
+    // No circularity
+    expect(lr0.hash).not.toBe(lr1.hash);
+    expect(lr1.hash).not.toBe(lr2.hash);
+  });
+
+  it("append rejects an unsigned record (no signature)", async () => {
+    const ledger = new Ledger();
+    const emitter = new AEPEmitter({ run_id: "run-unsigned" });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    // build() produces a placeholder-signed record — use it to construct a truly unsigned record
+    const unsigned = emitter.build();
+    // Replace the signature with a falsy value
+    const badRecord = { ...unsigned, signature: undefined } as unknown as AEPRecord;
+
+    expect(ledger.append(badRecord)).rejects.toThrow(/signed AEPRecord/);
+  });
+
+  it("append with EvidenceStore persists the AEPRecord", async () => {
+    const store = new InMemoryEvidenceStore();
+    const ledger = new Ledger({ store });
+    const record = await emitRecord("run-store-ledger");
+    await ledger.append(record);
+
+    expect(store.size()).toBe(1);
+    const stored = store.getByRunId("run-store-ledger");
+    expect(stored).toHaveLength(1);
+  });
+
+  it("last property returns the most recent ledger record", async () => {
+    const ledger = new Ledger();
+    expect(ledger.last).toBeUndefined();
+
+    const lr0 = await ledger.append(await emitRecord());
+    expect(ledger.last).toBe(lr0);
+
+    const lr1 = await ledger.append(await emitRecord());
+    expect(ledger.last).toBe(lr1);
+  });
+
+  it("records are returned in insertion order", async () => {
+    const ledger = new Ledger();
+    const lr0 = await ledger.append(await emitRecord("run-ord-1", "tool_a"));
+    const lr1 = await ledger.append(await emitRecord("run-ord-2", "tool_b"));
+
+    expect(ledger.records).toHaveLength(2);
+    expect(ledger.records[0]).toBe(lr0);
+    expect(ledger.records[1]).toBe(lr1);
+  });
+
+  it("holistic chain verification: signature recomputation, seq ordering, and prevHash continuity", async () => {
+    const signer = createLocalSignerFromSeed(LEDGER_SEED, LEDGER_KEY_ID);
+    const publicKey = await signer.getPublicKey();
+    const ledger = new Ledger();
+
+    // Append 4 records
+    const records: AEPRecord[] = [];
+    for (let i = 0; i < 4; i++) {
+      const r = await emitRecord("run-holistic", `tool_${i}`);
+      records.push(r);
+      await ledger.append(r);
+    }
+
+    const lrs = ledger.records;
+    expect(lrs).toHaveLength(4);
+
+    for (let i = 0; i < lrs.length; i++) {
+      const lr = lrs[i];
+
+      // (1) Verify each record's signature by recomputing it
+      const sigValid = await verifyAEPRecord(lr.record, publicKey);
+      expect(sigValid).toBe(true);
+
+      // (2) Verify seq ordering is strictly monotonic starting from 0
+      expect(lr.seq).toBe(i);
+
+      // (3) Verify prevHash continuity by walking the chain
+      if (i === 0) {
+        // Genesis: prevHash must be the sentinel
+        expect(lr.prevHash).toBe(GENESIS_PREV_HASH);
+      } else {
+        // Non-genesis: prevHash must equal hash of the previous ledger record
+        const prevLr = lrs[i - 1];
+        expect(lr.prevHash).toBe(prevLr.hash);
+        // Also verify the hash is recomputable (stable canonical serialization)
+        expect(hashLedgerRecord(prevLr)).toBe(prevLr.hash);
+      }
+    }
   });
 });
