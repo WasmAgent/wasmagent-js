@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-26 04:31 UTC by patrol_
+_Last updated: 2026-07-26 04:32 UTC by patrol_
 
 ## Queue
 
@@ -25,6 +25,7 @@ _Last updated: 2026-07-26 04:31 UTC by patrol_
 
 - #215: Fix WasmAgent/wasmagent-js#139 ([shared-state 6/9] Affordance projection (reduce illegal tool calls)): implement changes
 - #214: Fix WasmAgent/wasmagent-js#141 ([shared-state 8/9] AEP confluence: semantic action stream as evidence log): implement ch
+- #213: Fix WasmAgent/wasmagent-js#142 ([shared-state 9/9] Cloudflare Durable Object substrate): implement changes in package co
 - #207: Fix WasmAgent/wasmagent-js#196 (ci-health: main CI is red on WasmAgent/wasmagent-js (workflow \
 - #140: [shared-state 7/9] Three-way merge / conflict primitives (agent wont clobber human edits)
 
