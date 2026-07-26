@@ -1,25 +1,29 @@
 # Bot State
 
-_Last updated: 2026-07-26 02:32 UTC by patrol_
+_Last updated: 2026-07-26 02:49 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 5 |
+| Pending | 1 |
 | Active (running/reviewing) | 1 |
 | Blocked | 2 |
-| Completed/Merged (all time) | 25 |
+| Completed/Merged (all time) | 29 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #132 | [P2] Dependency reduction: implement removals from DEPEND... | completed/complexity_gate_split | 2026-07-26 |
+| #139 | [shared-state 6/9] Affordance projection (reduce illegal ... | completed/complexity_gate_split | 2026-07-26 |
+| #141 | [shared-state 8/9] AEP confluence: semantic action stream... | completed/complexity_gate_split | 2026-07-26 |
+| #142 | [shared-state 9/9] Cloudflare Durable Object substrate | completed/complexity_gate_split | 2026-07-26 |
 | #197 | [milestone Milestone 4] Implement intent write APIs with ... | merged/auto_closed_resolved | 2026-07-25 |
-| #192 | [milestone Milestone 3] Add configurable CPU time and mem... | merged/merged | 2026-07-25 |
-| #193 | [milestone Milestone 3] Add tests for successful executio... | merged/merged | 2026-07-25 |
-| #198 | [milestone Milestone 4] Add state change event subscripti... | merged/merged | 2026-07-24 |
-| #199 | [milestone Milestone 4] Add TypeScript types for reducers... | merged/merged | 2026-07-24 |
+
+## Waiting for Human
+
+- #140: [shared-state 7/9] Three-way merge / conflict primitives (agent wont clobber human edits)
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
