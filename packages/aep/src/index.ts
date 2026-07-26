@@ -2,6 +2,7 @@ export * from "./canonical.js";
 export * from "./dsse.js";
 export * from "./emitter.js";
 export * from "./evidenceStore.js";
+export * from "./exportAdapter.js";
 export * from "./resolve-repo-commit.js";
 export * from "./signer.js";
 export * from "./timestamper.js";

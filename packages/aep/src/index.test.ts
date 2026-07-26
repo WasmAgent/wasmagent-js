@@ -5,6 +5,13 @@ import { join } from "node:path";
 import { paeEncode, verifyDSSEEnvelope, wrapInTotoStatement } from "./dsse.js";
 import { AEPEmitter } from "./emitter.js";
 import { FilesystemEvidenceStore, InMemoryEvidenceStore } from "./evidenceStore.js";
+import {
+  buildEvidenceBundle,
+  EVIDENCE_BUNDLE_SCHEMA_VERSION,
+  parseEvidenceBundle,
+  serializeEvidenceBundle,
+  verifyEvidenceBundle,
+} from "./exportAdapter.js";
 import { resolveRepoCommit } from "./resolve-repo-commit.js";
 import { createLocalSignerFromSeed } from "./signer.js";
 import { LocalTimestamper } from "./timestamperLocal.js";
@@ -2304,5 +2311,174 @@ describe("AEPEmitter evidenceStore streaming", () => {
     expect(stored!.signature.sig).toBe(record.signature.sig);
     // Cleanup
     rmSync(logFile, { force: true });
+  });
+});
+
+describe("Evidence bundle export adapter (#228)", () => {
+  /** Emit N signed records from a single emitter so they form a valid hash chain. */
+  async function emitChain(runId: string, count: number, baseTs = 1_700_000_000_000) {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({ run_id: runId, signer });
+    const records: AEPRecord[] = [];
+    for (let i = 0; i < count; i++) {
+      emitter.addAction({
+        tool_name: i === 0 ? "read_file" : "write_file",
+        state_changing: i > 0,
+        side_effect_class: i === 0 ? "read" : "mutate-local",
+      });
+      records.push(await emitter.emit(baseTs + i * 1000));
+    }
+    return { signer, records };
+  }
+
+  it("buildEvidenceBundle produces a well-formed manifest for ordered records", async () => {
+    const { records } = await emitChain("run-bundle-build", 3);
+    const bundle = buildEvidenceBundle(records);
+
+    expect(bundle.schema_version).toBe(EVIDENCE_BUNDLE_SCHEMA_VERSION);
+    expect(bundle.manifest.schema_version).toBe(EVIDENCE_BUNDLE_SCHEMA_VERSION);
+    expect(bundle.manifest.producer).toBe("@wasmagent/aep");
+    expect(bundle.manifest.record_count).toBe(3);
+    expect(bundle.manifest.records).toHaveLength(3);
+    expect(bundle.manifest.run_ids).toEqual(["run-bundle-build"]);
+    // Each manifest entry is indexed positionally and carries a sha256 hex digest.
+    for (let i = 0; i < bundle.manifest.records.length; i++) {
+      const entry = bundle.manifest.records[i]!;
+      expect(entry.index).toBe(i);
+      expect(entry.digest).toMatch(/^[0-9a-f]{64}$/);
+      expect(entry.run_id).toBe("run-bundle-build");
+    }
+    // Time range spans the earliest and latest created_at_ms.
+    expect(bundle.manifest.started_at_ms).toBe(1_700_000_000_000);
+    expect(bundle.manifest.ended_at_ms).toBe(1_700_000_002_000);
+    expect(bundle.manifest.bundle_digest).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("verifyEvidenceBundle accepts a freshly built bundle", async () => {
+    const { records } = await emitChain("run-verify", 3);
+    const bundle = buildEvidenceBundle(records);
+    const result = await verifyEvidenceBundle(bundle);
+    expect(result.valid).toBe(true);
+    expect(result.record_count_valid).toBe(true);
+    expect(result.record_digests_valid).toBe(true);
+    expect(result.bundle_digest_valid).toBe(true);
+    expect(result.chain_valid).toBe(true);
+    expect(result.broken_record_at).toBeUndefined();
+    expect(result.broken_chain_at).toBeUndefined();
+  });
+
+  it("verifyEvidenceBundle verifies per-record signatures when a publicKey is supplied", async () => {
+    const { signer, records } = await emitChain("run-sig", 3);
+    const publicKey = await signer.getPublicKey();
+    const bundle = buildEvidenceBundle(records);
+    const result = await verifyEvidenceBundle(bundle, { publicKey });
+    expect(result.valid).toBe(true);
+    expect(result.signatures).toHaveLength(3);
+    expect(result.signatures!.every((s) => s.valid)).toBe(true);
+  });
+
+  it("detects a mutated record via manifest digest mismatch", async () => {
+    const { records } = await emitChain("run-tamper-record", 3);
+    const bundle = buildEvidenceBundle(records);
+    // Mutate the LAST record so the hash chain (which depends on predecessors)
+    // stays intact and only the per-record digest check fails.
+    bundle.records[2]!.model_id = "tampered-model-id";
+    const result = await verifyEvidenceBundle(bundle);
+    expect(result.valid).toBe(false);
+    expect(result.record_digests_valid).toBe(false);
+    expect(result.broken_record_at).toBe(2);
+    // Other facets of the bundle are unaffected by this mutation.
+    expect(result.bundle_digest_valid).toBe(true);
+    expect(result.record_count_valid).toBe(true);
+  });
+
+  it("detects a tampered bundle_digest", async () => {
+    const { records } = await emitChain("run-tamper-digest", 3);
+    const bundle = buildEvidenceBundle(records);
+    bundle.manifest.bundle_digest = "0".repeat(64);
+    const result = await verifyEvidenceBundle(bundle);
+    expect(result.valid).toBe(false);
+    expect(result.bundle_digest_valid).toBe(false);
+    expect(result.record_digests_valid).toBe(true);
+    expect(result.record_count_valid).toBe(true);
+  });
+
+  it("detects a broken hash chain (reordered records) while manifests stay consistent", async () => {
+    const { records } = await emitChain("run-chain", 3);
+    const [r0, r1, r2] = records;
+    // Rebuild the bundle from reordered records so per-record digests and the
+    // bundle digest remain self-consistent; only the hash-chain links break.
+    const reordered = buildEvidenceBundle([r1!, r0!, r2!]);
+    const result = await verifyEvidenceBundle(reordered);
+    expect(result.valid).toBe(false);
+    expect(result.chain_valid).toBe(false);
+    expect(result.broken_chain_at).toBe(2);
+    expect(result.record_digests_valid).toBe(true);
+    expect(result.bundle_digest_valid).toBe(true);
+  });
+
+  it("detects an inconsistent record_count", async () => {
+    const { records } = await emitChain("run-count", 3);
+    const bundle = buildEvidenceBundle(records);
+    bundle.manifest.record_count = 99;
+    const result = await verifyEvidenceBundle(bundle);
+    expect(result.valid).toBe(false);
+    expect(result.record_count_valid).toBe(false);
+  });
+
+  it("serialize/parse round-trips and the parsed bundle re-verifies", async () => {
+    const { records } = await emitChain("run-roundtrip", 2);
+    const bundle = buildEvidenceBundle(records);
+    const json = serializeEvidenceBundle(bundle);
+    expect(typeof json).toBe("string");
+    const parsed = parseEvidenceBundle(json);
+    expect(parsed).toEqual(bundle);
+    const result = await verifyEvidenceBundle(parsed);
+    expect(result.valid).toBe(true);
+  });
+
+  it("serialization is deterministic for identical inputs and options", async () => {
+    const { records } = await emitChain("run-determinism", 2);
+    const a = buildEvidenceBundle(records, { createdAt: "2026-07-27T00:00:00.000Z" });
+    const b = buildEvidenceBundle(records, { createdAt: "2026-07-27T00:00:00.000Z" });
+    expect(serializeEvidenceBundle(a)).toBe(serializeEvidenceBundle(b));
+    expect(a.manifest.bundle_digest).toBe(b.manifest.bundle_digest);
+  });
+
+  it("handles an empty record set", () => {
+    const bundle = buildEvidenceBundle([]);
+    expect(bundle.manifest.record_count).toBe(0);
+    expect(bundle.manifest.records).toEqual([]);
+    expect(bundle.manifest.run_ids).toEqual([]);
+    expect(bundle.manifest.started_at_ms).toBe(0);
+    expect(bundle.manifest.ended_at_ms).toBe(0);
+  });
+
+  it("verifyEvidenceBundle on an empty bundle is valid", async () => {
+    const bundle = buildEvidenceBundle([]);
+    const result = await verifyEvidenceBundle(bundle);
+    expect(result.valid).toBe(true);
+    expect(result.chain_valid).toBe(true);
+  });
+
+  it("exports records from an EvidenceStore into a verifiable bundle", async () => {
+    const store = new InMemoryEvidenceStore();
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-store-export",
+      signer,
+      evidenceStore: store,
+    });
+    emitter.addAction({
+      tool_name: "bash",
+      state_changing: true,
+      side_effect_class: "mutate-local",
+    });
+    await emitter.emit(1_700_000_000_000);
+
+    const bundle = buildEvidenceBundle(await store.query());
+    const result = await verifyEvidenceBundle(bundle, { publicKey: await signer.getPublicKey() });
+    expect(result.valid).toBe(true);
+    expect(bundle.manifest.record_count).toBe(await store.size());
   });
 });
