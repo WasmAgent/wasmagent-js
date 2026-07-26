@@ -38,6 +38,10 @@
       "import": "./dist/shared-state/index.js",
       "types": "./dist/shared-state/index.d.ts"
     },
+    "./shared-state/aep": {
+      "import": "./dist/shared-state/aep.js",
+      "types": "./dist/shared-state/aep.d.ts"
+    },
     "./schemas/training-record": "./src/ranking/schemas/training-record.schema.json"
   },
   "scripts": {
@@ -63,6 +67,7 @@
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.55.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@wasmagent/aep": "workspace:*",
     "openai": "^4.90.0",
     "typescript": "^5.7.0"
   },
