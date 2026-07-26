@@ -131,6 +131,7 @@ export type {
   ActionLanguage,
   CapabilityManifest,
   KernelEngine,
+  KernelExecutionError,
   KernelOptions,
   KernelPoolOptions,
   KernelPoolValidatorOptions,

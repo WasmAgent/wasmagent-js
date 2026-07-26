@@ -26,7 +26,7 @@
 - [ ] Implement `QuickJSKernel` lifecycle methods for initialize, execute, timeout, and dispose
 - [ ] Add host API isolation so sandboxed code cannot access filesystem, process, or network primitives
 - [ ] Implement `sandboxedJsTool()` adapter for AI SDK-compatible tool execution
-- [ ] Add structured execution results with stdout, stderr, return value, timeout status, and error details
+- [x] Add structured execution results with stdout, stderr, return value, timeout status, and error details
 - [ ] Add configurable CPU time and memory limits for sandboxed code execution
 - [ ] Add tests for successful execution, runtime errors, infinite loops, blocked host access, and disposal behavior
 
