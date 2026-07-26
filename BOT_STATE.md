@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-26 17:14 UTC by patrol_
+_Last updated: 2026-07-26 17:17 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
 | Pending | 1 |
-| Active (running/reviewing) | 1 |
+| Active (running/reviewing) | 0 |
 | Blocked | 3 |
-| Completed/Merged (all time) | 41 |
+| Completed/Merged (all time) | 42 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #231 | [milestone Milestone 5 ] Add tamper-detection tests cover... | merged/auto_closed_resolved | 2026-07-26 |
 | #222 | [milestone Milestone 5 ] Implement `verifyChain()` to val... | merged/auto_closed_resolved | 2026-07-26 |
 | #228 | [milestone Milestone 5 ] Add an export adapter that emits... | merged/merged | 2026-07-26 |
 | #230 | [milestone Milestone 5 ] Wire the `AEPEmitter` to optiona... | merged/merged | 2026-07-26 |
 | #221 | [milestone Milestone 5 ] Add append-only chain-linking so... | merged/auto_closed_resolved | 2026-07-26 |
-| #224 | [milestone Milestone 5 ] Implement a replay API that reco... | merged/auto_closed_resolved | 2026-07-26 |
 
 ## Waiting for Human
 
