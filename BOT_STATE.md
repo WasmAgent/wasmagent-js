@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-26 13:54 UTC by patrol_
+_Last updated: 2026-07-26 14:12 UTC by patrol_
 
 ## Queue
 
@@ -23,6 +23,7 @@ _Last updated: 2026-07-26 13:54 UTC by patrol_
 
 ## Waiting for Human
 
+- #222: [milestone Milestone 5 ] Implement `verifyChain()` to validate per-record signatures, ordering, and hash ...
 - #207: Fix WasmAgent/wasmagent-js#196 (ci-health: main CI is red on WasmAgent/wasmagent-js (workflow \
 - #140: [shared-state 7/9] Three-way merge / conflict primitives (agent wont clobber human edits)
 
