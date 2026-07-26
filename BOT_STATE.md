@@ -1,14 +1,14 @@
 # Bot State
 
-_Last updated: 2026-07-26 03:59 UTC by patrol_
+_Last updated: 2026-07-26 04:30 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 4 |
-| Active (running/reviewing) | 1 |
-| Blocked | 2 |
+| Pending | 0 |
+| Active (running/reviewing) | 2 |
+| Blocked | 7 |
 | Completed/Merged (all time) | 30 |
 
 ## Recent Activity (last 5)
@@ -24,6 +24,7 @@ _Last updated: 2026-07-26 03:59 UTC by patrol_
 ## Waiting for Human
 
 - #215: Fix WasmAgent/wasmagent-js#139 ([shared-state 6/9] Affordance projection (reduce illegal tool calls)): implement changes
+- #214: Fix WasmAgent/wasmagent-js#141 ([shared-state 8/9] AEP confluence: semantic action stream as evidence log): implement ch
 - #207: Fix WasmAgent/wasmagent-js#196 (ci-health: main CI is red on WasmAgent/wasmagent-js (workflow \
 - #140: [shared-state 7/9] Three-way merge / conflict primitives (agent wont clobber human edits)
 
