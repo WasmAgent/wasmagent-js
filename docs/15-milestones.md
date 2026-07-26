@@ -39,3 +39,17 @@
 - [x] Add state change event subscriptions for UI synchronization
 - [x] Add TypeScript types for reducers, projections, intents, and state snapshots
 - [x] Add tests for reducer updates, projection filtering, invalid intents, and UI subscription notifications
+
+## Milestone 5 — Durable Evidence Ledger & Chain Verification
+
+### Deliverables
+- [ ] Implement an `EvidenceStore` interface with pluggable backends (in-memory, filesystem) for durable AEP record persistence across sessions
+- [ ] Add append-only chain-linking so each record references the previous record's content hash, producing a tamper-evident run history
+- [ ] Implement `verifyChain()` to validate per-record signatures, ordering, and hash continuity across a stored run or full agent history
+- [ ] Add query/filter APIs for lookup by `run_id`, `model_id`, time range, action type, and tool name
+- [ ] Implement a replay API that reconstructs an ordered action timeline from stored records for post-hoc inspection and debugging
+- [ ] Add an export adapter that emits a verifiable evidence bundle consumable by `@wasmagent/trust-cli` and external auditors
+- [ ] Add retention and compaction policies (time-bound and count-bound) with safe pruning of verified record tails
+- [ ] Wire the `AEPEmitter` to optionally stream records to a configured `EvidenceStore` at emission time
+- [ ] Add tamper-detection tests covering mutated records, reordered entries, broken hash links, and invalid signatures
+- [ ] Add integration tests for concurrent appends, cross-run queries, export round-trips, and replay fidelity
