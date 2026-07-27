@@ -1,11 +1,13 @@
 """
 Minimal Python emitter example for AEP (Agent Evidence Protocol).
 
-This demonstrates how to emit AEP records in Python using the exported
-JSON Schema for validation, without needing the TypeScript runtime.
+This demonstrates how to emit AEP records in Python using the canonical
+JSON Schema from @wasmagent/protocol for validation, without needing
+the TypeScript runtime.
 
 Requirements:
     pip install jsonschema
+    bun install   # ensures @wasmagent/protocol is available
 
 Usage:
     python emit_record.py
@@ -22,12 +24,21 @@ except ImportError:
     print("Install jsonschema: pip install jsonschema")
     raise SystemExit(1)
 
-# Load the exported JSON Schema
-SCHEMA_PATH = Path(__file__).resolve().parents[3] / "packages" / "aep" / "schemas" / "aep-record.schema.json"
+# Load the canonical JSON Schema from @wasmagent/protocol
+# (single source of truth — see WasmAgent/wasmagent-protocol)
+SCHEMA_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "node_modules"
+    / "@wasmagent"
+    / "protocol"
+    / "schemas"
+    / "aep"
+    / "aep-record.schema.json"
+)
 
 if not SCHEMA_PATH.exists():
-    print(f"Schema not found at {SCHEMA_PATH}")
-    print("Run 'bun run schema:export' in packages/aep first.")
+    print(f"Canonical schema not found at {SCHEMA_PATH}")
+    print("Run 'bun install' from the repo root to install @wasmagent/protocol.")
     raise SystemExit(1)
 
 with open(SCHEMA_PATH) as f:
@@ -38,10 +49,8 @@ def emit_aep_record(
     run_id: str,
     tool_name: str,
     state_changing: bool = False,
-    user_id: str | None = None,
-    subject_id: str | None = None,
 ) -> dict:
-    """Create and validate an AEP record."""
+    """Create and validate an AEP record against the canonical schema."""
     now_ms = int(time.time() * 1000)
 
     record = {
@@ -68,17 +77,8 @@ def emit_aep_record(
         },
     }
 
-    # Add optional identity fields
-    if user_id is not None:
-        record["user_id"] = user_id
-    if subject_id is not None:
-        record["subject_id"] = subject_id
-
-    # Validate against the JSON Schema
-    # Note: the schema is wrapped in a top-level object by zod-to-json-schema;
-    # the actual schema definition may be under a key like "definitions" or directly.
-    schema_def = schema.get("definitions", {}).get("AEPRecord", schema)
-    validate(instance=record, schema=schema_def)
+    # Validate against the canonical JSON Schema from @wasmagent/protocol
+    validate(instance=record, schema=schema)
 
     return record
 
@@ -88,8 +88,6 @@ if __name__ == "__main__":
         run_id=f"run-py-{uuid.uuid4().hex[:8]}",
         tool_name="python_example",
         state_changing=False,
-        user_id="user-alice",
-        subject_id="subject-project-x",
     )
     print(json.dumps(record, indent=2))
-    print("\nAEP record validated successfully against JSON Schema.")
+    print("\nAEP record validated successfully against canonical schema.")
