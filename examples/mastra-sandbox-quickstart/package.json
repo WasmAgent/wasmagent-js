@@ -6,9 +6,9 @@
     "start": "node index.mjs"
   },
   "dependencies": {
-    "@wasmagent/mastra-sandbox": "latest",
-    "@wasmagent/kernel-quickjs": "latest",
-    "quickjs-emscripten": "latest",
-    "@jitl/quickjs-wasmfile-release-sync": "latest"
+    "@wasmagent/mastra-sandbox": "workspace:*",
+    "@wasmagent/kernel-quickjs": "workspace:*",
+    "quickjs-emscripten": "^0.32.0",
+    "@jitl/quickjs-wasmfile-release-sync": "^0.32.0"
   }
 }

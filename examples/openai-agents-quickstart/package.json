@@ -6,10 +6,10 @@
     "start": "node index.mjs"
   },
   "dependencies": {
-    "@wasmagent/openai-agents": "latest",
-    "@wasmagent/kernel-quickjs": "latest",
-    "quickjs-emscripten": "latest",
-    "@jitl/quickjs-wasmfile-release-sync": "latest",
-    "zod": "latest"
+    "@wasmagent/openai-agents": "workspace:*",
+    "@wasmagent/kernel-quickjs": "workspace:*",
+    "quickjs-emscripten": "^0.32.0",
+    "@jitl/quickjs-wasmfile-release-sync": "^0.32.0",
+    "zod": "^4.0.0"
   }
 }
