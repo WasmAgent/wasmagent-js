@@ -4,6 +4,9 @@
  * @wasmagent/core/shared-state — Human-agent collaborative state management.
  */
 
+export type { ConflictStrategy, FieldTracker, MergeResult } from "./merge.js";
+// #140 — Three-way merge / conflict primitives
+export { createFieldTracker, threeWayMerge } from "./merge.js";
 export type { ProjectionDelta, ProjectionFn, ProjectionPipeline } from "./projection.js";
 // #138 — Projection pipeline
 export { createProjectionPipeline } from "./projection.js";
