@@ -1,13 +1,13 @@
 # Bot State
 
-_Last updated: 2026-07-27 01:31 UTC by patrol_
+_Last updated: 2026-07-27 03:02 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 3 |
-| Active (running/reviewing) | 0 |
+| Pending | 2 |
+| Active (running/reviewing) | 1 |
 | Blocked | 2 |
 | Completed/Merged (all time) | 45 |
 
@@ -23,6 +23,7 @@ _Last updated: 2026-07-27 01:31 UTC by patrol_
 
 ## Waiting for Human
 
+- #232: [milestone Milestone 5 ] Add integration tests for concurrent appends, cross-run queries, export round-tr...
 - #229: [milestone Milestone 5 ] Add retention and compaction policies (time-bound and count-bound) with safe pru...
 - #207: Fix WasmAgent/wasmagent-js#196 (ci-health: main CI is red on WasmAgent/wasmagent-js (workflow \
 - #140: [shared-state 7/9] Three-way merge / conflict primitives (agent wont clobber human edits)
