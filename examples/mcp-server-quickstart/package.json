@@ -6,10 +6,10 @@
     "start": "node index.mjs"
   },
   "dependencies": {
-    "@wasmagent/mcp-server": "latest",
-    "@wasmagent/core": "latest",
-    "@wasmagent/kernel-quickjs": "latest",
-    "quickjs-emscripten": "latest",
-    "@jitl/quickjs-wasmfile-release-sync": "latest"
+    "@wasmagent/mcp-server": "workspace:*",
+    "@wasmagent/core": "workspace:*",
+    "@wasmagent/kernel-quickjs": "workspace:*",
+    "quickjs-emscripten": "^0.32.0",
+    "@jitl/quickjs-wasmfile-release-sync": "^0.32.0"
   }
 }
