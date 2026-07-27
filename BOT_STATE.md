@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-27 07:43 UTC by patrol_
+_Last updated: 2026-07-27 07:44 UTC by patrol_
 
 ## Queue
 
@@ -23,6 +23,7 @@ _Last updated: 2026-07-27 07:43 UTC by patrol_
 
 ## Waiting for Human
 
+- #239: Fix WasmAgent/wasmagent-js#238 (Stop shipping a forked aep-record schema; consume canonical aep/v0.3 from @wasmagent/pro
 - #232: [milestone Milestone 5 ] Add integration tests for concurrent appends, cross-run queries, export round-tr...
 - #207: Fix WasmAgent/wasmagent-js#196 (ci-health: main CI is red on WasmAgent/wasmagent-js (workflow \
 - #140: [shared-state 7/9] Three-way merge / conflict primitives (agent wont clobber human edits)
