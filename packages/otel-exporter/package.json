@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
+    "@wasmagent/aep": "workspace:*",
     "typescript": "^5.7.0"
   },
   "engines": {

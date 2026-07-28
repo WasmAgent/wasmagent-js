@@ -3,6 +3,7 @@ export * from "./dsse.js";
 export * from "./emitter.js";
 export * from "./evidenceMirror.js";
 export * from "./evidenceMonitor.js";
+export * from "./evidencePublisher.js";
 export * from "./evidenceRouter.js";
 export * from "./evidenceStore.js";
 export * from "./evidenceStream.js";

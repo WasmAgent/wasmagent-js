@@ -820,10 +820,11 @@
       "name": "@wasmagent/otel-exporter",
       "version": "1.7.4",
       "dependencies": {
-        "@wasmagent/core": "^1.7.0",
+        "@wasmagent/core": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^26.1.1",
+        "@wasmagent/aep": "workspace:*",
         "typescript": "^5.7.0",
       },
     },

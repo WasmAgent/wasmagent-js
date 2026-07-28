@@ -19,6 +19,7 @@ import {
   type WebSocketLike,
   WebSocketMonitorHook,
 } from "./evidenceMonitor.js";
+import { EvidencePublisher, type EvidencePublisherStats } from "./evidencePublisher.js";
 import {
   defaultTierClassifier,
   EvidenceRouter,
@@ -4892,3 +4893,249 @@ describe("EvidenceMonitor — real-time monitoring hooks (#265)", () => {
     });
   });
 });
+
+describe("EvidencePublisher — real-time streaming (#276)", () => {
+  /** Helper: emit a signed AEPRecord with configurable fields. */
+  async function makeRecord(
+    overrides: {
+      run_id?: string;
+      model_id?: string;
+      created_at_ms?: number;
+      tool_name?: string;
+      side_effect_class?: SideEffectClass;
+    } = {}
+  ): Promise<AEPRecord> {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: overrides.run_id ?? "run-pub-default",
+      model_id: overrides.model_id,
+      signer,
+    });
+    emitter.addAction({
+      tool_name: overrides.tool_name ?? "pub_tool",
+      state_changing: false,
+      side_effect_class: overrides.side_effect_class ?? "read",
+    });
+    return emitter.emit(overrides.created_at_ms ?? 1_700_000_000_000);
+  }
+
+  /** Capture transport that records every event handed to `send`. */
+  function captureTransport(name = "capture"): StreamTransportOutbound & { events: StreamEvent[] } {
+    const events: StreamEvent[] = [];
+    return {
+      name,
+      events,
+      async send(event: StreamEvent) {
+        events.push(event);
+      },
+    };
+  }
+
+  describe("constructor and accessors", () => {
+    it("creates a stream with a generated topic", () => {
+      const publisher = new EvidencePublisher();
+      expect(publisher.topic).toMatch(/^stream-[a-f0-9]{8}$/);
+      expect(publisher.running).toBe(false);
+      expect(publisher.closed).toBe(false);
+      expect(publisher.stats).toEqual({ published: 0, filtered: 0, errors: 0, storePolled: 0 });
+    });
+
+    it("accepts a custom topic", () => {
+      const publisher = new EvidencePublisher({ topic: "live-evidence" });
+      expect(publisher.topic).toBe("live-evidence");
+    });
+
+    it("wraps a caller-supplied stream", () => {
+      const stream = new EvidenceStream({ topic: "external" });
+      const publisher = new EvidencePublisher({ stream });
+      expect(publisher.stream).toBe(stream);
+      expect(publisher.topic).toBe("external");
+    });
+  });
+
+  describe("push mode — publish()", () => {
+    it("delivers pushed records to subscribers and transports", async () => {
+      const publisher = new EvidencePublisher();
+      const received: StreamEvent[] = [];
+      publisher.subscribe((event) => received.push(event));
+      const transport = captureTransport();
+      publisher.addTransport(transport);
+
+      const record = await makeRecord();
+      const result = await publisher.publish(record);
+
+      expect(result.deliveredToSubscribers).toBe(1);
+      expect(result.deliveredToTransports).toBe(1);
+      expect(received).toHaveLength(1);
+      expect(received[0]!.record).toBe(record);
+      expect(transport.events).toHaveLength(1);
+      expect(transport.events[0]!.record).toBe(record);
+      expect(publisher.stats.published).toBe(1);
+      expect(publisher.stats.errors).toBe(0);
+    });
+
+    it("counts per-target delivery errors without aborting the fan-out", async () => {
+      const publisher = new EvidencePublisher();
+      const good: StreamEvent[] = [];
+      publisher.subscribe((event) => good.push(event));
+      publisher.addTransport({
+        name: "boom",
+        async send() {
+          throw new Error("transport down");
+        },
+      });
+
+      const result = await publisher.publish(await makeRecord());
+
+      // Subscriber still received it; the failing transport is captured, not thrown.
+      expect(good).toHaveLength(1);
+      expect(result.deliveredToTransports).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]!.target).toBe("transport:boom");
+      expect(publisher.stats.published).toBe(1);
+      expect(publisher.stats.errors).toBe(1);
+    });
+
+    it("throws once closed", async () => {
+      const publisher = new EvidencePublisher();
+      await publisher.close();
+      expect(publisher.closed).toBe(true);
+      await expect(publisher.publish(await makeRecord())).rejects.toThrow("closed");
+    });
+  });
+
+  describe("subscriber / transport management", () => {
+    it("supports unsubscribe and removeTransport", async () => {
+      const publisher = new EvidencePublisher();
+      const received: StreamEvent[] = [];
+      const sub = publisher.subscribe((event) => received.push(event));
+      const transport = captureTransport();
+      publisher.addTransport(transport);
+
+      await publisher.publish(await makeRecord());
+      expect(received).toHaveLength(1);
+      expect(transport.events).toHaveLength(1);
+
+      expect(publisher.unsubscribe(sub)).toBe(true);
+      expect(publisher.removeTransport("capture")).toBe(true);
+
+      await publisher.publish(await makeRecord());
+      expect(received).toHaveLength(1); // no new delivery
+      expect(transport.events).toHaveLength(1);
+      await publisher.close();
+    });
+  });
+
+  describe("watch mode — start()/stop()", () => {
+    it("streams records appended after start, never the pre-existing tail", async () => {
+      const store = new InMemoryEvidenceStore();
+      // Pre-existing records must NOT be replayed on start.
+      await store.append(await makeRecord({ run_id: "old" }));
+
+      const publisher = new EvidencePublisher({ store, pollIntervalMs: 5 });
+      const seen: string[] = [];
+      publisher.subscribe((event) => seen.push(event.record.run_id));
+
+      await publisher.start();
+      expect(publisher.running).toBe(true);
+      expect(seen).toEqual([]); // old record not replayed
+
+      // Append two new records; they should appear on subsequent polls.
+      await store.append(await makeRecord({ run_id: "new-1" }));
+      await store.append(await makeRecord({ run_id: "new-2" }));
+
+      // Wait for at least one poll after the appends.
+      await waitForStats(publisher, (s) => s.published >= 2);
+      publisher.stop();
+      expect(publisher.running).toBe(false);
+
+      expect(seen).toEqual(["new-1", "new-2"]);
+      expect(publisher.stats.published).toBe(2);
+      expect(publisher.stats.storePolled).toBeGreaterThan(0);
+    });
+
+    it("applies the filter to records pulled from the store", async () => {
+      const store = new InMemoryEvidenceStore();
+      const publisher = new EvidencePublisher({
+        store,
+        pollIntervalMs: 5,
+        filter: { run_id: "wanted" },
+      });
+      const seen: string[] = [];
+      publisher.subscribe((event) => seen.push(event.record.run_id));
+
+      await publisher.start();
+      await store.append(await makeRecord({ run_id: "wanted" }));
+      await store.append(await makeRecord({ run_id: "skipped" }));
+      await store.append(await makeRecord({ run_id: "wanted" }));
+
+      await waitForStats(publisher, (s) => s.published >= 2 && s.filtered >= 1);
+      publisher.stop();
+
+      expect(seen).toEqual(["wanted", "wanted"]);
+      expect(publisher.stats.filtered).toBe(1);
+    });
+
+    it("requires a store to start", async () => {
+      const publisher = new EvidencePublisher();
+      await expect(publisher.start()).rejects.toThrow("requires a store");
+      expect(publisher.running).toBe(false);
+    });
+
+    it("counts a failing store query as an error without stopping the loop", async () => {
+      // A store whose query rejects on the first streaming poll.
+      let queryCalls = 0;
+      const store: EvidenceStore = {
+        async append() {},
+        async query() {
+          queryCalls++;
+          if (queryCalls === 1) return []; // the start() initial sizing read
+          throw new Error("store IO failure");
+        },
+        async getByRunId() {
+          return [];
+        },
+        async size() {
+          return 0;
+        },
+      };
+      const publisher = new EvidencePublisher({ store, pollIntervalMs: 5 });
+      await publisher.start();
+
+      await waitForStats(publisher, (s) => s.errors >= 1);
+      publisher.stop();
+
+      expect(publisher.stats.errors).toBeGreaterThanOrEqual(1);
+      expect(publisher.stats.storePolled).toBeGreaterThanOrEqual(0);
+    });
+
+    it("start() is idempotent and close() stops polling and closes the stream", async () => {
+      const store = new InMemoryEvidenceStore();
+      const publisher = new EvidencePublisher({ store, pollIntervalMs: 5 });
+      await publisher.start();
+      const timerCountBefore = publisher.running;
+      await publisher.start(); // no-op
+      expect(publisher.running).toBe(timerCountBefore);
+
+      await publisher.close();
+      expect(publisher.running).toBe(false);
+      expect(publisher.closed).toBe(true);
+      expect(publisher.stream.closed).toBe(true);
+      await expect(publisher.start()).rejects.toThrow("closed");
+    });
+  });
+});
+
+/** Poll `publisher.stats` until `pred` is satisfied or the timeout elapses. */
+async function waitForStats(
+  publisher: EvidencePublisher,
+  pred: (s: EvidencePublisherStats) => boolean,
+  timeoutMs = 1000
+): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (pred(publisher.stats)) return;
+    await new Promise((r) => setTimeout(r, 5));
+  }
+  // Timed out; let the caller's expect() surface the mismatch.
+}
