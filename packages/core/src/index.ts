@@ -276,6 +276,16 @@ export {
   InMemoryApprovalStore,
   PolicyPresets,
 } from "./policies/index.js";
+// State recovery — reconstruct runtime state from AEP evidence chains [beta]
+export type {
+  CausalLink,
+  ChainVerifier,
+  RecoveredState,
+  RecoveryChainIntegrity,
+  RecoveryEvidenceSource,
+  StateRecoveryOptions,
+} from "./state-recovery.js";
+export { recoverTask, StateRecovery } from "./state-recovery.js";
 // A2 — durable SSE streaming with Last-Event-ID resume [stable]
 export type { EventLogOptions, LoggedEvent } from "./streaming/EventLog.js";
 export { EventLog, formatSseFrame } from "./streaming/EventLog.js";
