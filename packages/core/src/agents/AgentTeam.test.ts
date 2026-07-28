@@ -16,15 +16,33 @@
  *      member (not silently swapped out).
  */
 
+import { z } from "zod";
 import { MapKvBackend } from "../memory/MemoryTool.js";
+import type { ToolDefinition } from "../tools/types.js";
 import type { AgentEvent } from "../types/events.js";
 import { openOrCreateRoot } from "../workspace/BranchableWorkspace.js";
 import {
   AgentTeam,
   type AgentTeamMember,
   type AgentTeamScorer,
+  type AgentTeamSpawnContext,
   longestAnswerScorer,
 } from "./AgentTeam.js";
+import type { PosturePolicy } from "./PosturePolicy.js";
+
+function makeFakeTool(name: string): ToolDefinition {
+  return {
+    name,
+    description: `fake ${name}`,
+    inputSchema: z.object({}),
+    outputSchema: z.object({}),
+    readOnly: true,
+    idempotent: true,
+    async forward() {
+      return {};
+    },
+  };
+}
 
 // ── Fake agent factory ──────────────────────────────────────────────────────
 
@@ -374,5 +392,76 @@ describe("AgentTeam — observability", () => {
     await team.run();
     const events = seen.filter(([l]) => l === "obs").map(([, ev]) => ev);
     expect(events).toEqual(["run_start", "tool_call", "tool_result", "final_answer"]);
+  });
+});
+
+describe("AgentTeam — posture cascade (#264)", () => {
+  it("narrows the team posture into each member + filters denied tools + surfaces delegations", async () => {
+    const kv = new MapKvBackend();
+    const root = await openOrCreateRoot(kv);
+    const captured: AgentTeamSpawnContext[] = [];
+    const posture: PosturePolicy = {
+      allowedHosts: ["api.example.com", "cdn.example.com"],
+      allowedReadPaths: [],
+      allowedWritePaths: [],
+      extraCapabilities: [],
+      deniedTools: ["denied_tool"],
+      recordingMode: "full",
+    };
+    const team = new AgentTeam({
+      task: "x",
+      traceId: "t-posture",
+      model: {} as never,
+      posture,
+      members: [
+        {
+          label: "a",
+          tools: [makeFakeTool("allowed_tool"), makeFakeTool("denied_tool")],
+          postureOverride: { allowedHosts: ["api.example.com", "evil.example.com"] },
+          factory: (ctx) => {
+            captured.push(ctx);
+            return {
+              async *run(): AsyncGenerator<AgentEvent> {
+                yield {
+                  traceId: ctx.memberId,
+                  parentTraceId: ctx.parentTraceId,
+                  timestampMs: 0,
+                  channel: "text",
+                  event: "final_answer",
+                  data: { answer: "ok" },
+                };
+              },
+            };
+          },
+        },
+      ],
+      baseWorkspace: root,
+    });
+    const out = await team.run();
+
+    // effective posture in the spawn context: narrowed (evil dropped), full kept
+    expect(captured[0]?.posture).toBeDefined();
+    expect(captured[0]?.posture?.allowedHosts).toEqual(["api.example.com"]);
+    expect(captured[0]?.posture?.recordingMode).toBe("full");
+    // denied tool filtered off the tool surface
+    expect(captured[0]?.tools.map((t) => t.name)).toEqual(["allowed_tool"]);
+    // the team surfaces one delegation record per member (no built-in store)
+    expect(out.postureDelegations).toHaveLength(1);
+    expect(out.postureDelegations[0]?.parentAgentId).toBe("t-posture");
+    expect(out.postureDelegations[0]?.childAgentId).toBe("t-posture-m0");
+    expect(out.postureDelegations[0]?.effectivePosture.allowedHosts).toEqual(["api.example.com"]);
+  });
+
+  it("no posture ⇒ no cascade, no delegations (backward-compatible)", async () => {
+    const kv = new MapKvBackend();
+    const root = await openOrCreateRoot(kv);
+    const team = new AgentTeam({
+      task: "x",
+      model: {} as never,
+      members: [makeFakeMember({ label: "a" })],
+      baseWorkspace: root,
+    });
+    const out = await team.run();
+    expect(out.postureDelegations).toEqual([]);
   });
 });

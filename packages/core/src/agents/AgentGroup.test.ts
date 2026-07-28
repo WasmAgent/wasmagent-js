@@ -18,7 +18,9 @@
  */
 
 import { InMemoryEvidenceStore } from "@wasmagent/aep";
+import { z } from "zod";
 import { MapKvBackend } from "../memory/MemoryTool.js";
+import type { ToolDefinition } from "../tools/types.js";
 import type { AgentEvent } from "../types/events.js";
 import { openOrCreateRoot } from "../workspace/BranchableWorkspace.js";
 import {
@@ -29,6 +31,7 @@ import {
   type AgentGroupSpawnContext,
   coordinationDigestFor,
 } from "./AgentGroup.js";
+import { POSTURE_DELEGATION_TYPE, type PosturePolicy } from "./PosturePolicy.js";
 
 // ── Fake agent factory ──────────────────────────────────────────────────────
 
@@ -85,6 +88,21 @@ function makeFakeMember(spec: FakeAgentSpec, capture?: AgentGroupSpawnContext[])
           };
         },
       };
+    },
+  };
+}
+
+/** Minimal ToolDefinition whose only salient property for posture tests is its name. */
+function makeFakeTool(name: string): ToolDefinition {
+  return {
+    name,
+    description: `fake ${name}`,
+    inputSchema: z.object({}),
+    outputSchema: z.object({}),
+    readOnly: true,
+    idempotent: true,
+    async forward() {
+      return {};
     },
   };
 }
@@ -482,5 +500,114 @@ describe("AgentGroup — observability", () => {
     await group.run();
     expect(seen.map(([, ev]) => ev)).toEqual(["run_start", "final_answer"]);
     expect(seen.every(([l]) => l === "obs")).toBe(true);
+  });
+});
+
+describe("AgentGroup — posture cascade (#264)", () => {
+  it("narrows the group posture into each member's spawn context + filters denied tools", async () => {
+    const kv = new MapKvBackend();
+    const root = await openOrCreateRoot(kv);
+    const captured: AgentGroupSpawnContext[] = [];
+    const posture: PosturePolicy = {
+      allowedHosts: ["api.example.com", "cdn.example.com"],
+      allowedReadPaths: [],
+      allowedWritePaths: [],
+      extraCapabilities: [],
+      deniedTools: ["denied_tool"],
+      recordingMode: "full",
+    };
+    const group = new AgentGroup({
+      task: "x",
+      groupId: "g-posture",
+      model: {} as never,
+      posture,
+      members: [
+        {
+          label: "a",
+          tools: [makeFakeTool("allowed_tool"), makeFakeTool("denied_tool")],
+          // escalate: request a host the parent never granted
+          postureOverride: { allowedHosts: ["api.example.com", "evil.example.com"] },
+          factory: (ctx) => {
+            captured.push(ctx);
+            return {
+              async *run(): AsyncGenerator<AgentEvent> {
+                yield {
+                  traceId: ctx.memberId,
+                  parentTraceId: ctx.parentTraceId,
+                  timestampMs: 0,
+                  channel: "text",
+                  event: "final_answer",
+                  data: { answer: "ok" },
+                };
+              },
+            };
+          },
+        },
+      ],
+      baseWorkspace: root,
+    });
+    const out = await group.run();
+
+    // effective posture in the spawn context: narrowed (evil dropped), full kept
+    const ctx0 = captured[0];
+    expect(ctx0?.posture).toBeDefined();
+    expect(ctx0?.posture?.allowedHosts).toEqual(["api.example.com"]);
+    expect(ctx0?.posture?.recordingMode).toBe("full");
+    // the denied tool was filtered off the member's tool surface (real enforcement)
+    expect(ctx0?.tools.map((t) => t.name)).toEqual(["allowed_tool"]);
+    // one delegation record per member, binding the effective posture
+    expect(out.postureDelegations).toHaveLength(1);
+    expect(out.postureDelegations[0]?.childAgentId).toBe("g-posture-m0");
+    expect(out.postureDelegations[0]?.effectivePosture.allowedHosts).toEqual(["api.example.com"]);
+    // the escalation attempt is surfaced in the audit trail
+    expect(out.postureDelegations[0]?.attenuations.some((a) => a.field === "allowedHosts")).toBe(
+      true
+    );
+  });
+
+  it("appends posture delegation records to the evidence store", async () => {
+    const kv = new MapKvBackend();
+    const root = await openOrCreateRoot(kv);
+    const store = new InMemoryEvidenceStore();
+    const posture: PosturePolicy = {
+      allowedHosts: [],
+      allowedReadPaths: [],
+      allowedWritePaths: [],
+      extraCapabilities: [],
+      deniedTools: [],
+      recordingMode: "validation",
+    };
+    const group = new AgentGroup({
+      task: "x",
+      groupId: "g-pstore",
+      model: {} as never,
+      posture,
+      members: [makeFakeMember({ label: "a" }), makeFakeMember({ label: "b" })],
+      baseWorkspace: root,
+      evidenceStore: store,
+    });
+    await group.run();
+
+    // 2 posture delegations + 1 coordination record
+    expect(store.size()).toBe(3);
+    const types = store.all.map((r) => (r as { type: string }).type);
+    expect(types.filter((t) => t === POSTURE_DELEGATION_TYPE)).toHaveLength(2);
+    expect(types).toContain(AGENT_GROUP_COORDINATION_TYPE);
+  });
+
+  it("no posture ⇒ no cascade, no delegations (backward-compatible)", async () => {
+    const kv = new MapKvBackend();
+    const root = await openOrCreateRoot(kv);
+    const captured: AgentGroupSpawnContext[] = [];
+    const group = new AgentGroup({
+      task: "x",
+      groupId: "g-noposture",
+      model: {} as never,
+      members: [makeFakeMember({ label: "a" }, captured)],
+      baseWorkspace: root,
+    });
+    const out = await group.run();
+    expect(captured[0]?.posture).toBeUndefined();
+    expect(out.postureDelegations).toEqual([]);
   });
 });

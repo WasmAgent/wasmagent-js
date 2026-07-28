@@ -52,6 +52,8 @@ import type { Model } from "../models/types.js";
 import type { ToolDefinition } from "../tools/types.js";
 import type { AgentEvent } from "../types/events.js";
 import type { BranchableWorkspace } from "../workspace/BranchableWorkspace.js";
+import type { PostureDelegationRecord, PostureOverride, PosturePolicy } from "./PosturePolicy.js";
+import { buildPostureDelegationRecord } from "./PosturePolicy.js";
 import type { SubagentRunnable } from "./Subagent.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -80,6 +82,13 @@ export interface AgentTeamSpawnContext {
    * including this team's traceId. Use to populate AEP run_context.delegation_chain.
    */
   delegationChain: string[];
+  /**
+   * This member's effective posture — the team's posture narrowed by the
+   * member's `postureOverride` (Milestone 6 cross-agent policy inheritance).
+   * Present only when the team carries a posture; absent ⇒ no cascade applies
+   * (backward-compatible). Enforce it at the tool surface.
+   */
+  posture?: PosturePolicy;
 }
 
 /** Caller-supplied factory: turn a spawn context into a runnable agent. */
@@ -98,6 +107,13 @@ export interface AgentTeamMember {
   tools?: ToolDefinition[];
   /** Member-specific model; falls back to the team's model when absent. */
   model?: Model;
+  /**
+   * Optional narrowing this member requests against the team's posture
+   * (Milestone 6). Merged via monotonic narrowing (`inheritPosture`): allow-lists
+   * intersect, the deny-list unions, recording mode elevates, the CPU budget
+   * shrinks. The member can never widen the team's posture.
+   */
+  postureOverride?: PostureOverride;
   /** Factory that builds the runnable agent. Required. */
   factory: AgentTeamFactory;
 }
@@ -144,6 +160,14 @@ export interface AgentTeamResult {
    * to `summaryMaxChars`.
    */
   parentSummary: string;
+  /**
+   * Per-member posture delegation records (Milestone 6). One entry per member,
+   * in member order, when the team carries a posture; empty otherwise. The
+   * team has no built-in evidence store, so callers append these to a store
+   * themselves if durable tracking is required — unlike {@link AgentGroup},
+   * which appends automatically.
+   */
+  postureDelegations: PostureDelegationRecord[];
 }
 
 export interface AgentTeamOptions {
@@ -182,6 +206,16 @@ export interface AgentTeamOptions {
    * Maps directly to AEP run_context.delegation_chain.
    */
   delegationChain?: string[];
+  /**
+   * The team's security posture (Milestone 6 cross-agent policy inheritance),
+   * usually inherited from the parent agent that spawned this team. When set,
+   * each member receives a posture narrowed from this (via its `postureOverride`)
+   * in {@link AgentTeamSpawnContext.posture}, denied tools are filtered from
+   * the member's tool surface, and a per-member {@link PostureDelegationRecord}
+   * is surfaced in {@link AgentTeamResult.postureDelegations}. Absent ⇒ no
+   * posture cascade (backward-compatible).
+   */
+  posture?: PosturePolicy;
   /** Optional per-event observer; called with every event from every member. */
   onEvent?: (memberLabel: string, event: AgentEvent) => void;
 }
@@ -195,7 +229,13 @@ export class AgentTeam {
   readonly #opts: Required<
     Omit<
       AgentTeamOptions,
-      "tools" | "toolGuardrail" | "scorer" | "maxConcurrency" | "onEvent" | "delegationChain"
+      | "tools"
+      | "toolGuardrail"
+      | "scorer"
+      | "maxConcurrency"
+      | "onEvent"
+      | "delegationChain"
+      | "posture"
     >
   > & {
     tools: ToolDefinition[] | undefined;
@@ -204,6 +244,7 @@ export class AgentTeam {
     maxConcurrency: number | undefined;
     onEvent: ((memberLabel: string, event: AgentEvent) => void) | undefined;
     delegationChain: string[] | undefined;
+    posture: PosturePolicy | undefined;
   };
 
   constructor(opts: AgentTeamOptions) {
@@ -230,6 +271,7 @@ export class AgentTeam {
       traceId: opts.traceId ?? `team-${Math.floor(Math.random() * 1e9).toString(36)}`,
       onEvent: opts.onEvent,
       delegationChain: opts.delegationChain,
+      posture: opts.posture,
     };
   }
 
@@ -238,13 +280,42 @@ export class AgentTeam {
     const concurrency = this.#opts.maxConcurrency ?? this.#opts.members.length;
     const results: AgentTeamMemberResult[] = new Array(this.#opts.members.length);
 
+    // Pre-compute per-member effective postures + delegation records (Milestone 6
+    // cross-agent policy inheritance). Done up front so a member failure cannot
+    // lose its delegation record. When the team carries no posture, every member
+    // gets `undefined` and `postureDelegations` stays empty.
+    const teamPosture = this.#opts.posture;
+    const effectivePostures: Array<PosturePolicy | undefined> = new Array(
+      this.#opts.members.length
+    );
+    const postureDelegations: PostureDelegationRecord[] = [];
+    if (teamPosture) {
+      const childDelegationChain = buildDelegationContext(
+        this.#opts.delegationChain,
+        this.#opts.traceId
+      ).delegation_chain;
+      for (let i = 0; i < this.#opts.members.length; i++) {
+        const member = this.#opts.members[i];
+        if (!member) continue;
+        const delegation = buildPostureDelegationRecord({
+          parentAgentId: this.#opts.traceId,
+          childAgentId: this.#memberId(i),
+          delegationChain: childDelegationChain,
+          parentPosture: teamPosture,
+          childOverride: member.postureOverride ?? {},
+        });
+        effectivePostures[i] = delegation.effectivePosture;
+        postureDelegations.push(delegation);
+      }
+    }
+
     // Run in waves capped at `concurrency`.
     const queue = this.#opts.members.map((m, i) => ({ m, i }));
     while (queue.length) {
       const wave = queue.splice(0, concurrency);
       const settled = await Promise.all(
         wave.map(({ m, i }) =>
-          this.#runMember(m, i).catch(
+          this.#runMember(m, i, effectivePostures[i]).catch(
             (err): AgentTeamMemberResult => ({
               label: m.label,
               memberId: this.#memberId(i),
@@ -298,6 +369,7 @@ export class AgentTeam {
       winner,
       ranking,
       parentSummary: this.#buildParentSummary(results, winner, ranking),
+      postureDelegations,
     };
   }
 
@@ -307,10 +379,20 @@ export class AgentTeam {
     return `${this.#opts.traceId}-m${i}`;
   }
 
-  async #runMember(member: AgentTeamMember, index: number): Promise<AgentTeamMemberResult> {
+  async #runMember(
+    member: AgentTeamMember,
+    index: number,
+    effectivePosture: PosturePolicy | undefined
+  ): Promise<AgentTeamMemberResult> {
     const memberId = this.#memberId(index);
     const fork = await this.#opts.baseWorkspace.fork(memberId);
-    const tools = member.tools ?? this.#opts.tools ?? [];
+    let tools = member.tools ?? this.#opts.tools ?? [];
+    // Enforce the effective posture on the tool surface: drop any tool the
+    // (narrowed) deny-list blocks. Makes the cascade real, not just recorded.
+    if (effectivePosture) {
+      const denied = new Set(effectivePosture.deniedTools);
+      tools = tools.filter((t) => !denied.has(t.name));
+    }
     const ctx: AgentTeamSpawnContext = {
       task: member.taskOverride ?? this.#opts.task,
       model: member.model ?? this.#opts.model,
@@ -321,6 +403,7 @@ export class AgentTeam {
       delegationChain: buildDelegationContext(this.#opts.delegationChain, this.#opts.traceId)
         .delegation_chain,
     };
+    if (effectivePosture) ctx.posture = effectivePosture;
     const agent = member.factory(ctx);
 
     const events: AgentEvent[] = [];

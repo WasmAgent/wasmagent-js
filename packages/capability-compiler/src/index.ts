@@ -39,7 +39,7 @@ export type {
 export { compileToPolicy } from "./policy.js";
 
 export type { RecordingPolicy, RiskContext } from "./recordingPolicy.js";
-export { compileToRecordingPolicy } from "./recordingPolicy.js";
+export { compileToRecordingPolicy, recordingPolicyForPosture } from "./recordingPolicy.js";
 
 export type {
   TraceStep,

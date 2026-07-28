@@ -51,6 +51,8 @@ import type { Model } from "../models/types.js";
 import type { ToolDefinition } from "../tools/types.js";
 import type { AgentEvent } from "../types/events.js";
 import type { BranchableWorkspace } from "../workspace/BranchableWorkspace.js";
+import type { PostureDelegationRecord, PostureOverride, PosturePolicy } from "./PosturePolicy.js";
+import { buildPostureDelegationRecord } from "./PosturePolicy.js";
 import type { SubagentRunnable } from "./Subagent.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -91,6 +93,14 @@ export interface AgentGroupSpawnContext {
    * cross-reference sibling runs in its own evidence if it emits AEP records.
    */
   siblingMemberIds: string[];
+  /**
+   * This member's effective posture — the parent group's posture narrowed by
+   * the member's `postureOverride` (Milestone 6 cross-agent policy inheritance).
+   * Present only when the group itself carries a posture; absent ⇒ no posture
+   * cascade applies (backward-compatible). Enforce it at the tool surface and
+   * project it to a CapabilityManifest for kernel enforcement.
+   */
+  posture?: PosturePolicy;
 }
 
 /** Caller-supplied factory: turn a spawn context into a runnable agent. */
@@ -109,6 +119,13 @@ export interface AgentGroupMember {
   tools?: ToolDefinition[];
   /** Member-specific model; falls back to the group's model when absent. */
   model?: Model;
+  /**
+   * Optional narrowing this member requests against the group's posture
+   * (Milestone 6). Merged via monotonic narrowing (`inheritPosture`): allow-lists
+   * intersect, the deny-list unions, recording mode elevates, the CPU budget
+   * shrinks. The member can never widen the group's posture.
+   */
+  postureOverride?: PostureOverride;
   /** Factory that builds the runnable agent. Required. */
   factory: AgentGroupFactory;
 }
@@ -198,6 +215,14 @@ export interface AgentGroupResult {
    * optional `aggregator`, or the default concatenation in member order.
    */
   aggregatedContributions: string;
+  /**
+   * Per-member posture delegation records (Milestone 6). One entry per member,
+   * in member order, when the group carries a posture; empty when the group has
+   * no posture. Each binds the group's posture → the member's effective posture
+   * with a tamper-evident digest, and lists any attenuation (escalation attempt
+   * that was clamped down). Append targets: {@link AgentGroupEvidenceSink}.
+   */
+  postureDelegations: PostureDelegationRecord[];
 }
 
 /**
@@ -251,6 +276,16 @@ export interface AgentGroupOptions {
    * run_context.delegation_chain, enabling nested groups.
    */
   delegationChain?: string[];
+  /**
+   * The group's security posture (Milestone 6 cross-agent policy inheritance).
+   * Usually inherited from the parent agent that spawned this group. When set,
+   * each member receives a posture narrowed from this (via its
+   * `postureOverride`) in {@link AgentGroupSpawnContext.posture}, denied tools
+   * are filtered from the member's tool surface, and a per-member
+   * {@link PostureDelegationRecord} is appended to the evidence store. Absent ⇒
+   * no posture cascade (backward-compatible).
+   */
+  posture?: PosturePolicy;
   /** Optional per-event observer; called with every event from every member. */
   onEvent?: (memberLabel: string, event: AgentEvent) => void;
   /**
@@ -288,6 +323,7 @@ export class AgentGroup {
       | "delegationChain"
       | "traceId"
       | "groupId"
+      | "posture"
     >
   > & {
     tools: ToolDefinition[] | undefined;
@@ -297,6 +333,7 @@ export class AgentGroup {
     evidenceStore: AgentGroupEvidenceSink | undefined;
     aggregator: ((contributions: AgentGroupMemberResult[]) => string) | undefined;
     delegationChain: string[] | undefined;
+    posture: PosturePolicy | undefined;
     traceId: string;
     groupId: string;
   };
@@ -324,6 +361,7 @@ export class AgentGroup {
       groupId,
       traceId: opts.traceId ?? groupId,
       delegationChain: opts.delegationChain,
+      posture: opts.posture,
       onEvent: opts.onEvent,
       evidenceStore: opts.evidenceStore,
       aggregator: opts.aggregator,
@@ -336,6 +374,32 @@ export class AgentGroup {
     const siblingIds = this.#opts.members.map((_m, i) => this.#memberId(i));
     const results: AgentGroupMemberResult[] = new Array(this.#opts.members.length);
 
+    // Pre-compute per-member effective postures + delegation records (Milestone 6
+    // cross-agent policy inheritance). Done up front so a member failure cannot
+    // lose its delegation record — delegating the posture is a spawn-time act,
+    // independent of whether the agent then succeeds. When the group carries no
+    // posture, every member gets `undefined` and `postureDelegations` stays empty.
+    const groupPosture = this.#opts.posture;
+    const effectivePostures: Array<PosturePolicy | undefined> = new Array(
+      this.#opts.members.length
+    );
+    const postureDelegations: PostureDelegationRecord[] = [];
+    const childDelegationChain = [...(this.#opts.delegationChain ?? []), this.#opts.traceId];
+    for (let i = 0; i < this.#opts.members.length; i++) {
+      const member = this.#opts.members[i];
+      if (groupPosture && member) {
+        const delegation = buildPostureDelegationRecord({
+          parentAgentId: this.#opts.traceId,
+          childAgentId: this.#memberId(i),
+          delegationChain: childDelegationChain,
+          parentPosture: groupPosture,
+          childOverride: member.postureOverride ?? {},
+        });
+        effectivePostures[i] = delegation.effectivePosture;
+        postureDelegations.push(delegation);
+      }
+    }
+
     // Run in waves capped at `concurrency`. One member's failure does not
     // abort siblings — failures are reported in results[i].error and the
     // surviving members still contribute to the aggregated output and the
@@ -345,7 +409,7 @@ export class AgentGroup {
       const wave = queue.splice(0, concurrency);
       const settled = await Promise.all(
         wave.map(({ m, i }) =>
-          this.#runMember(m, i, siblingIds).catch(
+          this.#runMember(m, i, siblingIds, effectivePostures[i]).catch(
             (err): AgentGroupMemberResult => ({
               label: m.label,
               memberId: this.#memberId(i),
@@ -383,9 +447,16 @@ export class AgentGroup {
     const aggregatedContributions = (this.#opts.aggregator ?? defaultAggregator)(results);
 
     if (this.#opts.evidenceStore) {
-      // Place the cross-link into the durable chain. Swallow append errors so
-      // a flaky store never loses the in-memory coordination record / result;
-      // persistence is best-effort relative to orchestration.
+      // Place the posture delegations and the cross-link into the durable chain.
+      // Swallow append errors so a flaky store never loses the in-memory records
+      // / result; persistence is best-effort relative to orchestration.
+      for (const delegation of postureDelegations) {
+        try {
+          await this.#opts.evidenceStore.append(delegation);
+        } catch {
+          /* best-effort */
+        }
+      }
       try {
         await this.#opts.evidenceStore.append(coordinationRecord);
       } catch {
@@ -401,6 +472,7 @@ export class AgentGroup {
       coordinationRecord,
       coordinationDigest: coordinationRecord.coordinationDigest,
       aggregatedContributions,
+      postureDelegations,
     };
   }
 
@@ -413,11 +485,19 @@ export class AgentGroup {
   async #runMember(
     member: AgentGroupMember,
     index: number,
-    siblingIds: string[]
+    siblingIds: string[],
+    effectivePosture: PosturePolicy | undefined
   ): Promise<AgentGroupMemberResult> {
     const memberId = this.#memberId(index);
     const fork = await this.#opts.baseWorkspace.fork(memberId);
-    const tools = member.tools ?? this.#opts.tools ?? [];
+    let tools = member.tools ?? this.#opts.tools ?? [];
+    // Enforce the effective posture on the tool surface: drop any tool the
+    // (narrowed) deny-list blocks. This makes the cascade real, not just
+    // recorded — a sub-agent physically cannot call a posture-denied tool.
+    if (effectivePosture) {
+      const denied = new Set(effectivePosture.deniedTools);
+      tools = tools.filter((t) => !denied.has(t.name));
+    }
     const siblings = siblingIds.filter((id) => id !== memberId);
     const ctx: AgentGroupSpawnContext = {
       task: member.taskOverride ?? this.#opts.task,
@@ -430,6 +510,7 @@ export class AgentGroup {
       groupId: this.#opts.groupId,
       siblingMemberIds: siblings,
     };
+    if (effectivePosture) ctx.posture = effectivePosture;
     const agent = member.factory(ctx);
 
     const events: AgentEvent[] = [];

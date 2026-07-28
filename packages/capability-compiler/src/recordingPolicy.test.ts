@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import type { CapabilityManifest } from "@wasmagent/core";
-import { compileToRecordingPolicy, type RiskContext } from "./recordingPolicy.js";
+import type { CapabilityManifest, PosturePolicy } from "@wasmagent/core";
+import {
+  compileToRecordingPolicy,
+  type RiskContext,
+  recordingPolicyForPosture,
+} from "./recordingPolicy.js";
 
 const MANIFEST: CapabilityManifest = {
   allowedHosts: ["api.example.com"],
@@ -89,5 +93,57 @@ describe("compileToRecordingPolicy (#28)", () => {
     );
     expect(policy.mode).toBe("full");
     expect(policy.reason).toBe("tool flagged by vetting");
+  });
+});
+
+function posture(overrides: Partial<PosturePolicy> = {}): PosturePolicy {
+  return {
+    allowedHosts: ["api.example.com"],
+    allowedReadPaths: ["/workspace"],
+    allowedWritePaths: ["/workspace"],
+    extraCapabilities: [],
+    deniedTools: [],
+    recordingMode: "validation",
+    ...overrides,
+  };
+}
+
+describe("recordingPolicyForPosture (#264 — posture recording floor)", () => {
+  it("posture floor overrides a lower risk-derived mode", () => {
+    // read-only, no anomaly ⇒ risk would say "validation"; posture floor is "full"
+    const policy = recordingPolicyForPosture(posture({ recordingMode: "full" }), ctx());
+    expect(policy.mode).toBe("full");
+    expect(policy.reason).toContain("posture recording floor");
+  });
+
+  it("risk-derived mode ABOVE the posture floor wins (risk can only raise recording)", () => {
+    // posture floor "validation"; wasVetted ⇒ risk says "full"
+    const policy = recordingPolicyForPosture(
+      posture({ recordingMode: "validation" }),
+      ctx({ wasVetted: true })
+    );
+    expect(policy.mode).toBe("full");
+    expect(policy.reason).toBe("tool flagged by vetting");
+  });
+
+  it("delta posture floor elevates a risk-derived validation to delta", () => {
+    const policy = recordingPolicyForPosture(
+      posture({ recordingMode: "delta" }),
+      ctx({ sideEffectClass: "mutate-local" })
+    );
+    // mutate-local, no anomaly ⇒ risk says "delta" → delta (equal to floor)
+    expect(policy.mode).toBe("delta");
+  });
+
+  it("never records below the posture floor", () => {
+    // floor "full" must dominate even the most permissive risk signal
+    for (const risk of [
+      ctx(),
+      ctx({ sideEffectClass: "mutate-local" }),
+      ctx({ sideEffectClass: "read" }),
+    ]) {
+      const policy = recordingPolicyForPosture(posture({ recordingMode: "full" }), risk);
+      expect(policy.mode).toBe("full");
+    }
   });
 });

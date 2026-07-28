@@ -14,7 +14,7 @@
  *   7. sideEffectClass === "read" AND no anomaly → validation
  */
 
-import type { CapabilityManifest } from "@wasmagent/core";
+import type { CapabilityManifest, PosturePolicy, PostureRecordingMode } from "@wasmagent/core";
 
 export interface RiskContext {
   /** Whether the tool was flagged by a vetting/review process. */
@@ -82,4 +82,59 @@ export function compileToRecordingPolicy(
 
   // Priority 7: read-only, no anomaly
   return { mode: "validation", reason: "read-only, no anomaly" };
+}
+
+/**
+ * Severity rank of a recording mode (validation < delta < full). Mirrors the
+ * rank used by {@link inheritPosture} in `@wasmagent/core` so the two agree on
+ * "stricter mode" — kept local so this package has no new runtime dependency
+ * beyond the type import.
+ */
+function recordingRankFor(mode: PostureRecordingMode): number {
+  switch (mode) {
+    case "validation":
+      return 0;
+    case "delta":
+      return 1;
+    case "full":
+      return 2;
+  }
+}
+
+// A no-capability manifest for the default path of {@link recordingPolicyForPosture}.
+const EMPTY_MANIFEST: CapabilityManifest = {
+  allowedHosts: [],
+  allowedReadPaths: [],
+  allowedWritePaths: [],
+  extraCapabilities: [],
+};
+
+/**
+ * Resolve the recording policy for a tool call under an inherited
+ * {@link PosturePolicy} (Milestone 6 — cross-agent policy inheritance).
+ *
+ * The posture's `recordingMode` is a **floor**: a sub-agent whose effective
+ * posture elevated recording (because its parent required it, or it narrowed
+ * into a higher-severity context) records at that level even when the per-call
+ * {@link RiskContext} would normally allow less. The risk-derived mode can only
+ * raise recording further, never lower it below the inherited floor.
+ *
+ * @param posture     - The effective (post-narrowing) posture the caller runs under.
+ * @param riskContext - Per-call runtime risk signals.
+ * @param manifest    - Optional manifest (forwarded for future manifest-scoped overrides).
+ * @returns The recording policy to apply, honouring the posture floor.
+ */
+export function recordingPolicyForPosture(
+  posture: PosturePolicy,
+  riskContext: RiskContext,
+  manifest?: CapabilityManifest
+): RecordingPolicy {
+  const riskDerived = compileToRecordingPolicy(manifest ?? EMPTY_MANIFEST, riskContext);
+  if (recordingRankFor(posture.recordingMode) > recordingRankFor(riskDerived.mode)) {
+    return {
+      mode: posture.recordingMode,
+      reason: `posture recording floor "${posture.recordingMode}" overrides risk-derived "${riskDerived.mode}"`,
+    };
+  }
+  return riskDerived;
 }

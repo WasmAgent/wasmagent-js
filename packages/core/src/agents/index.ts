@@ -56,6 +56,23 @@ export {
 } from "./GoalDirectedAgent.js";
 export type { HandoffAgent, HandoffOptions, HandoffResult } from "./Handoff.js";
 export { handoff, handoffGenerator } from "./Handoff.js";
+export type {
+  PostureAttenuation,
+  PostureDelegationRecord,
+  PostureField,
+  PostureInheritance,
+  PostureOverride,
+  PosturePolicy,
+  PostureRecordingMode,
+} from "./PosturePolicy.js";
+export {
+  buildPostureDelegationRecord,
+  inheritPosture,
+  manifestFromPosture,
+  POSTURE_DELEGATION_TYPE,
+  postureDigestFor,
+  postureFromManifest,
+} from "./PosturePolicy.js";
 export type { AsToolOptions, SubagentRunnable } from "./Subagent.js";
 export { asTool } from "./Subagent.js";
 export type {
