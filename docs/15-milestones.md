@@ -65,3 +65,15 @@
 - [ ] Add cross-agent policy inheritance and delegation so parent agent posture policies automatically cascade to spawned sub-agents with evidence tracking
 - [ ] Implement real-time evidence monitoring hooks — webhook subscriptions, WebSocket streaming, and in-process observers for compliance dashboards
 - [ ] Add evidence-based anomaly detection using statistical models on tool-call patterns, timing, and payload distributions with configurable alert thresholds
+
+## Milestone 7 — Realtime Monitoring & Anomaly Detection
+
+### Deliverables
+- [ ] Implement `HealthMonitor` service that continuously polls EvidenceStore for chain gaps, signature failures, and timestamp anomalies
+- [ ] Add `AnomalyDetector` with statistical models for detecting abnormal execution patterns (unusual tool call sequences, extreme latency spikes, outlier resource usage)
+- [ ] Implement alert emission via pluggable channels (webhook, SSE stream, log sink) for policy violations and chain integrity issues
+- [ ] Add metrics aggregation pipeline (Prometheus-compatible) for evidence volume, verification success rate, and policy decision distribution
+- [ ] Implement `AuditReportGenerator` to produce human-readable compliance summaries from ledger data (PDF/HTML, executive summary, detailed evidence log)
+- [ ] Add dashboard GraphQL queries for realtime evidence chain health, recent anomalies, and policy enforcement statistics
+- [ ] Implement `AttestationPublisher` for periodic signed snapshots of ledger state to external witnesses (multi-party verification)
+- [ ] Add integration tests for alert delivery, anomaly detection accuracy (synthetic attack patterns), report generation, and witness attestation flow
