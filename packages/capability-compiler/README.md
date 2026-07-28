@@ -135,6 +135,44 @@ const policy = compileToRecordingPolicy(manifest, {
 
 **Invariant:** `unknown` side-effect class always produces the highest severity (`full`).
 
+## Anomaly Detection
+
+`AnomalyDetector` applies statistical models to a stream of recorded tool calls
+(AEP evidence) and flags anomalies across three behavioural dimensions. Every
+threshold is configurable; sensible defaults ship out of the box.
+
+| Dimension | Statistical model | Default threshold |
+|---|---|---|
+| `timing` | Running mean/stddev of call duration (Welford); flags z-score outliers | 3σ (`timingZScore`) |
+| `payload` | Running mean/stddev of argument size; flags z-score outliers | 3σ (`payloadZScore`) |
+| `call-rate` | Sliding-window calls-per-second; flags bursts | 10/s (`maxCallsPerSecond`) |
+
+Each observation is scored against the baseline accumulated *before* it, then
+folded in — so the model learns normal behaviour from the stream and only alerts
+once `minSamples` (default 5) of history exist.
+
+```ts
+import { AnomalyDetector } from "@wasmagent/capability-compiler";
+
+const detector = new AnomalyDetector({ timingZScore: 2.5 });
+
+for (const obs of toolCallStream) {
+  for (const alert of detector.observe(obs)) {
+    console.warn(alert.dimension, alert.toolName, alert.reason);
+  }
+}
+
+// Inspect the learned per-tool baseline.
+const stats = detector.statsFor("write_file");
+```
+
+```ts
+interface ToolCallObservation { toolName: string; durationMs: number; payloadBytes: number; timestampMs?: number }
+interface AnomalyThresholds { minSamples: number; timingZScore: number; payloadZScore: number; maxCallsPerSecond: number; rateWindowMs: number }
+interface AnomalyAlert { dimension: "timing" | "payload" | "call-rate"; toolName: string; observed: number; baseline: number; score: number; reason: string }
+class AnomalyDetector { constructor(thresholds?: Partial<AnomalyThresholds>); observe(obs: ToolCallObservation): AnomalyAlert[]; statsFor(toolName: string, now?: number): ToolStats | undefined }
+```
+
 ## License
 
 Apache-2.0

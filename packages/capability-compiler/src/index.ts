@@ -38,8 +38,20 @@ export type {
 } from "./policy.js";
 export { compileToPolicy } from "./policy.js";
 
-export type { RecordingPolicy, RiskContext } from "./recordingPolicy.js";
-export { compileToRecordingPolicy } from "./recordingPolicy.js";
+export type {
+  AnomalyAlert,
+  AnomalyDimension,
+  AnomalyThresholds,
+  RecordingPolicy,
+  RiskContext,
+  ToolCallObservation,
+  ToolStats,
+} from "./recordingPolicy.js";
+export {
+  AnomalyDetector,
+  compileToRecordingPolicy,
+  DEFAULT_ANOMALY_THRESHOLDS,
+} from "./recordingPolicy.js";
 
 export type {
   TraceStep,
