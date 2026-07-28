@@ -181,7 +181,13 @@ export class FilesystemEvidenceStore implements EvidenceStore {
   }
 }
 
-function matchesFilter(record: AEPRecord, filter: EvidenceStoreQuery): boolean {
+/**
+ * Evaluate an {@link EvidenceStoreQuery} against a single record. All non-undefined
+ * fields are AND-combined; action-level predicates (`action_type`, `tool_name`)
+ * match when ANY action in the record satisfies them. Exported so other Milestone
+ * 6 components (e.g. {@link EvidenceRouter}) can reuse the exact query semantics.
+ */
+export function matchesFilter(record: AEPRecord, filter: EvidenceStoreQuery): boolean {
   if (filter.run_id !== undefined && record.run_id !== filter.run_id) return false;
   if (filter.model_id !== undefined && record.model_id !== filter.model_id) return false;
   if (filter.created_after_ms !== undefined && record.created_at_ms < filter.created_after_ms)

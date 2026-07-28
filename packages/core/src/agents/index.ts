@@ -1,4 +1,20 @@
 export type {
+  AgentGroupCoordinationRecord,
+  AgentGroupEvidenceLink,
+  AgentGroupEvidenceSink,
+  AgentGroupFactory,
+  AgentGroupMember,
+  AgentGroupMemberResult,
+  AgentGroupOptions,
+  AgentGroupResult,
+  AgentGroupSpawnContext,
+} from "./AgentGroup.js";
+export {
+  AGENT_GROUP_COORDINATION_TYPE,
+  AgentGroup,
+  coordinationDigestFor,
+} from "./AgentGroup.js";
+export type {
   AgentSupervisorOptions,
   SupervisorAction,
   SupervisorPolicy,

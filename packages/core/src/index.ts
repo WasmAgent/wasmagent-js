@@ -14,6 +14,15 @@ export type {
   AdaptationDecision,
   // 2026-06-18 (axis 9, L3) — adaptation negotiation types.
   AdaptationProposal,
+  AgentGroupCoordinationRecord,
+  AgentGroupEvidenceLink,
+  AgentGroupEvidenceSink,
+  AgentGroupFactory,
+  AgentGroupMember,
+  AgentGroupMemberResult,
+  AgentGroupOptions,
+  AgentGroupResult,
+  AgentGroupSpawnContext,
   AgentSupervisorOptions,
   AgentTeamFactory,
   AgentTeamMember,
@@ -63,6 +72,7 @@ export type {
   WorkspaceReader,
 } from "./agents/index.js";
 export {
+  AgentGroup,
   AgentSupervisor,
   AgentTeam,
   asTool,
@@ -71,6 +81,7 @@ export {
   CodeAgent,
   callFingerprint,
   composePolicies,
+  coordinationDigestFor,
   costBudget,
   DEFAULT_CRITERIA_SYNTH_SYSTEM_PROMPT,
   DeterministicVerifier,
