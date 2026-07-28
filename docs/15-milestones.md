@@ -60,7 +60,7 @@
 - [ ] Implement `EvidenceStream` pub/sub interface for real-time AEP record broadcasting across agent processes and network boundaries
 - [ ] Add `AgentGroup` orchestration primitives so multiple agents can coordinate on shared tasks with cross-linked evidence chains
 - [ ] Implement `EvidenceRouter` for intelligent record routing — local vs remote storage, archival tiers, and selective broadcast to subscribed auditors
-- [ ] Add evidence record compaction and rollup APIs for long-running sessions, preserving cryptographic chain proofs while compressing repetitive tool-call payloads
+- [x] Add evidence record compaction and rollup APIs for long-running sessions, preserving cryptographic chain proofs while compressing repetitive tool-call payloads
 - [ ] Implement `EvidenceMirror` for bidirectional sync between local EvidenceStore and remote backends (S3, IPFS, PostgreSQL) with conflict resolution
 - [ ] Add cross-agent policy inheritance and delegation so parent agent posture policies automatically cascade to spawned sub-agents with evidence tracking
 - [ ] Implement real-time evidence monitoring hooks — webhook subscriptions, WebSocket streaming, and in-process observers for compliance dashboards
