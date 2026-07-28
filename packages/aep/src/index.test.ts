@@ -4,6 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { paeEncode, verifyDSSEEnvelope, wrapInTotoStatement } from "./dsse.js";
 import { AEPEmitter } from "./emitter.js";
+import {
+  contentDigestKeyOf,
+  EvidenceMirror,
+  EvidenceMirrorConflictError,
+  InMemoryRemoteEvidenceBackend,
+} from "./evidenceMirror.js";
 import { FilesystemEvidenceStore, InMemoryEvidenceStore } from "./evidenceStore.js";
 import {
   buildEvidenceBundle,
@@ -2661,5 +2667,388 @@ describe("Ledger — durable evidence ledger with per-record signing and hash-ch
         expect(hashLedgerRecord(prevLr)).toBe(prevLr.hash);
       }
     }
+  });
+});
+
+describe("EvidenceMirror (#256)", () => {
+  async function makeRecord(
+    overrides: {
+      run_id?: string;
+      model_id?: string;
+      created_at_ms?: number;
+      tool_name?: string;
+      side_effect_class?: SideEffectClass;
+    } = {}
+  ): Promise<AEPRecord> {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: overrides.run_id ?? "run-default",
+      model_id: overrides.model_id,
+      signer,
+    });
+    emitter.addAction({
+      tool_name: overrides.tool_name ?? "default_tool",
+      state_changing: false,
+      side_effect_class: overrides.side_effect_class ?? "read",
+    });
+    return emitter.emit(overrides.created_at_ms ?? 1_700_000_000_000);
+  }
+
+  describe("InMemoryRemoteEvidenceBackend", () => {
+    it("implements list/get/put/delete as a content-addressable KV store", async () => {
+      const backend = new InMemoryRemoteEvidenceBackend("s3");
+      expect(backend.kind).toBe("s3");
+      expect(await backend.list()).toEqual([]);
+
+      const record = await makeRecord({ run_id: "run-kv" });
+      const key = contentDigestKeyOf(record);
+      await backend.put(key, record);
+      expect(await backend.list()).toEqual([key]);
+      expect(await backend.get(key)).toBe(record);
+      expect(await backend.get("missing")).toBeUndefined();
+
+      await backend.delete(key);
+      expect(await backend.list()).toEqual([]);
+      expect(await backend.get(key)).toBeUndefined();
+    });
+
+    it("put overwrites the record stored under an existing key", async () => {
+      const backend = new InMemoryRemoteEvidenceBackend();
+      const a = await makeRecord({ run_id: "run-ow", created_at_ms: 100 });
+      const b = await makeRecord({ run_id: "run-ow", created_at_ms: 200 });
+      const key = "fixed-slot";
+      await backend.put(key, a);
+      await backend.put(key, b);
+      expect(await backend.list()).toEqual([key]);
+      expect((await backend.get(key))?.created_at_ms).toBe(200);
+    });
+  });
+
+  describe("default content-digest keying (conflict-free)", () => {
+    it("push copies local-only records to the remote backend", async () => {
+      const local = new InMemoryEvidenceStore();
+      const remote = new InMemoryRemoteEvidenceBackend();
+      local.append(await makeRecord({ run_id: "run-a" }));
+
+      const mirror = new EvidenceMirror({ local, remote });
+      const result = await mirror.push();
+
+      expect(result.pushed).toBe(1);
+      expect(result.conflicts).toBe(0);
+      expect(await remote.list()).toHaveLength(1);
+    });
+
+    it("pull appends remote-only records to the local store", async () => {
+      const local = new InMemoryEvidenceStore();
+      const remote = new InMemoryRemoteEvidenceBackend();
+      const record = await makeRecord({ run_id: "run-b" });
+      await remote.put(contentDigestKeyOf(record), record);
+
+      const mirror = new EvidenceMirror({ local, remote });
+      const result = await mirror.pull();
+
+      expect(result.pulled).toBe(1);
+      expect(result.conflicts).toBe(0);
+      expect(local.size()).toBe(1);
+    });
+
+    it("sync is bidirectional and converges both sides", async () => {
+      const local = new InMemoryEvidenceStore();
+      const remote = new InMemoryRemoteEvidenceBackend();
+      const a = await makeRecord({ run_id: "run-a" });
+      const b = await makeRecord({ run_id: "run-b" });
+      local.append(a);
+      await remote.put(contentDigestKeyOf(b), b);
+
+      const mirror = new EvidenceMirror({ local, remote });
+      const result = await mirror.sync();
+
+      expect(result.pushed).toBe(1);
+      expect(result.pulled).toBe(1);
+      expect(result.conflicts).toBe(0);
+      // Both sides now hold both records.
+      expect(local.size()).toBe(2);
+      expect(await remote.list()).toHaveLength(2);
+    });
+
+    it("is idempotent: a second sync is a no-op", async () => {
+      const local = new InMemoryEvidenceStore();
+      const remote = new InMemoryRemoteEvidenceBackend();
+      const a = await makeRecord({ run_id: "run-a" });
+      const b = await makeRecord({ run_id: "run-b" });
+      local.append(a);
+      await remote.put(contentDigestKeyOf(b), b);
+
+      const mirror = new EvidenceMirror({ local, remote });
+      await mirror.sync();
+      const second = await mirror.sync();
+
+      expect(second.pushed).toBe(0);
+      expect(second.pulled).toBe(0);
+      expect(second.conflicts).toBe(0);
+      // Every key is already in sync across both phases.
+      expect(second.skipped).toBe(4);
+      expect(local.size()).toBe(2);
+      expect(await remote.list()).toHaveLength(2);
+    });
+
+    it("treats byte-identical records as the same key with no conflict", async () => {
+      const local = new InMemoryEvidenceStore();
+      const remote = new InMemoryRemoteEvidenceBackend();
+      const record = await makeRecord({ run_id: "run-same" });
+      local.append(record);
+      await remote.put(contentDigestKeyOf(record), record);
+
+      const mirror = new EvidenceMirror({ local, remote });
+      const result = await mirror.sync();
+
+      expect(result.conflicts).toBe(0);
+      expect(result.pushed).toBe(0);
+      expect(result.pulled).toBe(0);
+    });
+  });
+
+  describe("one-way methods", () => {
+    it("push does not pull remote-only records into the local store", async () => {
+      const local = new InMemoryEvidenceStore();
+      const remote = new InMemoryRemoteEvidenceBackend();
+      local.append(await makeRecord({ run_id: "run-local" }));
+      const remoteOnly = await makeRecord({ run_id: "run-remote" });
+      await remote.put(contentDigestKeyOf(remoteOnly), remoteOnly);
+
+      const mirror = new EvidenceMirror({ local, remote });
+      const result = await mirror.push();
+
+      expect(result.pushed).toBe(1);
+      expect(result.pulled).toBe(0);
+      expect(local.size()).toBe(1); // remote-only record was NOT pulled
+      expect(await remote.list()).toHaveLength(2);
+    });
+
+    it("pull does not push local-only records to the remote backend", async () => {
+      const local = new InMemoryEvidenceStore();
+      const remote = new InMemoryRemoteEvidenceBackend();
+      local.append(await makeRecord({ run_id: "run-local" }));
+      const remoteOnly = await makeRecord({ run_id: "run-remote" });
+      await remote.put(contentDigestKeyOf(remoteOnly), remoteOnly);
+
+      const mirror = new EvidenceMirror({ local, remote });
+      const result = await mirror.pull();
+
+      expect(result.pulled).toBe(1);
+      expect(result.pushed).toBe(0);
+      expect(await remote.list()).toHaveLength(1); // local-only record was NOT pushed
+    });
+  });
+
+  describe("conflict resolution (custom keyOf keyed by run_id)", () => {
+    it("last-writer-wins keeps the newer record on both sides", async () => {
+      const local = new InMemoryEvidenceStore();
+      const remote = new InMemoryRemoteEvidenceBackend();
+      const older = await makeRecord({
+        run_id: "run-x",
+        created_at_ms: 100,
+        tool_name: "older_tool",
+      });
+      const newer = await makeRecord({
+        run_id: "run-x",
+        created_at_ms: 200,
+        tool_name: "newer_tool",
+      });
+      local.append(older);
+      await remote.put("run-x", newer);
+
+      const mirror = new EvidenceMirror({
+        local,
+        remote,
+        keyOf: (r) => r.run_id,
+        conflictResolver: "last-writer-wins",
+      });
+      const result = await mirror.sync();
+
+      expect(result.conflicts).toBeGreaterThanOrEqual(1);
+      // push: local older vs remote newer → remote wins (newer) → skip
+      // pull: remote newer vs local older → remote wins → append newer locally
+      expect(result.pulled).toBe(1);
+      const remoteRecord = await remote.get("run-x");
+      expect(remoteRecord?.actions[0]?.tool_name).toBe("newer_tool");
+      // Local now holds both the older and the appended newer record.
+      expect(local.size()).toBe(2);
+      const localNewer = local.query().find((r) => r.created_at_ms === 200);
+      expect(localNewer?.actions[0]?.tool_name).toBe("newer_tool");
+    });
+
+    it("prefer-local overwrites the remote with the local record", async () => {
+      const local = new InMemoryEvidenceStore();
+      const remote = new InMemoryRemoteEvidenceBackend();
+      const localRec = await makeRecord({
+        run_id: "run-p",
+        created_at_ms: 100,
+        tool_name: "local_tool",
+      });
+      const remoteRec = await makeRecord({
+        run_id: "run-p",
+        created_at_ms: 999,
+        tool_name: "remote_tool",
+      });
+      local.append(localRec);
+      await remote.put("run-p", remoteRec);
+
+      const mirror = new EvidenceMirror({
+        local,
+        remote,
+        keyOf: (r) => r.run_id,
+        conflictResolver: "prefer-local",
+      });
+      const result = await mirror.sync();
+
+      expect(result.conflicts).toBeGreaterThanOrEqual(1);
+      const remoteRecord = await remote.get("run-p");
+      // Even though the remote record was newer, prefer-local wins.
+      expect(remoteRecord?.actions[0]?.tool_name).toBe("local_tool");
+      expect(remoteRecord?.created_at_ms).toBe(100);
+      // The losing remote record was NOT pulled into the local store.
+      expect(local.size()).toBe(1);
+    });
+
+    it("prefer-remote appends the remote record to the local store", async () => {
+      const local = new InMemoryEvidenceStore();
+      const remote = new InMemoryRemoteEvidenceBackend();
+      const localRec = await makeRecord({
+        run_id: "run-q",
+        created_at_ms: 999,
+        tool_name: "local_tool",
+      });
+      const remoteRec = await makeRecord({
+        run_id: "run-q",
+        created_at_ms: 100,
+        tool_name: "remote_tool",
+      });
+      local.append(localRec);
+      await remote.put("run-q", remoteRec);
+
+      const mirror = new EvidenceMirror({
+        local,
+        remote,
+        keyOf: (r) => r.run_id,
+        conflictResolver: "prefer-remote",
+      });
+      const result = await mirror.sync();
+
+      expect(result.conflicts).toBeGreaterThanOrEqual(1);
+      // Even though the local record was newer, prefer-remote wins.
+      const remoteRecord = await remote.get("run-q");
+      expect(remoteRecord?.created_at_ms).toBe(100);
+      // The winning remote record was appended to the local store.
+      expect(local.size()).toBe(2);
+      const localRemote = local.query().find((r) => r.created_at_ms === 100);
+      expect(localRemote?.actions[0]?.tool_name).toBe("remote_tool");
+    });
+
+    it("accepts a custom resolver function and records each decision", async () => {
+      const local = new InMemoryEvidenceStore();
+      const remote = new InMemoryRemoteEvidenceBackend();
+      const localRec = await makeRecord({ run_id: "run-c", created_at_ms: 100 });
+      const remoteRec = await makeRecord({ run_id: "run-c", created_at_ms: 200 });
+      local.append(localRec);
+      await remote.put("run-c", remoteRec);
+
+      let calls = 0;
+      const mirror = new EvidenceMirror({
+        local,
+        remote,
+        keyOf: (r) => r.run_id,
+        conflictResolver: () => {
+          calls++;
+          return "local";
+        },
+      });
+      const result = await mirror.sync();
+
+      expect(calls).toBeGreaterThan(0);
+      expect(result.resolutions.length).toBe(calls);
+      for (const entry of result.resolutions) {
+        expect(entry.winner).toBe("local");
+        expect(entry.key).toBe("run-c");
+      }
+    });
+
+    it("fails fast with EvidenceMirrorConflictError when conflictResolution is 'fail'", async () => {
+      const local = new InMemoryEvidenceStore();
+      const remote = new InMemoryRemoteEvidenceBackend();
+      local.append(await makeRecord({ run_id: "run-f", created_at_ms: 100 }));
+      await remote.put("run-f", await makeRecord({ run_id: "run-f", created_at_ms: 200 }));
+
+      const mirror = new EvidenceMirror({
+        local,
+        remote,
+        keyOf: (r) => r.run_id,
+        conflictResolver: "fail",
+      });
+
+      await expect(mirror.sync()).rejects.toBeInstanceOf(EvidenceMirrorConflictError);
+    });
+
+    it("stays idempotent across repeated syncs after a conflict is resolved", async () => {
+      const local = new InMemoryEvidenceStore();
+      const remote = new InMemoryRemoteEvidenceBackend();
+      const older = await makeRecord({ run_id: "run-i", created_at_ms: 100 });
+      const newer = await makeRecord({ run_id: "run-i", created_at_ms: 200 });
+      local.append(older);
+      await remote.put("run-i", newer);
+
+      const mirror = new EvidenceMirror({
+        local,
+        remote,
+        keyOf: (r) => r.run_id,
+        conflictResolver: "last-writer-wins",
+      });
+
+      await mirror.sync();
+      const sizeAfterFirst = local.size();
+      const remoteKeysAfterFirst = (await remote.list()).length;
+
+      // Repeated syncs must not duplicate the appended winner.
+      const second = await mirror.sync();
+      const third = await mirror.sync();
+
+      expect(second.pulled).toBe(0);
+      expect(second.pushed).toBe(0);
+      expect(local.size()).toBe(sizeAfterFirst);
+      expect((await remote.list()).length).toBe(remoteKeysAfterFirst);
+      expect(third.pulled).toBe(0);
+    });
+  });
+
+  describe("works with async local stores (FilesystemEvidenceStore)", () => {
+    let dir: string;
+    beforeEach(() => {
+      dir = mkdtempSync(join(tmpdir(), "wasmagent-aep-mirror-"));
+    });
+    afterEach(() => {
+      rmSync(dir, { recursive: true, force: true });
+    });
+
+    it("syncs a FilesystemEvidenceStore against a remote backend", async () => {
+      const local = new FilesystemEvidenceStore(join(dir, "evidence.ndjson"));
+      await local.ready();
+      const remote = new InMemoryRemoteEvidenceBackend();
+      await local.append(await makeRecord({ run_id: "run-fs-a" }));
+      const remoteOnly = await makeRecord({ run_id: "run-fs-b" });
+      await remote.put(contentDigestKeyOf(remoteOnly), remoteOnly);
+
+      const mirror = new EvidenceMirror({ local, remote });
+      const result = await mirror.sync();
+
+      expect(result.pushed).toBe(1);
+      expect(result.pulled).toBe(1);
+      expect(await local.size()).toBe(2);
+      expect(await remote.list()).toHaveLength(2);
+
+      // Idempotent re-sync over the durable local store.
+      const second = await mirror.sync();
+      expect(second.pushed).toBe(0);
+      expect(second.pulled).toBe(0);
+    });
   });
 });
