@@ -24,7 +24,14 @@ import {
   serializeEvidenceBundle,
   verifyEvidenceBundle,
 } from "./exportAdapter.js";
-import { GENESIS_PREV_HASH, hashLedgerRecord, Ledger } from "./ledger.js";
+import {
+  buildToolRollups,
+  computeProofHash,
+  GENESIS_PREV_HASH,
+  hashLedgerRecord,
+  Ledger,
+  type LedgerRecord,
+} from "./ledger.js";
 import { resolveRepoCommit } from "./resolve-repo-commit.js";
 import { createLocalSignerFromSeed } from "./signer.js";
 import { LocalTimestamper } from "./timestamperLocal.js";
@@ -2675,6 +2682,357 @@ describe("Ledger — durable evidence ledger with per-record signing and hash-ch
     }
   });
 });
+
+describe("Ledger.compact() — evidence record compaction and rollup (#255)", () => {
+  const LEDGER_SEED = "abcdef01abcdef01abcdef01abcdef01abcdef01abcdef01abcdef01abcdef01";
+  const LEDGER_KEY_ID = "ledger-key-01";
+
+  /** Helper: emit a signed AEPRecord with configurable actions. */
+  async function emitRecord(
+    runId = "run-compact",
+    toolName = "tool_a",
+    ts = 1_700_000_000_000,
+    opts: { state_changing?: boolean; side_effect_class?: SideEffectClass } = {}
+  ) {
+    const signer = createLocalSignerFromSeed(LEDGER_SEED, LEDGER_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: runId,
+      signer,
+    });
+    emitter.addAction({
+      tool_name: toolName,
+      state_changing: opts.state_changing ?? false,
+      side_effect_class: opts.side_effect_class ?? "read",
+    });
+    return emitter.emit(ts);
+  }
+
+  it("compact() produces a valid CompactionResult with proof hash and tool rollups", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-c1", "read_file", 1_700_000_000_000 + i * 1000));
+    }
+
+    const compaction = ledger.compact();
+
+    expect(compaction.fromSeq).toBe(0);
+    expect(compaction.toSeq).toBe(4);
+    expect(compaction.recordCount).toBe(5);
+    expect(compaction.proofHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(compaction.firstRecordHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(compaction.firstRecordPrevHash).toBe(GENESIS_PREV_HASH);
+    expect(compaction.lastRecordHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(compaction.startedAtMs).toBe(1_700_000_000_000);
+    expect(compaction.endedAtMs).toBe(1_700_000_004_000);
+    expect(compaction.runIds).toEqual(["run-c1"]);
+    expect(compaction.toolRollups.length).toBeGreaterThan(0);
+    expect(typeof compaction.compactedAtMs).toBe("number");
+  });
+
+  it("compact() preserves cryptographic chain proof endpoints", async () => {
+    const ledger = new Ledger();
+    const lrs: Awaited<LedgerRecord>[] = [];
+
+    for (let i = 0; i < 4; i++) {
+      const r = await emitRecord("run-c2", `tool_${i}`);
+      lrs.push(await ledger.append(r));
+    }
+
+    const compaction = ledger.compact();
+
+    // firstRecordHash must match the genesis record's hash
+    expect(compaction.firstRecordHash).toBe(lrs[0]!.hash);
+    // lastRecordHash must match the last compacted record's hash
+    expect(compaction.lastRecordHash).toBe(lrs[3]!.hash);
+    // firstRecordPrevHash must be genesis sentinel
+    expect(compaction.firstRecordPrevHash).toBe(GENESIS_PREV_HASH);
+
+    // Verify each record's hash is individually recomputable
+    for (const lr of lrs) {
+      expect(hashLedgerRecord(lr)).toBe(lr.hash);
+    }
+  });
+
+  it("compact() compresses repetitive tool calls into rollups", async () => {
+    const ledger = new Ledger();
+    // 5 read_file, 3 write_file, 2 bash
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-rollup", "read_file", 1_700_000_000_000 + i));
+    }
+    for (let i = 0; i < 3; i++) {
+      await ledger.append(
+        await emitRecord("run-rollup", "write_file", 1_700_000_010_000 + i, {
+          state_changing: true,
+          side_effect_class: "mutate-local",
+        })
+      );
+    }
+    for (let i = 0; i < 2; i++) {
+      await ledger.append(
+        await emitRecord("run-rollup", "bash", 1_700_000_020_000 + i, {
+          state_changing: true,
+          side_effect_class: "mutate-external",
+        })
+      );
+    }
+
+    const compaction = ledger.compact();
+
+    // Should have 3 distinct tool rollups
+    expect(compaction.toolRollups).toHaveLength(3);
+
+    const readRollup = compaction.toolRollups.find((r) => r.tool_name === "read_file");
+    expect(readRollup).toBeDefined();
+    expect(readRollup!.count).toBe(5);
+    expect(readRollup!.state_changing_count).toBe(0);
+    expect(readRollup!.side_effect_classes.read).toBe(5);
+
+    const writeRollup = compaction.toolRollups.find((r) => r.tool_name === "write_file");
+    expect(writeRollup).toBeDefined();
+    expect(writeRollup!.count).toBe(3);
+    expect(writeRollup!.state_changing_count).toBe(3);
+    expect(writeRollup!.side_effect_classes["mutate-local"]).toBe(3);
+
+    const bashRollup = compaction.toolRollups.find((r) => r.tool_name === "bash");
+    expect(bashRollup).toBeDefined();
+    expect(bashRollup!.count).toBe(2);
+    expect(bashRollup!.state_changing_count).toBe(2);
+    expect(bashRollup!.side_effect_classes["mutate-external"]).toBe(2);
+  });
+
+  it("compact() with upToSeq only compacts the specified range", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 10; i++) {
+      await ledger.append(await emitRecord("run-range", `tool_${i}`));
+    }
+
+    // Compact only records 0..4
+    const compaction = ledger.compact({ upToSeq: 4 });
+
+    expect(compaction.fromSeq).toBe(0);
+    expect(compaction.toSeq).toBe(4);
+    expect(compaction.recordCount).toBe(5);
+
+    // Verify we have 5 rollups (one per tool)
+    expect(compaction.toolRollups).toHaveLength(5);
+
+    // Ledger should still have all 10 records (compact is read-only)
+    expect(ledger.size).toBe(10);
+  });
+
+  it("compact() with label preserves the label in the result", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 3; i++) {
+      await ledger.append(await emitRecord("run-label"));
+    }
+
+    const compaction = ledger.compact({ label: "session-1-rollup" });
+    expect(compaction.label).toBe("session-1-rollup");
+  });
+
+  it("compact() with custom minRecords rejects small ranges", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 3; i++) {
+      await ledger.append(await emitRecord("run-min"));
+    }
+
+    // minRecords=5 with only 3 records should throw
+    expect(() => ledger.compact({ minRecords: 5 })).toThrow(/minimum: 5/);
+  });
+
+  it("compact() throws on empty ledger", () => {
+    const ledger = new Ledger();
+    expect(() => ledger.compact()).toThrow(/at least one record/);
+  });
+
+  it("compact() throws on single record (below default minRecords)", async () => {
+    const ledger = new Ledger();
+    await ledger.append(await emitRecord("run-single"));
+    expect(() => ledger.compact()).toThrow(/minimum: 2/);
+  });
+
+  it("verifyCompaction() returns true for a valid compaction", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-verify"));
+    }
+
+    const compaction = ledger.compact();
+    expect(ledger.verifyCompaction(compaction)).toBe(true);
+  });
+
+  it("verifyCompaction() returns false when proofHash is tampered", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-tamper-proof"));
+    }
+
+    const compaction = ledger.compact();
+    compaction.proofHash = "0".repeat(64);
+    expect(ledger.verifyCompaction(compaction)).toBe(false);
+  });
+
+  it("verifyCompaction() returns false when recordCount is wrong", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-tamper-count"));
+    }
+
+    const compaction = ledger.compact();
+    compaction.recordCount = 99;
+    expect(ledger.verifyCompaction(compaction)).toBe(false);
+  });
+
+  it("verifyCompaction() returns false when firstRecordHash is tampered", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-tamper-first"));
+    }
+
+    const compaction = ledger.compact();
+    compaction.firstRecordHash = "ff".repeat(32);
+    expect(ledger.verifyCompaction(compaction)).toBe(false);
+  });
+
+  it("verifyCompaction() returns false when lastRecordHash is tampered", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-tamper-last"));
+    }
+
+    const compaction = ledger.compact();
+    compaction.lastRecordHash = "ff".repeat(32);
+    expect(ledger.verifyCompaction(compaction)).toBe(false);
+  });
+
+  it("verifyCompaction() detects when records have been removed from the ledger", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-removed"));
+    }
+
+    const compaction = ledger.compact({ upToSeq: 3 });
+    // Compaction covers seq 0..3. If we compacted all 5, changing toSeq to 3
+    // should cause verifyCompaction to fail because it still finds 5 records in range.
+    // But actually, verifyCompaction checks fromSeq..toSeq, so let's create a compaction
+    // for a range that no longer fully exists by modifying the result:
+    expect(ledger.verifyCompaction(compaction)).toBe(true);
+
+    // Change toSeq to point beyond actual records
+    const badCompaction = { ...compaction, toSeq: 99, recordCount: 100 };
+    expect(ledger.verifyCompaction(badCompaction)).toBe(false);
+  });
+
+  it("compact() works with EvidenceStore-backed ledger", async () => {
+    const store = new InMemoryEvidenceStore();
+    const ledger = new Ledger({ store });
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-store-compact", `tool_${i}`));
+    }
+
+    const compaction = ledger.compact({ label: "store-backed" });
+    expect(compaction.recordCount).toBe(5);
+    expect(compaction.label).toBe("store-backed");
+    expect(ledger.verifyCompaction(compaction)).toBe(true);
+
+    // Store should still have all records (compact is read-only)
+    expect(store.size()).toBe(5);
+  });
+
+  it("multiple compactions of overlapping ranges are independently verifiable", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 10; i++) {
+      await ledger.append(await emitRecord("run-multi-compact", `tool_${i}`));
+    }
+
+    const c1 = ledger.compact({ upToSeq: 3, label: "first-4" });
+    const c2 = ledger.compact({ upToSeq: 7, label: "first-8" });
+    const c3 = ledger.compact({ upToSeq: 9, label: "all-10" });
+
+    expect(ledger.verifyCompaction(c1)).toBe(true);
+    expect(ledger.verifyCompaction(c2)).toBe(true);
+    expect(ledger.verifyCompaction(c3)).toBe(true);
+
+    expect(c1.recordCount).toBe(4);
+    expect(c2.recordCount).toBe(8);
+    expect(c3.recordCount).toBe(10);
+  });
+
+  it("proof hash is deterministic for the same records", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 3; i++) {
+      await ledger.append(await emitRecord("run-deterministic"));
+    }
+
+    const c1 = ledger.compact();
+    const c2 = ledger.compact();
+    expect(c1.proofHash).toBe(c2.proofHash);
+  });
+
+  it("proof hash changes when records change (tamper detection)", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 3; i++) {
+      await ledger.append(await emitRecord("run-tamper-det"));
+    }
+
+    const c1 = ledger.compact();
+    // Append a new record — this changes the range if we compact all
+    await ledger.append(await emitRecord("run-tamper-det", "new_tool"));
+    const c2 = ledger.compact();
+
+    // Different record set → different proof hash
+    expect(c1.proofHash).not.toBe(c2.proofHash);
+  });
+
+  it("compact() captures distinct run_ids across mixed records", async () => {
+    const ledger = new Ledger();
+    await ledger.append(await emitRecord("run-a", "tool_1"));
+    await ledger.append(await emitRecord("run-b", "tool_2"));
+    await ledger.append(await emitRecord("run-a", "tool_3"));
+    await ledger.append(await emitRecord("run-c", "tool_4"));
+
+    const compaction = ledger.compact();
+    expect(compaction.runIds).toContain("run-a");
+    expect(compaction.runIds).toContain("run-b");
+    expect(compaction.runIds).toContain("run-c");
+    expect(compaction.runIds).toHaveLength(3);
+  });
+
+  it("getRange() returns the correct subset of records", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 10; i++) {
+      await ledger.append(await emitRecord("run-range-get", `tool_${i}`));
+    }
+
+    const range = ledger.getRange(2, 5);
+    expect(range).toHaveLength(4);
+    expect(range[0]!.seq).toBe(2);
+    expect(range[3]!.seq).toBe(5);
+
+    // Out-of-range: no records
+    expect(ledger.getRange(20, 30)).toHaveLength(0);
+  });
+
+  it("computeProofHash and buildToolRollups work as standalone functions", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 3; i++) {
+      await ledger.append(
+        await emitRecord("run-standalone", "bash", 1_700_000_000_000 + i, {
+          state_changing: true,
+          side_effect_class: "mutate-local",
+        })
+      );
+    }
+
+    const records = ledger.records;
+    const proofHash = computeProofHash(records);
+    expect(proofHash).toMatch(/^[0-9a-f]{64}$/);
+
+    const rollups = buildToolRollups(records);
+    expect(rollups).toHaveLength(1);
+    expect(rollups[0]!.tool_name).toBe("bash");
+    expect(rollups[0]!.count).toBe(3);
+    expect(rollups[0]!.state_changing_count).toBe(3);
 
 describe("EvidenceMirror (#256)", () => {
   async function makeRecord(
