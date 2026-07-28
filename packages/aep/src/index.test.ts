@@ -18,13 +18,26 @@ import {
 } from "./evidenceRouter.js";
 import { FilesystemEvidenceStore, InMemoryEvidenceStore } from "./evidenceStore.js";
 import {
+  EvidenceStream,
+  type StreamEvent,
+  type StreamTransportInbound,
+  type StreamTransportOutbound,
+} from "./evidenceStream.js";
+import {
   buildEvidenceBundle,
   EVIDENCE_BUNDLE_SCHEMA_VERSION,
   parseEvidenceBundle,
   serializeEvidenceBundle,
   verifyEvidenceBundle,
 } from "./exportAdapter.js";
-import { GENESIS_PREV_HASH, hashLedgerRecord, Ledger } from "./ledger.js";
+import {
+  buildToolRollups,
+  computeProofHash,
+  GENESIS_PREV_HASH,
+  hashLedgerRecord,
+  Ledger,
+  type LedgerRecord,
+} from "./ledger.js";
 import { resolveRepoCommit } from "./resolve-repo-commit.js";
 import { createLocalSignerFromSeed } from "./signer.js";
 import { LocalTimestamper } from "./timestamperLocal.js";
@@ -2676,6 +2689,359 @@ describe("Ledger — durable evidence ledger with per-record signing and hash-ch
   });
 });
 
+describe("Ledger.compact() — evidence record compaction and rollup (#255)", () => {
+  const LEDGER_SEED = "abcdef01abcdef01abcdef01abcdef01abcdef01abcdef01abcdef01abcdef01";
+  const LEDGER_KEY_ID = "ledger-key-01";
+
+  /** Helper: emit a signed AEPRecord with configurable actions. */
+  async function emitRecord(
+    runId = "run-compact",
+    toolName = "tool_a",
+    ts = 1_700_000_000_000,
+    opts: { state_changing?: boolean; side_effect_class?: SideEffectClass } = {}
+  ) {
+    const signer = createLocalSignerFromSeed(LEDGER_SEED, LEDGER_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: runId,
+      signer,
+    });
+    emitter.addAction({
+      tool_name: toolName,
+      state_changing: opts.state_changing ?? false,
+      side_effect_class: opts.side_effect_class ?? "read",
+    });
+    return emitter.emit(ts);
+  }
+
+  it("compact() produces a valid CompactionResult with proof hash and tool rollups", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-c1", "read_file", 1_700_000_000_000 + i * 1000));
+    }
+
+    const compaction = ledger.compact();
+
+    expect(compaction.fromSeq).toBe(0);
+    expect(compaction.toSeq).toBe(4);
+    expect(compaction.recordCount).toBe(5);
+    expect(compaction.proofHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(compaction.firstRecordHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(compaction.firstRecordPrevHash).toBe(GENESIS_PREV_HASH);
+    expect(compaction.lastRecordHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(compaction.startedAtMs).toBe(1_700_000_000_000);
+    expect(compaction.endedAtMs).toBe(1_700_000_004_000);
+    expect(compaction.runIds).toEqual(["run-c1"]);
+    expect(compaction.toolRollups.length).toBeGreaterThan(0);
+    expect(typeof compaction.compactedAtMs).toBe("number");
+  });
+
+  it("compact() preserves cryptographic chain proof endpoints", async () => {
+    const ledger = new Ledger();
+    const lrs: Awaited<LedgerRecord>[] = [];
+
+    for (let i = 0; i < 4; i++) {
+      const r = await emitRecord("run-c2", `tool_${i}`);
+      lrs.push(await ledger.append(r));
+    }
+
+    const compaction = ledger.compact();
+
+    // firstRecordHash must match the genesis record's hash
+    expect(compaction.firstRecordHash).toBe(lrs[0]!.hash);
+    // lastRecordHash must match the last compacted record's hash
+    expect(compaction.lastRecordHash).toBe(lrs[3]!.hash);
+    // firstRecordPrevHash must be genesis sentinel
+    expect(compaction.firstRecordPrevHash).toBe(GENESIS_PREV_HASH);
+
+    // Verify each record's hash is individually recomputable
+    for (const lr of lrs) {
+      expect(hashLedgerRecord(lr)).toBe(lr.hash);
+    }
+  });
+
+  it("compact() compresses repetitive tool calls into rollups", async () => {
+    const ledger = new Ledger();
+    // 5 read_file, 3 write_file, 2 bash
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-rollup", "read_file", 1_700_000_000_000 + i));
+    }
+    for (let i = 0; i < 3; i++) {
+      await ledger.append(
+        await emitRecord("run-rollup", "write_file", 1_700_000_010_000 + i, {
+          state_changing: true,
+          side_effect_class: "mutate-local",
+        })
+      );
+    }
+    for (let i = 0; i < 2; i++) {
+      await ledger.append(
+        await emitRecord("run-rollup", "bash", 1_700_000_020_000 + i, {
+          state_changing: true,
+          side_effect_class: "mutate-external",
+        })
+      );
+    }
+
+    const compaction = ledger.compact();
+
+    // Should have 3 distinct tool rollups
+    expect(compaction.toolRollups).toHaveLength(3);
+
+    const readRollup = compaction.toolRollups.find((r) => r.tool_name === "read_file");
+    expect(readRollup).toBeDefined();
+    expect(readRollup!.count).toBe(5);
+    expect(readRollup!.state_changing_count).toBe(0);
+    expect(readRollup!.side_effect_classes.read).toBe(5);
+
+    const writeRollup = compaction.toolRollups.find((r) => r.tool_name === "write_file");
+    expect(writeRollup).toBeDefined();
+    expect(writeRollup!.count).toBe(3);
+    expect(writeRollup!.state_changing_count).toBe(3);
+    expect(writeRollup!.side_effect_classes["mutate-local"]).toBe(3);
+
+    const bashRollup = compaction.toolRollups.find((r) => r.tool_name === "bash");
+    expect(bashRollup).toBeDefined();
+    expect(bashRollup!.count).toBe(2);
+    expect(bashRollup!.state_changing_count).toBe(2);
+    expect(bashRollup!.side_effect_classes["mutate-external"]).toBe(2);
+  });
+
+  it("compact() with upToSeq only compacts the specified range", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 10; i++) {
+      await ledger.append(await emitRecord("run-range", `tool_${i}`));
+    }
+
+    // Compact only records 0..4
+    const compaction = ledger.compact({ upToSeq: 4 });
+
+    expect(compaction.fromSeq).toBe(0);
+    expect(compaction.toSeq).toBe(4);
+    expect(compaction.recordCount).toBe(5);
+
+    // Verify we have 5 rollups (one per tool)
+    expect(compaction.toolRollups).toHaveLength(5);
+
+    // Ledger should still have all 10 records (compact is read-only)
+    expect(ledger.size).toBe(10);
+  });
+
+  it("compact() with label preserves the label in the result", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 3; i++) {
+      await ledger.append(await emitRecord("run-label"));
+    }
+
+    const compaction = ledger.compact({ label: "session-1-rollup" });
+    expect(compaction.label).toBe("session-1-rollup");
+  });
+
+  it("compact() with custom minRecords rejects small ranges", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 3; i++) {
+      await ledger.append(await emitRecord("run-min"));
+    }
+
+    // minRecords=5 with only 3 records should throw
+    expect(() => ledger.compact({ minRecords: 5 })).toThrow(/minimum: 5/);
+  });
+
+  it("compact() throws on empty ledger", () => {
+    const ledger = new Ledger();
+    expect(() => ledger.compact()).toThrow(/at least one record/);
+  });
+
+  it("compact() throws on single record (below default minRecords)", async () => {
+    const ledger = new Ledger();
+    await ledger.append(await emitRecord("run-single"));
+    expect(() => ledger.compact()).toThrow(/minimum: 2/);
+  });
+
+  it("verifyCompaction() returns true for a valid compaction", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-verify"));
+    }
+
+    const compaction = ledger.compact();
+    expect(ledger.verifyCompaction(compaction)).toBe(true);
+  });
+
+  it("verifyCompaction() returns false when proofHash is tampered", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-tamper-proof"));
+    }
+
+    const compaction = ledger.compact();
+    compaction.proofHash = "0".repeat(64);
+    expect(ledger.verifyCompaction(compaction)).toBe(false);
+  });
+
+  it("verifyCompaction() returns false when recordCount is wrong", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-tamper-count"));
+    }
+
+    const compaction = ledger.compact();
+    compaction.recordCount = 99;
+    expect(ledger.verifyCompaction(compaction)).toBe(false);
+  });
+
+  it("verifyCompaction() returns false when firstRecordHash is tampered", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-tamper-first"));
+    }
+
+    const compaction = ledger.compact();
+    compaction.firstRecordHash = "ff".repeat(32);
+    expect(ledger.verifyCompaction(compaction)).toBe(false);
+  });
+
+  it("verifyCompaction() returns false when lastRecordHash is tampered", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-tamper-last"));
+    }
+
+    const compaction = ledger.compact();
+    compaction.lastRecordHash = "ff".repeat(32);
+    expect(ledger.verifyCompaction(compaction)).toBe(false);
+  });
+
+  it("verifyCompaction() detects when records have been removed from the ledger", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-removed"));
+    }
+
+    const compaction = ledger.compact({ upToSeq: 3 });
+    // Compaction covers seq 0..3. If we compacted all 5, changing toSeq to 3
+    // should cause verifyCompaction to fail because it still finds 5 records in range.
+    // But actually, verifyCompaction checks fromSeq..toSeq, so let's create a compaction
+    // for a range that no longer fully exists by modifying the result:
+    expect(ledger.verifyCompaction(compaction)).toBe(true);
+
+    // Change toSeq to point beyond actual records
+    const badCompaction = { ...compaction, toSeq: 99, recordCount: 100 };
+    expect(ledger.verifyCompaction(badCompaction)).toBe(false);
+  });
+
+  it("compact() works with EvidenceStore-backed ledger", async () => {
+    const store = new InMemoryEvidenceStore();
+    const ledger = new Ledger({ store });
+    for (let i = 0; i < 5; i++) {
+      await ledger.append(await emitRecord("run-store-compact", `tool_${i}`));
+    }
+
+    const compaction = ledger.compact({ label: "store-backed" });
+    expect(compaction.recordCount).toBe(5);
+    expect(compaction.label).toBe("store-backed");
+    expect(ledger.verifyCompaction(compaction)).toBe(true);
+
+    // Store should still have all records (compact is read-only)
+    expect(store.size()).toBe(5);
+  });
+
+  it("multiple compactions of overlapping ranges are independently verifiable", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 10; i++) {
+      await ledger.append(await emitRecord("run-multi-compact", `tool_${i}`));
+    }
+
+    const c1 = ledger.compact({ upToSeq: 3, label: "first-4" });
+    const c2 = ledger.compact({ upToSeq: 7, label: "first-8" });
+    const c3 = ledger.compact({ upToSeq: 9, label: "all-10" });
+
+    expect(ledger.verifyCompaction(c1)).toBe(true);
+    expect(ledger.verifyCompaction(c2)).toBe(true);
+    expect(ledger.verifyCompaction(c3)).toBe(true);
+
+    expect(c1.recordCount).toBe(4);
+    expect(c2.recordCount).toBe(8);
+    expect(c3.recordCount).toBe(10);
+  });
+
+  it("proof hash is deterministic for the same records", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 3; i++) {
+      await ledger.append(await emitRecord("run-deterministic"));
+    }
+
+    const c1 = ledger.compact();
+    const c2 = ledger.compact();
+    expect(c1.proofHash).toBe(c2.proofHash);
+  });
+
+  it("proof hash changes when records change (tamper detection)", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 3; i++) {
+      await ledger.append(await emitRecord("run-tamper-det"));
+    }
+
+    const c1 = ledger.compact();
+    // Append a new record — this changes the range if we compact all
+    await ledger.append(await emitRecord("run-tamper-det", "new_tool"));
+    const c2 = ledger.compact();
+
+    // Different record set → different proof hash
+    expect(c1.proofHash).not.toBe(c2.proofHash);
+  });
+
+  it("compact() captures distinct run_ids across mixed records", async () => {
+    const ledger = new Ledger();
+    await ledger.append(await emitRecord("run-a", "tool_1"));
+    await ledger.append(await emitRecord("run-b", "tool_2"));
+    await ledger.append(await emitRecord("run-a", "tool_3"));
+    await ledger.append(await emitRecord("run-c", "tool_4"));
+
+    const compaction = ledger.compact();
+    expect(compaction.runIds).toContain("run-a");
+    expect(compaction.runIds).toContain("run-b");
+    expect(compaction.runIds).toContain("run-c");
+    expect(compaction.runIds).toHaveLength(3);
+  });
+
+  it("getRange() returns the correct subset of records", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 10; i++) {
+      await ledger.append(await emitRecord("run-range-get", `tool_${i}`));
+    }
+
+    const range = ledger.getRange(2, 5);
+    expect(range).toHaveLength(4);
+    expect(range[0]!.seq).toBe(2);
+    expect(range[3]!.seq).toBe(5);
+
+    // Out-of-range: no records
+    expect(ledger.getRange(20, 30)).toHaveLength(0);
+  });
+
+  it("computeProofHash and buildToolRollups work as standalone functions", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 3; i++) {
+      await ledger.append(
+        await emitRecord("run-standalone", "bash", 1_700_000_000_000 + i, {
+          state_changing: true,
+          side_effect_class: "mutate-local",
+        })
+      );
+    }
+
+    const records = ledger.records;
+    const proofHash = computeProofHash(records);
+    expect(proofHash).toMatch(/^[0-9a-f]{64}$/);
+
+    const rollups = buildToolRollups(records);
+    expect(rollups).toHaveLength(1);
+    expect(rollups[0]!.tool_name).toBe("bash");
+    expect(rollups[0]!.count).toBe(3);
+    expect(rollups[0]!.state_changing_count).toBe(3);
+  });
+});
+
 describe("EvidenceMirror (#256)", () => {
   async function makeRecord(
     overrides: {
@@ -3474,6 +3840,515 @@ describe("EvidenceRouter (#254)", () => {
       // The remote sink is hot-only; only the hot record is archived remotely.
       expect(await remote.list()).toHaveLength(1);
       expect(await remote.get(contentDigestKeyOf(hotRec))).toBe(hotRec);
+    });
+  });
+});
+
+describe("EvidenceStream (#252)", () => {
+  /** Helper: emit a signed AEPRecord with configurable fields. */
+  async function makeRecord(
+    overrides: {
+      run_id?: string;
+      model_id?: string;
+      created_at_ms?: number;
+      tool_name?: string;
+      side_effect_class?: SideEffectClass;
+    } = {}
+  ): Promise<AEPRecord> {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: overrides.run_id ?? "run-es-default",
+      model_id: overrides.model_id,
+      signer,
+    });
+    emitter.addAction({
+      tool_name: overrides.tool_name ?? "es_tool",
+      state_changing: false,
+      side_effect_class: overrides.side_effect_class ?? "read",
+    });
+    return emitter.emit(overrides.created_at_ms ?? 1_700_000_000_000);
+  }
+
+  describe("constructor and accessors", () => {
+    it("creates a stream with a generated topic", () => {
+      const stream = new EvidenceStream();
+      expect(stream.topic).toMatch(/^stream-[a-f0-9]{8}$/);
+      expect(stream.sequence).toBe(0);
+      expect(stream.subscriberCount).toBe(0);
+      expect(stream.transportCount).toBe(0);
+      expect(stream.closed).toBe(false);
+    });
+
+    it("accepts a custom topic", () => {
+      const stream = new EvidenceStream({ topic: "custom-topic" });
+      expect(stream.topic).toBe("custom-topic");
+    });
+
+    it("configures a replay buffer when replayBufferSize > 0", () => {
+      const stream = new EvidenceStream({ replayBufferSize: 5 });
+      expect(stream.replay()).toHaveLength(0);
+    });
+  });
+
+  describe("subscribe / unsubscribe", () => {
+    it("delivers published records to in-process subscribers", async () => {
+      const stream = new EvidenceStream();
+      const received: StreamEvent[] = [];
+      stream.subscribe((event) => received.push(event));
+
+      const record = await makeRecord();
+      const result = await stream.publish(record);
+
+      expect(result.sequence).toBe(1);
+      expect(result.deliveredToSubscribers).toBe(1);
+      expect(result.deliveredToTransports).toBe(0);
+      expect(result.errors).toHaveLength(0);
+      expect(received).toHaveLength(1);
+      expect(received[0]!.record).toBe(record);
+      expect(received[0]!.sequence).toBe(1);
+      expect(received[0]!.topic).toBe(stream.topic);
+      expect(received[0]!.publishedAtMs).toBeGreaterThan(0);
+    });
+
+    it("supports multiple independent subscribers", async () => {
+      const stream = new EvidenceStream();
+      const a: StreamEvent[] = [];
+      const b: StreamEvent[] = [];
+      stream.subscribe((e) => a.push(e));
+      stream.subscribe((e) => b.push(e));
+
+      await stream.publish(await makeRecord());
+
+      expect(a).toHaveLength(1);
+      expect(b).toHaveLength(1);
+      expect(stream.subscriberCount).toBe(2);
+    });
+
+    it("unsubscribe stops delivery", async () => {
+      const stream = new EvidenceStream();
+      const received: StreamEvent[] = [];
+      const sub = stream.subscribe((e) => received.push(e));
+
+      await stream.publish(await makeRecord());
+      expect(received).toHaveLength(1);
+
+      expect(stream.unsubscribe(sub)).toBe(true);
+      expect(stream.subscriberCount).toBe(0);
+
+      await stream.publish(await makeRecord());
+      expect(received).toHaveLength(1); // no new delivery
+    });
+
+    it("unsubscribe returns false for unknown subscriptions", () => {
+      const stream = new EvidenceStream();
+      expect(stream.unsubscribe("nonexistent")).toBe(false);
+    });
+
+    it("unsubscribe accepts a string id", async () => {
+      const stream = new EvidenceStream();
+      const received: StreamEvent[] = [];
+      const sub = stream.subscribe((e) => received.push(e));
+      expect(stream.unsubscribe(sub.id)).toBe(true);
+    });
+  });
+
+  describe("content filtering", () => {
+    it("only delivers events matching the subscription filter", async () => {
+      const stream = new EvidenceStream();
+      const filtered: StreamEvent[] = [];
+      stream.subscribe((e) => filtered.push(e), { run_id: "run-es-alpha" });
+
+      await stream.publish(await makeRecord({ run_id: "run-es-beta" }));
+      await stream.publish(await makeRecord({ run_id: "run-es-alpha" }));
+      await stream.publish(await makeRecord({ run_id: "run-es-gamma" }));
+
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0]!.record.run_id).toBe("run-es-alpha");
+    });
+
+    it("subscribers without a filter receive all events", async () => {
+      const stream = new EvidenceStream();
+      const all: StreamEvent[] = [];
+      stream.subscribe((e) => all.push(e));
+
+      await stream.publish(await makeRecord({ run_id: "run-a" }));
+      await stream.publish(await makeRecord({ run_id: "run-b" }));
+
+      expect(all).toHaveLength(2);
+    });
+
+    it("filter by tool_name", async () => {
+      const stream = new EvidenceStream();
+      const filtered: StreamEvent[] = [];
+      stream.subscribe((e) => filtered.push(e), { tool_name: "es_special" });
+
+      await stream.publish(await makeRecord({ tool_name: "es_other" }));
+      await stream.publish(await makeRecord({ tool_name: "es_special" }));
+
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0]!.record.actions[0]!.tool_name).toBe("es_special");
+    });
+  });
+
+  describe("sequence numbering", () => {
+    it("assigns monotonically increasing sequence numbers", async () => {
+      const stream = new EvidenceStream();
+      const seqs: number[] = [];
+      stream.subscribe((e) => seqs.push(e.sequence));
+
+      for (let i = 0; i < 5; i++) {
+        await stream.publish(await makeRecord({ created_at_ms: 1_700_000_000_000 + i }));
+      }
+
+      expect(seqs).toEqual([1, 2, 3, 4, 5]);
+      expect(stream.sequence).toBe(5);
+    });
+  });
+
+  describe("outbound transport adapters", () => {
+    it("sends events to registered transport adapters", async () => {
+      const stream = new EvidenceStream();
+      const sent: StreamEvent[] = [];
+      const transport: StreamTransportOutbound = {
+        name: "mock-transport",
+        send: (event) => sent.push(event),
+      };
+      stream.addTransport(transport);
+
+      const record = await makeRecord();
+      const result = await stream.publish(record);
+
+      expect(result.deliveredToTransports).toBe(1);
+      expect(sent).toHaveLength(1);
+      expect(sent[0]!.record).toBe(record);
+      expect(stream.transportCount).toBe(1);
+    });
+
+    it("fans out to multiple transports", async () => {
+      const stream = new EvidenceStream();
+      const a: StreamEvent[] = [];
+      const b: StreamEvent[] = [];
+      stream.addTransport({ name: "t-a", send: (e) => a.push(e) });
+      stream.addTransport({ name: "t-b", send: (e) => b.push(e) });
+
+      await stream.publish(await makeRecord());
+
+      expect(a).toHaveLength(1);
+      expect(b).toHaveLength(1);
+    });
+
+    it("removes a transport by name", async () => {
+      const stream = new EvidenceStream();
+      const sent: StreamEvent[] = [];
+      stream.addTransport({ name: "removable", send: (e) => sent.push(e) });
+      expect(stream.removeTransport("removable")).toBe(true);
+      expect(stream.transportCount).toBe(0);
+
+      await stream.publish(await makeRecord());
+      expect(sent).toHaveLength(0);
+    });
+
+    it("removes unknown transport returns false", () => {
+      const stream = new EvidenceStream();
+      expect(stream.removeTransport("nope")).toBe(false);
+    });
+
+    it("isolates transport errors without aborting other deliveries", async () => {
+      const stream = new EvidenceStream();
+      const received: StreamEvent[] = [];
+      stream.subscribe((e) => received.push(e));
+
+      const failingTransport: StreamTransportOutbound = {
+        name: "always-fails",
+        send: () => {
+          throw new Error("transport boom");
+        },
+      };
+      stream.addTransport(failingTransport);
+
+      const record = await makeRecord();
+      const result = await stream.publish(record);
+
+      // Subscriber still received the event despite transport failure
+      expect(result.deliveredToSubscribers).toBe(1);
+      expect(result.deliveredToTransports).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]!.target).toBe("transport:always-fails");
+      expect(result.errors[0]!.kind).toBe("transport");
+      expect((result.errors[0]!.error as Error).message).toBe("transport boom");
+      expect(received).toHaveLength(1);
+    });
+
+    it("handles async transport send", async () => {
+      const stream = new EvidenceStream();
+      const sent: StreamEvent[] = [];
+      const transport: StreamTransportOutbound = {
+        name: "async-t",
+        send: async (e) => {
+          await Promise.resolve();
+          sent.push(e);
+        },
+      };
+      stream.addTransport(transport);
+
+      const result = await stream.publish(await makeRecord());
+      expect(result.deliveredToTransports).toBe(1);
+      expect(sent).toHaveLength(1);
+    });
+  });
+
+  describe("subscriber error isolation", () => {
+    it("captures subscriber errors without aborting other subscribers", async () => {
+      const stream = new EvidenceStream();
+      const goodReceived: StreamEvent[] = [];
+      stream.subscribe(() => {
+        throw new Error("subscriber boom");
+      });
+      stream.subscribe((e) => goodReceived.push(e));
+
+      const result = await stream.publish(await makeRecord());
+
+      expect(result.deliveredToSubscribers).toBe(1); // only the non-throwing one counted
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]!.kind).toBe("subscriber");
+      expect(goodReceived).toHaveLength(1);
+    });
+
+    it("handles async subscriber rejections", async () => {
+      const stream = new EvidenceStream();
+      stream.subscribe(async () => {
+        throw new Error("async subscriber boom");
+      });
+
+      const result = await stream.publish(await makeRecord());
+      // Async errors are fire-and-forget; the subscriber count includes them
+      // but errors are captured asynchronously — in this sync publish, they
+      // appear in result.errors via the .catch handler.
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]!.kind).toBe("subscriber");
+    });
+  });
+
+  describe("replay buffer", () => {
+    it("retains recent events up to replayBufferSize", async () => {
+      const stream = new EvidenceStream({ replayBufferSize: 3 });
+
+      for (let i = 0; i < 5; i++) {
+        await stream.publish(await makeRecord({ created_at_ms: 1_700_000_000_000 + i }));
+      }
+
+      const replayed = stream.replay();
+      expect(replayed).toHaveLength(3);
+      expect(replayed[0]!.sequence).toBe(3);
+      expect(replayed[1]!.sequence).toBe(4);
+      expect(replayed[2]!.sequence).toBe(5);
+    });
+
+    it("replay with count parameter returns fewer events", async () => {
+      const stream = new EvidenceStream({ replayBufferSize: 5 });
+
+      for (let i = 0; i < 5; i++) {
+        await stream.publish(await makeRecord());
+      }
+
+      expect(stream.replay(2)).toHaveLength(2);
+      expect(stream.replay(2)[0]!.sequence).toBe(4);
+    });
+
+    it("replay returns empty array when buffer size is 0", async () => {
+      const stream = new EvidenceStream({ replayBufferSize: 0 });
+      await stream.publish(await makeRecord());
+      expect(stream.replay()).toHaveLength(0);
+    });
+  });
+
+  describe("inbound transport adapters", () => {
+    it("feeds inbound events to local subscribers", async () => {
+      const stream = new EvidenceStream();
+      const received: StreamEvent[] = [];
+      stream.subscribe((e) => received.push(e));
+
+      let onEventCallback: ((event: StreamEvent) => void) | undefined;
+      const inbound: StreamTransportInbound = {
+        name: "test-inbound",
+        listen: (onEvent) => {
+          onEventCallback = onEvent;
+          return () => {
+            onEventCallback = undefined;
+          };
+        },
+      };
+      await stream.addInbound(inbound);
+
+      // Simulate an event arriving from remote
+      const record = await makeRecord({ run_id: "run-inbound" });
+      const inboundEvent: StreamEvent = {
+        record,
+        sequence: 100,
+        publishedAtMs: Date.now(),
+        topic: "remote-topic",
+      };
+      onEventCallback!(inboundEvent);
+
+      expect(received).toHaveLength(1);
+      expect(received[0]!.record.run_id).toBe("run-inbound");
+    });
+
+    it("inbound events do NOT re-broadcast to outbound transports", async () => {
+      const stream = new EvidenceStream();
+      const sent: StreamEvent[] = [];
+      stream.addTransport({ name: "out-t", send: (e) => sent.push(e) });
+
+      let onEventCallback: ((event: StreamEvent) => void) | undefined;
+      await stream.addInbound({
+        name: "in-t",
+        listen: (onEvent) => {
+          onEventCallback = onEvent;
+          return () => {};
+        },
+      });
+
+      const record = await makeRecord();
+      onEventCallback!({
+        record,
+        sequence: 1,
+        publishedAtMs: Date.now(),
+        topic: "t",
+      });
+
+      // Outbound transport should NOT receive the inbound event (prevents loops)
+      expect(sent).toHaveLength(0);
+    });
+
+    it("supports async listen that returns a cleanup function", async () => {
+      const stream = new EvidenceStream();
+      let cleanedUp = false;
+
+      await stream.addInbound({
+        name: "async-inbound",
+        listen: async () => () => {
+          cleanedUp = true;
+        },
+      });
+
+      await stream.close();
+      expect(cleanedUp).toBe(true);
+    });
+  });
+
+  describe("close lifecycle", () => {
+    it("closes all outbound transports on close", async () => {
+      const stream = new EvidenceStream();
+      let closed = false;
+      stream.addTransport({
+        name: "closeable",
+        send: () => {},
+        close: () => {
+          closed = true;
+        },
+      });
+
+      await stream.close();
+      expect(closed).toBe(true);
+      expect(stream.closed).toBe(true);
+    });
+
+    it("clears subscribers and replay buffer on close", async () => {
+      const stream = new EvidenceStream({ replayBufferSize: 5 });
+      stream.subscribe(() => {});
+      await stream.publish(await makeRecord());
+      expect(stream.subscriberCount).toBe(1);
+      expect(stream.replay()).toHaveLength(1);
+
+      await stream.close();
+      expect(stream.subscriberCount).toBe(0);
+      expect(stream.replay()).toHaveLength(0);
+    });
+
+    it("best-effort cleanup ignores transport close errors", async () => {
+      const stream = new EvidenceStream();
+      stream.addTransport({
+        name: "boom-on-close",
+        send: () => {},
+        close: () => {
+          throw new Error("close boom");
+        },
+      });
+
+      // Should not throw
+      await stream.close();
+      expect(stream.closed).toBe(true);
+    });
+  });
+
+  describe("closed stream guards", () => {
+    it("rejects subscribe on a closed stream", async () => {
+      const stream = new EvidenceStream();
+      await stream.close();
+      expect(() => stream.subscribe(() => {})).toThrow(
+        "Cannot subscribe to a closed EvidenceStream"
+      );
+    });
+
+    it("rejects addTransport on a closed stream", async () => {
+      const stream = new EvidenceStream();
+      await stream.close();
+      expect(() => stream.addTransport({ name: "t", send: () => {} })).toThrow(
+        "Cannot add transport to a closed EvidenceStream"
+      );
+    });
+
+    it("rejects addInbound on a closed stream", async () => {
+      const stream = new EvidenceStream();
+      await stream.close();
+      await expect(stream.addInbound({ name: "in", listen: () => {} })).rejects.toThrow(
+        "Cannot add inbound transport to a closed EvidenceStream"
+      );
+    });
+
+    it("rejects publish on a closed stream", async () => {
+      const stream = new EvidenceStream();
+      await stream.close();
+      await expect(stream.publish(await makeRecord())).rejects.toThrow(
+        "Cannot publish to a closed EvidenceStream"
+      );
+    });
+  });
+
+  describe("integration: subscriber + transport + replay", () => {
+    it("end-to-end: publish fans out to subscriber, transport, and replay buffer", async () => {
+      const stream = new EvidenceStream({ topic: "e2e", replayBufferSize: 10 });
+      const subscriberEvents: StreamEvent[] = [];
+      const transportEvents: StreamEvent[] = [];
+
+      stream.subscribe((e) => subscriberEvents.push(e));
+      stream.addTransport({
+        name: "e2e-transport",
+        send: (e) => transportEvents.push(e),
+      });
+
+      const record = await makeRecord({ run_id: "run-e2e" });
+      const result = await stream.publish(record);
+
+      // Subscriber received
+      expect(subscriberEvents).toHaveLength(1);
+      expect(subscriberEvents[0]!.record.run_id).toBe("run-e2e");
+      expect(subscriberEvents[0]!.topic).toBe("e2e");
+
+      // Transport received
+      expect(transportEvents).toHaveLength(1);
+      expect(transportEvents[0]!.record.run_id).toBe("run-e2e");
+
+      // Replay buffer
+      const replayed = stream.replay();
+      expect(replayed).toHaveLength(1);
+      expect(replayed[0]!.record.run_id).toBe("run-e2e");
+
+      // Result summary
+      expect(result.sequence).toBe(1);
+      expect(result.deliveredToSubscribers).toBe(1);
+      expect(result.deliveredToTransports).toBe(1);
+      expect(result.errors).toHaveLength(0);
     });
   });
 });

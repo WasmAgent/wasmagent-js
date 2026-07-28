@@ -4,6 +4,7 @@ export * from "./emitter.js";
 export * from "./evidenceMirror.js";
 export * from "./evidenceRouter.js";
 export * from "./evidenceStore.js";
+export * from "./evidenceStream.js";
 export * from "./exportAdapter.js";
 export * from "./ledger.js";
 export * from "./resolve-repo-commit.js";
