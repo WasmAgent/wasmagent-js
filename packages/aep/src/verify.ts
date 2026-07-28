@@ -29,6 +29,7 @@ export interface ChainVerificationResult {
  * @returns `true` if the signature is valid and covers the current record contents.
  */
 export async function verifyAEPRecord(record: AEPRecord, publicKey: Uint8Array): Promise<boolean> {
+  // biome-ignore lint/suspicious/noExplicitAny: intentional Promise check — typeof obj.then is the standard way to detect thenables
   if (record && typeof (record as any).then === "function") {
     throw new TypeError(
       "Received a Promise instead of an AEPRecord. Did you forget to await AEPEmitter.emit()?"
@@ -65,6 +66,7 @@ export async function verifyAEPRecord(record: AEPRecord, publicKey: Uint8Array):
  * @returns A ChainVerificationResult indicating whether the chain is intact.
  */
 export function verifyAEPChain(records: AEPRecord[]): ChainVerificationResult {
+  // biome-ignore lint/suspicious/noExplicitAny: intentional Promise check — typeof obj.then is the standard way to detect thenables
   if (records && typeof (records as any).then === "function") {
     throw new TypeError(
       "Received a Promise instead of an AEPRecord[]. Did you forget to await AEPEmitter.emit()?"

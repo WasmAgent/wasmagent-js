@@ -18,6 +18,12 @@ import {
 } from "./evidenceRouter.js";
 import { FilesystemEvidenceStore, InMemoryEvidenceStore } from "./evidenceStore.js";
 import {
+  EvidenceStream,
+  type StreamEvent,
+  type StreamTransportInbound,
+  type StreamTransportOutbound,
+} from "./evidenceStream.js";
+import {
   buildEvidenceBundle,
   EVIDENCE_BUNDLE_SCHEMA_VERSION,
   parseEvidenceBundle,
@@ -3033,6 +3039,8 @@ describe("Ledger.compact() — evidence record compaction and rollup (#255)", ()
     expect(rollups[0]!.tool_name).toBe("bash");
     expect(rollups[0]!.count).toBe(3);
     expect(rollups[0]!.state_changing_count).toBe(3);
+  });
+});
 
 describe("EvidenceMirror (#256)", () => {
   async function makeRecord(
@@ -3832,6 +3840,515 @@ describe("EvidenceRouter (#254)", () => {
       // The remote sink is hot-only; only the hot record is archived remotely.
       expect(await remote.list()).toHaveLength(1);
       expect(await remote.get(contentDigestKeyOf(hotRec))).toBe(hotRec);
+    });
+  });
+});
+
+describe("EvidenceStream (#252)", () => {
+  /** Helper: emit a signed AEPRecord with configurable fields. */
+  async function makeRecord(
+    overrides: {
+      run_id?: string;
+      model_id?: string;
+      created_at_ms?: number;
+      tool_name?: string;
+      side_effect_class?: SideEffectClass;
+    } = {}
+  ): Promise<AEPRecord> {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: overrides.run_id ?? "run-es-default",
+      model_id: overrides.model_id,
+      signer,
+    });
+    emitter.addAction({
+      tool_name: overrides.tool_name ?? "es_tool",
+      state_changing: false,
+      side_effect_class: overrides.side_effect_class ?? "read",
+    });
+    return emitter.emit(overrides.created_at_ms ?? 1_700_000_000_000);
+  }
+
+  describe("constructor and accessors", () => {
+    it("creates a stream with a generated topic", () => {
+      const stream = new EvidenceStream();
+      expect(stream.topic).toMatch(/^stream-[a-f0-9]{8}$/);
+      expect(stream.sequence).toBe(0);
+      expect(stream.subscriberCount).toBe(0);
+      expect(stream.transportCount).toBe(0);
+      expect(stream.closed).toBe(false);
+    });
+
+    it("accepts a custom topic", () => {
+      const stream = new EvidenceStream({ topic: "custom-topic" });
+      expect(stream.topic).toBe("custom-topic");
+    });
+
+    it("configures a replay buffer when replayBufferSize > 0", () => {
+      const stream = new EvidenceStream({ replayBufferSize: 5 });
+      expect(stream.replay()).toHaveLength(0);
+    });
+  });
+
+  describe("subscribe / unsubscribe", () => {
+    it("delivers published records to in-process subscribers", async () => {
+      const stream = new EvidenceStream();
+      const received: StreamEvent[] = [];
+      stream.subscribe((event) => received.push(event));
+
+      const record = await makeRecord();
+      const result = await stream.publish(record);
+
+      expect(result.sequence).toBe(1);
+      expect(result.deliveredToSubscribers).toBe(1);
+      expect(result.deliveredToTransports).toBe(0);
+      expect(result.errors).toHaveLength(0);
+      expect(received).toHaveLength(1);
+      expect(received[0]!.record).toBe(record);
+      expect(received[0]!.sequence).toBe(1);
+      expect(received[0]!.topic).toBe(stream.topic);
+      expect(received[0]!.publishedAtMs).toBeGreaterThan(0);
+    });
+
+    it("supports multiple independent subscribers", async () => {
+      const stream = new EvidenceStream();
+      const a: StreamEvent[] = [];
+      const b: StreamEvent[] = [];
+      stream.subscribe((e) => a.push(e));
+      stream.subscribe((e) => b.push(e));
+
+      await stream.publish(await makeRecord());
+
+      expect(a).toHaveLength(1);
+      expect(b).toHaveLength(1);
+      expect(stream.subscriberCount).toBe(2);
+    });
+
+    it("unsubscribe stops delivery", async () => {
+      const stream = new EvidenceStream();
+      const received: StreamEvent[] = [];
+      const sub = stream.subscribe((e) => received.push(e));
+
+      await stream.publish(await makeRecord());
+      expect(received).toHaveLength(1);
+
+      expect(stream.unsubscribe(sub)).toBe(true);
+      expect(stream.subscriberCount).toBe(0);
+
+      await stream.publish(await makeRecord());
+      expect(received).toHaveLength(1); // no new delivery
+    });
+
+    it("unsubscribe returns false for unknown subscriptions", () => {
+      const stream = new EvidenceStream();
+      expect(stream.unsubscribe("nonexistent")).toBe(false);
+    });
+
+    it("unsubscribe accepts a string id", async () => {
+      const stream = new EvidenceStream();
+      const received: StreamEvent[] = [];
+      const sub = stream.subscribe((e) => received.push(e));
+      expect(stream.unsubscribe(sub.id)).toBe(true);
+    });
+  });
+
+  describe("content filtering", () => {
+    it("only delivers events matching the subscription filter", async () => {
+      const stream = new EvidenceStream();
+      const filtered: StreamEvent[] = [];
+      stream.subscribe((e) => filtered.push(e), { run_id: "run-es-alpha" });
+
+      await stream.publish(await makeRecord({ run_id: "run-es-beta" }));
+      await stream.publish(await makeRecord({ run_id: "run-es-alpha" }));
+      await stream.publish(await makeRecord({ run_id: "run-es-gamma" }));
+
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0]!.record.run_id).toBe("run-es-alpha");
+    });
+
+    it("subscribers without a filter receive all events", async () => {
+      const stream = new EvidenceStream();
+      const all: StreamEvent[] = [];
+      stream.subscribe((e) => all.push(e));
+
+      await stream.publish(await makeRecord({ run_id: "run-a" }));
+      await stream.publish(await makeRecord({ run_id: "run-b" }));
+
+      expect(all).toHaveLength(2);
+    });
+
+    it("filter by tool_name", async () => {
+      const stream = new EvidenceStream();
+      const filtered: StreamEvent[] = [];
+      stream.subscribe((e) => filtered.push(e), { tool_name: "es_special" });
+
+      await stream.publish(await makeRecord({ tool_name: "es_other" }));
+      await stream.publish(await makeRecord({ tool_name: "es_special" }));
+
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0]!.record.actions[0]!.tool_name).toBe("es_special");
+    });
+  });
+
+  describe("sequence numbering", () => {
+    it("assigns monotonically increasing sequence numbers", async () => {
+      const stream = new EvidenceStream();
+      const seqs: number[] = [];
+      stream.subscribe((e) => seqs.push(e.sequence));
+
+      for (let i = 0; i < 5; i++) {
+        await stream.publish(await makeRecord({ created_at_ms: 1_700_000_000_000 + i }));
+      }
+
+      expect(seqs).toEqual([1, 2, 3, 4, 5]);
+      expect(stream.sequence).toBe(5);
+    });
+  });
+
+  describe("outbound transport adapters", () => {
+    it("sends events to registered transport adapters", async () => {
+      const stream = new EvidenceStream();
+      const sent: StreamEvent[] = [];
+      const transport: StreamTransportOutbound = {
+        name: "mock-transport",
+        send: (event) => sent.push(event),
+      };
+      stream.addTransport(transport);
+
+      const record = await makeRecord();
+      const result = await stream.publish(record);
+
+      expect(result.deliveredToTransports).toBe(1);
+      expect(sent).toHaveLength(1);
+      expect(sent[0]!.record).toBe(record);
+      expect(stream.transportCount).toBe(1);
+    });
+
+    it("fans out to multiple transports", async () => {
+      const stream = new EvidenceStream();
+      const a: StreamEvent[] = [];
+      const b: StreamEvent[] = [];
+      stream.addTransport({ name: "t-a", send: (e) => a.push(e) });
+      stream.addTransport({ name: "t-b", send: (e) => b.push(e) });
+
+      await stream.publish(await makeRecord());
+
+      expect(a).toHaveLength(1);
+      expect(b).toHaveLength(1);
+    });
+
+    it("removes a transport by name", async () => {
+      const stream = new EvidenceStream();
+      const sent: StreamEvent[] = [];
+      stream.addTransport({ name: "removable", send: (e) => sent.push(e) });
+      expect(stream.removeTransport("removable")).toBe(true);
+      expect(stream.transportCount).toBe(0);
+
+      await stream.publish(await makeRecord());
+      expect(sent).toHaveLength(0);
+    });
+
+    it("removes unknown transport returns false", () => {
+      const stream = new EvidenceStream();
+      expect(stream.removeTransport("nope")).toBe(false);
+    });
+
+    it("isolates transport errors without aborting other deliveries", async () => {
+      const stream = new EvidenceStream();
+      const received: StreamEvent[] = [];
+      stream.subscribe((e) => received.push(e));
+
+      const failingTransport: StreamTransportOutbound = {
+        name: "always-fails",
+        send: () => {
+          throw new Error("transport boom");
+        },
+      };
+      stream.addTransport(failingTransport);
+
+      const record = await makeRecord();
+      const result = await stream.publish(record);
+
+      // Subscriber still received the event despite transport failure
+      expect(result.deliveredToSubscribers).toBe(1);
+      expect(result.deliveredToTransports).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]!.target).toBe("transport:always-fails");
+      expect(result.errors[0]!.kind).toBe("transport");
+      expect((result.errors[0]!.error as Error).message).toBe("transport boom");
+      expect(received).toHaveLength(1);
+    });
+
+    it("handles async transport send", async () => {
+      const stream = new EvidenceStream();
+      const sent: StreamEvent[] = [];
+      const transport: StreamTransportOutbound = {
+        name: "async-t",
+        send: async (e) => {
+          await Promise.resolve();
+          sent.push(e);
+        },
+      };
+      stream.addTransport(transport);
+
+      const result = await stream.publish(await makeRecord());
+      expect(result.deliveredToTransports).toBe(1);
+      expect(sent).toHaveLength(1);
+    });
+  });
+
+  describe("subscriber error isolation", () => {
+    it("captures subscriber errors without aborting other subscribers", async () => {
+      const stream = new EvidenceStream();
+      const goodReceived: StreamEvent[] = [];
+      stream.subscribe(() => {
+        throw new Error("subscriber boom");
+      });
+      stream.subscribe((e) => goodReceived.push(e));
+
+      const result = await stream.publish(await makeRecord());
+
+      expect(result.deliveredToSubscribers).toBe(1); // only the non-throwing one counted
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]!.kind).toBe("subscriber");
+      expect(goodReceived).toHaveLength(1);
+    });
+
+    it("handles async subscriber rejections", async () => {
+      const stream = new EvidenceStream();
+      stream.subscribe(async () => {
+        throw new Error("async subscriber boom");
+      });
+
+      const result = await stream.publish(await makeRecord());
+      // Async errors are fire-and-forget; the subscriber count includes them
+      // but errors are captured asynchronously — in this sync publish, they
+      // appear in result.errors via the .catch handler.
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]!.kind).toBe("subscriber");
+    });
+  });
+
+  describe("replay buffer", () => {
+    it("retains recent events up to replayBufferSize", async () => {
+      const stream = new EvidenceStream({ replayBufferSize: 3 });
+
+      for (let i = 0; i < 5; i++) {
+        await stream.publish(await makeRecord({ created_at_ms: 1_700_000_000_000 + i }));
+      }
+
+      const replayed = stream.replay();
+      expect(replayed).toHaveLength(3);
+      expect(replayed[0]!.sequence).toBe(3);
+      expect(replayed[1]!.sequence).toBe(4);
+      expect(replayed[2]!.sequence).toBe(5);
+    });
+
+    it("replay with count parameter returns fewer events", async () => {
+      const stream = new EvidenceStream({ replayBufferSize: 5 });
+
+      for (let i = 0; i < 5; i++) {
+        await stream.publish(await makeRecord());
+      }
+
+      expect(stream.replay(2)).toHaveLength(2);
+      expect(stream.replay(2)[0]!.sequence).toBe(4);
+    });
+
+    it("replay returns empty array when buffer size is 0", async () => {
+      const stream = new EvidenceStream({ replayBufferSize: 0 });
+      await stream.publish(await makeRecord());
+      expect(stream.replay()).toHaveLength(0);
+    });
+  });
+
+  describe("inbound transport adapters", () => {
+    it("feeds inbound events to local subscribers", async () => {
+      const stream = new EvidenceStream();
+      const received: StreamEvent[] = [];
+      stream.subscribe((e) => received.push(e));
+
+      let onEventCallback: ((event: StreamEvent) => void) | undefined;
+      const inbound: StreamTransportInbound = {
+        name: "test-inbound",
+        listen: (onEvent) => {
+          onEventCallback = onEvent;
+          return () => {
+            onEventCallback = undefined;
+          };
+        },
+      };
+      await stream.addInbound(inbound);
+
+      // Simulate an event arriving from remote
+      const record = await makeRecord({ run_id: "run-inbound" });
+      const inboundEvent: StreamEvent = {
+        record,
+        sequence: 100,
+        publishedAtMs: Date.now(),
+        topic: "remote-topic",
+      };
+      onEventCallback!(inboundEvent);
+
+      expect(received).toHaveLength(1);
+      expect(received[0]!.record.run_id).toBe("run-inbound");
+    });
+
+    it("inbound events do NOT re-broadcast to outbound transports", async () => {
+      const stream = new EvidenceStream();
+      const sent: StreamEvent[] = [];
+      stream.addTransport({ name: "out-t", send: (e) => sent.push(e) });
+
+      let onEventCallback: ((event: StreamEvent) => void) | undefined;
+      await stream.addInbound({
+        name: "in-t",
+        listen: (onEvent) => {
+          onEventCallback = onEvent;
+          return () => {};
+        },
+      });
+
+      const record = await makeRecord();
+      onEventCallback!({
+        record,
+        sequence: 1,
+        publishedAtMs: Date.now(),
+        topic: "t",
+      });
+
+      // Outbound transport should NOT receive the inbound event (prevents loops)
+      expect(sent).toHaveLength(0);
+    });
+
+    it("supports async listen that returns a cleanup function", async () => {
+      const stream = new EvidenceStream();
+      let cleanedUp = false;
+
+      await stream.addInbound({
+        name: "async-inbound",
+        listen: async () => () => {
+          cleanedUp = true;
+        },
+      });
+
+      await stream.close();
+      expect(cleanedUp).toBe(true);
+    });
+  });
+
+  describe("close lifecycle", () => {
+    it("closes all outbound transports on close", async () => {
+      const stream = new EvidenceStream();
+      let closed = false;
+      stream.addTransport({
+        name: "closeable",
+        send: () => {},
+        close: () => {
+          closed = true;
+        },
+      });
+
+      await stream.close();
+      expect(closed).toBe(true);
+      expect(stream.closed).toBe(true);
+    });
+
+    it("clears subscribers and replay buffer on close", async () => {
+      const stream = new EvidenceStream({ replayBufferSize: 5 });
+      stream.subscribe(() => {});
+      await stream.publish(await makeRecord());
+      expect(stream.subscriberCount).toBe(1);
+      expect(stream.replay()).toHaveLength(1);
+
+      await stream.close();
+      expect(stream.subscriberCount).toBe(0);
+      expect(stream.replay()).toHaveLength(0);
+    });
+
+    it("best-effort cleanup ignores transport close errors", async () => {
+      const stream = new EvidenceStream();
+      stream.addTransport({
+        name: "boom-on-close",
+        send: () => {},
+        close: () => {
+          throw new Error("close boom");
+        },
+      });
+
+      // Should not throw
+      await stream.close();
+      expect(stream.closed).toBe(true);
+    });
+  });
+
+  describe("closed stream guards", () => {
+    it("rejects subscribe on a closed stream", async () => {
+      const stream = new EvidenceStream();
+      await stream.close();
+      expect(() => stream.subscribe(() => {})).toThrow(
+        "Cannot subscribe to a closed EvidenceStream"
+      );
+    });
+
+    it("rejects addTransport on a closed stream", async () => {
+      const stream = new EvidenceStream();
+      await stream.close();
+      expect(() => stream.addTransport({ name: "t", send: () => {} })).toThrow(
+        "Cannot add transport to a closed EvidenceStream"
+      );
+    });
+
+    it("rejects addInbound on a closed stream", async () => {
+      const stream = new EvidenceStream();
+      await stream.close();
+      await expect(stream.addInbound({ name: "in", listen: () => {} })).rejects.toThrow(
+        "Cannot add inbound transport to a closed EvidenceStream"
+      );
+    });
+
+    it("rejects publish on a closed stream", async () => {
+      const stream = new EvidenceStream();
+      await stream.close();
+      await expect(stream.publish(await makeRecord())).rejects.toThrow(
+        "Cannot publish to a closed EvidenceStream"
+      );
+    });
+  });
+
+  describe("integration: subscriber + transport + replay", () => {
+    it("end-to-end: publish fans out to subscriber, transport, and replay buffer", async () => {
+      const stream = new EvidenceStream({ topic: "e2e", replayBufferSize: 10 });
+      const subscriberEvents: StreamEvent[] = [];
+      const transportEvents: StreamEvent[] = [];
+
+      stream.subscribe((e) => subscriberEvents.push(e));
+      stream.addTransport({
+        name: "e2e-transport",
+        send: (e) => transportEvents.push(e),
+      });
+
+      const record = await makeRecord({ run_id: "run-e2e" });
+      const result = await stream.publish(record);
+
+      // Subscriber received
+      expect(subscriberEvents).toHaveLength(1);
+      expect(subscriberEvents[0]!.record.run_id).toBe("run-e2e");
+      expect(subscriberEvents[0]!.topic).toBe("e2e");
+
+      // Transport received
+      expect(transportEvents).toHaveLength(1);
+      expect(transportEvents[0]!.record.run_id).toBe("run-e2e");
+
+      // Replay buffer
+      const replayed = stream.replay();
+      expect(replayed).toHaveLength(1);
+      expect(replayed[0]!.record.run_id).toBe("run-e2e");
+
+      // Result summary
+      expect(result.sequence).toBe(1);
+      expect(result.deliveredToSubscribers).toBe(1);
+      expect(result.deliveredToTransports).toBe(1);
+      expect(result.errors).toHaveLength(0);
     });
   });
 });
