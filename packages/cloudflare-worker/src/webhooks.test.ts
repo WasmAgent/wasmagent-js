@@ -1,5 +1,11 @@
 import { describe, expect, it, mock } from "bun:test";
-import { configFromEnv, sendWebhook, type WebhookPayload } from "./webhooks.js";
+import {
+  buildEvidenceWebhookPayload,
+  configFromEnv,
+  evidenceConfigFromEnv,
+  sendWebhook,
+  type WebhookPayload,
+} from "./webhooks.js";
 
 const samplePayload: WebhookPayload = {
   event: "run.completed",
@@ -84,5 +90,70 @@ describe("configFromEnv", () => {
   it("includes secret when present", () => {
     const cfg = configFromEnv({ WEBHOOK_URLS: "https://a", WEBHOOK_SECRET: "k" });
     expect(cfg?.secret).toBe("k");
+  });
+});
+
+describe("evidenceConfigFromEnv", () => {
+  it("returns null when no evidence urls", () => {
+    expect(evidenceConfigFromEnv({})).toBeNull();
+  });
+
+  it("parses EVIDENCE_WEBHOOK_URLS independently from WEBHOOK_URLS", () => {
+    const cfg = evidenceConfigFromEnv({ EVIDENCE_WEBHOOK_URLS: "https://audit1,https://audit2" });
+    expect(cfg?.urls).toEqual(["https://audit1", "https://audit2"]);
+  });
+
+  it("includes the evidence-specific secret", () => {
+    const cfg = evidenceConfigFromEnv({
+      EVIDENCE_WEBHOOK_URLS: "https://audit",
+      EVIDENCE_WEBHOOK_SECRET: "ev-secret",
+    });
+    expect(cfg?.secret).toBe("ev-secret");
+  });
+});
+
+describe("buildEvidenceWebhookPayload", () => {
+  const record = {
+    schema_version: "aep/v0.3",
+    run_id: "run-ev-1",
+    model_id: "model-ev",
+    created_at_ms: 1_700_000_000_000,
+    actions: [],
+  };
+
+  it("builds an evidence.record payload with runId hoisted from the record", () => {
+    const payload = buildEvidenceWebhookPayload(record);
+    expect(payload.event).toBe("evidence.record");
+    expect(payload.runId).toBe("run-ev-1");
+    expect(payload.record).toBe(record);
+    expect(payload.modelId).toBe("model-ev");
+    expect(payload.createdAtMs).toBe(1_700_000_000_000);
+    expect(payload.emittedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it("attaches stream metadata when provided", () => {
+    const payload = buildEvidenceWebhookPayload(record, { sequence: 42, topic: "feed-1" });
+    expect(payload.sequence).toBe(42);
+    expect(payload.topic).toBe("feed-1");
+  });
+
+  it("omits optional fields when the record lacks them", () => {
+    const minimal = { run_id: "run-only" };
+    const payload = buildEvidenceWebhookPayload(minimal);
+    expect(payload.runId).toBe("run-only");
+    expect(payload.modelId).toBeUndefined();
+    expect(payload.createdAtMs).toBeUndefined();
+    expect(payload.sequence).toBeUndefined();
+  });
+
+  it("the resulting payload is deliverable by sendWebhook", async () => {
+    const payload = buildEvidenceWebhookPayload(record, { sequence: 7, topic: "feed" });
+    const fetcher = mock(async () => new Response("ok", { status: 200 }));
+    const results = await sendWebhook(payload, {
+      config: { urls: ["https://audit"] },
+      fetcher: fetcher as typeof fetch,
+    });
+    expect(results.every((r) => r.ok)).toBe(true);
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });
