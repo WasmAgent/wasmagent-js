@@ -10,6 +10,12 @@ import {
   EvidenceMirrorConflictError,
   InMemoryRemoteEvidenceBackend,
 } from "./evidenceMirror.js";
+import {
+  defaultTierClassifier,
+  EvidenceRouter,
+  type EvidenceSink,
+  type StorageTier,
+} from "./evidenceRouter.js";
 import { FilesystemEvidenceStore, InMemoryEvidenceStore } from "./evidenceStore.js";
 import {
   buildEvidenceBundle,
@@ -3049,6 +3055,425 @@ describe("EvidenceMirror (#256)", () => {
       const second = await mirror.sync();
       expect(second.pushed).toBe(0);
       expect(second.pulled).toBe(0);
+    });
+  });
+});
+
+describe("EvidenceRouter (#254)", () => {
+  async function makeRecord(
+    overrides: {
+      run_id?: string;
+      model_id?: string;
+      created_at_ms?: number;
+      tool_name?: string;
+      side_effect_class?: SideEffectClass;
+    } = {}
+  ): Promise<AEPRecord> {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: overrides.run_id ?? "run-default",
+      model_id: overrides.model_id,
+      signer,
+    });
+    emitter.addAction({
+      tool_name: overrides.tool_name ?? "default_tool",
+      state_changing: false,
+      side_effect_class: overrides.side_effect_class ?? "read",
+    });
+    return emitter.emit(overrides.created_at_ms ?? 1_700_000_000_000);
+  }
+
+  describe("defaultTierClassifier", () => {
+    it("maps side-effect severity to archival tiers", async () => {
+      expect(defaultTierClassifier(await makeRecord({ side_effect_class: "read" }))).toBe("cold");
+      expect(defaultTierClassifier(await makeRecord({ side_effect_class: "mutate-local" }))).toBe(
+        "warm"
+      );
+      expect(
+        defaultTierClassifier(await makeRecord({ side_effect_class: "mutate-external" }))
+      ).toBe("hot");
+      expect(defaultTierClassifier(await makeRecord({ side_effect_class: "network-egress" }))).toBe(
+        "hot"
+      );
+      // Explicitly unknown risk stays on the hot tier for prompt audit.
+      expect(defaultTierClassifier(await makeRecord({ side_effect_class: "unknown" }))).toBe("hot");
+    });
+
+    it("classifies records with no side-effect information as cold", () => {
+      // A legacy record with no run_side_effect_class_max.
+      const legacy = {
+        schema_version: "aep/v0.3" as const,
+        run_id: "run-legacy",
+        created_at_ms: 1_700_000_000_000,
+        input_refs: [],
+        output_refs: [],
+        capability_decisions: [],
+        actions: [],
+        verifier_results: [],
+        signature: { alg: "ed25519" as const, key_id: "k1", sig: "dGVzdA==" },
+      };
+      expect(defaultTierClassifier(legacy as AEPRecord)).toBe("cold");
+    });
+  });
+
+  describe("local vs remote storage routing", () => {
+    it("delivers a record to both local and remote sinks", async () => {
+      const store = new InMemoryEvidenceStore();
+      const remote = new InMemoryRemoteEvidenceBackend("s3");
+      const router = new EvidenceRouter({
+        sinks: [
+          { kind: "local", id: "local-1", store },
+          { kind: "remote", id: "remote-1", remote },
+        ],
+      });
+
+      const record = await makeRecord({ run_id: "run-a" });
+      const result = await router.route(record);
+
+      expect(result.deliveredToSinks).toBe(2);
+      expect(result.sinks).toEqual([
+        { sinkId: "local-1", kind: "local", status: "delivered" },
+        { sinkId: "remote-1", kind: "remote", status: "delivered" },
+      ]);
+      expect(store.size()).toBe(1);
+      expect(store.all[0]).toBe(record);
+      // Remote sink defaults to content-digest keying.
+      expect(await remote.get(contentDigestKeyOf(record))).toBe(record);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("remote sink uses a custom keyOf when provided", async () => {
+      const remote = new InMemoryRemoteEvidenceBackend();
+      const router = new EvidenceRouter({
+        sinks: [{ kind: "remote", id: "by-run", remote, keyOf: (r) => r.run_id }],
+      });
+
+      const record = await makeRecord({ run_id: "run-keyed" });
+      await router.route(record);
+
+      expect(await remote.get("run-keyed")).toBe(record);
+      expect(await remote.get(contentDigestKeyOf(record))).toBeUndefined();
+    });
+
+    it("remote delivery is idempotent under the default content-digest key", async () => {
+      const remote = new InMemoryRemoteEvidenceBackend();
+      const router = new EvidenceRouter({
+        sinks: [{ kind: "remote", id: "remote-1", remote }],
+      });
+
+      const record = await makeRecord({ run_id: "run-idem" });
+      await router.route(record);
+      await router.route(record);
+
+      expect(await remote.list()).toHaveLength(1);
+      expect(await remote.get(contentDigestKeyOf(record))).toBe(record);
+    });
+
+    it("routes to no sinks when none are configured", async () => {
+      const router = new EvidenceRouter();
+      const result = await router.route(await makeRecord());
+      expect(result.deliveredToSinks).toBe(0);
+      expect(result.sinks).toEqual([]);
+    });
+
+    it("rejects duplicate sink ids at construction", () => {
+      const store = new InMemoryEvidenceStore();
+      const sinks: EvidenceSink[] = [
+        { kind: "local", id: "dup", store },
+        { kind: "local", id: "dup", store: new InMemoryEvidenceStore() },
+      ];
+      expect(() => new EvidenceRouter({ sinks })).toThrow("not unique");
+    });
+  });
+
+  describe("archival tiers", () => {
+    it("only delivers to sinks whose declared tier matches the classified record", async () => {
+      const hot = new InMemoryEvidenceStore();
+      const warm = new InMemoryEvidenceStore();
+      const cold = new InMemoryEvidenceStore();
+      const router = new EvidenceRouter({
+        sinks: [
+          { kind: "local", id: "hot-tier", store: hot, tiers: ["hot"] },
+          { kind: "local", id: "warm-tier", store: warm, tiers: ["warm"] },
+          { kind: "local", id: "cold-tier", store: cold, tiers: ["cold"] },
+        ],
+      });
+
+      // mutate-external -> hot
+      const hotRec = await makeRecord({ run_id: "run-hot", side_effect_class: "mutate-external" });
+      const hotResult = await router.route(hotRec);
+      expect(hotResult.tier).toBe("hot");
+      expect(hot.size()).toBe(1);
+      expect(warm.size()).toBe(0);
+      expect(cold.size()).toBe(0);
+      expect(hotResult.sinks.find((s) => s.sinkId === "hot-tier")?.status).toBe("delivered");
+      expect(hotResult.sinks.find((s) => s.sinkId === "warm-tier")?.status).toBe("tier-excluded");
+      expect(hotResult.sinks.find((s) => s.sinkId === "cold-tier")?.status).toBe("tier-excluded");
+
+      // read -> cold
+      const coldRec = await makeRecord({ run_id: "run-cold", side_effect_class: "read" });
+      const coldResult = await router.route(coldRec);
+      expect(coldResult.tier).toBe("cold");
+      expect(cold.size()).toBe(1);
+      expect(hot.size()).toBe(1); // unchanged
+    });
+
+    it("a sink with no tiers accepts records of every tier", async () => {
+      const all = new InMemoryEvidenceStore();
+      const router = new EvidenceRouter({
+        sinks: [{ kind: "local", id: "all-tier", store: all }],
+      });
+
+      await router.route(await makeRecord({ side_effect_class: "read" }));
+      await router.route(await makeRecord({ side_effect_class: "network-egress" }));
+      expect(all.size()).toBe(2);
+    });
+
+    it("respects a custom classifyTier override", async () => {
+      const hot = new InMemoryEvidenceStore();
+      const router = new EvidenceRouter({
+        sinks: [{ kind: "local", id: "hot-only", store: hot, tiers: ["hot"] }],
+        classifyTier: () => "hot" as StorageTier,
+      });
+
+      // Even a pure read classifies as hot under the override.
+      const result = await router.route(await makeRecord({ side_effect_class: "read" }));
+      expect(result.tier).toBe("hot");
+      expect(hot.size()).toBe(1);
+    });
+
+    it("excludes an unclassified record (undefined tier) from tier-restricted sinks", async () => {
+      const tiered = new InMemoryEvidenceStore();
+      const open = new InMemoryEvidenceStore();
+      const router = new EvidenceRouter({
+        sinks: [
+          { kind: "local", id: "tiered", store: tiered, tiers: ["hot"] },
+          { kind: "local", id: "open", store: open },
+        ],
+        classifyTier: () => undefined,
+      });
+
+      const result = await router.route(await makeRecord());
+      expect(result.tier).toBeUndefined();
+      expect(tiered.size()).toBe(0);
+      expect(open.size()).toBe(1);
+      expect(result.sinks.find((s) => s.sinkId === "tiered")?.status).toBe("tier-excluded");
+      expect(result.sinks.find((s) => s.sinkId === "open")?.status).toBe("delivered");
+    });
+  });
+
+  describe("selective broadcast to subscribed auditors", () => {
+    it("broadcasts every record to an unfiltered auditor", async () => {
+      const router = new EvidenceRouter();
+      const seen: AEPRecord[] = [];
+      const sub = router.subscribe((record) => {
+        seen.push(record);
+      });
+
+      await router.route(await makeRecord({ run_id: "run-1" }));
+      await router.route(await makeRecord({ run_id: "run-2" }));
+
+      expect(seen.map((r) => r.run_id)).toEqual(["run-1", "run-2"]);
+      expect(sub.id).toMatch(/^auditor-\d+$/);
+      expect(router.auditorCount).toBe(1);
+    });
+
+    it("only broadcasts records matching the subscription filter", async () => {
+      const router = new EvidenceRouter();
+      const seen: AEPRecord[] = [];
+      router.subscribe((record) => seen.push(record), { action_type: "network-egress" });
+
+      await router.route(await makeRecord({ run_id: "read-1", side_effect_class: "read" }));
+      await router.route(
+        await makeRecord({ run_id: "egress-1", side_effect_class: "network-egress" })
+      );
+      await router.route(await makeRecord({ run_id: "read-2", side_effect_class: "read" }));
+
+      expect(seen.map((r) => r.run_id)).toEqual(["egress-1"]);
+    });
+
+    it("passes the classified tier to the auditor callback", async () => {
+      const router = new EvidenceRouter();
+      const tiers: (StorageTier | undefined)[] = [];
+      router.subscribe((_record, tier) => {
+        tiers.push(tier);
+      });
+
+      await router.route(await makeRecord({ side_effect_class: "read" }));
+      await router.route(await makeRecord({ side_effect_class: "mutate-local" }));
+      expect(tiers).toEqual(["cold", "warm"]);
+    });
+
+    it("unsubscribe stops further broadcasts", async () => {
+      const router = new EvidenceRouter();
+      const seen: AEPRecord[] = [];
+      const sub = router.subscribe((record) => {
+        seen.push(record);
+      });
+
+      await router.route(await makeRecord({ run_id: "before" }));
+      expect(router.unsubscribe(sub)).toBe(true);
+      expect(router.auditorCount).toBe(0);
+      // Already-unsubscribed returns false.
+      expect(router.unsubscribe(sub)).toBe(false);
+
+      await router.route(await makeRecord({ run_id: "after" }));
+      expect(seen.map((r) => r.run_id)).toEqual(["before"]);
+    });
+
+    it("fan-outs to multiple auditors independently", async () => {
+      const router = new EvidenceRouter();
+      const a: string[] = [];
+      const b: string[] = [];
+      router.subscribe((r) => a.push(r.run_id));
+      router.subscribe((r) => b.push(r.run_id), { run_id: "run-target" });
+
+      await router.route(await makeRecord({ run_id: "run-target" }));
+      await router.route(await makeRecord({ run_id: "run-other" }));
+
+      expect(a).toEqual(["run-target", "run-other"]);
+      expect(b).toEqual(["run-target"]);
+    });
+  });
+
+  describe("filter-gated sinks", () => {
+    it("only delivers records matching the sink filter", async () => {
+      const matched = new InMemoryEvidenceStore();
+      const router = new EvidenceRouter({
+        sinks: [{ kind: "local", id: "filtered", store: matched, filter: { action_type: "read" } }],
+      });
+
+      const readRec = await makeRecord({ run_id: "read", side_effect_class: "read" });
+      const writeRec = await makeRecord({
+        run_id: "write",
+        side_effect_class: "mutate-local",
+      });
+
+      const r1 = await router.route(readRec);
+      const r2 = await router.route(writeRec);
+      expect(r1.sinks[0]?.status).toBe("delivered");
+      expect(r2.sinks[0]?.status).toBe("filter-excluded");
+      expect(matched.size()).toBe(1);
+      expect(matched.all[0]!.run_id).toBe("read");
+    });
+
+    it("tier and filter gates compose (both must pass)", async () => {
+      const sink = new InMemoryEvidenceStore();
+      const router = new EvidenceRouter({
+        sinks: [
+          {
+            kind: "local",
+            id: "hot-reads",
+            store: sink,
+            tiers: ["hot"],
+            filter: { action_type: "network-egress" },
+          },
+        ],
+      });
+
+      // Hot but not network-egress -> filter-excluded.
+      const hotMutate = await makeRecord({
+        run_id: "hot-mutate",
+        side_effect_class: "mutate-external",
+      });
+      const r1 = await router.route(hotMutate);
+      expect(r1.sinks[0]?.status).toBe("filter-excluded");
+
+      // network-egress (hot) -> delivered.
+      const egress = await makeRecord({ run_id: "egress", side_effect_class: "network-egress" });
+      const r2 = await router.route(egress);
+      expect(r2.sinks[0]?.status).toBe("delivered");
+      expect(sink.size()).toBe(1);
+    });
+  });
+
+  describe("error isolation", () => {
+    it("a throwing sink does not abort other sinks or auditors", async () => {
+      const good = new InMemoryEvidenceStore();
+      const boom: EvidenceStore = {
+        append: () => {
+          throw new Error("sink blew up");
+        },
+        query: () => [],
+        getByRunId: () => [],
+        size: () => 0,
+      };
+      const seen: AEPRecord[] = [];
+
+      const router = new EvidenceRouter({
+        sinks: [
+          { kind: "local", id: "boom", store: boom },
+          { kind: "local", id: "good", store: good },
+        ],
+      });
+      router.subscribe((r) => {
+        seen.push(r);
+      });
+
+      const result = await router.route(await makeRecord());
+
+      expect(good.size()).toBe(1); // the good sink still received the record
+      expect(seen).toHaveLength(1); // the auditor still got the broadcast
+      expect(result.deliveredToSinks).toBe(1);
+      expect(result.deliveredToAuditors).toBe(1);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]?.target).toBe("boom");
+      expect(result.errors[0]?.kind).toBe("local");
+    });
+
+    it("a rejecting auditor is captured without aborting sinks", async () => {
+      const store = new InMemoryEvidenceStore();
+      const router = new EvidenceRouter({
+        sinks: [{ kind: "local", id: "local-1", store }],
+      });
+      router.subscribe(() => {
+        throw new Error("auditor blew up");
+      });
+
+      const result = await router.route(await makeRecord());
+
+      expect(store.size()).toBe(1);
+      expect(result.deliveredToSinks).toBe(1);
+      expect(result.deliveredToAuditors).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]?.kind).toBe("auditor");
+    });
+  });
+
+  describe("works with async local stores (FilesystemEvidenceStore)", () => {
+    let dir: string;
+    beforeEach(() => {
+      dir = mkdtempSync(join(tmpdir(), "wasmagent-aep-router-"));
+    });
+    afterEach(() => {
+      rmSync(dir, { recursive: true, force: true });
+    });
+
+    it("routes to a FilesystemEvidenceStore sink and awaits the append", async () => {
+      const local = new FilesystemEvidenceStore(join(dir, "evidence.ndjson"));
+      await local.ready();
+      const remote = new InMemoryRemoteEvidenceBackend("s3");
+      const router = new EvidenceRouter({
+        sinks: [
+          { kind: "local", id: "fs", store: local },
+          { kind: "remote", id: "s3", remote, tiers: ["hot"] },
+        ],
+      });
+
+      const hotRec = await makeRecord({
+        run_id: "run-fs-hot",
+        side_effect_class: "network-egress",
+      });
+      const coldRec = await makeRecord({ run_id: "run-fs-cold", side_effect_class: "read" });
+
+      await router.route(hotRec);
+      await router.route(coldRec);
+
+      // The local fs sink accepts every tier; both records land on disk.
+      expect(await local.size()).toBe(2);
+      // The remote sink is hot-only; only the hot record is archived remotely.
+      expect(await remote.list()).toHaveLength(1);
+      expect(await remote.get(contentDigestKeyOf(hotRec))).toBe(hotRec);
     });
   });
 });
