@@ -77,3 +77,17 @@
 - [ ] Add dashboard GraphQL queries for realtime evidence chain health, recent anomalies, and policy enforcement statistics
 - [ ] Implement `AttestationPublisher` for periodic signed snapshots of ledger state to external witnesses (multi-party verification)
 - [ ] Add integration tests for alert delivery, anomaly detection accuracy (synthetic attack patterns), report generation, and witness attestation flow
+
+Looking at the completed milestones, I see the foundation for evidence tracking, policy enforcement, sandboxing, shared state, and chain verification. The natural next step would focus on **operational resilience and multi-agent coordination** — moving from single-agent evidence chains to production-grade multi-agent workflows with recovery and observability.
+
+## Milestone 7 — Distributed Evidence Coordination & Recovery
+
+- Implement `EvidenceCompressor` to generate auditable summaries and cryptographic commitments from long evidence chains, enabling efficient storage and fast verification without sacrificing chain integrity
+- Add multi-agent evidence coordination with `run_id` namespace isolation, allowing agent teams to contribute to shared evidence chains while maintaining per-agent provenance boundaries
+- Implement `StateRecovery` APIs to reconstruct agent runtime state from historical evidence chains, enabling crash recovery and session resumption with full causality
+- Add evidence chain export/import with standardized envelope format for cross-system portability, supporting evidence transfer between organizations and auditing tools
+- Implement real-time evidence streaming with `EvidencePublisher` for live monitoring dashboards and external observability pipelines (OpenTelemetry integration)
+- Add `EvidencePruner` with configurable retention policies and snapshot checkpoints, enabling long-running agents to manage storage growth while preserving hash continuity
+- Implement Byzantine-fault-resistant evidence aggregation for distributed consensus on evidence chain state across multiple verification nodes
+- Add evidence-based policy adaptation hooks that allow MCP firewall rules to evolve based on observed action patterns and anomaly detection from historical chains
+- Add integration tests for multi-agent evidence merge conflicts, recovery from incomplete chains, cross-system import/export roundtrips, and long-running agent retention
