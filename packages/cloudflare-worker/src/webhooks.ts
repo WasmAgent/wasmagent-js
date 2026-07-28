@@ -11,7 +11,12 @@
  * `dlqBackend` param).
  */
 
-export type WebhookEvent = "run.completed" | "run.failed" | "run.cancelled" | "run.awaiting_input";
+export type WebhookEvent =
+  | "run.completed"
+  | "run.failed"
+  | "run.cancelled"
+  | "run.awaiting_input"
+  | "evidence.record";
 
 export interface WebhookPayload {
   event: WebhookEvent;
@@ -25,7 +30,32 @@ export interface WebhookPayload {
   durationMs?: number;
   /** ISO timestamp at delivery time. */
   emittedAt: string;
+  /**
+   * For `evidence.record` events: the AEP record being broadcast. Carried as
+   * an opaque object so this module has no dependency on `@wasmagent/aep`.
+   */
+  record?: unknown;
+  /** For `evidence.record` events: stream sequence number of the record. */
+  sequence?: number;
+  /** For `evidence.record` events: stream topic the record was published on. */
+  topic?: string;
+  /** For `evidence.record` events: the record's `model_id`, hoisted for routing. */
+  modelId?: string;
+  /** For `evidence.record` events: the record's `created_at_ms`, hoisted for filtering. */
+  createdAtMs?: number;
   /** Free-form. */
+  [k: string]: unknown;
+}
+
+/**
+ * Minimal structural shape {@link buildEvidenceWebhookPayload} reads from an
+ * AEP record. Kept structural (no `@wasmagent/aep` import) so this module stays
+ * dependency-free and Worker-bundle-friendly.
+ */
+export interface EvidenceRecordLike {
+  run_id: string;
+  model_id?: string;
+  created_at_ms?: number;
   [k: string]: unknown;
 }
 
@@ -209,4 +239,50 @@ export function configFromEnv(env: {
   const cfg: WebhookConfig = { urls };
   if (env.WEBHOOK_SECRET) cfg.secret = env.WEBHOOK_SECRET;
   return cfg;
+}
+
+/**
+ * Parse a separate comma-separated URL env var for **evidence-record**
+ * subscriptions. Lets an operator subscribe auditors to real-time AEP records
+ * (`EVIDENCE_WEBHOOK_URLS`) independently from run-lifecycle webhooks
+ * (`WEBHOOK_URLS`). Returns `null` when no evidence URLs are configured.
+ */
+export function evidenceConfigFromEnv(env: {
+  EVIDENCE_WEBHOOK_URLS?: string;
+  EVIDENCE_WEBHOOK_SECRET?: string;
+}): WebhookConfig | null {
+  const urls = (env.EVIDENCE_WEBHOOK_URLS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (urls.length === 0) return null;
+  const cfg: WebhookConfig = { urls };
+  if (env.EVIDENCE_WEBHOOK_SECRET) cfg.secret = env.EVIDENCE_WEBHOOK_SECRET;
+  return cfg;
+}
+
+/**
+ * Build a {@link WebhookPayload} for an `evidence.record` event from a
+ * (structurally-typed) AEP record and optional stream metadata. The record is
+ * nested under `record`, with `run_id`/`model_id`/`created_at_ms` hoisted to
+ * top-level fields so receivers can route and filter without descending.
+ *
+ * Pass the result to {@link sendWebhook} to fan the record out to every
+ * configured evidence webhook URL (with signing, retries, and DLQ).
+ */
+export function buildEvidenceWebhookPayload(
+  record: EvidenceRecordLike,
+  meta: { sequence?: number; topic?: string } = {}
+): WebhookPayload {
+  const payload: WebhookPayload = {
+    event: "evidence.record",
+    runId: record.run_id,
+    emittedAt: new Date().toISOString(),
+    record,
+  };
+  if (record.model_id !== undefined) payload.modelId = record.model_id;
+  if (record.created_at_ms !== undefined) payload.createdAtMs = record.created_at_ms;
+  if (meta.sequence !== undefined) payload.sequence = meta.sequence;
+  if (meta.topic !== undefined) payload.topic = meta.topic;
+  return payload;
 }

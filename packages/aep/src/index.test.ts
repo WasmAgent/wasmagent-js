@@ -11,6 +11,15 @@ import {
   InMemoryRemoteEvidenceBackend,
 } from "./evidenceMirror.js";
 import {
+  ComplianceDashboardObserver,
+  type DeadLetterBackend,
+  EvidenceMonitor,
+  validateWebhookUrl,
+  WebhookMonitorHook,
+  type WebSocketLike,
+  WebSocketMonitorHook,
+} from "./evidenceMonitor.js";
+import {
   defaultTierClassifier,
   EvidenceRouter,
   type EvidenceSink,
@@ -4349,6 +4358,537 @@ describe("EvidenceStream (#252)", () => {
       expect(result.deliveredToSubscribers).toBe(1);
       expect(result.deliveredToTransports).toBe(1);
       expect(result.errors).toHaveLength(0);
+    });
+  });
+});
+
+describe("EvidenceMonitor — real-time monitoring hooks (#265)", () => {
+  /** Emit a signed AEPRecord with configurable fields. */
+  async function makeRecord(
+    overrides: {
+      run_id?: string;
+      model_id?: string;
+      created_at_ms?: number;
+      tool_name?: string;
+      side_effect_class?: SideEffectClass;
+      actions?: number;
+    } = {}
+  ): Promise<AEPRecord> {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: overrides.run_id ?? "run-mon-default",
+      model_id: overrides.model_id,
+      signer,
+    });
+    const actionCount = overrides.actions ?? 1;
+    for (let i = 0; i < actionCount; i++) {
+      emitter.addAction({
+        tool_name: overrides.tool_name ?? "mon_tool",
+        state_changing: false,
+        side_effect_class: overrides.side_effect_class ?? "read",
+      });
+    }
+    return emitter.emit(overrides.created_at_ms ?? 1_700_000_000_000);
+  }
+
+  /** Mock fetch that records every call. */
+  function recorderFetch(responder: (url: string, init: RequestInit) => Response): {
+    fetcher: typeof fetch;
+    calls: Array<{ url: string; body: string; headers: Record<string, string> }>;
+  } {
+    const calls: Array<{ url: string; body: string; headers: Record<string, string> }> = [];
+    const fetcher = (async (url: string | Request, init?: RequestInit) => {
+      const u = String(url);
+      const i = init ?? {};
+      calls.push({
+        url: u,
+        body: typeof i.body === "string" ? i.body : "",
+        headers: (i.headers ?? {}) as Record<string, string>,
+      });
+      return responder(u, i as RequestInit);
+    }) as typeof fetch;
+    return { fetcher, calls };
+  }
+
+  /** Minimal fake WebSocket conforming to WebSocketLike. */
+  function fakeSocket(open: boolean): WebSocketLike & {
+    sent: string[];
+    setReadyState(v: number): void;
+    closed: boolean;
+    failNextSend?: boolean;
+  } {
+    const sent: string[] = [];
+    let readyState = open ? 1 : 0;
+    let closed = false;
+    return {
+      sent,
+      get readyState() {
+        return readyState;
+      },
+      setReadyState(v: number) {
+        readyState = v;
+      },
+      get closed() {
+        return closed;
+      },
+      send(data: string) {
+        if (this.failNextSend) {
+          this.failNextSend = false;
+          throw new Error("socket send boom");
+        }
+        sent.push(data);
+      },
+      close() {
+        closed = true;
+      },
+    };
+  }
+
+  describe("validateWebhookUrl (SSRF guard)", () => {
+    it("accepts a plain https URL", () => {
+      expect(() => validateWebhookUrl("https://example.com/hook")).not.toThrow();
+    });
+
+    it("rejects non-https schemes", () => {
+      expect(() => validateWebhookUrl("http://example.com/hook")).toThrow(/must use https/);
+    });
+
+    it("rejects loopback addresses", () => {
+      expect(() => validateWebhookUrl("https://127.0.0.1/hook")).toThrow(/private\/internal/);
+    });
+
+    it("rejects RFC-1918 ranges", () => {
+      expect(() => validateWebhookUrl("https://10.0.0.1/hook")).toThrow(/private\/internal/);
+      expect(() => validateWebhookUrl("https://192.168.1.1/hook")).toThrow(/private\/internal/);
+    });
+
+    it("rejects localhost", () => {
+      expect(() => validateWebhookUrl("https://localhost/hook")).toThrow(/private\/internal/);
+    });
+
+    it("rejects malformed URLs", () => {
+      expect(() => validateWebhookUrl("not-a-url")).toThrow(/Invalid webhook URL/);
+    });
+  });
+
+  describe("WebhookMonitorHook — webhook subscriptions", () => {
+    it("fails fast on construction when a URL is private (SSRF)", () => {
+      expect(
+        () =>
+          new WebhookMonitorHook({
+            urls: ["https://127.0.0.1/x"],
+            fetcher: (() => null) as typeof fetch,
+          })
+      ).toThrow(/private\/internal/);
+    });
+
+    it("requires at least one URL", () => {
+      expect(() => new WebhookMonitorHook({ urls: [] })).toThrow(/at least one URL/);
+    });
+
+    it("POSTs each event to every configured URL", async () => {
+      const { fetcher, calls } = recorderFetch(() => new Response("ok", { status: 200 }));
+      const hook = new WebhookMonitorHook({
+        urls: ["https://example.com/a", "https://example.com/b"],
+        fetcher,
+      });
+
+      const stream = new EvidenceStream();
+      stream.addTransport(hook);
+      await stream.publish(await makeRecord({ run_id: "run-wh-1" }));
+
+      expect(calls).toHaveLength(2);
+      expect(calls[0]!.url).toBe("https://example.com/a");
+      expect(calls[1]!.url).toBe("https://example.com/b");
+      // Default payload hoists run_id and nests the full record.
+      const body = JSON.parse(calls[0]!.body);
+      expect(body.run_id).toBe("run-wh-1");
+      expect(body.record.run_id).toBe("run-wh-1");
+      expect(body.record.schema_version).toMatch(/^aep\/v0/);
+    });
+
+    it("records per-URL delivery results in lastResults", async () => {
+      const { fetcher } = recorderFetch(() => new Response("ok", { status: 200 }));
+      const hook = new WebhookMonitorHook({ urls: ["https://example.com/a"], fetcher });
+      const stream = new EvidenceStream();
+      stream.addTransport(hook);
+      await stream.publish(await makeRecord());
+
+      expect(hook.lastResults).toHaveLength(1);
+      expect(hook.lastResults[0]!.ok).toBe(true);
+      expect(hook.lastResults[0]!.status).toBe(200);
+      expect(hook.lastResults[0]!.attempts).toBe(1);
+    });
+
+    it("retries with backoff on failure then reports the final status", async () => {
+      let calls = 0;
+      const { fetcher } = recorderFetch(() => {
+        calls++;
+        return new Response("nope", { status: 500 });
+      });
+      const hook = new WebhookMonitorHook({
+        urls: ["https://example.com/a"],
+        maxRetries: 3,
+        backoffMs: 1,
+        fetcher,
+      });
+      const stream = new EvidenceStream();
+      stream.addTransport(hook);
+      await stream.publish(await makeRecord());
+
+      expect(calls).toBe(3);
+      expect(hook.lastResults[0]!.ok).toBe(false);
+      expect(hook.lastResults[0]!.attempts).toBe(3);
+      expect(hook.lastResults[0]!.status).toBe(500);
+      expect(hook.lastResults[0]!.error).toBe("HTTP 500");
+    });
+
+    it("signs the payload with HMAC-SHA-256 when a secret is set", async () => {
+      const { fetcher, calls } = recorderFetch(() => new Response("ok", { status: 200 }));
+      const hook = new WebhookMonitorHook({
+        urls: ["https://example.com/a"],
+        secret: "topsecret",
+        fetcher,
+      });
+      const stream = new EvidenceStream();
+      stream.addTransport(hook);
+      await stream.publish(await makeRecord());
+
+      expect(calls[0]!.headers["X-Wasmagent-Signature"]).toMatch(/^sha256=[a-f0-9]+$/);
+    });
+
+    it("writes persistently-failed deliveries to the DLQ backend", async () => {
+      const dlqStore = new Map<string, string>();
+      const dlqBackend: DeadLetterBackend = {
+        put: async (k: string, v: string) => void dlqStore.set(k, v),
+      };
+      const { fetcher } = recorderFetch(() => new Response("err", { status: 503 }));
+      const hook = new WebhookMonitorHook({
+        urls: ["https://example.com/a"],
+        maxRetries: 2,
+        backoffMs: 1,
+        dlqBackend,
+        fetcher,
+      });
+      const stream = new EvidenceStream({ topic: "dlq-topic" });
+      stream.addTransport(hook);
+      await stream.publish(await makeRecord());
+
+      expect(dlqStore.size).toBe(1);
+      const [key, raw] = [...dlqStore.entries()][0]!;
+      expect(key).toMatch(/^dlq:dlq-topic:1:[a-f0-9]+$/);
+      const stored = JSON.parse(raw);
+      expect(stored.ok).toBe(false);
+      expect(stored.status).toBe(503);
+      expect(stored.payload.run_id).toBe("run-mon-default");
+    });
+
+    it("only delivers events matching the hook filter", async () => {
+      const { fetcher, calls } = recorderFetch(() => new Response("ok", { status: 200 }));
+      const hook = new WebhookMonitorHook({
+        urls: ["https://example.com/a"],
+        filter: { tool_name: "mon_special" },
+        fetcher,
+      });
+      const stream = new EvidenceStream();
+      stream.addTransport(hook);
+      await stream.publish(await makeRecord({ tool_name: "mon_other" }));
+      await stream.publish(await makeRecord({ tool_name: "mon_special" }));
+
+      expect(calls).toHaveLength(1);
+      const body = JSON.parse(calls[0]!.body);
+      expect(body.record.actions[0].tool_name).toBe("mon_special");
+    });
+
+    it("supports a custom payloadFor transform", async () => {
+      const { fetcher, calls } = recorderFetch(() => new Response("ok", { status: 200 }));
+      const hook = new WebhookMonitorHook({
+        urls: ["https://example.com/a"],
+        payloadFor: (event) => ({ seq: event.sequence, rid: event.record.run_id }),
+        fetcher,
+      });
+      const stream = new EvidenceStream();
+      stream.addTransport(hook);
+      await stream.publish(await makeRecord({ run_id: "run-custom" }));
+
+      const body = JSON.parse(calls[0]!.body);
+      expect(body).toEqual({ seq: 1, rid: "run-custom" });
+    });
+  });
+
+  describe("WebSocketMonitorHook — WebSocket streaming", () => {
+    it("serializes and sends each event when the socket is open", async () => {
+      const socket = fakeSocket(true);
+      const stream = new EvidenceStream();
+      stream.addTransport(new WebSocketMonitorHook({ socket }));
+      await stream.publish(await makeRecord({ run_id: "run-ws-1" }));
+
+      expect(socket.sent).toHaveLength(1);
+      const msg = JSON.parse(socket.sent[0]!);
+      expect(msg.record.run_id).toBe("run-ws-1");
+      expect(msg.sequence).toBe(1);
+    });
+
+    it("drops events when the socket is not open (no throw)", async () => {
+      const socket = fakeSocket(false);
+      const hook = new WebSocketMonitorHook({ socket });
+      const stream = new EvidenceStream();
+      stream.addTransport(hook);
+      const result = await stream.publish(await makeRecord());
+
+      expect(socket.sent).toHaveLength(0);
+      expect(hook.droppedCount).toBe(1);
+      expect(hook.sentCount).toBe(0);
+      // Best-effort: dropped events do not surface as delivery errors.
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it("only streams events matching the filter", async () => {
+      const socket = fakeSocket(true);
+      const stream = new EvidenceStream();
+      stream.addTransport(new WebSocketMonitorHook({ socket, filter: { run_id: "run-ws-match" } }));
+      await stream.publish(await makeRecord({ run_id: "run-ws-skip" }));
+      await stream.publish(await makeRecord({ run_id: "run-ws-match" }));
+
+      expect(socket.sent).toHaveLength(1);
+      expect(JSON.parse(socket.sent[0]!).record.run_id).toBe("run-ws-match");
+    });
+
+    it("captures send errors without aborting the fan-out", async () => {
+      const socket = fakeSocket(true);
+      socket.failNextSend = true;
+      const hook = new WebSocketMonitorHook({ socket });
+      const stream = new EvidenceStream();
+      stream.addTransport(hook);
+      await stream.publish(await makeRecord());
+
+      expect(hook.lastError).toBeInstanceOf(Error);
+      expect((hook.lastError as Error).message).toBe("socket send boom");
+      expect(hook.droppedCount).toBe(1);
+      expect(hook.sentCount).toBe(0);
+    });
+
+    it("uses a custom serializer", async () => {
+      const socket = fakeSocket(true);
+      const stream = new EvidenceStream();
+      stream.addTransport(
+        new WebSocketMonitorHook({
+          socket,
+          serialize: (event) => `SEQ=${event.sequence}`,
+        })
+      );
+      await stream.publish(await makeRecord());
+
+      expect(socket.sent).toEqual(["SEQ=1"]);
+    });
+
+    it("closes the socket on stream close", async () => {
+      const socket = fakeSocket(true);
+      const stream = new EvidenceStream();
+      stream.addTransport(new WebSocketMonitorHook({ socket }));
+      await stream.close();
+
+      expect(socket.closed).toBe(true);
+    });
+  });
+
+  describe("ComplianceDashboardObserver — in-process observers", () => {
+    it("aggregates counts by run_id, tool, side-effect class, and model", async () => {
+      const stream = new EvidenceStream();
+      const observer = new ComplianceDashboardObserver();
+      stream.subscribe(observer.handle);
+
+      await stream.publish(
+        await makeRecord({
+          run_id: "run-A",
+          model_id: "model-X",
+          tool_name: "tool-read",
+          side_effect_class: "read",
+        })
+      );
+      await stream.publish(
+        await makeRecord({
+          run_id: "run-A",
+          model_id: "model-Y",
+          tool_name: "tool-write",
+          side_effect_class: "mutate-local",
+        })
+      );
+      await stream.publish(
+        await makeRecord({
+          run_id: "run-B",
+          model_id: "model-X",
+          tool_name: "tool-read",
+          side_effect_class: "network-egress",
+        })
+      );
+
+      const snap = observer.snapshot;
+      expect(snap.totalEvents).toBe(3);
+      expect(snap.byRunId).toEqual({ "run-A": 2, "run-B": 1 });
+      expect(snap.byTool).toEqual({ "tool-read": 2, "tool-write": 1 });
+      expect(snap.byModelId).toEqual({ "model-X": 2, "model-Y": 1 });
+      expect(snap.bySideEffectClass.read).toBe(1);
+      expect(snap.bySideEffectClass["mutate-local"]).toBe(1);
+      expect(snap.bySideEffectClass["network-egress"]).toBe(1);
+      expect(snap.totalActions).toBe(3);
+    });
+
+    it("always exposes all five side-effect-class keys (zero-filled)", async () => {
+      const stream = new EvidenceStream();
+      const observer = new ComplianceDashboardObserver();
+      stream.subscribe(observer.handle);
+      await stream.publish(await makeRecord());
+
+      const keys = Object.keys(observer.snapshot.bySideEffectClass).sort();
+      expect(keys).toEqual(
+        ["mutate-external", "mutate-local", "network-egress", "read", "unknown"].sort()
+      );
+    });
+
+    it("maintains a bounded rolling window of recent events", async () => {
+      const stream = new EvidenceStream();
+      const observer = new ComplianceDashboardObserver({ windowSize: 3 });
+      stream.subscribe(observer.handle);
+
+      for (let i = 0; i < 5; i++) {
+        await stream.publish(await makeRecord({ created_at_ms: 1_700_000_000_000 + i }));
+      }
+
+      const snap = observer.snapshot;
+      expect(snap.totalEvents).toBe(5); // total is unaffected by window size
+      expect(snap.recent).toHaveLength(3);
+      expect(snap.recent[0]!.sequence).toBe(3);
+      expect(snap.recent[2]!.sequence).toBe(5);
+    });
+
+    it("only aggregates events matching the filter", async () => {
+      const stream = new EvidenceStream();
+      const observer = new ComplianceDashboardObserver({ filter: { run_id: "run-keep" } });
+      stream.subscribe(observer.handle);
+
+      await stream.publish(await makeRecord({ run_id: "run-skip" }));
+      await stream.publish(await makeRecord({ run_id: "run-keep" }));
+
+      expect(observer.snapshot.totalEvents).toBe(1);
+      expect(observer.snapshot.byRunId).toEqual({ "run-keep": 1 });
+    });
+
+    it("invokes the onEvent callback for each matching event", async () => {
+      const stream = new EvidenceStream();
+      const seen: StreamEvent[] = [];
+      const observer = new ComplianceDashboardObserver({
+        filter: { run_id: "run-cb" },
+        onEvent: (e) => seen.push(e),
+      });
+      stream.subscribe(observer.handle);
+
+      await stream.publish(await makeRecord({ run_id: "run-cb" }));
+      await stream.publish(await makeRecord({ run_id: "run-other" }));
+
+      expect(seen).toHaveLength(1);
+      expect(seen[0]!.record.run_id).toBe("run-cb");
+    });
+
+    it("tracks firstSeenMs and lastSeenMs", async () => {
+      const stream = new EvidenceStream();
+      const observer = new ComplianceDashboardObserver();
+      stream.subscribe(observer.handle);
+
+      expect(observer.snapshot.firstSeenMs).toBeNull();
+      await stream.publish(await makeRecord());
+      const first = observer.snapshot.firstSeenMs;
+      await stream.publish(await makeRecord());
+
+      expect(first).not.toBeNull();
+      expect(observer.snapshot.lastSeenMs).not.toBeNull();
+      expect(observer.snapshot.lastSeenMs!).toBeGreaterThanOrEqual(first!);
+    });
+
+    it("reset() clears all aggregates and the recent window", async () => {
+      const stream = new EvidenceStream();
+      const observer = new ComplianceDashboardObserver();
+      stream.subscribe(observer.handle);
+      await stream.publish(await makeRecord());
+      expect(observer.snapshot.totalEvents).toBe(1);
+
+      observer.reset();
+      const snap = observer.snapshot;
+      expect(snap.totalEvents).toBe(0);
+      expect(snap.recent).toHaveLength(0);
+      expect(snap.byRunId).toEqual({});
+      expect(snap.firstSeenMs).toBeNull();
+    });
+  });
+
+  describe("EvidenceMonitor — unified container", () => {
+    it("creates an underlying stream with the configured topic", () => {
+      const monitor = new EvidenceMonitor({ topic: "compliance-feed" });
+      expect(monitor.topic).toBe("compliance-feed");
+      expect(monitor.stream).toBeInstanceOf(EvidenceStream);
+      expect(monitor.hookCount).toBe(0);
+      expect(monitor.observerCount).toBe(0);
+    });
+
+    it("can wrap an existing EvidenceStream", () => {
+      const stream = new EvidenceStream({ topic: "preexisting" });
+      const monitor = new EvidenceMonitor({ stream });
+      expect(monitor.stream).toBe(stream);
+      expect(monitor.topic).toBe("preexisting");
+    });
+
+    it("fans a published record out to webhook, websocket, and observer hooks", async () => {
+      const { fetcher, calls } = recorderFetch(() => new Response("ok", { status: 200 }));
+      const socket = fakeSocket(true);
+      const monitor = new EvidenceMonitor({ topic: "all-hooks" });
+
+      const dashboard = monitor.observe({ windowSize: 5 });
+      monitor.addWebhook({ urls: ["https://example.com/a"], fetcher });
+      monitor.addWebSocket({ socket });
+
+      await monitor.publish(await makeRecord({ run_id: "run-fanout" }));
+
+      // Webhook
+      expect(calls).toHaveLength(1);
+      expect(JSON.parse(calls[0]!.body).run_id).toBe("run-fanout");
+      // WebSocket
+      expect(socket.sent).toHaveLength(1);
+      // Observer
+      expect(dashboard.snapshot.totalEvents).toBe(1);
+      expect(dashboard.snapshot.byRunId).toEqual({ "run-fanout": 1 });
+
+      expect(monitor.hookCount).toBe(2);
+      expect(monitor.observerCount).toBe(1);
+    });
+
+    it("close() tears down the websocket hook (closing the socket)", async () => {
+      const socket = fakeSocket(true);
+      const monitor = new EvidenceMonitor();
+      monitor.addWebSocket({ socket });
+      await monitor.close();
+
+      expect(socket.closed).toBe(true);
+      expect(monitor.stream.closed).toBe(true);
+    });
+
+    it("isolates a failing webhook URL from observer delivery", async () => {
+      // A webhook whose fetcher throws on every attempt must not stop the
+      // observer from receiving the event.
+      const { fetcher } = recorderFetch(() => {
+        throw new Error("network down");
+      });
+      const socket = fakeSocket(true);
+      const monitor = new EvidenceMonitor();
+      const dashboard = monitor.observe();
+      monitor.addWebhook({ urls: ["https://example.com/a"], maxRetries: 1, backoffMs: 1, fetcher });
+      monitor.addWebSocket({ socket });
+
+      await monitor.publish(await makeRecord());
+
+      // Observer and websocket still received the event despite webhook failure.
+      expect(dashboard.snapshot.totalEvents).toBe(1);
+      expect(socket.sent).toHaveLength(1);
+      expect(monitor.stream.transportCount).toBe(2);
     });
   });
 });
