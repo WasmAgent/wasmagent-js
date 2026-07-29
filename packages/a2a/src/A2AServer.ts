@@ -43,7 +43,7 @@ export function createA2AServer(agent: SubagentRunnable, opts: A2AServerOptions)
     taskEndpoint: `${baseUrl}/tasks`,
   };
 
-  const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+  const requestHandler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     // CORS headers for browser agents.
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -141,11 +141,21 @@ export function createA2AServer(agent: SubagentRunnable, opts: A2AServerOptions)
 
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "Not found" }));
-  });
+  };
+
+  const server = createServer(requestHandler);
 
   return {
     agentCard(): A2AAgentCard {
       return card;
+    },
+
+    /**
+     * Returns the raw (req, res) handler for use as Express/Connect middleware.
+     * Mount with: `app.use("/a2a", server.handler())`
+     */
+    handler(): (req: IncomingMessage, res: ServerResponse) => void {
+      return requestHandler;
     },
 
     start(): Promise<string> {

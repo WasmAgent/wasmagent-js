@@ -179,3 +179,78 @@ describe("A2ARemoteAgent.asTool", () => {
     }
   });
 });
+
+describe("A2AServer.handler() middleware adapter", () => {
+  it("handler() returns a function (req, res) compatible with Express.use()", () => {
+    const agent = makeAgent("hello");
+    const server = createA2AServer(agent, {
+      agentId: "urn:test:handler",
+      name: "HandlerTest",
+      description: "x",
+      port: 13410,
+    });
+    const h = server.handler();
+    expect(typeof h).toBe("function");
+    // handler accepts two arguments: req, res
+    expect(h.length).toBe(2);
+  });
+
+  it("handler() serves agent-card at /.well-known/agent-card without starting server", async () => {
+    const agent = makeAgent("hello");
+    const server = createA2AServer(agent, {
+      agentId: "https://example.com/agents/handler-test",
+      name: "HandlerTest",
+      description: "Express middleware test",
+      port: 13411,
+    });
+
+    // Mount handler in a standalone http server on a different port
+    const { createServer: createHttpServer } = await import("node:http");
+    const httpServer = createHttpServer(server.handler());
+    const url = await new Promise<string>((resolve, reject) => {
+      httpServer.listen(13411, () => resolve("http://localhost:13411"));
+      httpServer.once("error", reject);
+    });
+
+    try {
+      const resp = await fetch(`${url}/.well-known/agent-card`);
+      expect(resp.ok).toBe(true);
+      const card = (await resp.json()) as Record<string, unknown>;
+      expect(card.name).toBe("HandlerTest");
+      expect(card.protocolVersion).toBe("1.0");
+    } finally {
+      await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+    }
+  });
+
+  it("handler() processes POST /tasks and returns completed result", async () => {
+    const agent = makeAgent("middleware answer");
+    const server = createA2AServer(agent, {
+      agentId: "urn:test:handler-task",
+      name: "HandlerTask",
+      description: "x",
+      port: 13412,
+    });
+
+    const { createServer: createHttpServer } = await import("node:http");
+    const httpServer = createHttpServer(server.handler());
+    const url = await new Promise<string>((resolve, reject) => {
+      httpServer.listen(13412, () => resolve("http://localhost:13412"));
+      httpServer.once("error", reject);
+    });
+
+    try {
+      const resp = await fetch(`${url}/tasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: "mw-task-001", message: "test via handler" }),
+      });
+      expect(resp.ok).toBe(true);
+      const result = (await resp.json()) as Record<string, unknown>;
+      expect(result.status).toBe("completed");
+      expect(result.result).toBe("middleware answer");
+    } finally {
+      await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+    }
+  });
+});
