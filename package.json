@@ -2,7 +2,7 @@
   "name": "wasmagent-js",
   "version": "0.1.0",
   "private": true,
-  "description": "WASM Agent Kernel & Portable Code Executor \u2014 three-tier sandboxed execution, prompt-cache optimization, edge-native TypeScript.",
+  "description": "WASM Agent Kernel & Portable Code Executor — three-tier sandboxed execution, prompt-cache optimization, edge-native TypeScript.",
   "license": "Apache-2.0",
   "keywords": [
     "wasm",
@@ -62,15 +62,15 @@
     "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
+    "@biomejs/biome": "^2.5.6",
     "@changesets/changelog-github": "^0.7.0",
-    "@changesets/cli": "^2.31.0",
-    "@cyclonedx/cyclonedx-npm": "^1.20.0",
-    "@types/node": "^26.1.1",
-    "@wasmagent/protocol": "^0.1.5",
-    "happy-dom": "^14.0.0",
-    "node-llama-cpp": "^3.18.1",
-    "turbo": "^2.3.0",
+    "@changesets/cli": "^2.31.1",
+    "@cyclonedx/cyclonedx-npm": "^6.0.0",
+    "@types/node": "^26.1.2",
+    "@wasmagent/protocol": "^0.1.7",
+    "happy-dom": "^20.11.1",
+    "node-llama-cpp": "^3.19.1",
+    "turbo": "^2.10.7",
     "typescript": "^5.7.0",
     "vitepress": "^1.6.4"
   }

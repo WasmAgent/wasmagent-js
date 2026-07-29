@@ -74,8 +74,8 @@ describe("AgentSupervisor — core behaviour", () => {
     for await (const e of supervisor.run()) events.push(e);
     const dec = events.find((e) => e.event === "supervisor_decision");
     expect(dec).toBeDefined();
-    expect((dec?.data as { action: string; reason: string }).action).toBe("abort");
-    expect((dec?.data as { reason: string }).reason).toBe("test abort");
+    expect((dec!.data as { action: string; reason: string }).action).toBe("abort");
+    expect((dec!.data as { reason: string }).reason).toBe("test abort");
     // No events after abort
     const abortIdx = events.indexOf(dec!);
     expect(events.length).toBe(abortIdx + 1);
@@ -307,7 +307,7 @@ describe("budgetGuardPolicy", () => {
     for await (const e of supervisor.run()) events.push(e);
     expect(events.some((e) => e.event === "supervisor_decision")).toBe(true);
     const dec = events.find((e) => e.event === "supervisor_decision");
-    expect((dec?.data as { action: string }).action).toBe("abort");
+    expect((dec!.data as { action: string }).action).toBe("abort");
   });
 });
 

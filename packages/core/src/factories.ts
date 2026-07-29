@@ -53,7 +53,6 @@ import { CheckpointableRun } from "./checkpoint/index.js";
 import { MessageAssembler } from "./memory/MessageAssembler.js";
 import type { ObservationalMemoryOptions } from "./memory/ObservationalMemory.js";
 import { ObservationalMemory } from "./memory/ObservationalMemory.js";
-import type { Model } from "./models/types.js";
 import { TokenBudget } from "./models/types.js";
 
 /**

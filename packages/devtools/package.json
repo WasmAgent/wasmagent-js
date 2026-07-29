@@ -32,7 +32,7 @@
     "@testing-library/react": "^16.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
-    "happy-dom": "^14.0.0",
+    "happy-dom": "^20.11.1",
     "jsdom": "^29.1.1",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
