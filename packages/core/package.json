@@ -69,7 +69,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@wasmagent/aep": "workspace:*",
     "openai": "^4.90.0",
-    "typescript": "^5.7.0"
+    "typescript": "^7.0.2"
   },
   "license": "Apache-2.0",
   "repository": {
