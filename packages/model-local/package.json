@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/model-local",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Embedded local LLM provider for wasmagent — node-llama-cpp adapter with grammar-constrained tool calling, multi-mirror download (HF/hf-mirror/ModelScope), and cert pipeline",
   "type": "module",
   "main": "./dist/index.js",

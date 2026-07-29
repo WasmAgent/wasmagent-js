@@ -1,5 +1,15 @@
 # @wasmagent/claude-agent-sdk
 
+## 1.0.8
+
+### Patch Changes
+
+- Updated dependencies [079ddbc]
+- Updated dependencies [0263bde]
+- Updated dependencies [7e823b0]
+- Updated dependencies [fb6da9c]
+  - @wasmagent/core@3.1.0
+
 ## 1.0.7
 
 ### Patch Changes

@@ -1,5 +1,28 @@
 # @agentkit-js/core
 
+## 3.1.0
+
+### Minor Changes
+
+- 079ddbc: Add `AgentGroup` orchestration primitive for multi-agent coordination with cross-linked evidence chains (Milestone 6). Unlike `AgentTeam` (best-of-n competition with a single winner), `AgentGroup` runs members as cooperators: every member contributes to an aggregated output, and the group mints a tamper-evident coordination record whose SHA-256 digest binds every member's contribution hash. New public exports: `AgentGroup`, `coordinationDigestFor`, `AGENT_GROUP_COORDINATION_TYPE`, and associated types (`AgentGroupOptions`, `AgentGroupResult`, `AgentGroupCoordinationRecord`, `AgentGroupEvidenceLink`, `AgentGroupEvidenceSink`, etc.). Accepts an optional structurally-typed `evidenceStore` (duck-compatible with `@wasmagent/aep`'s `EvidenceStore`) — zero runtime dependency on the evidence layer.
+- fb6da9c: feat(core/shared-state): AEP evidence sink — semantic action stream as evidence log (#141)
+
+  - Adds `@wasmagent/core/shared-state/aep` subpath exporting `aepEvidenceSink(store, emitter, opts?)`. Subscribing to a `SharedStateStore`, it records each qualifying semantic action as AEP evidence on the caller-supplied `AEPEmitter` via `emitter.addAction(...)` — marking it `state_changing: true` with mapped `side_effect_class` and `recording_mode`. Because the reducer is pure, the same action stream that syncs the UI is a replayable provenance/audit log: the UI sync stream and the evidence stream become one.
+  - Defaults: `include` records **agent-sourced writes only** (`source === "agent"`) so human edits are not misattributed to the agent; `sideEffectClass` defaults to `"mutate-local"`; `recordingMode` defaults to `"delta"`. `replace()` (no reducer dispatch) is skipped so the stream stays replayable. Returns a detach function.
+  - Dependency boundary: this dedicated subpath is the only `shared-state` file that references `@wasmagent/aep`, and only via `import type` — the compiled output has zero runtime dependency on the evidence layer, and the base `shared-state` barrel stays dependency-free (enforced by a dependency test).
+
+### Patch Changes
+
+- 0263bde: Align core-four packages to the same major version (v3)
+
+  @wasmagent/aep, @wasmagent/mcp-firewall, and @wasmagent/compliance were left
+  at 1.x/2.x after the @wasmagent/core 3.0.0 release in #155. This changeset
+  brings all four to the same major so the version-coherence gate passes.
+
+  No API changes; the bump is structural only.
+
+- 7e823b0: Enforce `memoryLimitBytes` / `maxMemoryBytes` in `JsKernel` (the default kernel) as a hard V8 heap cap via `node:worker_threads` `resourceLimits` (issue #192). Previously these fields were advisory in `JsKernel`; a runaway allocation could exhaust the host heap. The cap is applied at worker spawn (constructor-level only, since a live worker's heap limit cannot be resized between `run()` calls), and a worker that aborts on FATAL OOM now surfaces as a `run()` rejection instead of silently timing out. Also exports a `memoryBytesToResourceLimits(bytes)` helper.
+
 ## 3.0.0
 
 ### Major Changes

@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/model-minimax",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "MiniMax model adapter for wasmagent",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/compliance",
-  "version": "2.0.1",
+  "version": "3.0.0",
   "description": "WasmAgent Compliance Engine — TaskSpec-driven verification, local repair, and evidence export for LLM agent runs.",
   "type": "module",
   "main": "./dist/index.js",
