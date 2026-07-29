@@ -1,6 +1,19 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
+import {
+  AEPEmitter,
+  type AEPRecord,
+  createLocalSignerFromSeed,
+  EvidencePublisher,
+  InMemoryEvidenceStore,
+  type StreamEvent,
+} from "@wasmagent/aep";
 import type { ReadableSpan } from "@wasmagent/core/experimental";
-import { GENAI_SEMCONV_VERSION, OtlpHttpExporter } from "./index.js";
+import {
+  aepRecordToOtlpSpans,
+  GENAI_SEMCONV_VERSION,
+  OtlpEvidenceTransport,
+  OtlpHttpExporter,
+} from "./index.js";
 
 function makeSpan(overrides: Partial<ReadableSpan> = {}): ReadableSpan {
   return {
@@ -209,5 +222,254 @@ describe("OTEL_SEMCONV_STABILITY_OPT_IN (#30)", () => {
     // So if env is set, even with "default" option, it's true. This is intentional:
     // the env var is a cluster-level override that trumps per-instance config.
     expect(exporter.useLatestSemconv).toBe(true);
+  });
+});
+
+// ── M7: real-time evidence streaming → OTLP (#276) ───────────────────────────
+
+const EVIDENCE_SEED = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+const EVIDENCE_KEY_ID = "otlp-test-key";
+
+/** Emit a signed AEPRecord with the given actions. */
+async function makeEvidenceRecord(
+  actions: Array<{ tool_name: string; state_changing: boolean; action_id?: string }>,
+  run_id = "run-otlp-1"
+): Promise<AEPRecord> {
+  const signer = createLocalSignerFromSeed(EVIDENCE_SEED, EVIDENCE_KEY_ID);
+  const emitter = new AEPEmitter({ run_id, signer, allowEmptyActions: true });
+  for (const a of actions) {
+    emitter.addAction({
+      tool_name: a.tool_name,
+      state_changing: a.state_changing,
+      ...(a.action_id !== undefined ? { action_id: a.action_id } : {}),
+    });
+  }
+  return emitter.emit(1_700_000_000_000);
+}
+
+/** Look up an OTLP attribute value by key. */
+function attrValue(
+  attrs: Array<{ key: string; value: Record<string, unknown> }>,
+  key: string
+): unknown {
+  return attrs.find((a) => a.key === key)?.value;
+}
+
+/** A fetch mock that captures every call's url + body and returns a configured response. */
+function recordingFetcher(
+  responses: Array<{ ok: boolean; status: number }>
+): typeof fetch & { calls: Array<{ url: string; body: string }> } {
+  const calls: Array<{ url: string; body: string }> = [];
+  let i = 0;
+  const fn = async (url: string, init: RequestInit) => {
+    calls.push({ url, body: init.body as string });
+    const r = responses[Math.min(i, responses.length - 1)];
+    i++;
+    return { ok: r.ok, status: r.status, text: async () => "" } as Response;
+  };
+  return Object.assign(fn as typeof fetch, { calls });
+}
+
+describe("aepRecordToOtlpSpans (#276)", () => {
+  it("emits one span per action with valid hex ids and aep.* attributes", async () => {
+    const record = await makeEvidenceRecord([
+      { tool_name: "read_file", state_changing: false, action_id: "a1" },
+      { tool_name: "write_file", state_changing: true, action_id: "a2" },
+    ]);
+
+    const spans = aepRecordToOtlpSpans(record);
+
+    expect(spans).toHaveLength(2);
+    for (const span of spans) {
+      expect(span.traceId).toMatch(/^[0-9a-f]{32}$/);
+      expect(span.spanId).toMatch(/^[0-9a-f]{16}$/);
+      expect(span.name).toBe("tool.call");
+      expect(span.kind).toBe(2);
+      expect(attrValue(span.attributes, "aep.run_id")).toEqual({ stringValue: "run-otlp-1" });
+    }
+    // All actions share the same trace id (scoped to the run).
+    expect(spans[0]!.traceId).toBe(spans[1]!.traceId);
+    expect(attrValue(spans[0]!.attributes, "aep.tool_name")).toEqual({ stringValue: "read_file" });
+    expect(attrValue(spans[1]!.attributes, "aep.state_changing")).toEqual({ boolValue: true });
+  });
+});
+
+describe("OtlpEvidenceTransport (#276)", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  it("POSTs one span per action to <endpoint>/v1/traces and counts sent", async () => {
+    const fetcher = recordingFetcher([{ ok: true, status: 200 }]);
+    const transport = new OtlpEvidenceTransport({
+      endpoint: "http://collector:4318",
+      serviceName: "agent-svc",
+      fetcher,
+      maxRetries: 0,
+    });
+    const record = await makeEvidenceRecord([
+      { tool_name: "read_file", state_changing: false },
+      { tool_name: "shell", state_changing: true },
+    ]);
+
+    await transport.send({
+      record,
+      sequence: 1,
+      publishedAtMs: 1,
+      topic: "t",
+    } satisfies StreamEvent);
+
+    expect(transport.sentCount).toBe(1);
+    expect(transport.failedCount).toBe(0);
+    const calls = fetcher.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.url).toBe("http://collector:4318/v1/traces");
+    const payload = JSON.parse(calls[0]!.body);
+    const resourceSpans = payload.resourceSpans[0];
+    expect(attrValue(resourceSpans.resource.attributes, "service.name")).toEqual({
+      stringValue: "agent-svc",
+    });
+    expect(resourceSpans.scopeSpans[0].spans).toHaveLength(2);
+    expect(resourceSpans.scopeSpans[0].scope.name).toBe("@wasmagent/aep");
+  });
+
+  it("retries on HTTP 5xx then succeeds", async () => {
+    const fetcher = recordingFetcher([
+      { ok: false, status: 503 },
+      { ok: true, status: 200 },
+    ]);
+    const transport = new OtlpEvidenceTransport({
+      fetcher,
+      maxRetries: 2,
+      retryDelayMs: 1,
+    });
+    const record = await makeEvidenceRecord([{ tool_name: "t", state_changing: false }]);
+
+    await transport.send({
+      record,
+      sequence: 1,
+      publishedAtMs: 1,
+      topic: "t",
+    } satisfies StreamEvent);
+
+    expect(transport.sentCount).toBe(1);
+    expect(transport.failedCount).toBe(0);
+    const calls = fetcher.calls;
+    expect(calls).toHaveLength(2); // one retry
+  });
+
+  it("does not retry on HTTP 4xx and records the failure", async () => {
+    const fetcher = recordingFetcher([{ ok: false, status: 400 }]);
+    const transport = new OtlpEvidenceTransport({
+      fetcher,
+      maxRetries: 3,
+      retryDelayMs: 1,
+    });
+    const record = await makeEvidenceRecord([{ tool_name: "t", state_changing: false }]);
+
+    await transport.send({
+      record,
+      sequence: 1,
+      publishedAtMs: 1,
+      topic: "t",
+    } satisfies StreamEvent);
+
+    expect(transport.sentCount).toBe(0);
+    expect(transport.failedCount).toBe(1);
+    expect(transport.lastError).toBeInstanceOf(Error);
+    expect((transport.lastError as Error).message).toContain("400");
+    const calls = fetcher.calls;
+    expect(calls).toHaveLength(1); // no retry on 4xx
+  });
+
+  it("retries on network errors and records failure when exhausted", async () => {
+    let calls = 0;
+    const fetcher = (async () => {
+      calls++;
+      throw new Error("connection refused");
+    }) as unknown as typeof fetch;
+    const transport = new OtlpEvidenceTransport({
+      fetcher,
+      maxRetries: 1,
+      retryDelayMs: 1,
+    });
+    const record = await makeEvidenceRecord([{ tool_name: "t", state_changing: false }]);
+
+    await transport.send({
+      record,
+      sequence: 1,
+      publishedAtMs: 1,
+      topic: "t",
+    } satisfies StreamEvent);
+
+    expect(transport.sentCount).toBe(0);
+    expect(transport.failedCount).toBe(1);
+    expect(calls).toBe(2); // initial + 1 retry
+  });
+});
+
+describe("EvidencePublisher + OtlpEvidenceTransport integration (#276)", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  it("streams published records to the OTLP collector", async () => {
+    const fetcher = recordingFetcher([{ ok: true, status: 200 }]);
+    const transport = new OtlpEvidenceTransport({ fetcher, maxRetries: 0 });
+    const publisher = new EvidencePublisher({ topic: "live-evidence" });
+    publisher.addTransport(transport);
+
+    const record = await makeEvidenceRecord([{ tool_name: "read_file", state_changing: false }]);
+    const result = await publisher.publish(record);
+
+    expect(result.deliveredToTransports).toBe(1);
+    expect(transport.sentCount).toBe(1);
+    expect(publisher.stats.published).toBe(1);
+    await publisher.close();
+  });
+
+  it("a failing collector never aborts the publisher fan-out", async () => {
+    const fetcher = (async () => {
+      throw new Error("collector down");
+    }) as unknown as typeof fetch;
+    const transport = new OtlpEvidenceTransport({ fetcher, maxRetries: 0 });
+    const publisher = new EvidencePublisher();
+    const seen: AEPRecord[] = [];
+    publisher.subscribe((event) => seen.push(event.record));
+    publisher.addTransport(transport);
+
+    const record = await makeEvidenceRecord([{ tool_name: "t", state_changing: false }]);
+    const result = await publisher.publish(record);
+
+    // The subscriber still received the record and publish resolved — the
+    // transport is best-effort (like the other evidence transports): it tracks
+    // its own failure rather than throwing through the fan-out.
+    expect(seen).toHaveLength(1);
+    expect(result.deliveredToSubscribers).toBe(1);
+    expect(result.errors).toHaveLength(0);
+    expect(transport.failedCount).toBe(1);
+    expect(transport.lastError).toBeInstanceOf(Error);
+    await publisher.close();
+  });
+
+  it("watch mode streams store records through the OTLP transport", async () => {
+    const fetcher = recordingFetcher([{ ok: true, status: 200 }]);
+    const transport = new OtlpEvidenceTransport({ fetcher, maxRetries: 0 });
+    const store = new InMemoryEvidenceStore();
+    const publisher = new EvidencePublisher({ store, pollIntervalMs: 5 });
+    publisher.addTransport(transport);
+
+    await publisher.start();
+    await store.append(await makeEvidenceRecord([{ tool_name: "t", state_changing: false }]));
+
+    // Wait for at least one successful export.
+    const start = Date.now();
+    while (Date.now() - start < 1000 && transport.sentCount < 1) {
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    publisher.stop();
+    await publisher.close();
+
+    expect(transport.sentCount).toBe(1);
   });
 });

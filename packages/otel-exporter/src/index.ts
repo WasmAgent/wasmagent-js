@@ -469,6 +469,9 @@ export {
   parseBaggageHeader,
   serializeBaggage,
 } from "./BaggagePropagator.js";
+export type { OtlpEvidenceTransportOptions } from "./evidenceOtlpTransport.js";
+// ── M7 — real-time evidence streaming → OTLP (#276) ───────────────────────────
+export { aepRecordToOtlpSpans, OtlpEvidenceTransport } from "./evidenceOtlpTransport.js";
 export type { MetricsSnapshot, StepMetric, ToolErrorMetric } from "./FineGrainedMetrics.js";
 export { FineGrainedMetrics } from "./FineGrainedMetrics.js";
 export type { Sampler } from "./Sampler.js";
