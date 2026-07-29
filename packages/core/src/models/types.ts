@@ -672,7 +672,8 @@ export function estimateTokens(text: string): number {
   return Math.ceil(ascii / 4 + wide);
 }
 
-export function estimateMessagesTokens(messages: ModelMessage[]): number {
+export function estimateMessagesTokens(messages: ModelMessage[] | null | undefined): number {
+  if (!messages) return 0;
   let total = 0;
   for (const m of messages) {
     if (typeof m.content === "string") {

@@ -94,6 +94,9 @@ export function detectRugPull(
   prev: ToolDescriptorSnapshot,
   curr: McpToolEntry
 ): ToolRugPullEvent | null {
+  // Guard: if curr.description is missing (e.g. caller passed a snapshot
+  // object instead of the raw McpToolEntry), return null instead of throwing.
+  if (curr.description == null) return null;
   const descHash = hashContent(curr.description);
   if (descHash !== prev.descriptionHash) {
     return {
