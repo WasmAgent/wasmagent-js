@@ -143,3 +143,24 @@ describe("TokenBudget — model-aware estimatedUsdFor", () => {
     }
   });
 });
+
+import { estimateMessagesTokens } from "./types.js";
+
+describe("estimateMessagesTokens", () => {
+  it("returns 0 for an empty array", () => {
+    expect(estimateMessagesTokens([])).toBe(0);
+  });
+
+  it("returns 0 for null — issue #283", () => {
+    expect(estimateMessagesTokens(null as any)).toBe(0);
+  });
+
+  it("returns 0 for undefined — issue #283", () => {
+    expect(estimateMessagesTokens(undefined as any)).toBe(0);
+  });
+
+  it("estimates tokens for a simple text message", () => {
+    const messages = [{ role: "user" as const, content: "hello world" }];
+    expect(estimateMessagesTokens(messages)).toBeGreaterThan(0);
+  });
+});

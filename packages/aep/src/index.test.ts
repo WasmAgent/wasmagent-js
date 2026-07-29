@@ -522,6 +522,16 @@ describe("isStateChangingTool (#23)", () => {
     expect(isStateChangingTool({ name: "save_file" })).toBe(true);
   });
 
+  it("returns true for common domain verbs missing before #282", () => {
+    expect(isStateChangingTool({ name: "submit_pr" })).toBe(true);
+    expect(isStateChangingTool({ name: "convert_pr_to_po" })).toBe(true);
+    expect(isStateChangingTool({ name: "approve_request" })).toBe(true);
+    expect(isStateChangingTool({ name: "reject_vendor" })).toBe(true);
+    expect(isStateChangingTool({ name: "insert_record" })).toBe(true);
+    expect(isStateChangingTool({ name: "patch_config" })).toBe(true);
+    expect(isStateChangingTool({ name: "apply_migration" })).toBe(true);
+  });
+
   it("exports STATE_CHANGING_PATTERNS array", () => {
     expect(Array.isArray(STATE_CHANGING_PATTERNS)).toBe(true);
     expect(STATE_CHANGING_PATTERNS.length).toBeGreaterThan(0);

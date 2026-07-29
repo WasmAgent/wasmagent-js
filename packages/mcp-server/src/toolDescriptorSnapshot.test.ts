@@ -83,4 +83,11 @@ describe("detectRugPull", () => {
     const event = detectRugPull(snap, updated)!;
     expect(event.detectedAt).toBeGreaterThanOrEqual(snap.firstSeenAt);
   });
+
+  it("returns null (no crash) when curr.description is missing — issue #281", () => {
+    // Callers that mistakenly pass a snapshot object as curr get null, not TypeError.
+    const misused = { name: TOOL.name } as any;
+    expect(() => detectRugPull(snap, misused)).not.toThrow();
+    expect(detectRugPull(snap, misused)).toBeNull();
+  });
 });
