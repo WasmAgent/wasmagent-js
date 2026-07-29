@@ -68,7 +68,7 @@
     "@anthropic-ai/sdk": "^0.55.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@wasmagent/aep": "workspace:*",
-    "openai": "^4.90.0",
+    "openai": "^7.1.0",
     "typescript": "^5.7.0"
   },
   "license": "Apache-2.0",
