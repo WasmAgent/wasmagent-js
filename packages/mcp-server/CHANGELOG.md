@@ -1,5 +1,18 @@
 # @agentkit-js/mcp-server
 
+## 1.1.7
+
+### Patch Changes
+
+- 8e19c52: fix: three correctness bugs (issues #281 #282 #283)
+
+  - **detectRugPull** (`@wasmagent/mcp-server`): returns `null` instead of throwing `TypeError` when `curr.description` is missing (e.g. caller passes a snapshot object instead of a raw `McpToolEntry`)
+  - **isStateChangingTool** (`@wasmagent/aep`): expanded `STATE_CHANGING_PATTERNS` with `convert`, `approve`, `reject`, `insert`, `patch`, and `apply` — common domain verbs that were previously classified as read-only
+  - **estimateMessagesTokens** (`@wasmagent/core`): accepts `null`/`undefined` input and returns `0` instead of throwing `TypeError: messages is not iterable`
+
+- Updated dependencies [8e19c52]
+  - @wasmagent/core@3.1.1
+
 ## 1.1.6
 
 ### Patch Changes
