@@ -1,5 +1,12 @@
 # @wasmagent/capability-compiler
 
+## 1.7.7
+
+### Patch Changes
+
+- Updated dependencies [b909b62]
+  - @wasmagent/core@3.2.0
+
 ## 1.7.6
 
 ### Patch Changes

@@ -1,5 +1,27 @@
 # @agentkit-js/otel-exporter
 
+## 2.0.0
+
+### Minor Changes
+
+- 2f377d5: feat(aep,otel-exporter): real-time evidence streaming with `EvidencePublisher` + OTLP transport (Milestone 7, #276).
+
+  Adds a top-level real-time streaming surface for AEP evidence and an OpenTelemetry transport that mirrors the live feed into any OTLP/HTTP collector — the "real-time evidence streaming with `EvidencePublisher` for live monitoring dashboards and external observability pipelines (OpenTelemetry integration)" bullet.
+
+  - **`@wasmagent/aep` — `EvidencePublisher`** (`packages/aep/src/evidencePublisher.ts`): wraps an `EvidenceStream` and adds (1) **push mode** — `publish(record)` streams each record to subscribers + transports, and (2) **watch mode** — `start()`/`stop()` poll a configured `EvidenceStore` on a fixed cadence and stream records appended _after_ start (never replaying the pre-existing tail), with an optional content `filter` applied to pulled records. Exposes `subscribe`/`addTransport` (live dashboards + any `StreamTransportOutbound`), lifecycle counters via `stats`, and a `close()` that tears down the underlying stream. Best-effort and fail-soft: a failing subscriber/transport or a transient store-query error is counted in `stats.errors` and never aborts the fan-out or stops the poll loop.
+  - **`@wasmagent/otel-exporter` — `OtlpEvidenceTransport`** (`packages/otel-exporter/src/evidenceOtlpTransport.ts`): a `StreamTransportOutbound` that converts each record's actions into OTLP trace spans (reusing `aepActionToOtelSpan`, one span per action, all scoped to the run's trace id) and POSTs them to `<endpoint>/v1/traces` with exponential-backoff retry (5xx/network retryable, 4xx not). Also exports `aepRecordToOtlpSpans(record)` for inspecting the span projection without network access. References `@wasmagent/aep` **only via `import type`** (devDependency) — zero runtime dependency on the evidence layer, mirroring the `core/shared-state/aep` pattern.
+
+### Patch Changes
+
+- f1109a5: fix: three compatibility and dependency fixes (#288 #289 #290)
+
+  - **useAgentRun** (`@wasmagent/react`): add `eventField` and `channelField` options so the hook works with Express/Node.js backends that emit `{ type, ... }` events instead of `{ event, ... }` (#288)
+  - **createA2AServer** (`@wasmagent/a2a`): add `handler()` method returning a `(req, res)` handler compatible with Express `app.use()` middleware (#289)
+  - **otel-exporter** (`@wasmagent/otel-exporter`): declare `@wasmagent/core` as a `peerDependency` so npm warns when it is missing; document the cross-package dependency on `@wasmagent/core/experimental` in the README (#290)
+
+- Updated dependencies [b909b62]
+  - @wasmagent/core@3.2.0
+
 ## 1.7.6
 
 ### Patch Changes

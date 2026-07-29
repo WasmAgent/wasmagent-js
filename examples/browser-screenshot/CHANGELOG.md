@@ -1,5 +1,14 @@
 # example-browser-screenshot
 
+## 0.1.31
+
+### Patch Changes
+
+- Updated dependencies [b909b62]
+  - @wasmagent/core@3.2.0
+  - @wasmagent/tools-browser@1.0.10
+  - @wasmagent/model-anthropic@2.0.3
+
 ## 0.1.30
 
 ### Patch Changes

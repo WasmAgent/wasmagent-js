@@ -1,5 +1,11 @@
 # @agentkit-js/model-moonshot
 
+## 2.0.3
+
+### Patch Changes
+
+- @wasmagent/models@2.0.3
+
 ## 2.0.2
 
 ### Patch Changes

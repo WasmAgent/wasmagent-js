@@ -1,5 +1,18 @@
 # @agentkit-js/react
 
+## 1.3.11
+
+### Patch Changes
+
+- f1109a5: fix: three compatibility and dependency fixes (#288 #289 #290)
+
+  - **useAgentRun** (`@wasmagent/react`): add `eventField` and `channelField` options so the hook works with Express/Node.js backends that emit `{ type, ... }` events instead of `{ event, ... }` (#288)
+  - **createA2AServer** (`@wasmagent/a2a`): add `handler()` method returning a `(req, res)` handler compatible with Express `app.use()` middleware (#289)
+  - **otel-exporter** (`@wasmagent/otel-exporter`): declare `@wasmagent/core` as a `peerDependency` so npm warns when it is missing; document the cross-package dependency on `@wasmagent/core/experimental` in the README (#290)
+
+- Updated dependencies [b909b62]
+  - @wasmagent/core@3.2.0
+
 ## 1.3.10
 
 ### Patch Changes
