@@ -1,0 +1,129 @@
+{
+  "posture_version": "0.1",
+  "identity": {
+    "snapshot_id": "posture-diff-new-002",
+    "agent_id": "demo-agent-diff-001",
+    "captured_at": "2026-06-15T00:00:00Z",
+    "previous_snapshot_id": "posture-diff-old-001"
+  },
+  "servers": [
+    {
+      "server_id": "cloudflare-docs",
+      "server_name": "Cloudflare Docs MCP",
+      "version": "1.0.0",
+      "provenance": "verified",
+      "tools": [
+        {
+          "tool_id": "search-cf-docs",
+          "tool_name": "search_cloudflare_documentation",
+          "permissions": ["network:outbound"],
+          "risk_categories": ["ssrf"],
+          "risk_severity": "low"
+        }
+      ]
+    },
+    {
+      "server_id": "github-actions",
+      "server_name": "GitHub Actions MCP",
+      "version": "2.1.3",
+      "provenance": "unverified",
+      "tools": [
+        {
+          "tool_id": "run-workflow",
+          "tool_name": "run_workflow_dispatch",
+          "permissions": ["network:outbound", "workflow:trigger"],
+          "risk_categories": ["command_execution", "privilege_escalation"],
+          "risk_severity": "high"
+        },
+        {
+          "tool_id": "create-issue",
+          "tool_name": "create_repository_issue",
+          "permissions": ["network:outbound"],
+          "risk_categories": ["exfiltration"],
+          "risk_severity": "medium"
+        }
+      ]
+    },
+    {
+      "server_id": "local-filesystem",
+      "server_name": "Local Filesystem MCP",
+      "version": "0.4.2",
+      "provenance": "verified",
+      "tools": [
+        {
+          "tool_id": "read-file",
+          "tool_name": "read_file",
+          "permissions": ["fs:read"],
+          "risk_categories": ["credential_access"],
+          "risk_severity": "medium"
+        },
+        {
+          "tool_id": "write-file",
+          "tool_name": "write_file",
+          "permissions": ["fs:write"],
+          "risk_categories": ["command_execution"],
+          "risk_severity": "high"
+        }
+      ]
+    }
+  ],
+  "permission_graph": {
+    "total_tools": 5,
+    "total_permissions": 5,
+    "high_risk_tools": 2,
+    "permission_scopes": ["network:outbound", "workflow:trigger", "fs:read", "fs:write"]
+  },
+  "risk_summary": [
+    {
+      "finding_id": "finding-new-001",
+      "severity": "low",
+      "category": "ssrf",
+      "description": "search_cloudflare_documentation makes outbound HTTP requests. Scope is limited to docs.cloudflare.com.",
+      "tool_id": "search-cf-docs",
+      "owasp_mcp_ref": "MCP-02"
+    },
+    {
+      "finding_id": "finding-new-002",
+      "severity": "high",
+      "category": "command_execution",
+      "description": "run_workflow_dispatch can trigger arbitrary GitHub Actions workflows, which may execute untrusted code in the CI environment.",
+      "tool_id": "run-workflow",
+      "owasp_mcp_ref": "MCP-04"
+    },
+    {
+      "finding_id": "finding-new-003",
+      "severity": "medium",
+      "category": "exfiltration",
+      "description": "create_repository_issue can write arbitrary content to public repositories, potentially leaking sensitive data.",
+      "tool_id": "create-issue",
+      "owasp_mcp_ref": "MCP-01"
+    },
+    {
+      "finding_id": "finding-new-004",
+      "severity": "high",
+      "category": "command_execution",
+      "description": "write_file allows arbitrary file creation on the local filesystem, which could be used to overwrite critical configuration files or inject scripts.",
+      "tool_id": "write-file",
+      "owasp_mcp_ref": "MCP-04"
+    },
+    {
+      "finding_id": "finding-new-005",
+      "severity": "medium",
+      "category": "credential_access",
+      "description": "read_file can access any file on the local filesystem, including credential files, SSH keys, and environment configuration.",
+      "tool_id": "read-file",
+      "owasp_mcp_ref": "MCP-03"
+    }
+  ],
+  "drift": {
+    "servers_added": ["local-filesystem"],
+    "servers_removed": [],
+    "tools_added": ["create-issue", "read-file", "write-file"],
+    "tools_removed": [],
+    "permissions_expanded": ["fs:read", "fs:write"],
+    "permissions_reduced": []
+  },
+  "attestation": {
+    "generator": "agent-trust-infra/examples"
+  }
+}

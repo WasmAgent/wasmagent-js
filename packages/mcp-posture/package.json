@@ -1,0 +1,61 @@
+{
+  "name": "@wasmagent/mcp-posture",
+  "version": "0.1.0",
+  "description": "MCP attack-surface posture snapshot validator and drift analyzer",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@wasmagent/protocol": "0.1.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "wasmagent",
+    "mcp",
+    "posture",
+    "security",
+    "trust",
+    "drift"
+  ],
+  "wasmagent": {
+    "tier": "tier-1",
+    "stability": "alpha"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WasmAgent/wasmagent-js.git",
+    "directory": "packages/mcp-posture"
+  },
+  "homepage": "https://github.com/WasmAgent/wasmagent-js/tree/main/packages/mcp-posture#readme",
+  "bugs": {
+    "url": "https://github.com/WasmAgent/wasmagent-js/issues"
+  },
+  "author": "wasmagent contributors"
+}
