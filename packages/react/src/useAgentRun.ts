@@ -44,6 +44,21 @@ export interface UseAgentRunOptions {
   /** Called whenever a new AgentEvent is received. */
   onEvent?: (event: AgentEvent) => void;
   /**
+   * Field to use as the event discriminator.
+   * - "event" (default): compatible with the Cloudflare Worker /run endpoint
+   *   which emits AgentEvent objects with an `event` discriminator.
+   * - "type": compatible with Express/Node.js backends (e.g. CDS/CAP) that
+   *   emit events with a `type` discriminator instead.
+   * @default "event"
+   */
+  eventField?: "event" | "type";
+  /**
+   * Field to use as the channel filter.
+   * Pass null to disable channel filtering entirely (all events are handled).
+   * @default "channel"
+   */
+  channelField?: string | null;
+  /**
    * A2 — Auto-retry policy for transient SSE disconnects (network blip,
    * Workers cold-start kick). When enabled the hook reconnects with the
    * `Last-Event-ID` header set to the highest id received so far, so the
@@ -153,6 +168,8 @@ export function useAgentRun(
       const resumeOpts = resolvedOpts.resume ?? {};
       const maxAttempts = resumeOpts.maxAttempts ?? 0;
       const delayMs = resumeOpts.delayMs ?? 1000;
+      const evField = resolvedOpts.eventField ?? "event";
+      const chField = resolvedOpts.channelField === undefined ? "channel" : resolvedOpts.channelField;
 
       (async () => {
         // attemptStream returns:
@@ -252,7 +269,12 @@ export function useAgentRun(
               }
               resolvedOpts.onEvent?.(ev);
 
-              if (ev.event === "thinking_delta" && ev.channel === "thinking") {
+              // Use configured field names for event discriminator and channel filter.
+              const evType = (ev as Record<string, unknown>)[evField] as string | undefined;
+              const evChan = chField ? (ev as Record<string, unknown>)[chField] as string | undefined : null;
+              const chanMatches = (expected: string) => chField === null || evChan === expected;
+
+              if (evType === "thinking_delta" && chanMatches("thinking")) {
                 const delta = (ev as { data: { delta: string } }).data.delta ?? "";
                 textBufRef.current += delta;
                 const text = textBufRef.current.trim();
@@ -266,7 +288,7 @@ export function useAgentRun(
                     return [...prev, { id, role: "assistant" as const, content: text }];
                   });
                 }
-              } else if (ev.event === "tool_call" && ev.channel === "tool") {
+              } else if (evType === "tool_call" && chanMatches("tool")) {
                 flushText(setMessages);
                 const d = (ev as { data: { toolName: string; callId: string } }).data;
                 setMessages((prev) => [
@@ -279,7 +301,7 @@ export function useAgentRun(
                     callId: d.callId,
                   },
                 ]);
-              } else if (ev.event === "tool_result" && ev.channel === "tool") {
+              } else if (evType === "tool_result" && chanMatches("tool")) {
                 const d = (
                   ev as {
                     data: { toolName: string; callId: string; output?: unknown; error?: unknown };
@@ -296,7 +318,7 @@ export function useAgentRun(
                 setMessages((prev) =>
                   prev.map((m) => (m.callId === d.callId ? { ...m, content: label, isError } : m))
                 );
-              } else if (ev.event === "final_answer" && ev.channel === "text") {
+              } else if (evType === "final_answer" && chanMatches("text")) {
                 flushText(setMessages);
                 receivedFinalAnswer = true;
                 const raw = (ev as { data: { answer: unknown } }).data.answer;
@@ -321,7 +343,7 @@ export function useAgentRun(
                   { id: nextId(), role: "assistant" as const, content: answer },
                 ]);
                 setStatus("complete");
-              } else if (ev.event === "error" && ev.channel === "text") {
+              } else if (evType === "error" && chanMatches("text")) {
                 const errMsg = (ev as { data: { error: string } }).data.error ?? "Unknown error";
                 setMessages((prev) => [
                   ...prev,
@@ -383,7 +405,7 @@ export function useAgentRun(
       })();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [endpoint, resolvedOpts.onEvent, resolvedOpts.headers, resolvedOpts.resume]
+    [endpoint, resolvedOpts.onEvent, resolvedOpts.headers, resolvedOpts.resume, resolvedOpts.eventField, resolvedOpts.channelField]
   );
 
   return {

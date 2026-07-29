@@ -1,3 +1,5 @@
+import type { IncomingMessage, ServerResponse } from "node:http";
+
 /**
  * A2A (Agent2Agent) protocol types.
  *
@@ -71,4 +73,16 @@ export interface A2AServer {
   agentCard(): A2AAgentCard;
   start(): Promise<string>;
   stop(): Promise<void>;
+  /**
+   * Returns a (req, res) handler compatible with Express/Connect middleware.
+   * Mount it in an existing app with: `app.use("/a2a", server.handler())`
+   *
+   * The handler processes all routes relative to the mount point, so the
+   * agent card is served at `/.well-known/agent-card` and tasks at `/tasks`
+   * — Express strips the mount prefix before passing `req.url` to the handler.
+   *
+   * This is useful when you need to host the A2A endpoint on the same port
+   * as other routes (e.g. SAP CAP / CDS `cds.on("bootstrap")` pattern).
+   */
+  handler(): (req: IncomingMessage, res: ServerResponse) => void;
 }

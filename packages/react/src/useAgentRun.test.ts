@@ -204,3 +204,119 @@ describe("useAgentRun resume request shaping (C1)", () => {
     expect(reqHeaders["Last-Event-ID"]).toBe("000000000003");
   });
 });
+
+// ── D1 — eventField/channelField option ──────────────────────────────────────
+//
+// When eventField is set to "type", the hook must match events by their `type`
+// field instead of `event`. When channelField is set to null, channel filtering
+// is skipped entirely.
+
+function processEventWithFields(
+  state: MsgState,
+  ev: Record<string, unknown>,
+  evField: string,
+  chField: string | null,
+): MsgState {
+  const s = { ...state, messages: [...state.messages] };
+  const evType = ev[evField] as string | undefined;
+  const chanMatches = (expected: string) => chField === null || (ev[chField] as string | undefined) === expected;
+
+  if (evType === "tool_call" && chanMatches("tool")) {
+    const d = ev.data as { toolName: string };
+    s.messages.push({ role: "tool", content: `Calling ${d.toolName}…`, toolName: d.toolName });
+  } else if (evType === "tool_result" && chanMatches("tool")) {
+    const d = ev.data as { toolName: string; error?: unknown };
+    const isError = !!d.error;
+    s.messages = s.messages.map((m) =>
+      m.toolName === d.toolName && m.content.startsWith("Calling")
+        ? { ...m, content: isError ? `${d.toolName} failed` : `${d.toolName} done`, isError }
+        : m
+    );
+  } else if (evType === "final_answer" && chanMatches("text")) {
+    const answer = String((ev.data as { answer: unknown }).answer ?? "");
+    s.finalAnswer = answer;
+    s.messages.push({ role: "assistant", content: answer });
+    s.status = "complete";
+  } else if (evType === "error" && chanMatches("text")) {
+    const msg = (ev.data as { error: string }).error ?? "error";
+    s.messages.push({ role: "error", content: msg });
+    s.status = "error";
+  }
+  return s;
+}
+
+describe("useAgentRun eventField/channelField option (D1)", () => {
+  it("handles events with default eventField=event correctly", () => {
+    let state: MsgState = { messages: [], finalAnswer: null, status: "running" };
+    state = processEventWithFields(
+      state,
+      { event: "final_answer", channel: "text", data: { answer: "hello" } },
+      "event",
+      "channel",
+    );
+    expect(state.finalAnswer).toBe("hello");
+    expect(state.status).toBe("complete");
+  });
+
+  it("handles events with eventField=type for Express/Node backends", () => {
+    let state: MsgState = { messages: [], finalAnswer: null, status: "running" };
+    state = processEventWithFields(
+      state,
+      { type: "tool_call", channel: "tool", data: { toolName: "search", callId: "c1" } },
+      "type",
+      "channel",
+    );
+    expect(state.messages[0]?.content).toBe("Calling search…");
+
+    state = processEventWithFields(
+      state,
+      { type: "final_answer", channel: "text", data: { answer: "result" } },
+      "type",
+      "channel",
+    );
+    expect(state.finalAnswer).toBe("result");
+  });
+
+  it("skips channel filtering when channelField=null", () => {
+    let state: MsgState = { messages: [], finalAnswer: null, status: "running" };
+    // Event has no channel field — but chanMatches always true when chField=null
+    state = processEventWithFields(
+      state,
+      { event: "final_answer", data: { answer: "no-channel" } },
+      "event",
+      null,
+    );
+    expect(state.finalAnswer).toBe("no-channel");
+  });
+
+  it("does NOT handle event when channel does not match (default behavior)", () => {
+    let state: MsgState = { messages: [], finalAnswer: null, status: "running" };
+    // Send final_answer on wrong channel — should be ignored
+    state = processEventWithFields(
+      state,
+      { event: "final_answer", channel: "wrong", data: { answer: "ignored" } },
+      "event",
+      "channel",
+    );
+    expect(state.finalAnswer).toBeNull();
+    expect(state.status).toBe("running");
+  });
+
+  it("handles type-discriminated tool_call and tool_result pair", () => {
+    let state: MsgState = { messages: [], finalAnswer: null, status: "running" };
+    state = processEventWithFields(
+      state,
+      { type: "tool_call", channel: "tool", data: { toolName: "write", callId: "c2" } },
+      "type",
+      "channel",
+    );
+    state = processEventWithFields(
+      state,
+      { type: "tool_result", channel: "tool", data: { toolName: "write", callId: "c2", error: { message: "boom" } } },
+      "type",
+      "channel",
+    );
+    expect(state.messages[0]?.content).toBe("write failed");
+    expect(state.messages[0]?.isError).toBe(true);
+  });
+});

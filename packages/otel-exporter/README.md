@@ -13,14 +13,36 @@ as the OpenTelemetry semantic conventions for AI agents stabilise.
 
 ## Install
 
+`@wasmagent/otel-exporter` requires `@wasmagent/core` as a peer dependency.
+The bridge types (`OtelBridge`, `withOtel`) live in `@wasmagent/core/experimental`.
+
 ```bash
-npm install /otel-exporter /core
+npm install @wasmagent/otel-exporter @wasmagent/core
 ```
+
+> **Note:** `OtelBridge` and `withOtel` are exported from `@wasmagent/core/experimental`.
+> This subpath has no stability guarantee — APIs may change in minor releases.
+> See the [stability note](#stability-beta) above.
 
 ## Usage
 
 Bridges agent events (model calls, tool calls, kernel executions) to OTLP traces with
 correct parent/child span relationships. See `examples/otel-jaeger`.
+
+```ts
+import { OtlpHttpExporter } from "@wasmagent/otel-exporter";
+import { OtelBridge, withOtel } from "@wasmagent/core/experimental"; // peer dep
+
+const exporter = new OtlpHttpExporter({ endpoint: "http://localhost:4318" });
+const bridge = new OtelBridge({ exporter });
+for await (const ev of withOtel(agent.run("task"), bridge)) {
+  // ev is a typed AgentEvent
+}
+```
+
+**Calling `export()` directly** (without the bridge):
+`OtlpHttpExporter.export(spans: ReadableSpan[])` — the `ReadableSpan` type is re-exported
+from `@wasmagent/core/experimental` and matches the OpenTelemetry SDK `ReadableSpan` shape.
 
 ## Semantic Convention Version Tracking
 
