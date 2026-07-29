@@ -228,6 +228,12 @@
         "quickjs-emscripten": "^0.32.0",
       },
     },
+    "examples/multi-agent-replay": {
+      "name": "wasmagent-example-multi-agent-replay",
+      "dependencies": {
+        "@wasmagent/devtools": "workspace:*",
+      },
+    },
     "examples/openai-agents-quickjs": {
       "name": "openai-agents-quickjs",
       "version": "0.1.9",
@@ -2976,6 +2982,8 @@
     "wasmagent-example-judge-scorer-demo": ["wasmagent-example-judge-scorer-demo@workspace:examples/judge-scorer-demo"],
 
     "wasmagent-example-kernel-only": ["wasmagent-example-kernel-only@workspace:examples/kernel-only"],
+
+    "wasmagent-example-multi-agent-replay": ["wasmagent-example-multi-agent-replay@workspace:examples/multi-agent-replay"],
 
     "wasmagent-example-skills-demo": ["wasmagent-example-skills-demo@workspace:examples/skills-demo"],
 

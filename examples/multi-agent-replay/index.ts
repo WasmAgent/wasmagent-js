@@ -6,10 +6,10 @@
  * The provEdges express causal dependencies so selectByDependency()
  * can extract just the relevant causal subgraph.
  *
- * Run: npx tsx examples/multi-agent-replay/index.ts
+ * Run: bun examples/multi-agent-replay/index.ts
  */
 
-import { EventLogReplay, type LoggedEvent, type ProvEdge } from "@wasmagent/devtools";
+import { EventLogReplay, type LoggedEvent } from "@wasmagent/devtools";
 
 // Simulate a multi-agent trace with explicit dependency edges
 const events: LoggedEvent[] = [
@@ -126,6 +126,9 @@ for (const ev of linearCursor.prefixEvents) {
 }
 console.log();
 
-// The dependency-based selection is more precise: it excludes evt-001 and evt-005
-// which are not causally related to the final answer.
-console.log("Dependency-based selection excludes unrelated events (evt-001 run_start, evt-005 step_start).");
+// The dependency-based selection is more precise than the linear prefix:
+// it excludes evt-005 (step 2 start) because no event depends on it, so it
+// is not a causal ancestor of the final answer. evt-001 (run_start) IS
+// retained, because evt-002 wasAssociatedWith evt-001 — the orchestrator's
+// run_start is a causal ancestor of step 1, and therefore of the final answer.
+console.log("Dependency-based selection excludes evt-005 (step 2 start, no dependents); retains evt-001 (run_start) via evt-002's wasAssociatedWith edge.");
