@@ -1,5 +1,12 @@
 # mastra-quickjs
 
+## 0.1.11
+
+### Patch Changes
+
+- @wasmagent/kernel-quickjs@1.2.7
+- @wasmagent/mastra-sandbox@1.0.10
+
 ## 0.1.10
 
 ### Patch Changes
