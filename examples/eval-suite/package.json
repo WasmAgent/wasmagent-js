@@ -1,6 +1,6 @@
 {
   "name": "example-eval-suite",
-  "version": "0.1.28",
+  "version": "0.1.29",
   "private": true,
   "description": "End-to-end WasmAgent eval suite — multi-scorer benchmark with markdown report",
   "type": "module",

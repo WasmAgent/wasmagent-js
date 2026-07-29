@@ -1,6 +1,6 @@
 {
   "name": "mastra-quickjs",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "private": true,
   "description": "D5 — Mastra agent with WasmAgent QuickJS sandbox provider (StackBlitz-runnable)",
   "type": "module",
