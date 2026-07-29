@@ -1,5 +1,12 @@
 # @wasmagent/mcp-firewall
 
+## 2.0.1
+
+### Patch Changes
+
+- Updated dependencies [8e19c52]
+  - @wasmagent/mcp-server@1.1.7
+
 ## 2.0.0
 
 ### Major Changes

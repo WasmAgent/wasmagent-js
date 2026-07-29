@@ -1,5 +1,11 @@
 # @agentkit-js/model-qwen
 
+## 2.0.2
+
+### Patch Changes
+
+- @wasmagent/models@2.0.2
+
 ## 2.0.1
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @agentkit-js/kernel-pyodide
 
+## 1.0.9
+
+### Patch Changes
+
+- Updated dependencies [8e19c52]
+  - @wasmagent/core@3.1.1
+
 ## 1.0.8
 
 ### Patch Changes
