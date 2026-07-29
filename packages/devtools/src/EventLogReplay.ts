@@ -236,7 +236,7 @@ export class EventLogReplay {
     visited.add(targetEventId);
 
     while (queue.length > 0) {
-      const current = queue.shift()!;
+      const current = queue.shift() as string;
       const deps = edgesFrom.get(current);
       if (deps) {
         for (const dep of deps) {

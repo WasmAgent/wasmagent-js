@@ -404,11 +404,11 @@ describe("GoalDirectedAgent: phase pipeline", () => {
 
     // The criteria_proposed event still fired, with our exact list.
     const proposed = events.find((e) => e.event === ("criteria_proposed" as never));
-    expect((proposed?.data as { criteria: Criterion[] }).criteria).toEqual(presetCriteria);
+    expect((proposed!.data as { criteria: Criterion[] }).criteria).toEqual(presetCriteria);
 
     // And the loop still verified.
     const final = events.find((e) => e.event === ("goal_directed_done" as never));
-    expect((final?.data as { outcome: string }).outcome).toBe("verified");
+    expect((final!.data as { outcome: string }).outcome).toBe("verified");
   });
 
   it("preset criteria with empty array still triggers single-shot fallback", async () => {

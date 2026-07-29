@@ -201,14 +201,16 @@ export function classifierGuardrail(
   const policy = opts.policy ?? DEFAULT_CLASSIFIER_POLICY;
   const parseResult = opts.parseResult ?? defaultParseClassifierResult;
 
-  const generateFn = opts.model
+  const model = opts.model;
+  const generateFn = model
     ? (msgs: ModelMessage[], o?: { maxTokens?: number }) =>
-        opts.model!.generate(msgs, { stream: true, ...o })
+        model.generate(msgs, { stream: true, ...o })
     : opts.completionFn;
 
   if (!generateFn) {
     throw new Error("classifierGuardrail requires either `model` or `completionFn`.");
   }
+  const fn = generateFn as CompletionFunction;
 
   async function classify(content: string): Promise<GuardrailResult> {
     const messages: ModelMessage[] = [
@@ -218,7 +220,7 @@ export function classifierGuardrail(
 
     let response = "";
     try {
-      for await (const ev of generateFn!(messages, { maxTokens: 256 })) {
+      for await (const ev of fn(messages, { maxTokens: 256 })) {
         if (ev.type === "text_delta" && typeof ev.delta === "string") {
           response += ev.delta;
         }
@@ -323,14 +325,16 @@ Respond ONLY with valid JSON: {"aligned": true} or {"aligned": false, "reason": 
 export function intentAlignmentGuardrail(opts: IntentAlignmentGuardrailOptions): ToolGuardrail {
   const name = opts.name ?? "intentAlignmentGuardrail";
 
-  const generateFn = opts.model
+  const model = opts.model;
+  const generateFn = model
     ? (msgs: ModelMessage[], o?: { maxTokens?: number }) =>
-        opts.model!.generate(msgs, { stream: true, ...o })
+        model.generate(msgs, { stream: true, ...o })
     : opts.completionFn;
 
   if (!generateFn) {
     throw new Error("intentAlignmentGuardrail requires either `model` or `completionFn`.");
   }
+  const fn = generateFn as CompletionFunction;
 
   // Build the policy from policyDocument or default, with optional custom rules.
   let policy = opts.policyDocument ?? INTENT_ALIGNMENT_POLICY;
@@ -372,7 +376,7 @@ export function intentAlignmentGuardrail(opts: IntentAlignmentGuardrailOptions):
 
       let response = "";
       try {
-        for await (const ev of generateFn!(messages, { maxTokens: 256 })) {
+        for await (const ev of fn(messages, { maxTokens: 256 })) {
           if (ev.type === "text_delta" && typeof ev.delta === "string") {
             response += ev.delta;
           }

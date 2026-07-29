@@ -263,7 +263,7 @@ describe("OpenAIModel convertMessages (via MessageAssembler)", () => {
     const toolUse = assistantBlocks.find((b) => b.type === "tool_use");
     expect(toolUse?.id).toBe("tc1");
     expect(toolUse?.name).toBe("calc");
-    expect((toolUse?.input as Record<string, unknown>).expr).toBe("2+2");
+    expect((toolUse!.input as Record<string, unknown>).expr).toBe("2+2");
   });
 
   it("tool_result block in user message has toolUseId and content fields", () => {

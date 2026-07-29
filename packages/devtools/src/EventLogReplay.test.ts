@@ -10,7 +10,7 @@
  */
 
 import type { AgentEvent } from "@wasmagent/core";
-import { EventLogReplay, type LoggedEvent, type ProvEdge } from "./EventLogReplay.js";
+import { EventLogReplay, type LoggedEvent } from "./EventLogReplay.js";
 
 let seq = 0;
 function logged(event: { event: string; data?: Record<string, unknown> }): LoggedEvent {

@@ -154,10 +154,10 @@ describe("applyApprovalPolicy", () => {
   it("wraps write_file with needsApproval driven by policy", () => {
     const policy = PolicyPresets.strict();
     const [wrapped] = applyApprovalPolicy(policy, [fakeWriteTool()]);
-    expect(typeof wrapped?.needsApproval).toBe("function");
+    expect(typeof wrapped!.needsApproval).toBe("function");
     // strict — should require approval
     expect(
-      (wrapped?.needsApproval as (i: unknown) => boolean)({ path: "x.ts", content: "hi" })
+      (wrapped!.needsApproval as (i: unknown) => boolean)({ path: "x.ts", content: "hi" })
     ).toBe(true);
   });
 
@@ -168,10 +168,10 @@ describe("applyApprovalPolicy", () => {
     const del = tools[1];
     // patch to non-dotfile with small delta is free
     expect(
-      (patch?.needsApproval as (i: unknown) => boolean)({ path: "src/x.ts", patch: "fix" })
+      (patch!.needsApproval as (i: unknown) => boolean)({ path: "src/x.ts", patch: "fix" })
     ).toBe(false);
     // delete always requires approval in balanced
-    expect((del?.needsApproval as (i: unknown) => boolean)({ path: "src/x.ts" })).toBe(true);
+    expect((del!.needsApproval as (i: unknown) => boolean)({ path: "src/x.ts" })).toBe(true);
   });
 
   it("passes through non-write tools unchanged", () => {
@@ -185,6 +185,6 @@ describe("applyApprovalPolicy", () => {
       forward: async () => "content",
     };
     const [wrapped] = applyApprovalPolicy(PolicyPresets.strict(), [readTool]);
-    expect(wrapped?.needsApproval).toBeUndefined();
+    expect(wrapped!.needsApproval).toBeUndefined();
   });
 });

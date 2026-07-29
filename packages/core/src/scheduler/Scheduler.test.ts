@@ -139,7 +139,7 @@ describe("Scheduler", () => {
     const events = [];
     for await (const e of scheduler.execute(ir)) events.push(e);
     const done = events.find((e) => e.type === "node_done");
-    expect((done?.result as { output: unknown }).output).toBe(14);
+    expect((done!.result as { output: unknown }).output).toBe(14);
   });
 
   it("throws on circular dependency (deadlock)", async () => {
