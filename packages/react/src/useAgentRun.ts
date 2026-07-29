@@ -270,8 +270,8 @@ export function useAgentRun(
               resolvedOpts.onEvent?.(ev);
 
               // Use configured field names for event discriminator and channel filter.
-              const evType = (ev as Record<string, unknown>)[evField] as string | undefined;
-              const evChan = chField ? (ev as Record<string, unknown>)[chField] as string | undefined : null;
+              const evType = (ev as unknown as Record<string, unknown>)[evField] as string | undefined;
+              const evChan = chField ? (ev as unknown as Record<string, unknown>)[chField] as string | undefined : null;
               const chanMatches = (expected: string) => chField === null || evChan === expected;
 
               if (evType === "thinking_delta" && chanMatches("thinking")) {
