@@ -103,7 +103,7 @@ export interface UseAgentRunReturn {
   isRunning: boolean;
   finalAnswer: string | null;
   /** Trigger a new agent run. Previous state is cleared. */
-  run: (payload: { task: string; [key: string]: unknown }) => void;
+  run: (payload: { task?: string; [key: string]: unknown }) => void;
   /** Abort the current run. */
   abort: () => void;
   /** Reset all state back to idle. */
@@ -155,7 +155,7 @@ export function useAgentRun(
   }, []);
 
   const run = useCallback(
-    (payload: { task: string; [key: string]: unknown }) => {
+    (payload: { task?: string; [key: string]: unknown }) => {
       // Cancel any previous run.
       abortRef.current?.abort();
       const ac = new AbortController();

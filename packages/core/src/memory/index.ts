@@ -37,3 +37,5 @@ export {
   InMemoryStructuredKv,
   StructuredMemory,
 } from "./StructuredMemory.js";
+
+export { injectHistoryIntoAssembler } from "./injectHistory.js";

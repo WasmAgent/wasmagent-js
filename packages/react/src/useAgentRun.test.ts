@@ -499,3 +499,40 @@ describe("useAgentRun eventMap option (E1)", () => {
     expect(state.status).toBe("complete");
   });
 });
+
+// ── #305 — task field is optional in run() payload ───────────────────────────
+//
+// The UseAgentRunReturn.run type must accept payloads without a task field.
+// We verify at the type level (compile-time) and at runtime.
+
+describe("useAgentRun run() task field is optional (#305)", () => {
+  it("type-level: payload without task field is assignable to run() parameter type", () => {
+    // This is a compile-time assertion: if the type is wrong this file will
+    // fail to typecheck. We just need the import + call to be valid TS.
+    type RunPayload = Parameters<import("./useAgentRun.js").UseAgentRunReturn["run"]>[0];
+    // Omitting task should be valid
+    const payload: RunPayload = { messages: [], viewContext: {} };
+    expect(payload).toBeDefined();
+  });
+
+  it("runtime: shapeRequest works with payload missing task field", () => {
+    const { reqHeaders, reqBody } = shapeRequest({
+      payload: { messages: [{ role: "user", content: "hi" }], panelSessionId: "s1" },
+      traceId: null,
+      lastEventId: null,
+    });
+    // No task in payload — should not throw
+    expect(reqHeaders["Content-Type"]).toBe("application/json");
+    expect(reqBody).not.toHaveProperty("task");
+    expect(reqBody).toHaveProperty("messages");
+  });
+
+  it("runtime: shapeRequest also works with explicit task field (backward compat)", () => {
+    const { reqBody } = shapeRequest({
+      payload: { task: "What is 2+2?", panelSessionId: "s2" },
+      traceId: null,
+      lastEventId: null,
+    });
+    expect(reqBody).toHaveProperty("task", "What is 2+2?");
+  });
+});
