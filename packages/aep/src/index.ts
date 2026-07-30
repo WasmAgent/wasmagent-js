@@ -16,3 +16,5 @@ export * from "./timestamperLocal.js";
 export * from "./types.js";
 export * from "./utils.js";
 export * from "./verify.js";
+
+export * from "./evidenceCompressor.js";

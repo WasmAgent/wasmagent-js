@@ -5149,3 +5149,143 @@ async function waitForStats(
   }
   // Timed out; let the caller's expect() surface the mismatch.
 }
+
+import { EvidenceCompressor } from "./evidenceCompressor.js";
+
+// ---------------------------------------------------------------------------
+// Test helpers for EvidenceCompressor
+// ---------------------------------------------------------------------------
+
+function makeAepRecord(runId: string, createdAtMs: number) {
+  const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+  const emitter = new AEPEmitter({ run_id: runId, signer });
+  return emitter.build(createdAtMs);
+}
+
+// ---------------------------------------------------------------------------
+// EvidenceCompressor (#272)
+// ---------------------------------------------------------------------------
+
+describe("EvidenceCompressor (#272)", () => {
+  it("compresses a single record and produces a deterministic fingerprint", () => {
+    const compressor = new EvidenceCompressor();
+    const record = makeAepRecord("run-c1", 1_700_000_000_000);
+    const summary = compressor.compress([record], { nowMs: 1_700_001_000_000 });
+
+    expect(typeof summary.chainFingerprint).toBe("string");
+    expect(summary.chainFingerprint).toHaveLength(64);
+    expect(/^[0-9a-f]{64}$/.test(summary.chainFingerprint)).toBe(true);
+    expect(summary.recordCount).toBe(1);
+    expect(summary.runIds).toEqual(["run-c1"]);
+    expect(summary.startedAtMs).toBe(1_700_000_000_000);
+    expect(summary.endedAtMs).toBe(1_700_000_000_000);
+    expect(summary.compressedAtMs).toBe(1_700_001_000_000);
+    expect(summary.firstRecordHash).toBe(summary.lastRecordHash);
+  });
+
+  it("fingerprint is order-sensitive: reordering records changes it", () => {
+    const compressor = new EvidenceCompressor();
+    const r1 = makeAepRecord("run-d1", 1_700_000_000_001);
+    const r2 = makeAepRecord("run-d2", 1_700_000_000_002);
+    const s1 = compressor.compress([r1, r2], { nowMs: 0 });
+    const s2 = compressor.compress([r2, r1], { nowMs: 0 });
+    expect(s1.chainFingerprint).not.toBe(s2.chainFingerprint);
+  });
+
+  it("fingerprint is content-sensitive: same records produce same fingerprint", () => {
+    const compressor = new EvidenceCompressor();
+    const r1 = makeAepRecord("run-e1", 1_700_000_000_000);
+    const r2 = makeAepRecord("run-e2", 1_700_000_000_001);
+    const s1 = compressor.compress([r1, r2], { nowMs: 0 });
+    const s2 = compressor.compress([r1, r2], { nowMs: 0 });
+    expect(s1.chainFingerprint).toBe(s2.chainFingerprint);
+    expect(s1.firstRecordHash).toBe(s2.firstRecordHash);
+    expect(s1.lastRecordHash).toBe(s2.lastRecordHash);
+  });
+
+  it("verifyChainFingerprint returns true for matching records", () => {
+    const compressor = new EvidenceCompressor();
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter1 = new AEPEmitter({ run_id: "run-f1", signer });
+    emitter1.addAction({ tool_name: "write_file", state_changing: true });
+    const r1 = emitter1.build(1_700_000_000_000);
+
+    const emitter2 = new AEPEmitter({ run_id: "run-f2", signer });
+    emitter2.addAction({ tool_name: "read_file", state_changing: false });
+    const r2 = emitter2.build(1_700_000_000_001);
+
+    const summary = compressor.compress([r1, r2], { nowMs: 0 });
+    expect(EvidenceCompressor.verifyChainFingerprint([r1, r2], summary.chainFingerprint)).toBe(true);
+    expect(EvidenceCompressor.verifyChainFingerprint([r2, r1], summary.chainFingerprint)).toBe(false);
+  });
+
+  it("verifyChainFingerprint returns false for empty records", () => {
+    expect(EvidenceCompressor.verifyChainFingerprint([], "deadbeef")).toBe(false);
+  });
+
+  it("aggregates tool stats correctly", () => {
+    const compressor = new EvidenceCompressor();
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({ run_id: "run-g1", signer });
+    emitter.addAction({ tool_name: "write_file", state_changing: true });
+    emitter.addAction({ tool_name: "write_file", state_changing: true });
+    emitter.addAction({ tool_name: "read_file", state_changing: false });
+    const r = emitter.build(1_700_000_000_000);
+
+    const summary = compressor.compress([r], { nowMs: 0 });
+    expect(summary.totalActions).toBe(3);
+
+    const writeStat = summary.toolStats.find((t) => t.tool_name === "write_file");
+    expect(writeStat?.total_calls).toBe(2);
+    expect(writeStat?.state_changing_calls).toBe(2);
+
+    const readStat = summary.toolStats.find((t) => t.tool_name === "read_file");
+    expect(readStat?.total_calls).toBe(1);
+    expect(readStat?.state_changing_calls).toBe(0);
+  });
+
+  it("aggregates capability decision stats correctly", () => {
+    const compressor = new EvidenceCompressor();
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({ run_id: "run-h1", signer });
+    emitter.addCapabilityDecision({ capability: "fs:write", subject: "a", resource: "/", decision: "allow" });
+    emitter.addCapabilityDecision({ capability: "fs:read", subject: "a", resource: "/", decision: "deny" });
+    const r = emitter.build(1_700_000_000_000);
+    const summary = compressor.compress([r], { nowMs: 0 });
+    expect(summary.decisionStats.total).toBe(2);
+    expect(summary.decisionStats.allowed).toBe(1);
+    expect(summary.decisionStats.denied).toBe(1);
+  });
+
+  it("embeds label when provided", () => {
+    const compressor = new EvidenceCompressor();
+    const r = makeAepRecord("run-i1", 1_700_000_000_000);
+    const summary = compressor.compress([r], { label: "audit-q1", nowMs: 0 });
+    expect(summary.label).toBe("audit-q1");
+  });
+
+  it("collects distinct runIds across multiple records", () => {
+    const compressor = new EvidenceCompressor();
+    const r1 = makeAepRecord("run-j1", 1_700_000_000_000);
+    const r2 = makeAepRecord("run-j1", 1_700_000_000_001);
+    const r3 = makeAepRecord("run-j2", 1_700_000_000_002);
+    const summary = compressor.compress([r1, r2, r3], { nowMs: 0 });
+    expect(summary.recordCount).toBe(3);
+    expect([...summary.runIds].sort()).toEqual(["run-j1", "run-j2"]);
+  });
+
+  it("throws RangeError on empty records array", () => {
+    const compressor = new EvidenceCompressor();
+    expect(() => compressor.compress([])).toThrow(RangeError);
+  });
+
+  it("startedAtMs / endedAtMs span the full chain", () => {
+    const compressor = new EvidenceCompressor();
+    const r1 = makeAepRecord("run-k1", 1_000);
+    const r2 = makeAepRecord("run-k2", 3_000);
+    const r3 = makeAepRecord("run-k3", 2_000);
+    const summary = compressor.compress([r1, r2, r3], { nowMs: 0 });
+    expect(summary.startedAtMs).toBe(1_000);
+    expect(summary.endedAtMs).toBe(3_000);
+  });
+});
