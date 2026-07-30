@@ -2,7 +2,7 @@
   "name": "wasmagent-integration-smoke",
   "version": "0.0.33",
   "private": true,
-  "description": "Local-only end-to-end smoke scripts that drive the public package surface (A1/A2/A4/A5 etc.). NOT part of CI \u2014 run them by hand to verify a fresh build.",
+  "description": "End-to-end smoke scripts that drive the public package surface (A1/A2/A4/A5 etc.). Most are local-only (run by hand to verify a fresh build); provable-chain.mjs is also run as a pre-publish gate in release.yml.",
   "type": "module",
   "scripts": {
     "all": "node run-all.mjs",
