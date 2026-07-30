@@ -31,11 +31,8 @@
  * `TaskSpec.priority_hierarchy` + `ConstraintIR.priority`.
  */
 
-import {
-  DeterministicVerifier,
-  VerificationPipeline,
-} from "@wasmagent/core";
 import type { Criterion, WorkspaceReader } from "@wasmagent/core";
+import { DeterministicVerifier, VerificationPipeline } from "@wasmagent/core";
 import type { ConstraintIR, TaskSpec } from "../ir/ConstraintIR.js";
 import {
   type ConstraintViolation,
@@ -204,7 +201,9 @@ export class ComplianceVerifier {
     const pipeline = new VerificationPipeline({ ws, verifiers: [new DeterministicVerifier()] });
     const verifier = new ComplianceVerifier({
       pipeline,
-      ...(opts.evidenceSpanHooks !== undefined ? { evidenceSpanHooks: opts.evidenceSpanHooks } : {}),
+      ...(opts.evidenceSpanHooks !== undefined
+        ? { evidenceSpanHooks: opts.evidenceSpanHooks }
+        : {}),
     });
     return verifier.verify(spec, ...(opts.stage !== undefined ? [{ stage: opts.stage }] : []));
   }

@@ -123,9 +123,7 @@ export function isStateChangingTool(tool: ToolDescriptor): boolean {
   if (STATE_CHANGING_PATTERNS.some((p) => p.test(text))) return true;
   if (customStatefulVerbs.size > 0) {
     for (const verb of customStatefulVerbs) {
-      const pattern = new RegExp(
-        `(?:^|[\\s_-])${escapeRegex(verb)}(?:$|[\\s_-])`
-      );
+      const pattern = new RegExp(`(?:^|[\\s_-])${escapeRegex(verb)}(?:$|[\\s_-])`);
       if (pattern.test(text)) return true;
     }
   }

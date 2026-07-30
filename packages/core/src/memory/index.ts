@@ -3,6 +3,7 @@ export { Bm25Indexer, tokenize as bm25Tokenize } from "./Bm25Indexer.js";
 export { FileStructuredKv } from "./fileKv.js";
 export type { HybridRetrieverOpts } from "./HybridRetriever.js";
 export { HybridRetriever, hybridRetriever } from "./HybridRetriever.js";
+export { injectHistoryIntoAssembler } from "./injectHistory.js";
 export { LazyObservationHandle } from "./LazyObservationHandle.js";
 export type { MemoryBlock } from "./MemoryBlocks.js";
 export { coreMemoryTools, MemoryBlockSet } from "./MemoryBlocks.js";
@@ -37,5 +38,3 @@ export {
   InMemoryStructuredKv,
   StructuredMemory,
 } from "./StructuredMemory.js";
-
-export { injectHistoryIntoAssembler } from "./injectHistory.js";

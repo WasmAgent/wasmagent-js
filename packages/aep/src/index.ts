@@ -1,6 +1,7 @@
 export * from "./canonical.js";
 export * from "./dsse.js";
 export * from "./emitter.js";
+export * from "./evidenceCompressor.js";
 export * from "./evidenceMirror.js";
 export * from "./evidenceMonitor.js";
 export * from "./evidencePublisher.js";
@@ -16,5 +17,3 @@ export * from "./timestamperLocal.js";
 export * from "./types.js";
 export * from "./utils.js";
 export * from "./verify.js";
-
-export * from "./evidenceCompressor.js";

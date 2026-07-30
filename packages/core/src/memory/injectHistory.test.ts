@@ -3,9 +3,9 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { MessageAssembler } from "./MessageAssembler.js";
-import { injectHistoryIntoAssembler } from "./injectHistory.js";
 import type { ModelMessage } from "../models/types.js";
+import { injectHistoryIntoAssembler } from "./injectHistory.js";
+import { MessageAssembler } from "./MessageAssembler.js";
 
 function makeAssembler(): MessageAssembler {
   return new MessageAssembler({

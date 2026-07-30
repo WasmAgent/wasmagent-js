@@ -80,7 +80,12 @@ export interface UseAgentRunOptions {
    * }
    * ```
    */
-  eventMap?: Partial<Record<string, 'text_delta' | 'tool_call' | 'tool_result' | 'final_answer' | 'thinking_delta' | 'error'>>
+  eventMap?: Partial<
+    Record<
+      string,
+      "text_delta" | "tool_call" | "tool_result" | "final_answer" | "thinking_delta" | "error"
+    >
+  >;
   /**
    * A2 — Auto-retry policy for transient SSE disconnects (network blip,
    * Workers cold-start kick). When enabled the hook reconnects with the
@@ -192,7 +197,8 @@ export function useAgentRun(
       const maxAttempts = resumeOpts.maxAttempts ?? 0;
       const delayMs = resumeOpts.delayMs ?? 1000;
       const evField = resolvedOpts.eventField ?? "event";
-      const chField = resolvedOpts.channelField === undefined ? "channel" : resolvedOpts.channelField;
+      const chField =
+        resolvedOpts.channelField === undefined ? "channel" : resolvedOpts.channelField;
       const evMap = resolvedOpts.eventMap ?? {};
 
       (async () => {
@@ -294,12 +300,15 @@ export function useAgentRun(
               resolvedOpts.onEvent?.(ev);
 
               // Use configured field names for event discriminator and channel filter.
-              const rawEvType = (ev as unknown as Record<string, unknown>)[evField] as string | undefined;
+              const rawEvType = (ev as unknown as Record<string, unknown>)[evField] as
+                | string
+                | undefined;
               // Apply eventMap: if the incoming event name has a mapping, substitute
               // the built-in handler name so the dispatch switch below fires natively.
-              const evType = (rawEvType !== undefined && evMap[rawEvType] !== undefined)
-                ? evMap[rawEvType]
-                : rawEvType;
+              const evType =
+                rawEvType !== undefined && evMap[rawEvType] !== undefined
+                  ? evMap[rawEvType]
+                  : rawEvType;
               // Payload normalizer: some backends flatten fields onto the top-level
               // event object instead of nesting them under `data`. We read both paths
               // so remapped events from any backend shape are handled correctly.
@@ -308,14 +317,25 @@ export function useAgentRun(
               // For text_delta: try ev.data.delta first, fall back to ev.delta
               const textDelta = (evData.delta ?? evRaw.delta ?? "") as string;
               // For tool_call: try ev.data.{toolName,callId} first, fall back to ev.{name,call_id}
-              const toolCallName = (evData.toolName ?? evRaw.name ?? evRaw.toolName ?? "") as string;
+              const toolCallName = (evData.toolName ??
+                evRaw.name ??
+                evRaw.toolName ??
+                "") as string;
               const toolCallId = (evData.callId ?? evRaw.call_id ?? evRaw.callId ?? "") as string;
               // For tool_result: try ev.data.{toolName,callId,output,error}, fall back to top-level
-              const toolResultName = (evData.toolName ?? evRaw.name ?? evRaw.toolName ?? "") as string;
-              const toolResultCallId = (evData.callId ?? evRaw.call_id ?? evRaw.callId ?? "") as string;
+              const toolResultName = (evData.toolName ??
+                evRaw.name ??
+                evRaw.toolName ??
+                "") as string;
+              const toolResultCallId = (evData.callId ??
+                evRaw.call_id ??
+                evRaw.callId ??
+                "") as string;
               const toolResultOutput = evData.output ?? evRaw.output;
               const toolResultError = evData.error ?? evRaw.error;
-              const evChan = chField ? (ev as unknown as Record<string, unknown>)[chField] as string | undefined : null;
+              const evChan = chField
+                ? ((ev as unknown as Record<string, unknown>)[chField] as string | undefined)
+                : null;
               const chanMatches = (expected: string) => chField === null || evChan === expected;
 
               if (evType === "text_delta") {
@@ -361,7 +381,12 @@ export function useAgentRun(
                   },
                 ]);
               } else if (evType === "tool_result" && chanMatches("tool")) {
-                const d = { toolName: toolResultName, callId: toolResultCallId, output: toolResultOutput, error: toolResultError };
+                const d = {
+                  toolName: toolResultName,
+                  callId: toolResultCallId,
+                  output: toolResultOutput,
+                  error: toolResultError,
+                };
                 const isError = !!d.error;
                 // Show tool output when available (e.g. "OK: written 371 chars to src/App.tsx")
                 const outputStr = String(d.output ?? "").trim();
@@ -460,7 +485,15 @@ export function useAgentRun(
       })();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [endpoint, resolvedOpts.onEvent, resolvedOpts.headers, resolvedOpts.resume, resolvedOpts.eventField, resolvedOpts.channelField, resolvedOpts.eventMap]
+    [
+      endpoint,
+      resolvedOpts.onEvent,
+      resolvedOpts.headers,
+      resolvedOpts.resume,
+      resolvedOpts.eventField,
+      resolvedOpts.channelField,
+      resolvedOpts.eventMap,
+    ]
   );
 
   return {
