@@ -79,6 +79,11 @@ export class MessageAssembler {
   /** Guard: true while compact() is in progress to prevent concurrent invocations. */
   #compacting = false;
   /**
+   * Registered step listeners subscribed via {@link onStep}.
+   * Each entry is a callback fired after every {@link addStep} call.
+   */
+  #stepListeners: Set<() => void> = new Set();
+  /**
    * D2 working memory scratchpad — persists across steps as a user-role message
    * injected right after the system message. Does NOT modify the system message,
    * preserving Anthropic cache prefix stability.
@@ -109,6 +114,36 @@ export class MessageAssembler {
         this.#sealedAt.add(this.#history.length - 1);
       }
     }
+
+    // Notify subscribers registered via onStep().
+    for (const listener of this.#stepListeners) {
+      try {
+        listener();
+      } catch {
+        // Individual listener errors must not break the addStep() caller.
+      }
+    }
+  }
+
+  /**
+   * Subscribe to step additions. The `callback` is invoked synchronously
+   * after each {@link addStep} call.
+   *
+   * @param callback - Zero-argument function called on every new step.
+   * @returns A cleanup function; call it to unsubscribe.
+   *
+   * @example
+   * ```ts
+   * const off = assembler.onStep(() => obsMemory.noteStep());
+   * // later:
+   * off(); // unsubscribe
+   * ```
+   */
+  onStep(callback: () => void): () => void {
+    this.#stepListeners.add(callback);
+    return () => {
+      this.#stepListeners.delete(callback);
+    };
   }
 
   /**

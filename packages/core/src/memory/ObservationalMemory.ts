@@ -92,6 +92,19 @@ export interface ObservationalMemoryOptions {
    * fit within this; we do not clip server-side.
    */
   maxObserverTokens?: number;
+  /**
+   * Automatically subscribe to assembler step additions and call
+   * {@link noteStep} whenever a step is appended.
+   *
+   * When `true` (the default), callers do NOT need to call `noteStep()`
+   * manually after each `tool_result` or `final_answer` event -- the
+   * memory wires itself to the assembler's `onStep` callback internally.
+   *
+   * Set to `false` to preserve manual control.
+   *
+   * Default: `true`
+   */
+  autoNote?: boolean;
 }
 
 const DEFAULT_TOKEN_THRESHOLD = 6000;
@@ -173,6 +186,8 @@ export class ObservationalMemory {
    * not re-run the whole history.
    */
   #lastObservedAtStepIdx = 0;
+  /** Cleanup function returned by assembler.onStep() -- removed in _resetForTests(). */
+  #autoNoteCleanup: (() => void) | null = null;
 
   constructor(opts: ObservationalMemoryOptions) {
     this.#assembler = opts.assembler;
@@ -182,6 +197,14 @@ export class ObservationalMemory {
     this.#tokenThreshold = opts.tokenThreshold ?? DEFAULT_TOKEN_THRESHOLD;
     this.#keepRecentSteps = Math.max(1, opts.keepRecentSteps ?? DEFAULT_KEEP_RECENT);
     this.#maxObserverTokens = opts.maxObserverTokens ?? DEFAULT_MAX_OBSERVER_TOKENS;
+
+    // Auto-subscribe to assembler step events when autoNote is enabled (default true).
+    const autoNote = opts.autoNote ?? true;
+    if (autoNote) {
+      this.#autoNoteCleanup = this.#assembler.onStep(() => {
+        this.noteStep();
+      });
+    }
   }
 
   /**
@@ -344,8 +367,10 @@ export class ObservationalMemory {
     return parseObserverReply(raw);
   }
 
-  /** Test-only — wipe in-memory cache and counters. */
+  /** Test-only -- wipe in-memory cache and counters. */
   _resetForTests(): void {
+    this.#autoNoteCleanup?.();
+    this.#autoNoteCleanup = null;
     this.#cache.clear();
     this.#nextSeq = 1;
     this.#pending = null;

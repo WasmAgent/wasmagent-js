@@ -65,6 +65,7 @@ describe("ObservationalMemory", () => {
       model,
       sessionId: "s",
       tokenThreshold: 10_000, // far above the tiny prompt
+      autoNote: false,
     });
     mem.noteStep();
     await mem.flush();
@@ -84,6 +85,7 @@ describe("ObservationalMemory", () => {
       sessionId: "s1",
       tokenThreshold: 100,
       kv,
+      autoNote: false,
     });
     mem.noteStep();
     await mem.flush();
@@ -109,6 +111,7 @@ describe("ObservationalMemory", () => {
       model,
       sessionId: "s2",
       tokenThreshold: 100,
+      autoNote: false,
     });
     mem.noteStep();
     await mem.flush();
@@ -136,6 +139,7 @@ describe("ObservationalMemory", () => {
       model,
       sessionId: "s3",
       tokenThreshold: 100,
+      autoNote: false,
     });
     mem.noteStep();
     await mem.flush();
@@ -163,6 +167,7 @@ describe("ObservationalMemory", () => {
       model: failingModel,
       sessionId: "s4",
       tokenThreshold: 100,
+      autoNote: false,
     });
     // Should not throw synchronously…
     expect(() => mem?.noteStep()).not.toThrow();
@@ -183,6 +188,7 @@ describe("ObservationalMemory", () => {
       observerModel: obs.model,
       sessionId: "s5",
       tokenThreshold: 100,
+      autoNote: false,
     });
     mem.noteStep();
     await mem.flush();
@@ -211,6 +217,7 @@ describe("ObservationalMemory", () => {
       model: slowModel,
       sessionId: "s6",
       tokenThreshold: 100,
+      autoNote: false,
     });
     mem.noteStep(); // schedules the slow pass
     mem.noteStep(); // should be buffered while pending
@@ -244,6 +251,7 @@ describe("ObservationalMemory", () => {
       model: slowModel,
       sessionId: "s7",
       tokenThreshold: 100,
+      autoNote: false,
     });
     mem.noteStep(); // triggers first pass (slow)
     // Add more steps while pass is in flight
@@ -256,5 +264,61 @@ describe("ObservationalMemory", () => {
     expect(callCount).toBe(2);
     const obs = await mem.list();
     expect(obs.length).toBe(2);
+  });
+
+  it("autoNote:true (default) triggers noteStep() automatically on assembler.addStep()", async () => {
+    const assembler = makeAssembler();
+    // Pre-fill to push token count above threshold
+    for (let i = 0; i < 12; i++) assembler.addStep(userStep(`msg ${i} ${"x".repeat(200)}`));
+    const { model, calls } = mockObserver(['{"priority":"medium","text":"auto-noted"}']);
+    mem = new ObservationalMemory({
+      assembler,
+      model,
+      sessionId: "s-autonote-1",
+      tokenThreshold: 100,
+    });
+    // Adding a step should auto-trigger noteStep() internally
+    assembler.addStep(userStep("trigger step"));
+    await mem.flush();
+    expect(calls.length).toBe(1);
+    const list = await mem.list();
+    expect(list[0]?.text).toContain("auto-noted");
+  });
+
+  it("autoNote:false skips automatic noteStep() on assembler.addStep()", async () => {
+    const assembler = makeAssembler();
+    for (let i = 0; i < 12; i++) assembler.addStep(userStep(`msg ${i} ${"x".repeat(200)}`));
+    const { model, calls } = mockObserver(['{"priority":"low","text":"manual"}']);
+    mem = new ObservationalMemory({
+      assembler,
+      model,
+      sessionId: "s-autonote-2",
+      tokenThreshold: 100,
+      autoNote: false,
+    });
+    assembler.addStep(userStep("trigger step -- should not auto-note"));
+    await mem.flush();
+    expect(calls.length).toBe(0);
+    // Manual noteStep() should still work
+    mem.noteStep();
+    await mem.flush();
+    expect(calls.length).toBe(1);
+  });
+
+  it("autoNote cleans up subscription on _resetForTests()", async () => {
+    const assembler = makeAssembler();
+    for (let i = 0; i < 12; i++) assembler.addStep(userStep(`msg ${i} ${"x".repeat(200)}`));
+    const { model, calls } = mockObserver(['{"priority":"low","text":"reset test"}']);
+    mem = new ObservationalMemory({
+      assembler,
+      model,
+      sessionId: "s-autonote-3",
+      tokenThreshold: 100,
+    });
+    mem._resetForTests();
+    // After reset subscription must be removed
+    assembler.addStep(userStep("post-reset step"));
+    await new Promise((r) => setTimeout(r, 10));
+    expect(calls.length).toBe(0);
   });
 });

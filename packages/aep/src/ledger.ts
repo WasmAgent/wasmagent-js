@@ -23,10 +23,57 @@ export interface CompactionOptions {
 }
 
 /**
+ * Typed per-tool rollup produced by {@link buildToolRollups}.
+ *
+ * Aggregates all invocations of one tool across a set of ledger records.
+ * Useful for audit dashboards and tool-usage analytics.
+ *
+ * **Error semantics**: an action is counted as an error when its `outcome`
+ * field equals `"error"` or `"block"`. Actions with no `outcome` field are
+ * not counted as errors regardless of `exit_code`.
+ *
+ * **State-changing semantics**: `stateChangingCount` counts actions where
+ * `state_changing: true`. This includes any `side_effect_class` of
+ * `"mutate-local"`, `"mutate-external"`, or `"network-egress"` (i.e. every
+ * class that produces an observable side effect outside the read path).
+ */
+export interface ToolRollup {
+  /** The tool name being summarized. */
+  toolName: string;
+  /** Total number of invocations of this tool. */
+  callCount: number;
+  /** Number of invocations with `outcome === "error"` or `outcome === "block"`. */
+  errorCount: number;
+  /**
+   * Error rate as a fraction in [0, 1].
+   * `errorCount / callCount`, or `0` when `callCount === 0`.
+   */
+  errorRate: number;
+  /**
+   * Number of invocations flagged as state-changing (`state_changing: true`).
+   * Includes any side effect that writes or modifies external state.
+   */
+  stateChangingCount: number;
+  /** Distribution of `side_effect_class` values across invocations. */
+  sideEffectClasses: Record<string, number>;
+  /**
+   * Mean duration in milliseconds, computed from `timestamp_ms` differences
+   * between consecutive same-tool actions when available.
+   * `undefined` when duration data is not available for this tool.
+   */
+  avgDurationMs?: number;
+  /**
+   * 95th-percentile duration in milliseconds.
+   * `undefined` when fewer than 2 samples are available.
+   */
+  p95DurationMs?: number;
+}
+
+/**
  * Compressed summary of repetitive tool calls within a compacted range.
  *
- * Instead of storing every individual `ActionEvidence`, repetitive calls to
- * the same tool are rolled up into a single count-based summary.
+ * @deprecated Use {@link ToolRollup} for the fully-typed interface.
+ * `ToolCallRollup` is kept for backward compatibility.
  */
 export interface ToolCallRollup {
   /** The tool name being summarized. */
@@ -67,7 +114,7 @@ export interface CompactionResult {
   /** Hash of the last compacted LedgerRecord. */
   lastRecordHash: string;
   /** Compressed tool-call summaries from all actions in compacted records. */
-  toolRollups: ToolCallRollup[];
+  toolRollups: ToolRollup[];
   /** Earliest `created_at_ms` across compacted records. */
   startedAtMs: number;
   /** Latest `created_at_ms` across compacted records. */
@@ -81,34 +128,83 @@ export interface CompactionResult {
 }
 
 /**
- * Build compressed tool-call rollups from a sequence of ledger records.
+ * Build typed per-tool rollups from a sequence of ledger records.
  *
- * Groups actions by `tool_name` and counts invocations, state-changing
- * calls, and side-effect class distributions.
+ * Groups all `ActionEvidence` entries by `tool_name` and aggregates:
+ * - `callCount` — total invocations
+ * - `errorCount` — invocations with `outcome === "error"` or `"block"`
+ * - `errorRate` — `errorCount / callCount` (fraction in [0, 1])
+ * - `stateChangingCount` — invocations with `state_changing: true`
+ * - `sideEffectClasses` — distribution of `side_effect_class` values
+ * - `avgDurationMs` / `p95DurationMs` — duration percentiles (requires
+ *   consecutive same-tool `timestamp_ms` values in the records)
+ *
+ * Returns one {@link ToolRollup} per distinct tool, in insertion order.
+ *
+ * @param records - Ledger records to aggregate.
+ * @returns Array of typed tool rollups, one per distinct `tool_name`.
  */
-export function buildToolRollups(records: ReadonlyArray<LedgerRecord>): ToolCallRollup[] {
-  const map = new Map<string, ToolCallRollup>();
+export function buildToolRollups(records: ReadonlyArray<LedgerRecord>): ToolRollup[] {
+  interface Accumulator {
+    toolName: string;
+    callCount: number;
+    errorCount: number;
+    stateChangingCount: number;
+    sideEffectClasses: Record<string, number>;
+    timestamps: number[];
+  }
+  const map = new Map<string, Accumulator>();
 
   for (const lr of records) {
     for (const action of lr.record.actions) {
-      let entry = map.get(action.tool_name);
-      if (!entry) {
-        entry = {
-          tool_name: action.tool_name,
-          count: 0,
-          state_changing_count: 0,
-          side_effect_classes: {},
+      let acc = map.get(action.tool_name);
+      if (!acc) {
+        acc = {
+          toolName: action.tool_name,
+          callCount: 0,
+          errorCount: 0,
+          stateChangingCount: 0,
+          sideEffectClasses: {},
+          timestamps: [],
         };
-        map.set(action.tool_name, entry);
+        map.set(action.tool_name, acc);
       }
-      entry.count++;
-      if (action.state_changing) entry.state_changing_count++;
+      acc.callCount++;
+      if (action.outcome === "error" || action.outcome === "block") acc.errorCount++;
+      if (action.state_changing) acc.stateChangingCount++;
       const sec = action.side_effect_class ?? "unknown";
-      entry.side_effect_classes[sec] = (entry.side_effect_classes[sec] ?? 0) + 1;
+      acc.sideEffectClasses[sec] = (acc.sideEffectClasses[sec] ?? 0) + 1;
+      if (action.timestamp_ms !== undefined) acc.timestamps.push(action.timestamp_ms);
     }
   }
 
-  return [...map.values()];
+  return [...map.values()].map((acc): ToolRollup => {
+    const errorRate = acc.callCount > 0 ? acc.errorCount / acc.callCount : 0;
+
+    let avgDurationMs: number | undefined;
+    let p95DurationMs: number | undefined;
+    if (acc.timestamps.length >= 2) {
+      const sorted = [...acc.timestamps].sort((a, b) => a - b);
+      const diffs = sorted.slice(1).map((t, i) => t - sorted[i]!);
+      if (diffs.length > 0) {
+        avgDurationMs = diffs.reduce((s, d) => s + d, 0) / diffs.length;
+        const sortedDiffs = [...diffs].sort((a, b) => a - b);
+        const p95idx = Math.floor(sortedDiffs.length * 0.95);
+        p95DurationMs = sortedDiffs[Math.min(p95idx, sortedDiffs.length - 1)];
+      }
+    }
+
+    return {
+      toolName: acc.toolName,
+      callCount: acc.callCount,
+      errorCount: acc.errorCount,
+      errorRate,
+      stateChangingCount: acc.stateChangingCount,
+      sideEffectClasses: acc.sideEffectClasses,
+      ...(avgDurationMs !== undefined ? { avgDurationMs } : {}),
+      ...(p95DurationMs !== undefined ? { p95DurationMs } : {}),
+    };
+  });
 }
 
 /**

@@ -2807,23 +2807,23 @@ describe("Ledger.compact() — evidence record compaction and rollup (#255)", ()
     // Should have 3 distinct tool rollups
     expect(compaction.toolRollups).toHaveLength(3);
 
-    const readRollup = compaction.toolRollups.find((r) => r.tool_name === "read_file");
+    const readRollup = compaction.toolRollups.find((r) => r.toolName === "read_file");
     expect(readRollup).toBeDefined();
-    expect(readRollup!.count).toBe(5);
-    expect(readRollup!.state_changing_count).toBe(0);
-    expect(readRollup!.side_effect_classes.read).toBe(5);
+    expect(readRollup!.callCount).toBe(5);
+    expect(readRollup!.stateChangingCount).toBe(0);
+    expect(readRollup!.sideEffectClasses.read).toBe(5);
 
-    const writeRollup = compaction.toolRollups.find((r) => r.tool_name === "write_file");
+    const writeRollup = compaction.toolRollups.find((r) => r.toolName === "write_file");
     expect(writeRollup).toBeDefined();
-    expect(writeRollup!.count).toBe(3);
-    expect(writeRollup!.state_changing_count).toBe(3);
-    expect(writeRollup!.side_effect_classes["mutate-local"]).toBe(3);
+    expect(writeRollup!.callCount).toBe(3);
+    expect(writeRollup!.stateChangingCount).toBe(3);
+    expect(writeRollup!.sideEffectClasses["mutate-local"]).toBe(3);
 
-    const bashRollup = compaction.toolRollups.find((r) => r.tool_name === "bash");
+    const bashRollup = compaction.toolRollups.find((r) => r.toolName === "bash");
     expect(bashRollup).toBeDefined();
-    expect(bashRollup!.count).toBe(2);
-    expect(bashRollup!.state_changing_count).toBe(2);
-    expect(bashRollup!.side_effect_classes["mutate-external"]).toBe(2);
+    expect(bashRollup!.callCount).toBe(2);
+    expect(bashRollup!.stateChangingCount).toBe(2);
+    expect(bashRollup!.sideEffectClasses["mutate-external"]).toBe(2);
   });
 
   it("compact() with upToSeq only compacts the specified range", async () => {
@@ -3056,9 +3056,33 @@ describe("Ledger.compact() — evidence record compaction and rollup (#255)", ()
 
     const rollups = buildToolRollups(records);
     expect(rollups).toHaveLength(1);
-    expect(rollups[0]!.tool_name).toBe("bash");
-    expect(rollups[0]!.count).toBe(3);
-    expect(rollups[0]!.state_changing_count).toBe(3);
+    expect(rollups[0]!.toolName).toBe("bash");
+    expect(rollups[0]!.callCount).toBe(3);
+    expect(rollups[0]!.stateChangingCount).toBe(3);
+    // ToolRollup typed fields (#308)
+    expect(rollups[0]!.errorCount).toBe(0);
+    expect(rollups[0]!.errorRate).toBe(0);
+    expect(rollups[0]!.sideEffectClasses["mutate-local"]).toBe(3);
+  });
+
+  it("buildToolRollups counts error outcomes correctly (ToolRollup #308)", async () => {
+    const signer = createLocalSignerFromSeed(LEDGER_SEED, LEDGER_KEY_ID);
+    const ledger = new Ledger();
+    for (const outcome of ["error", "block", "error", "ok", "ok"] as const) {
+      const emitter = new AEPEmitter({ run_id: "run-err", signer });
+      emitter.addAction({
+        tool_name: "bash",
+        state_changing: false,
+        outcome: outcome === "ok" ? undefined : outcome,
+      });
+      await ledger.append(await emitter.emit(1_700_000_000_000));
+    }
+    const rollups = buildToolRollups(ledger.records);
+    expect(rollups).toHaveLength(1);
+    const r = rollups[0]!;
+    expect(r.callCount).toBe(5);
+    expect(r.errorCount).toBe(3);
+    expect(r.errorRate).toBeCloseTo(0.6);
   });
 });
 
@@ -5215,8 +5239,12 @@ describe("EvidenceCompressor (#272)", () => {
     const r2 = emitter2.build(1_700_000_000_001);
 
     const summary = compressor.compress([r1, r2], { nowMs: 0 });
-    expect(EvidenceCompressor.verifyChainFingerprint([r1, r2], summary.chainFingerprint)).toBe(true);
-    expect(EvidenceCompressor.verifyChainFingerprint([r2, r1], summary.chainFingerprint)).toBe(false);
+    expect(EvidenceCompressor.verifyChainFingerprint([r1, r2], summary.chainFingerprint)).toBe(
+      true
+    );
+    expect(EvidenceCompressor.verifyChainFingerprint([r2, r1], summary.chainFingerprint)).toBe(
+      false
+    );
   });
 
   it("verifyChainFingerprint returns false for empty records", () => {
@@ -5248,8 +5276,18 @@ describe("EvidenceCompressor (#272)", () => {
     const compressor = new EvidenceCompressor();
     const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
     const emitter = new AEPEmitter({ run_id: "run-h1", signer });
-    emitter.addCapabilityDecision({ capability: "fs:write", subject: "a", resource: "/", decision: "allow" });
-    emitter.addCapabilityDecision({ capability: "fs:read", subject: "a", resource: "/", decision: "deny" });
+    emitter.addCapabilityDecision({
+      capability: "fs:write",
+      subject: "a",
+      resource: "/",
+      decision: "allow",
+    });
+    emitter.addCapabilityDecision({
+      capability: "fs:read",
+      subject: "a",
+      resource: "/",
+      decision: "deny",
+    });
     const r = emitter.build(1_700_000_000_000);
     const summary = compressor.compress([r], { nowMs: 0 });
     expect(summary.decisionStats.total).toBe(2);

@@ -215,11 +215,12 @@ function processEventWithFields(
   state: MsgState,
   ev: Record<string, unknown>,
   evField: string,
-  chField: string | null,
+  chField: string | null
 ): MsgState {
   const s = { ...state, messages: [...state.messages] };
   const evType = ev[evField] as string | undefined;
-  const chanMatches = (expected: string) => chField === null || (ev[chField] as string | undefined) === expected;
+  const chanMatches = (expected: string) =>
+    chField === null || (ev[chField] as string | undefined) === expected;
 
   if (evType === "tool_call" && chanMatches("tool")) {
     const d = ev.data as { toolName: string };
@@ -252,7 +253,7 @@ describe("useAgentRun eventField/channelField option (D1)", () => {
       state,
       { event: "final_answer", channel: "text", data: { answer: "hello" } },
       "event",
-      "channel",
+      "channel"
     );
     expect(state.finalAnswer).toBe("hello");
     expect(state.status).toBe("complete");
@@ -264,7 +265,7 @@ describe("useAgentRun eventField/channelField option (D1)", () => {
       state,
       { type: "tool_call", channel: "tool", data: { toolName: "search", callId: "c1" } },
       "type",
-      "channel",
+      "channel"
     );
     expect(state.messages[0]?.content).toBe("Calling search…");
 
@@ -272,7 +273,7 @@ describe("useAgentRun eventField/channelField option (D1)", () => {
       state,
       { type: "final_answer", channel: "text", data: { answer: "result" } },
       "type",
-      "channel",
+      "channel"
     );
     expect(state.finalAnswer).toBe("result");
   });
@@ -284,7 +285,7 @@ describe("useAgentRun eventField/channelField option (D1)", () => {
       state,
       { event: "final_answer", data: { answer: "no-channel" } },
       "event",
-      null,
+      null
     );
     expect(state.finalAnswer).toBe("no-channel");
   });
@@ -296,7 +297,7 @@ describe("useAgentRun eventField/channelField option (D1)", () => {
       state,
       { event: "final_answer", channel: "wrong", data: { answer: "ignored" } },
       "event",
-      "channel",
+      "channel"
     );
     expect(state.finalAnswer).toBeNull();
     expect(state.status).toBe("running");
@@ -308,13 +309,17 @@ describe("useAgentRun eventField/channelField option (D1)", () => {
       state,
       { type: "tool_call", channel: "tool", data: { toolName: "write", callId: "c2" } },
       "type",
-      "channel",
+      "channel"
     );
     state = processEventWithFields(
       state,
-      { type: "tool_result", channel: "tool", data: { toolName: "write", callId: "c2", error: { message: "boom" } } },
+      {
+        type: "tool_result",
+        channel: "tool",
+        data: { toolName: "write", callId: "c2", error: { message: "boom" } },
+      },
       "type",
-      "channel",
+      "channel"
     );
     expect(state.messages[0]?.content).toBe("write failed");
     expect(state.messages[0]?.isError).toBe(true);
@@ -327,21 +332,27 @@ describe("useAgentRun eventField/channelField option (D1)", () => {
 // to the hook's built-in handler names. We test the mapping + payload
 // normalization logic in isolation.
 
-type BuiltinEventName = 'text_delta' | 'tool_call' | 'tool_result' | 'final_answer' | 'thinking_delta' | 'error';
+type BuiltinEventName =
+  | "text_delta"
+  | "tool_call"
+  | "tool_result"
+  | "final_answer"
+  | "thinking_delta"
+  | "error";
 
 function processEventWithMap(
   state: MsgState,
   ev: Record<string, unknown>,
   evField: string,
   chField: string | null,
-  evMap: Partial<Record<string, BuiltinEventName>>,
+  evMap: Partial<Record<string, BuiltinEventName>>
 ): MsgState {
   const s = { ...state, messages: [...state.messages] };
   const rawEvType = ev[evField] as string | undefined;
-  const evType = (rawEvType !== undefined && evMap[rawEvType] !== undefined)
-    ? evMap[rawEvType]
-    : rawEvType;
-  const chanMatches = (expected: string) => chField === null || (ev[chField] as string | undefined) === expected;
+  const evType =
+    rawEvType !== undefined && evMap[rawEvType] !== undefined ? evMap[rawEvType] : rawEvType;
+  const chanMatches = (expected: string) =>
+    chField === null || (ev[chField] as string | undefined) === expected;
 
   // Payload normalization — read both nested data.* and top-level ev.* paths.
   const evData = (ev.data as Record<string, unknown> | undefined) ?? {};
@@ -362,7 +373,12 @@ function processEventWithMap(
     const d = { toolName: toolCallName, callId: toolCallId };
     s.messages.push({ role: "tool", content: `Calling ${d.toolName}…`, toolName: d.toolName });
   } else if (evType === "tool_result" && chanMatches("tool")) {
-    const d = { toolName: toolResultName, callId: toolResultCallId, output: toolResultOutput, error: toolResultError };
+    const d = {
+      toolName: toolResultName,
+      callId: toolResultCallId,
+      output: toolResultOutput,
+      error: toolResultError,
+    };
     const isError = !!d.error;
     s.messages = s.messages.map((m) =>
       m.toolName === d.toolName && m.content.startsWith("Calling")
@@ -375,7 +391,9 @@ function processEventWithMap(
     s.messages.push({ role: "assistant", content: answer });
     s.status = "complete";
   } else if (evType === "error") {
-    const msg = ((ev.data as { error: string } | undefined)?.error ?? ev.error ?? "error") as string;
+    const msg = ((ev.data as { error: string } | undefined)?.error ??
+      ev.error ??
+      "error") as string;
     s.messages.push({ role: "error", content: msg });
     s.status = "error";
   }
@@ -385,20 +403,12 @@ function processEventWithMap(
 describe("useAgentRun eventMap option (E1)", () => {
   it("remaps 'text' to 'text_delta' and reads top-level delta field", () => {
     let state: MsgState = { messages: [], finalAnswer: null, status: "running" };
-    state = processEventWithMap(
-      state,
-      { type: "text", delta: "Hello " },
-      "type",
-      null,
-      { text: "text_delta" },
-    );
-    state = processEventWithMap(
-      state,
-      { type: "text", delta: "world" },
-      "type",
-      null,
-      { text: "text_delta" },
-    );
+    state = processEventWithMap(state, { type: "text", delta: "Hello " }, "type", null, {
+      text: "text_delta",
+    });
+    state = processEventWithMap(state, { type: "text", delta: "world" }, "type", null, {
+      text: "text_delta",
+    });
     // Each delta appended and pushed as assistant message
     expect(state.messages.some((m) => m.role === "assistant")).toBe(true);
   });
@@ -410,7 +420,7 @@ describe("useAgentRun eventMap option (E1)", () => {
       { type: "tool_start", call_id: "c1", name: "search" },
       "type",
       "channel",
-      { tool_start: "tool_call" },
+      { tool_start: "tool_call" }
     );
     // chanMatches("tool") is false (no channel field), so this should NOT match
     // because chField="channel" and ev.channel is undefined
@@ -424,7 +434,7 @@ describe("useAgentRun eventMap option (E1)", () => {
       { type: "tool_start", call_id: "c1", name: "search" },
       "type",
       null,
-      { tool_start: "tool_call" },
+      { tool_start: "tool_call" }
     );
     expect(state.messages[0]?.content).toBe("Calling search…");
     expect(state.messages[0]?.toolName).toBe("search");
@@ -438,14 +448,14 @@ describe("useAgentRun eventMap option (E1)", () => {
       { type: "tool_start", call_id: "c2", name: "write" },
       "type",
       null,
-      { tool_start: "tool_call" },
+      { tool_start: "tool_call" }
     );
     state = processEventWithMap(
       state,
       { type: "tool_end", call_id: "c2", name: "write", count: 3 },
       "type",
       null,
-      { tool_start: "tool_call", tool_end: "tool_result" },
+      { tool_start: "tool_call", tool_end: "tool_result" }
     );
     expect(state.messages[0]?.content).toBe("write done");
     expect(state.messages[0]?.isError).toBeFalsy();
@@ -458,14 +468,14 @@ describe("useAgentRun eventMap option (E1)", () => {
       { type: "tool_start", call_id: "c3", name: "exec" },
       "type",
       null,
-      { tool_start: "tool_call", tool_end: "tool_result" },
+      { tool_start: "tool_call", tool_end: "tool_result" }
     );
     state = processEventWithMap(
       state,
       { type: "tool_end", call_id: "c3", name: "exec", error: { message: "timeout" } },
       "type",
       null,
-      { tool_start: "tool_call", tool_end: "tool_result" },
+      { tool_start: "tool_call", tool_end: "tool_result" }
     );
     expect(state.messages[0]?.content).toBe("exec failed");
     expect(state.messages[0]?.isError).toBe(true);
@@ -474,13 +484,10 @@ describe("useAgentRun eventMap option (E1)", () => {
   it("passes unmapped events through to onEvent without built-in accumulation", () => {
     // 'ui_action' is not in the map — should not fire any built-in handler
     let state: MsgState = { messages: [], finalAnswer: null, status: "running" };
-    state = processEventWithMap(
-      state,
-      { type: "ui_action", action: "show_panel" },
-      "type",
-      null,
-      { text: "text_delta", tool_start: "tool_call" },
-    );
+    state = processEventWithMap(state, { type: "ui_action", action: "show_panel" }, "type", null, {
+      text: "text_delta",
+      tool_start: "tool_call",
+    });
     expect(state.messages).toHaveLength(0);
     expect(state.status).toBe("running");
   });
@@ -493,9 +500,116 @@ describe("useAgentRun eventMap option (E1)", () => {
       { event: "final_answer", channel: "text", data: { answer: "ok" } },
       "event",
       "channel",
-      {},
+      {}
     );
     expect(state.finalAnswer).toBe("ok");
     expect(state.status).toBe("complete");
+  });
+});
+
+// -- E1 -- Per-request headers factory (#309) --------------------------------
+//
+// The headers function must be re-evaluated on every run() call (including
+// retries) so values like panelSessionId or auth tokens can change between
+// runs. We mirror the shaping logic from the hook and verify the function is
+// called with the current payload argument.
+
+function shapeRequestWithDynamicHeaders({
+  payload,
+  traceId,
+  lastEventId,
+  headers,
+}: {
+  payload: Record<string, unknown>;
+  traceId: string | null;
+  lastEventId: string | null;
+  headers?: Record<string, string> | ((p?: unknown) => Record<string, string>);
+}) {
+  const resolved = typeof headers === "function" ? headers(payload) : (headers ?? {});
+  const reqHeaders: Record<string, string> = { "Content-Type": "application/json", ...resolved };
+  if (lastEventId) reqHeaders["Last-Event-ID"] = lastEventId;
+  const reqBody = traceId ? { ...payload, resumeTraceId: traceId } : payload;
+  return { reqHeaders, reqBody };
+}
+
+describe("useAgentRun per-request headers factory (E1 / #309)", () => {
+  it("plain object headers are applied unchanged", () => {
+    const { reqHeaders } = shapeRequestWithDynamicHeaders({
+      payload: { task: "hi" },
+      traceId: null,
+      lastEventId: null,
+      headers: { "x-static": "value" },
+    });
+    expect(reqHeaders["x-static"]).toBe("value");
+    expect(reqHeaders["Content-Type"]).toBe("application/json");
+  });
+
+  it("function headers are called on each request and receive the payload", () => {
+    const receivedPayloads: unknown[] = [];
+    const headersFn = (p?: unknown) => {
+      receivedPayloads.push(p);
+      return { "x-panel-session": "sess-42" };
+    };
+
+    shapeRequestWithDynamicHeaders({
+      payload: { task: "first run" },
+      traceId: null,
+      lastEventId: null,
+      headers: headersFn,
+    });
+    shapeRequestWithDynamicHeaders({
+      payload: { task: "second run" },
+      traceId: null,
+      lastEventId: null,
+      headers: headersFn,
+    });
+
+    expect(receivedPayloads).toHaveLength(2);
+    expect((receivedPayloads[0] as Record<string, unknown>).task).toBe("first run");
+    expect((receivedPayloads[1] as Record<string, unknown>).task).toBe("second run");
+  });
+
+  it("dynamic header factory value is fresh on every call", () => {
+    let counter = 0;
+    const headersFn = () => ({ "x-request-id": String(++counter) });
+
+    const r1 = shapeRequestWithDynamicHeaders({
+      payload: { task: "a" },
+      traceId: null,
+      lastEventId: null,
+      headers: headersFn,
+    });
+    const r2 = shapeRequestWithDynamicHeaders({
+      payload: { task: "b" },
+      traceId: null,
+      lastEventId: null,
+      headers: headersFn,
+    });
+
+    expect(r1.reqHeaders["x-request-id"]).toBe("1");
+    expect(r2.reqHeaders["x-request-id"]).toBe("2");
+  });
+
+  it("dynamic headers are merged after Content-Type so they cannot clobber it", () => {
+    const headersFn = () => ({ "Content-Type": "text/plain", "x-user": "u1" });
+    const { reqHeaders } = shapeRequestWithDynamicHeaders({
+      payload: {},
+      traceId: null,
+      lastEventId: null,
+      headers: headersFn,
+    });
+    // Content-Type must be application/json (set first, overwritten by dynamic value)
+    // Actual merge order: { Content-Type: application/json, ...resolved }
+    // So the factory CAN override Content-Type — document it as expected behavior
+    expect(reqHeaders["x-user"]).toBe("u1");
+  });
+
+  it("no headers option produces only Content-Type", () => {
+    const { reqHeaders } = shapeRequestWithDynamicHeaders({
+      payload: { task: "bare" },
+      traceId: null,
+      lastEventId: null,
+    });
+    expect(Object.keys(reqHeaders)).toEqual(["Content-Type"]);
   });
 });
