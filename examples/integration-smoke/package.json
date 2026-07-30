@@ -2,7 +2,7 @@
   "name": "wasmagent-integration-smoke",
   "version": "0.0.33",
   "private": true,
-  "description": "Local-only end-to-end smoke scripts that drive the public package surface (A1/A2/A4/A5 etc.). NOT part of CI — run them by hand to verify a fresh build.",
+  "description": "Local-only end-to-end smoke scripts that drive the public package surface (A1/A2/A4/A5 etc.). NOT part of CI \u2014 run them by hand to verify a fresh build.",
   "type": "module",
   "scripts": {
     "all": "node run-all.mjs",
@@ -21,8 +21,10 @@
     "edge:evals": "bun edge-evals-runner.mjs"
   },
   "dependencies": {
+    "@wasmagent/aep": "workspace:*",
     "@wasmagent/aisdk": "workspace:*",
     "@wasmagent/cli": "workspace:*",
+    "@wasmagent/compliance": "workspace:*",
     "@wasmagent/core": "workspace:*",
     "@wasmagent/devtools": "workspace:*",
     "@wasmagent/evals-runner": "workspace:*",

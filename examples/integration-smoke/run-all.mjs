@@ -28,6 +28,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 // We pin the order so the cheap, no-IO scripts run first — quick failure
 // signal — and the heavyweight (Studio HTTP, MCP protocol) come last.
 const ORDER = [
+  "provable-chain.mjs",
   "a5-openai-compat.mjs",
   "cross-kernel.mjs",
   "edge-capability-boundaries.mjs",
