@@ -31,7 +31,11 @@
  * `TaskSpec.priority_hierarchy` + `ConstraintIR.priority`.
  */
 
-import type { Criterion, VerificationPipeline } from "@wasmagent/core";
+import {
+  DeterministicVerifier,
+  VerificationPipeline,
+} from "@wasmagent/core";
+import type { Criterion, WorkspaceReader } from "@wasmagent/core";
 import type { ConstraintIR, TaskSpec } from "../ir/ConstraintIR.js";
 import {
   type ConstraintViolation,
@@ -137,6 +141,95 @@ export class ComplianceVerifier {
       ...(result.hint !== undefined ? { hint: result.hint } : {}),
     };
   }
+
+  /**
+   * Verify a plain JS object directly without constructing a WorkspaceReader.
+   *
+   * Instance variant — reuses the `evidenceSpanHooks` registered at
+   * construction time but builds a fresh `VerificationPipeline` backed by
+   * an in-memory workspace derived from `obj`. Useful when you already hold
+   * a `ComplianceVerifier` with custom hooks but want to validate an
+   * in-memory domain object rather than a file tree.
+   *
+   * The object is JSON-serialised and exposed as `"object.json"` to the
+   * underlying `DeterministicVerifier`. Constraint `path` fields should
+   * reference `"object.json"` (or omit them for non-file constraints).
+   *
+   * @example
+   * ```ts
+   * const verifier = new ComplianceVerifier({ pipeline, evidenceSpanHooks: myHooks })
+   * await verifier.verifyObject(draft, taskSpec, { stage: 'post_tool_call' })
+   * ```
+   */
+  async verifyObject(
+    obj: unknown,
+    spec: TaskSpec,
+    opts: { stage?: ViolationStage } = {}
+  ): Promise<ComplianceVerificationResult> {
+    const ws = buildObjectWorkspace(obj);
+    const pipeline = new VerificationPipeline({ ws, verifiers: [new DeterministicVerifier()] });
+    const hooks = this.#hooks;
+    const tempVerifier = new ComplianceVerifier({
+      pipeline,
+      ...(Object.keys(hooks).length > 0 ? { evidenceSpanHooks: hooks } : {}),
+    });
+    return tempVerifier.verify(spec, ...(opts.stage !== undefined ? [{ stage: opts.stage }] : []));
+  }
+
+  /**
+   * Verify a plain JS object directly — no `WorkspaceReader` needed.
+   *
+   * Static convenience variant. Creates a minimal `VerificationPipeline`
+   * backed by an in-memory workspace derived from `obj`. This removes the
+   * ~15-line `WorkspaceReader` shim every non-file-based caller had to write.
+   *
+   * The object is JSON-serialised and exposed as `"object.json"` to the
+   * underlying `DeterministicVerifier`. Constraint `path` fields should
+   * reference `"object.json"` (or omit them for non-file constraints).
+   *
+   * @example
+   * ```ts
+   * await ComplianceVerifier.verifyObject(draft, taskSpec)
+   * ```
+   */
+  static async verifyObject(
+    obj: unknown,
+    spec: TaskSpec,
+    opts: {
+      stage?: ViolationStage;
+      evidenceSpanHooks?: Record<string, EvidenceSpanHook>;
+    } = {}
+  ): Promise<ComplianceVerificationResult> {
+    const ws = buildObjectWorkspace(obj);
+    const pipeline = new VerificationPipeline({ ws, verifiers: [new DeterministicVerifier()] });
+    const verifier = new ComplianceVerifier({
+      pipeline,
+      ...(opts.evidenceSpanHooks !== undefined ? { evidenceSpanHooks: opts.evidenceSpanHooks } : {}),
+    });
+    return verifier.verify(spec, ...(opts.stage !== undefined ? [{ stage: opts.stage }] : []));
+  }
+}
+
+/**
+ * Build an in-memory `WorkspaceReader` that exposes the JSON-serialised form
+ * of `obj` as a single file named `"object.json"`.
+ */
+function buildObjectWorkspace(obj: unknown): WorkspaceReader {
+  const json = JSON.stringify(obj, null, 2);
+  const OBJECT_PATH = "object.json";
+  return {
+    async readFile(path: string): Promise<string> {
+      if (path === OBJECT_PATH) return json;
+      throw new Error(`objectWorkspace: no such file: ${path}`);
+    },
+    async fileExists(path: string): Promise<boolean> {
+      return path === OBJECT_PATH;
+    },
+    async fileSize(path: string): Promise<number> {
+      if (path === OBJECT_PATH) return new TextEncoder().encode(json).byteLength;
+      throw new Error(`objectWorkspace: no such file: ${path}`);
+    },
+  };
 }
 
 /**

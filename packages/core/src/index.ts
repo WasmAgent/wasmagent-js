@@ -231,6 +231,7 @@ export {
   MapKvBackend,
   MemoryBlockSet,
   MessageAssembler,
+  injectHistoryIntoAssembler,
   makeRetrievalTool,
   ObservationalMemory,
   StructuredMemory,

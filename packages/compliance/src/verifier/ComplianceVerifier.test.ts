@@ -118,4 +118,127 @@ describe("ComplianceVerifier", () => {
     const result = await verifier.verify(spec, { stage: "post_tool_call" });
     expect(result.violations.every((v) => v.detected_at === "post_tool_call")).toBe(true);
   });
+
+  // ── #302: verifyObject ────────────────────────────────────────────────────
+
+  describe("ComplianceVerifier.verifyObject (static)", () => {
+    const objSpec: TaskSpec = {
+      id: "obj.v1",
+      intent: "validate object",
+      language: "en",
+      constraints: [
+        {
+          id: "o1",
+          description: "object.json must exist",
+          verify_method: "file_exists",
+          path: "object.json",
+          level: "hard",
+          priority: 100,
+          category: "format",
+        },
+        {
+          id: "o2",
+          description: "object.json must contain status key",
+          verify_method: "file_contains",
+          arg: '"status"',
+          path: "object.json",
+          level: "hard",
+          priority: 90,
+          category: "format",
+        },
+      ],
+      priority_hierarchy: ["system_policy", "user_explicit_constraints"],
+    };
+
+    test("passes when object JSON satisfies all constraints", async () => {
+      const draft = { id: "pr-42", status: "open", title: "feat: add API" };
+      const result = await ComplianceVerifier.verifyObject(draft, objSpec);
+      expect(result.ok).toBe(true);
+      expect(result.violations).toEqual([]);
+      expect(result.passing_constraint_ids).toContain("o1");
+      expect(result.passing_constraint_ids).toContain("o2");
+    });
+
+    test("reports violation when object JSON does not satisfy a constraint", async () => {
+      const draft = { id: "pr-42", title: "feat: add API" }; // missing "status"
+      const result = await ComplianceVerifier.verifyObject(draft, objSpec);
+      expect(result.ok).toBe(false);
+      expect(result.violations).toHaveLength(1);
+      expect(result.violations[0]?.constraint_id).toBe("o2");
+    });
+
+    test("forwards stage option to violations", async () => {
+      const draft = { id: "pr-42" }; // missing status
+      const result = await ComplianceVerifier.verifyObject(draft, objSpec, {
+        stage: "post_tool_call",
+      });
+      expect(result.violations[0]?.detected_at).toBe("post_tool_call");
+    });
+
+    test("forwards evidenceSpanHooks to violations", async () => {
+      const draft = { id: "pr-42" }; // missing status
+      const result = await ComplianceVerifier.verifyObject(draft, objSpec, {
+        evidenceSpanHooks: {
+          file_contains: (_ir, _hint) => ({
+            region_id: "custom:span",
+          }),
+        },
+      });
+      expect(result.violations[0]?.evidence_span?.region_id).toBe("custom:span");
+    });
+  });
+
+  describe("ComplianceVerifier#verifyObject (instance)", () => {
+    const objSpec: TaskSpec = {
+      id: "obj.inst.v1",
+      intent: "validate object instance",
+      language: "en",
+      constraints: [
+        {
+          id: "i1",
+          description: "object.json must contain amount",
+          verify_method: "file_contains",
+          arg: '"amount"',
+          path: "object.json",
+          level: "hard",
+          priority: 80,
+          category: "format",
+        },
+      ],
+      priority_hierarchy: ["system_policy"],
+    };
+
+    test("passes for object that satisfies constraints", async () => {
+      const ws = memoryWorkspace({});
+      const pipeline = new VerificationPipeline({ ws, verifiers: [new DeterministicVerifier()] });
+      const verifier = new ComplianceVerifier({ pipeline });
+      const invoice = { invoiceId: "INV-001", amount: 5000, currency: "USD" };
+      const result = await verifier.verifyObject(invoice, objSpec);
+      expect(result.ok).toBe(true);
+    });
+
+    test("reports violation for object that fails constraint", async () => {
+      const ws = memoryWorkspace({});
+      const pipeline = new VerificationPipeline({ ws, verifiers: [new DeterministicVerifier()] });
+      const verifier = new ComplianceVerifier({ pipeline });
+      const invoice = { invoiceId: "INV-001", currency: "USD" }; // missing amount
+      const result = await verifier.verifyObject(invoice, objSpec);
+      expect(result.ok).toBe(false);
+      expect(result.violations[0]?.constraint_id).toBe("i1");
+    });
+
+    test("uses registered evidenceSpanHooks from constructor", async () => {
+      const ws = memoryWorkspace({});
+      const pipeline = new VerificationPipeline({ ws, verifiers: [new DeterministicVerifier()] });
+      const verifier = new ComplianceVerifier({
+        pipeline,
+        evidenceSpanHooks: {
+          file_contains: (_ir, _hint) => ({ region_id: "instance:hook" }),
+        },
+      });
+      const invoice = { invoiceId: "INV-001" }; // missing amount
+      const result = await verifier.verifyObject(invoice, objSpec);
+      expect(result.violations[0]?.evidence_span?.region_id).toBe("instance:hook");
+    });
+  });
 });

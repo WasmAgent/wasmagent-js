@@ -46,10 +46,69 @@ export interface ToolDescriptor {
 }
 
 /**
+ * Module-level registry of custom stateful verb prefixes registered via
+ * `registerStatefulVerbs`. Kept as a `Set<string>` for O(n) lookup —
+ * registration is a one-time startup cost.
+ */
+const customStatefulVerbs: Set<string> = new Set();
+
+/**
+ * Register additional verb prefixes that `isStateChangingTool` should treat
+ * as state-changing, in addition to the built-in `STATE_CHANGING_PATTERNS`.
+ *
+ * Eliminates the need to maintain a parallel `MUTATING` Set alongside
+ * `isStateChangingTool` — after calling `registerStatefulVerbs` once at
+ * startup, `isStateChangingTool` becomes the single source of truth for
+ * both AEP evidence classification and application-level audit branching.
+ *
+ * Verb matching follows the same word-boundary convention as
+ * `STATE_CHANGING_PATTERNS`: underscores and hyphens are treated as
+ * separators.
+ *
+ * @param verbs - Array of verb strings (e.g. `["submit", "approve", "run_invoice"]`).
+ *
+ * @example
+ * ```ts
+ * import { registerStatefulVerbs, isStateChangingTool } from "@wasmagent/aep";
+ *
+ * // Register once at application startup
+ * registerStatefulVerbs(['submit', 'convert', 'approve', 'reject', 'post', 'run_invoice']);
+ *
+ * isStateChangingTool({ name: 'submit_pr' })        // → true
+ * isStateChangingTool({ name: 'convert_pr_to_po' }) // → true
+ * isStateChangingTool({ name: 'run_invoice_batch' }) // → true
+ * ```
+ */
+export function registerStatefulVerbs(verbs: string[]): void {
+  for (const verb of verbs) {
+    // Normalise to lowercase; keep underscores/hyphens as-is so the
+    // pattern builder can treat them as word separators.
+    customStatefulVerbs.add(verb.toLowerCase());
+  }
+}
+
+/**
+ * Clear all custom verb registrations added via `registerStatefulVerbs`.
+ *
+ * Intended for test isolation — call in `afterEach` to reset global state
+ * between test cases.
+ */
+export function clearStatefulVerbs(): void {
+  customStatefulVerbs.clear();
+}
+
+/** Escape a string for use inside a `RegExp` pattern. */
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
  * Heuristic: returns true if the tool's name or description suggests it mutates state.
  *
- * This is a best-effort classification. Integrators should override with explicit
- * metadata when available (e.g., MCP tool annotations or a curated allow-list).
+ * Checks the built-in `STATE_CHANGING_PATTERNS` first, then any verbs
+ * registered via `registerStatefulVerbs`. This is a best-effort
+ * classification. Integrators should override with explicit metadata when
+ * available (e.g., MCP tool annotations or a curated allow-list).
  *
  * @example
  * ```ts
@@ -61,5 +120,14 @@ export interface ToolDescriptor {
  */
 export function isStateChangingTool(tool: ToolDescriptor): boolean {
   const text = (tool.name + " " + (tool.description ?? "")).toLowerCase();
-  return STATE_CHANGING_PATTERNS.some((p) => p.test(text));
+  if (STATE_CHANGING_PATTERNS.some((p) => p.test(text))) return true;
+  if (customStatefulVerbs.size > 0) {
+    for (const verb of customStatefulVerbs) {
+      const pattern = new RegExp(
+        `(?:^|[\\s_-])${escapeRegex(verb)}(?:$|[\\s_-])`
+      );
+      if (pattern.test(text)) return true;
+    }
+  }
+  return false;
 }

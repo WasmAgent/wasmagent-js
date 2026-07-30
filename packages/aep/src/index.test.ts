@@ -53,7 +53,7 @@ import { createLocalSignerFromSeed } from "./signer.js";
 import { LocalTimestamper } from "./timestamperLocal.js";
 import type { AEPRecord, SideEffectClass } from "./types.js";
 import { AEPRecordSchema } from "./types.js";
-import { isStateChangingTool, STATE_CHANGING_PATTERNS } from "./utils.js";
+import { isStateChangingTool, STATE_CHANGING_PATTERNS, registerStatefulVerbs, clearStatefulVerbs } from "./utils.js";
 import { verifyAEPChain, verifyAEPRecord } from "./verify.js";
 
 // Deterministic seed for tests (32 bytes as hex)
@@ -537,6 +537,54 @@ describe("isStateChangingTool (#23)", () => {
     expect(Array.isArray(STATE_CHANGING_PATTERNS)).toBe(true);
     expect(STATE_CHANGING_PATTERNS.length).toBeGreaterThan(0);
     expect(STATE_CHANGING_PATTERNS[0]).toBeInstanceOf(RegExp);
+  });
+});
+
+
+describe("registerStatefulVerbs (#304)", () => {
+  afterEach(() => {
+    clearStatefulVerbs();
+  });
+
+  it("allows custom domain verbs to be registered as stateful", () => {
+    registerStatefulVerbs(["post", "run_invoice"]);
+    expect(isStateChangingTool({ name: "post_document" })).toBe(true);
+    expect(isStateChangingTool({ name: "run_invoice_batch" })).toBe(true);
+  });
+
+  it("does not affect existing built-in patterns", () => {
+    registerStatefulVerbs(["custom_verb"]);
+    expect(isStateChangingTool({ name: "write_file" })).toBe(true);
+    expect(isStateChangingTool({ name: "create_record" })).toBe(true);
+  });
+
+  it("returns false for tools that do not match any registered verb", () => {
+    registerStatefulVerbs(["approve"]);
+    expect(isStateChangingTool({ name: "list_approvals" })).toBe(false);
+    expect(isStateChangingTool({ name: "get_status" })).toBe(false);
+  });
+
+  it("clears registered verbs after clearStatefulVerbs()", () => {
+    registerStatefulVerbs(["mycustomverb"]);
+    expect(isStateChangingTool({ name: "mycustomverb_thing" })).toBe(true);
+    clearStatefulVerbs();
+    expect(isStateChangingTool({ name: "mycustomverb_thing" })).toBe(false);
+  });
+
+  it("handles case-insensitive verb registration", () => {
+    registerStatefulVerbs(["APPROVE", "Reject"]);
+    expect(isStateChangingTool({ name: "approve_invoice" })).toBe(true);
+    expect(isStateChangingTool({ name: "reject_request" })).toBe(true);
+  });
+
+  it("acts as single source of truth for AEP + app audit branching", () => {
+    registerStatefulVerbs(["submit", "convert", "approve", "reject"]);
+    expect(isStateChangingTool({ name: "submit_pr" })).toBe(true);
+    expect(isStateChangingTool({ name: "convert_pr_to_po" })).toBe(true);
+    expect(isStateChangingTool({ name: "approve_vendor" })).toBe(true);
+    expect(isStateChangingTool({ name: "reject_line_item" })).toBe(true);
+    expect(isStateChangingTool({ name: "get_vendor" })).toBe(false);
+    expect(isStateChangingTool({ name: "list_submissions" })).toBe(false);
   });
 });
 
