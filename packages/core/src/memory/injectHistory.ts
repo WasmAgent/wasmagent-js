@@ -28,8 +28,8 @@
  * ```
  */
 
-import type { MessageAssembler } from "./MessageAssembler.js";
 import type { ModelMessage } from "../models/types.js";
+import type { MessageAssembler } from "./MessageAssembler.js";
 
 /**
  * Inject an array of prior `ModelMessage` turns into `assembler` so that

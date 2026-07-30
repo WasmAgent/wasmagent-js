@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { canonicalBytes } from "./canonical.js";
-import type { AEPRecord, ActionEvidence } from "./types.js";
+import type { ActionEvidence, AEPRecord } from "./types.js";
 
 /**
  * evidenceCompressor.ts — auditable summaries and cryptographic fingerprints
@@ -215,12 +215,15 @@ export class EvidenceCompressor {
     const lastRecord = records[records.length - 1]!;
 
     // --- tool stats ---
-    const toolMap = new Map<string, {
-      total_calls: number;
-      state_changing_calls: number;
-      side_effect_distribution: Record<string, number>;
-      outcome_distribution: Record<string, number>;
-    }>();
+    const toolMap = new Map<
+      string,
+      {
+        total_calls: number;
+        state_changing_calls: number;
+        side_effect_distribution: Record<string, number>;
+        outcome_distribution: Record<string, number>;
+      }
+    >();
 
     let totalActions = 0;
     let startedAtMs = firstRecord.created_at_ms;
@@ -273,10 +276,18 @@ export class EvidenceCompressor {
       // aggregate capability decisions
       for (const dec of record.capability_decisions) {
         switch (dec.decision) {
-          case "allow": decAllow++; break;
-          case "deny": decDeny++; break;
-          case "ask_user": decAsk++; break;
-          case "dry_run": decDry++; break;
+          case "allow":
+            decAllow++;
+            break;
+          case "deny":
+            decDeny++;
+            break;
+          case "ask_user":
+            decAsk++;
+            break;
+          case "dry_run":
+            decDry++;
+            break;
         }
       }
 
@@ -320,11 +331,15 @@ export class EvidenceCompressor {
     };
 
     const budgetTotals: CompressedBudgetTotals = {};
-    if (tokensSpent !== undefined) (budgetTotals as Record<string, number>).tokens_spent = tokensSpent;
-    if (toolCallsSpent !== undefined) (budgetTotals as Record<string, number>).tool_calls_spent = toolCallsSpent;
+    if (tokensSpent !== undefined)
+      (budgetTotals as Record<string, number>).tokens_spent = tokensSpent;
+    if (toolCallsSpent !== undefined)
+      (budgetTotals as Record<string, number>).tool_calls_spent = toolCallsSpent;
     if (riskSpent !== undefined) (budgetTotals as Record<string, number>).risk_spent = riskSpent;
-    if (retriesSpent !== undefined) (budgetTotals as Record<string, number>).retries_spent = retriesSpent;
-    if (humanApprovalsSpent !== undefined) (budgetTotals as Record<string, number>).human_approvals_spent = humanApprovalsSpent;
+    if (retriesSpent !== undefined)
+      (budgetTotals as Record<string, number>).retries_spent = retriesSpent;
+    if (humanApprovalsSpent !== undefined)
+      (budgetTotals as Record<string, number>).human_approvals_spent = humanApprovalsSpent;
 
     const summary: CompressedChainSummary = {
       chainFingerprint,

@@ -3,24 +3,24 @@ export interface ValidationResult {
   errors: string[];
 }
 
-const POSTURE_REQUIRED = ['posture_version', 'identity', 'servers', 'attestation'] as const;
-const IDENTITY_REQUIRED = ['snapshot_id', 'agent_id', 'captured_at'] as const;
+const POSTURE_REQUIRED = ["posture_version", "identity", "servers", "attestation"] as const;
+const IDENTITY_REQUIRED = ["snapshot_id", "agent_id", "captured_at"] as const;
 
 export const RISK_CATEGORIES = [
-  'ssrf',
-  'exfiltration',
-  'command_execution',
-  'privilege_escalation',
-  'prompt_injection',
-  'credential_access',
-  'supply_chain',
-  'mcp_header_leakage',
+  "ssrf",
+  "exfiltration",
+  "command_execution",
+  "privilege_escalation",
+  "prompt_injection",
+  "credential_access",
+  "supply_chain",
+  "mcp_header_leakage",
 ] as const;
 
 export type RiskCategory = (typeof RISK_CATEGORIES)[number];
 
-export type SessionModel = 'stateful' | 'stateless-handle' | 'unknown';
-export type HandleExpiryPolicy = 'short-lived' | 'long-lived' | 'unset';
+export type SessionModel = "stateful" | "stateless-handle" | "unknown";
+export type HandleExpiryPolicy = "short-lived" | "long-lived" | "unset";
 
 export interface McpPostureAuth {
   audience_bound_token_validated?: boolean;
@@ -73,7 +73,7 @@ export interface PostureDiff {
   isEmpty(): boolean;
 }
 
-export function createPostureDiff(partial: Omit<PostureDiff, 'isEmpty'>): PostureDiff {
+export function createPostureDiff(partial: Omit<PostureDiff, "isEmpty">): PostureDiff {
   const isEmpty = (): boolean =>
     partial.servers.added.length === 0 &&
     partial.servers.removed.length === 0 &&
@@ -96,27 +96,27 @@ function toArray(val: unknown): unknown[] {
 function parseServers(servers: unknown): Map<string, ServerEntry> {
   const map = new Map<string, ServerEntry>();
   for (const item of toArray(servers)) {
-    if (typeof item === 'object' && item !== null) {
+    if (typeof item === "object" && item !== null) {
       const s = item as Record<string, unknown>;
-      if (typeof s.server_id === 'string') {
+      if (typeof s.server_id === "string") {
         const tools = new Map<string, ToolEntry>();
         for (const t of toArray(s.tools)) {
-          if (typeof t === 'object' && t !== null) {
+          if (typeof t === "object" && t !== null) {
             const tool = t as Record<string, unknown>;
-            if (typeof tool.tool_id === 'string') {
+            if (typeof tool.tool_id === "string") {
               tools.set(tool.tool_id, {
                 tool_id: tool.tool_id,
-                tool_name: String(tool.tool_name ?? ''),
+                tool_name: String(tool.tool_name ?? ""),
                 permissions: toArray(tool.permissions).map(String),
                 risk_categories: toArray(tool.risk_categories).map(String),
-                risk_severity: String(tool.risk_severity ?? ''),
+                risk_severity: String(tool.risk_severity ?? ""),
               });
             }
           }
         }
         map.set(s.server_id, {
           server_id: s.server_id,
-          server_name: String(s.server_name ?? ''),
+          server_name: String(s.server_name ?? ""),
           tools,
         });
       }
@@ -128,14 +128,14 @@ function parseServers(servers: unknown): Map<string, ServerEntry> {
 function parseRisks(riskSummary: unknown): Map<string, RiskEntry> {
   const map = new Map<string, RiskEntry>();
   for (const item of toArray(riskSummary)) {
-    if (typeof item === 'object' && item !== null) {
+    if (typeof item === "object" && item !== null) {
       const r = item as Record<string, unknown>;
-      if (typeof r.finding_id === 'string') {
+      if (typeof r.finding_id === "string") {
         map.set(r.finding_id, {
           finding_id: r.finding_id,
-          severity: String(r.severity ?? ''),
-          category: String(r.category ?? ''),
-          description: String(r.description ?? ''),
+          severity: String(r.severity ?? ""),
+          category: String(r.category ?? ""),
+          description: String(r.description ?? ""),
         });
       }
     }
@@ -145,7 +145,7 @@ function parseRisks(riskSummary: unknown): Map<string, RiskEntry> {
 
 function diffStringArrays(
   oldArr: string[],
-  newArr: string[],
+  newArr: string[]
 ): { added: string[]; removed: string[] } {
   const oldSet = new Set(oldArr);
   const newSet = new Set(newArr);
@@ -157,7 +157,7 @@ function diffStringArrays(
 
 export function diffMCPPosture(
   oldData: Record<string, unknown>,
-  newData: Record<string, unknown>,
+  newData: Record<string, unknown>
 ): PostureDiff {
   const oldServers = parseServers(oldData.servers);
   const newServers = parseServers(newData.servers);
@@ -213,8 +213,8 @@ export function diffMCPPosture(
         toolsModified.push({
           server_id: id,
           tool_id: toolId,
-          field: 'permissions',
-          old: '',
+          field: "permissions",
+          old: "",
           new: p,
         });
       }
@@ -222,9 +222,9 @@ export function diffMCPPosture(
         toolsModified.push({
           server_id: id,
           tool_id: toolId,
-          field: 'permissions',
+          field: "permissions",
           old: p,
-          new: '',
+          new: "",
         });
       }
 
@@ -233,8 +233,8 @@ export function diffMCPPosture(
         toolsModified.push({
           server_id: id,
           tool_id: toolId,
-          field: 'risk_category',
-          old: '',
+          field: "risk_category",
+          old: "",
           new: c,
         });
       }
@@ -242,9 +242,9 @@ export function diffMCPPosture(
         toolsModified.push({
           server_id: id,
           tool_id: toolId,
-          field: 'risk_category',
+          field: "risk_category",
           old: c,
-          new: '',
+          new: "",
         });
       }
 
@@ -252,7 +252,7 @@ export function diffMCPPosture(
         toolsModified.push({
           server_id: id,
           tool_id: toolId,
-          field: 'risk_severity',
+          field: "risk_severity",
           old: oldTool.risk_severity,
           new: newTool.risk_severity,
         });
@@ -262,10 +262,10 @@ export function diffMCPPosture(
 
   // Permission scope diff from permission_graph
   const oldScopes = toArray(
-    (oldData.permission_graph as Record<string, unknown> | undefined)?.permission_scopes,
+    (oldData.permission_graph as Record<string, unknown> | undefined)?.permission_scopes
   ).map(String);
   const newScopes = toArray(
-    (newData.permission_graph as Record<string, unknown> | undefined)?.permission_scopes,
+    (newData.permission_graph as Record<string, unknown> | undefined)?.permission_scopes
   ).map(String);
   const permChanges = diffStringArrays(oldScopes, newScopes);
 
@@ -289,7 +289,7 @@ export function diffMCPPosture(
     if (oldRisk.severity !== newRisk.severity) {
       risksModified.push({
         finding_id: id,
-        field: 'severity',
+        field: "severity",
         old: oldRisk.severity,
         new: newRisk.severity,
       });
@@ -297,7 +297,7 @@ export function diffMCPPosture(
     if (oldRisk.category !== newRisk.category) {
       risksModified.push({
         finding_id: id,
-        field: 'category',
+        field: "category",
         old: oldRisk.category,
         new: newRisk.category,
       });
@@ -305,7 +305,7 @@ export function diffMCPPosture(
     if (oldRisk.description !== newRisk.description) {
       risksModified.push({
         finding_id: id,
-        field: 'description',
+        field: "description",
         old: oldRisk.description,
         new: newRisk.description,
       });
@@ -350,7 +350,7 @@ export function formatPostureDiff(diff: PostureDiff): string {
   if (diff.tools.modified.length > 0) {
     lines.push(`Tools changed (${diff.tools.modified.length}):`);
     for (const m of diff.tools.modified) {
-      if (m.field === 'permissions' || m.field === 'risk_category') {
+      if (m.field === "permissions" || m.field === "risk_category") {
         if (m.new) {
           lines.push(`  ~ ${m.tool_id} (${m.server_id}): ${m.field} added: ${m.new}`);
         } else {
@@ -394,42 +394,42 @@ export function formatPostureDiff(diff: PostureDiff): string {
   }
 
   if (lines.length === 0) {
-    lines.push('No differences found between the two posture snapshots.');
+    lines.push("No differences found between the two posture snapshots.");
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 export function validateMCPPosture(data: unknown): ValidationResult {
-  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-    return { valid: false, errors: ['root must be an object'] };
+  if (typeof data !== "object" || data === null || Array.isArray(data)) {
+    return { valid: false, errors: ["root must be an object"] };
   }
   const d = data as Record<string, unknown>;
   const errors: string[] = [];
 
   errors.push(...POSTURE_REQUIRED.filter((k) => !(k in d)).map((k) => `missing required: ${k}`));
 
-  if ('posture_version' in d && d.posture_version !== '0.1') {
+  if ("posture_version" in d && d.posture_version !== "0.1") {
     errors.push(`posture_version must be "0.1"`);
   }
 
-  if (d.identity && typeof d.identity === 'object') {
+  if (d.identity && typeof d.identity === "object") {
     const id = d.identity as Record<string, unknown>;
     errors.push(
-      ...IDENTITY_REQUIRED.filter((k) => !(k in id)).map((k) => `identity: missing ${k}`),
+      ...IDENTITY_REQUIRED.filter((k) => !(k in id)).map((k) => `identity: missing ${k}`)
     );
   }
 
   // Validate verification_endpoint if present
-  if ('verification_endpoint' in d && typeof d.verification_endpoint === 'string') {
+  if ("verification_endpoint" in d && typeof d.verification_endpoint === "string") {
     const url = d.verification_endpoint as string;
     if (!/^https:\/\//.test(url)) {
-      errors.push('verification_endpoint must use HTTPS scheme');
+      errors.push("verification_endpoint must use HTTPS scheme");
     }
     try {
       new URL(url);
     } catch {
-      errors.push('verification_endpoint must be a valid URL');
+      errors.push("verification_endpoint must be a valid URL");
     }
   }
 
@@ -441,7 +441,7 @@ export function inspectMCPPosture(data: Record<string, unknown>): string {
   const servers = (data.servers as Record<string, unknown>[]) ?? [];
   const risks = (data.risk_summary as Record<string, string>[]) ?? [];
   const permissionGraph = data.permission_graph as Record<string, unknown> | undefined;
-  const protocolVersion = (data.protocol_version as string | undefined) ?? 'pre-2026-07-28';
+  const protocolVersion = (data.protocol_version as string | undefined) ?? "pre-2026-07-28";
 
   const totalTools = servers.reduce((sum, s) => sum + ((s.tools as unknown[]) ?? []).length, 0);
 
@@ -451,44 +451,44 @@ export function inspectMCPPosture(data: Record<string, unknown>): string {
       (sum, s) =>
         sum +
         ((s.tools as Record<string, string>[]) ?? []).filter(
-          (t) => t.risk_severity === 'critical' || t.risk_severity === 'high',
+          (t) => t.risk_severity === "critical" || t.risk_severity === "high"
         ).length,
-      0,
+      0
     );
 
   const lines: string[] = [
     `MCP Posture v${data.posture_version} (protocol: ${protocolVersion})`,
-    `  Snapshot:        ${identity?.snapshot_id ?? '?'}`,
-    `  Agent:           ${identity?.agent_id ?? '?'}`,
+    `  Snapshot:        ${identity?.snapshot_id ?? "?"}`,
+    `  Agent:           ${identity?.agent_id ?? "?"}`,
     `  Servers:         ${servers.length}`,
     `  Tools:           ${totalTools}`,
     `  High-risk tools: ${highRiskTools}`,
     `  Risks:           ${risks.length}`,
   ];
 
-  const criticalOrHigh = risks.filter((r) => r.severity === 'critical' || r.severity === 'high');
+  const criticalOrHigh = risks.filter((r) => r.severity === "critical" || r.severity === "high");
 
   if (criticalOrHigh.length > 0) {
-    lines.push('');
+    lines.push("");
     lines.push(`  ⚠  ${criticalOrHigh.length} critical/high finding(s):`);
     for (const r of criticalOrHigh) {
-      const agenticRef = r.owasp_agentic_ref ? ` [${r.owasp_agentic_ref}]` : '';
+      const agenticRef = r.owasp_agentic_ref ? ` [${r.owasp_agentic_ref}]` : "";
       lines.push(
-        `    [${(r.severity ?? '').toUpperCase()}] ${r.finding_id}: ${r.description}${agenticRef}`,
+        `    [${(r.severity ?? "").toUpperCase()}] ${r.finding_id}: ${r.description}${agenticRef}`
       );
     }
   }
 
   if (risks.length > 0 && criticalOrHigh.length < risks.length) {
-    const other = risks.filter((r) => r.severity !== 'critical' && r.severity !== 'high');
-    lines.push('');
-    lines.push('  Other findings:');
+    const other = risks.filter((r) => r.severity !== "critical" && r.severity !== "high");
+    lines.push("");
+    lines.push("  Other findings:");
     for (const r of other) {
-      lines.push(`    [${(r.severity ?? '').toUpperCase()}] ${r.finding_id}: ${r.description}`);
+      lines.push(`    [${(r.severity ?? "").toUpperCase()}] ${r.finding_id}: ${r.description}`);
     }
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 // --- Semver utilities ---
@@ -527,10 +527,10 @@ export function compareSemver(a: string, b: string): number {
 }
 
 export function isVersionInRange(version: string, range: string): boolean {
-  if (range.startsWith('>=')) return compareSemver(version, range.slice(2)) >= 0;
-  if (range.startsWith('<=')) return compareSemver(version, range.slice(2)) <= 0;
-  if (range.startsWith('>')) return compareSemver(version, range.slice(1)) > 0;
-  if (range.startsWith('<')) return compareSemver(version, range.slice(1)) < 0;
+  if (range.startsWith(">=")) return compareSemver(version, range.slice(2)) >= 0;
+  if (range.startsWith("<=")) return compareSemver(version, range.slice(2)) <= 0;
+  if (range.startsWith(">")) return compareSemver(version, range.slice(1)) > 0;
+  if (range.startsWith("<")) return compareSemver(version, range.slice(1)) < 0;
   return version === range;
 }
 
@@ -559,7 +559,7 @@ export interface MigrationResult {
 export interface DeprecationNotice {
   version: string;
   message: string;
-  severity: 'info' | 'warn' | 'deprecated';
+  severity: "info" | "warn" | "deprecated";
 }
 
 export interface VersionedValidationResult extends ValidationResult {
@@ -568,8 +568,8 @@ export interface VersionedValidationResult extends ValidationResult {
 }
 
 /** Currently supported MCP Posture schema versions. */
-const SUPPORTED_POSTURE_VERSIONS: readonly string[] = ['0.1'];
-const LATEST_POSTURE_VERSION = '0.1';
+const SUPPORTED_POSTURE_VERSIONS: readonly string[] = ["0.1"];
+const LATEST_POSTURE_VERSION = "0.1";
 const DEPRECATED_POSTURE_VERSIONS: Map<string, DeprecationNotice> = new Map();
 const POSTURE_MIGRATION_REGISTRY: MigrationStep[] = [];
 
@@ -618,9 +618,9 @@ export function deprecateVersion(notice: DeprecationNotice): void {
 /** Migrate an MCP Posture document to a target schema version. */
 export function migrateMCPPosture(
   data: Record<string, unknown>,
-  targetVersion?: string,
+  targetVersion?: string
 ): MigrationResult {
-  const fromVersion = String(data.posture_version ?? 'unknown');
+  const fromVersion = String(data.posture_version ?? "unknown");
   const target = targetVersion ?? LATEST_POSTURE_VERSION;
 
   if (fromVersion === target) {
@@ -655,7 +655,7 @@ export function migrateMCPPosture(
   for (const step of path) {
     if (step.breaking) {
       warnings.push(
-        `Breaking migration: ${step.fromVersion} → ${step.toVersion}: ${step.description}`,
+        `Breaking migration: ${step.fromVersion} → ${step.toVersion}: ${step.description}`
       );
     }
     try {
@@ -695,8 +695,8 @@ export function detectVersionWarnings(version: string): DeprecationNotice[] {
   } else if (!SUPPORTED_POSTURE_VERSIONS.includes(version)) {
     notices.push({
       version,
-      message: `MCP Posture version ${version} is not in the supported set (${SUPPORTED_POSTURE_VERSIONS.join(', ')})`,
-      severity: 'warn',
+      message: `MCP Posture version ${version} is not in the supported set (${SUPPORTED_POSTURE_VERSIONS.join(", ")})`,
+      severity: "warn",
     });
   }
   return notices;
@@ -706,7 +706,7 @@ export function detectVersionWarnings(version: string): DeprecationNotice[] {
 export function validateMCPPostureWithVersioning(data: unknown): VersionedValidationResult {
   const raw = data as Record<string, unknown> | null;
   const version = (raw?.posture_version as string | undefined) ?? null;
-  const versionWarnings = detectVersionWarnings(version ?? 'unknown');
+  const versionWarnings = detectVersionWarnings(version ?? "unknown");
 
   const baseResult = validateMCPPosture(data);
 
@@ -720,23 +720,23 @@ export function validateMCPPostureWithVersioning(data: unknown): VersionedValida
 // --- Continuous Trust Monitoring ---
 
 /** Severity levels for posture trust monitoring events. */
-export type PostureEventSeverity = 'info' | 'low' | 'medium' | 'high' | 'critical';
+export type PostureEventSeverity = "info" | "low" | "medium" | "high" | "critical";
 
 /** Categories of posture trust events produced by drift monitoring. */
 export type PostureEventCategory =
-  | 'server_added'
-  | 'server_removed'
-  | 'tool_added'
-  | 'tool_removed'
-  | 'permission_escalation'
-  | 'permission_reduction'
-  | 'risk_category_added'
-  | 'risk_category_removed'
-  | 'risk_finding_introduced'
-  | 'risk_finding_resolved'
-  | 'risk_finding_escalated'
-  | 'scope_expanded'
-  | 'scope_restricted';
+  | "server_added"
+  | "server_removed"
+  | "tool_added"
+  | "tool_removed"
+  | "permission_escalation"
+  | "permission_reduction"
+  | "risk_category_added"
+  | "risk_category_removed"
+  | "risk_finding_introduced"
+  | "risk_finding_resolved"
+  | "risk_finding_escalated"
+  | "scope_expanded"
+  | "scope_restricted";
 
 /** A single posture trust event produced by continuous monitoring. */
 export interface PostureTrustEvent {
@@ -770,10 +770,10 @@ export interface PostureDriftAlert {
 
 /** Create a PostureDriftAlert with computed helper methods. */
 export function createPostureDriftAlert(
-  partial: Omit<PostureDriftAlert, 'hasHighSeverity' | 'isEmpty'>,
+  partial: Omit<PostureDriftAlert, "hasHighSeverity" | "isEmpty">
 ): PostureDriftAlert {
   const hasHighSeverity = (): boolean =>
-    partial.events.some((e) => e.severity === 'high' || e.severity === 'critical');
+    partial.events.some((e) => e.severity === "high" || e.severity === "critical");
   const isEmpty = (): boolean => partial.events.length === 0;
   return { ...partial, hasHighSeverity, isEmpty };
 }
@@ -781,28 +781,28 @@ export function createPostureDriftAlert(
 /** Severity for a posture tool based on its risk severity and risk categories. */
 function postureToolEventSeverity(tool: ToolEntry): PostureEventSeverity {
   const criticalCats = [
-    'command_execution',
-    'credential_access',
-    'exfiltration',
-    'privilege_escalation',
+    "command_execution",
+    "credential_access",
+    "exfiltration",
+    "privilege_escalation",
   ];
   const hasCriticalCat = tool.risk_categories.some((c) => criticalCats.includes(c));
-  if (tool.risk_severity === 'critical' || hasCriticalCat) return 'critical';
-  if (tool.risk_severity === 'high') return 'high';
-  return 'medium';
+  if (tool.risk_severity === "critical" || hasCriticalCat) return "critical";
+  if (tool.risk_severity === "high") return "high";
+  return "medium";
 }
 
 /** Severity for a risk finding based on its severity field. */
 function postureRiskEventSeverity(severity: string): PostureEventSeverity {
   switch (severity) {
-    case 'critical':
-      return 'critical';
-    case 'high':
-      return 'high';
-    case 'medium':
-      return 'medium';
+    case "critical":
+      return "critical";
+    case "high":
+      return "high";
+    case "medium":
+      return "medium";
     default:
-      return 'low';
+      return "low";
   }
 }
 
@@ -817,7 +817,7 @@ export function classifyPostureDriftEvents(
   diff: PostureDiff,
   agentId: string,
   baselineAt: string,
-  currentAt: string,
+  currentAt: string
 ): PostureDriftAlert {
   const now = new Date().toISOString();
   const events: PostureTrustEvent[] = [];
@@ -825,8 +825,8 @@ export function classifyPostureDriftEvents(
   // Server additions and removals
   for (const serverId of diff.servers.added) {
     events.push({
-      category: 'server_added',
-      severity: 'high',
+      category: "server_added",
+      severity: "high",
       description: `MCP server "${serverId}" added to agent trust boundary`,
       subject: serverId,
       detected_at: now,
@@ -834,8 +834,8 @@ export function classifyPostureDriftEvents(
   }
   for (const serverId of diff.servers.removed) {
     events.push({
-      category: 'server_removed',
-      severity: 'info',
+      category: "server_removed",
+      severity: "info",
       description: `MCP server "${serverId}" removed from agent trust boundary`,
       subject: serverId,
       detected_at: now,
@@ -845,7 +845,7 @@ export function classifyPostureDriftEvents(
   // Tool additions and removals
   for (const { server_id, tool } of diff.tools.added) {
     events.push({
-      category: 'tool_added',
+      category: "tool_added",
       severity: postureToolEventSeverity(tool),
       description: `Tool "${tool.tool_name}" (${tool.tool_id}) added on server ${server_id}`,
       subject: tool.tool_id,
@@ -854,8 +854,8 @@ export function classifyPostureDriftEvents(
   }
   for (const { server_id, tool } of diff.tools.removed) {
     events.push({
-      category: 'tool_removed',
-      severity: 'info',
+      category: "tool_removed",
+      severity: "info",
       description: `Tool "${tool.tool_name}" (${tool.tool_id}) removed from server ${server_id}`,
       subject: tool.tool_id,
       detected_at: now,
@@ -864,37 +864,37 @@ export function classifyPostureDriftEvents(
 
   // Tool permission and risk_category changes
   for (const mod of diff.tools.modified) {
-    if (mod.field === 'permissions') {
+    if (mod.field === "permissions") {
       if (mod.new) {
         events.push({
-          category: 'permission_escalation',
-          severity: 'high',
+          category: "permission_escalation",
+          severity: "high",
           description: `Permission "${mod.new}" added to tool ${mod.tool_id} on ${mod.server_id}`,
           subject: mod.tool_id,
           detected_at: now,
         });
       } else if (mod.old) {
         events.push({
-          category: 'permission_reduction',
-          severity: 'info',
+          category: "permission_reduction",
+          severity: "info",
           description: `Permission "${mod.old}" removed from tool ${mod.tool_id} on ${mod.server_id}`,
           subject: mod.tool_id,
           detected_at: now,
         });
       }
-    } else if (mod.field === 'risk_category') {
+    } else if (mod.field === "risk_category") {
       if (mod.new) {
         events.push({
-          category: 'risk_category_added',
-          severity: 'medium',
+          category: "risk_category_added",
+          severity: "medium",
           description: `Risk category "${mod.new}" added to tool ${mod.tool_id} on ${mod.server_id}`,
           subject: mod.tool_id,
           detected_at: now,
         });
       } else if (mod.old) {
         events.push({
-          category: 'risk_category_removed',
-          severity: 'info',
+          category: "risk_category_removed",
+          severity: "info",
           description: `Risk category "${mod.old}" removed from tool ${mod.tool_id} on ${mod.server_id}`,
           subject: mod.tool_id,
           detected_at: now,
@@ -906,7 +906,7 @@ export function classifyPostureDriftEvents(
   // Risk finding changes
   for (const risk of diff.risks.added) {
     events.push({
-      category: 'risk_finding_introduced',
+      category: "risk_finding_introduced",
       severity: postureRiskEventSeverity(risk.severity),
       description: `New risk finding "${risk.description}" (${risk.severity}/${risk.category})`,
       subject: risk.finding_id,
@@ -915,19 +915,19 @@ export function classifyPostureDriftEvents(
   }
   for (const risk of diff.risks.removed) {
     events.push({
-      category: 'risk_finding_resolved',
-      severity: 'info',
+      category: "risk_finding_resolved",
+      severity: "info",
       description: `Risk finding "${risk.finding_id}" (${risk.description}) removed`,
       subject: risk.finding_id,
       detected_at: now,
     });
   }
   for (const mod of diff.risks.modified) {
-    if (mod.field === 'severity') {
+    if (mod.field === "severity") {
       const severityOrder: Record<string, number> = { low: 1, medium: 2, high: 3, critical: 4 };
       if ((severityOrder[mod.new] ?? 0) > (severityOrder[mod.old] ?? 0)) {
         events.push({
-          category: 'risk_finding_escalated',
+          category: "risk_finding_escalated",
           severity: postureRiskEventSeverity(mod.new),
           description: `Risk ${mod.finding_id} severity escalated from ${mod.old} to ${mod.new}`,
           subject: mod.finding_id,
@@ -940,8 +940,8 @@ export function classifyPostureDriftEvents(
   // Permission scope changes
   for (const scope of diff.permissions.added) {
     events.push({
-      category: 'scope_expanded',
-      severity: 'high',
+      category: "scope_expanded",
+      severity: "high",
       description: `Permission scope "${scope}" granted`,
       subject: scope,
       detected_at: now,
@@ -949,8 +949,8 @@ export function classifyPostureDriftEvents(
   }
   for (const scope of diff.permissions.removed) {
     events.push({
-      category: 'scope_restricted',
-      severity: 'info',
+      category: "scope_restricted",
+      severity: "info",
       description: `Permission scope "${scope}" removed`,
       subject: scope,
       detected_at: now,
@@ -981,7 +981,7 @@ export function formatPostureDriftAlert(alert: PostureDriftAlert): string {
   }
 
   for (const [severity, events] of bySeverity) {
-    lines.push('');
+    lines.push("");
     lines.push(`  [${severity.toUpperCase()}] (${events.length})`);
     for (const event of events) {
       lines.push(`    • ${event.category}: ${event.description}`);
@@ -989,8 +989,8 @@ export function formatPostureDriftAlert(alert: PostureDriftAlert): string {
   }
 
   if (alert.isEmpty()) {
-    lines.push('  No drift events.');
+    lines.push("  No drift events.");
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }

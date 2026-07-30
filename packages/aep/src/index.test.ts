@@ -53,7 +53,12 @@ import { createLocalSignerFromSeed } from "./signer.js";
 import { LocalTimestamper } from "./timestamperLocal.js";
 import type { AEPRecord, SideEffectClass } from "./types.js";
 import { AEPRecordSchema } from "./types.js";
-import { isStateChangingTool, STATE_CHANGING_PATTERNS, registerStatefulVerbs, clearStatefulVerbs } from "./utils.js";
+import {
+  clearStatefulVerbs,
+  isStateChangingTool,
+  registerStatefulVerbs,
+  STATE_CHANGING_PATTERNS,
+} from "./utils.js";
 import { verifyAEPChain, verifyAEPRecord } from "./verify.js";
 
 // Deterministic seed for tests (32 bytes as hex)
@@ -539,7 +544,6 @@ describe("isStateChangingTool (#23)", () => {
     expect(STATE_CHANGING_PATTERNS[0]).toBeInstanceOf(RegExp);
   });
 });
-
 
 describe("registerStatefulVerbs (#304)", () => {
   afterEach(() => {
@@ -5263,8 +5267,12 @@ describe("EvidenceCompressor (#272)", () => {
     const r2 = emitter2.build(1_700_000_000_001);
 
     const summary = compressor.compress([r1, r2], { nowMs: 0 });
-    expect(EvidenceCompressor.verifyChainFingerprint([r1, r2], summary.chainFingerprint)).toBe(true);
-    expect(EvidenceCompressor.verifyChainFingerprint([r2, r1], summary.chainFingerprint)).toBe(false);
+    expect(EvidenceCompressor.verifyChainFingerprint([r1, r2], summary.chainFingerprint)).toBe(
+      true
+    );
+    expect(EvidenceCompressor.verifyChainFingerprint([r2, r1], summary.chainFingerprint)).toBe(
+      false
+    );
   });
 
   it("verifyChainFingerprint returns false for empty records", () => {
@@ -5296,8 +5304,18 @@ describe("EvidenceCompressor (#272)", () => {
     const compressor = new EvidenceCompressor();
     const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
     const emitter = new AEPEmitter({ run_id: "run-h1", signer });
-    emitter.addCapabilityDecision({ capability: "fs:write", subject: "a", resource: "/", decision: "allow" });
-    emitter.addCapabilityDecision({ capability: "fs:read", subject: "a", resource: "/", decision: "deny" });
+    emitter.addCapabilityDecision({
+      capability: "fs:write",
+      subject: "a",
+      resource: "/",
+      decision: "allow",
+    });
+    emitter.addCapabilityDecision({
+      capability: "fs:read",
+      subject: "a",
+      resource: "/",
+      decision: "deny",
+    });
     const r = emitter.build(1_700_000_000_000);
     const summary = compressor.compress([r], { nowMs: 0 });
     expect(summary.decisionStats.total).toBe(2);
