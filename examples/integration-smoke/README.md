@@ -3,12 +3,13 @@
 Local-only end-to-end smoke scripts that drive the public `@wasmagent/*`
 package surface across `worker_threads`, real WASM isolates, and HTTP.
 
-> **Not run in CI.** The suite spins up real isolates, real HTTP servers, and
-> real cross-package wiring. Wall-clock ≈ 1–2 min. CI's fast feedback comes
-> from `bun run test` (vitest, in-process) and `examples/benchmarks/run-all.mjs`
-> (token-counter benchmarks). This directory is the **pre-merge / pre-release
-> sanity gate** — run it by hand against a fresh build before tagging or
-> publishing.
+> **Mostly local-only — one exception runs in CI.** The suite spins up real
+> isolates, real HTTP servers, and real cross-package wiring. Wall-clock ≈ 1–2 min,
+> so CI's fast feedback comes from `bun run test` (vitest, in-process) and
+> `examples/benchmarks/run-all.mjs` (token-counter benchmarks). Run the rest by
+> hand against a fresh build before tagging. **Exception:** `provable-chain.mjs`
+> (fast, deterministic, no isolates/HTTP) runs as a **pre-publish gate** in
+> `.github/workflows/release.yml`, before `changeset publish`.
 
 ## Quick start
 
@@ -36,6 +37,7 @@ patterns where unit tests tend to skip a corner.
 
 | Script | Strategic line | What it pins |
 |---|---|---|
+| `provable-chain.mjs` | provable chain (CI gate) | The core → compliance → AEP seam: a task output is verified by `@wasmagent/compliance` (backed by `@wasmagent/core` `VerificationPipeline`), the verdict becomes signed AEP evidence via `@wasmagent/aep`, the signature verifies, and a tampered record is rejected. **Runs as the pre-publish gate in `release.yml`.** |
 | `a1-codemode.mjs` | S1 / A1 | Drive `createCodeModeServer` over JSON-RPC like a real MCP host. Verifies `tools/list` publishes exactly `docs_search + execute_code`, the in-sandbox `callTool` chain works, and only the script's return value crosses back. |
 | `a2-aisdk-mastra.mjs` | S1 / A2 | Verify `@wasmagent/aisdk` (`sandboxedJsTool`) and `@wasmagent/mastra-sandbox` (`WasmAgentMastraSandbox`) actually work end-to-end against the structurally-typed shapes those upstream SDKs expose. No `ai` / `@mastra/core` import — just the call shape. |
 | `a4-studio-http.mjs` | S3 / A4 | Start the local Studio HTTP server (`WasmAgent devtools`), exercise `/api/rollup`, `/api/runs`, `/`. Asserts JSON shape and clean shutdown. |
