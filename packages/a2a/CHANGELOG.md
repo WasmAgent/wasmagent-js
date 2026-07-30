@@ -1,5 +1,12 @@
 # @agentkit-js/a2a
 
+## 1.0.11
+
+### Patch Changes
+
+- Updated dependencies [355c401]
+  - @wasmagent/core@3.3.0
+
 ## 1.0.10
 
 ### Patch Changes

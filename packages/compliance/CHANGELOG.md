@@ -1,5 +1,21 @@
 # @wasmagent/compliance
 
+## 3.1.0
+
+### Minor Changes
+
+- 355c401: feat: four API enhancements (#302 #303 #304 #305)
+
+  - compliance: verifyObject() for in-memory validation without WorkspaceReader
+  - core: injectHistoryIntoAssembler promoted to exported API
+  - aep: registerStatefulVerbs() unified verb registration
+  - react: useAgentRun run() task field is now optional
+
+### Patch Changes
+
+- Updated dependencies [355c401]
+  - @wasmagent/core@3.3.0
+
 ## 3.0.2
 
 ### Patch Changes
