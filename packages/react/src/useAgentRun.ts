@@ -59,6 +59,29 @@ export interface UseAgentRunOptions {
    */
   channelField?: string | null;
   /**
+   * Remap incoming event names to the hook's built-in handler names.
+   * Events not listed here pass through to `onEvent` unchanged (no built-in
+   * accumulation fires for them).
+   *
+   * Built-in handler names: `'text_delta' | 'tool_call' | 'tool_result' |
+   *                          'final_answer' | 'thinking_delta' | 'error'`
+   *
+   * When remapping to `text_delta`, `tool_call`, or `tool_result`, the hook
+   * reads fields from the top-level event object (e.g. `ev.delta`,
+   * `ev.name`, `ev.call_id`) in addition to the standard nested-`data`
+   * path, so backends that flatten their payloads are handled automatically.
+   *
+   * @example
+   * ```ts
+   * eventMap: {
+   *   'text':       'text_delta',  // ev.delta → streaming text chunk
+   *   'tool_start': 'tool_call',   // ev.name + ev.call_id → tool chip
+   *   'tool_end':   'tool_result', // ev.call_id → mark tool done
+   * }
+   * ```
+   */
+  eventMap?: Partial<Record<string, 'text_delta' | 'tool_call' | 'tool_result' | 'final_answer' | 'thinking_delta' | 'error'>>
+  /**
    * A2 — Auto-retry policy for transient SSE disconnects (network blip,
    * Workers cold-start kick). When enabled the hook reconnects with the
    * `Last-Event-ID` header set to the highest id received so far, so the
@@ -170,6 +193,7 @@ export function useAgentRun(
       const delayMs = resumeOpts.delayMs ?? 1000;
       const evField = resolvedOpts.eventField ?? "event";
       const chField = resolvedOpts.channelField === undefined ? "channel" : resolvedOpts.channelField;
+      const evMap = resolvedOpts.eventMap ?? {};
 
       (async () => {
         // attemptStream returns:
@@ -270,12 +294,47 @@ export function useAgentRun(
               resolvedOpts.onEvent?.(ev);
 
               // Use configured field names for event discriminator and channel filter.
-              const evType = (ev as unknown as Record<string, unknown>)[evField] as string | undefined;
+              const rawEvType = (ev as unknown as Record<string, unknown>)[evField] as string | undefined;
+              // Apply eventMap: if the incoming event name has a mapping, substitute
+              // the built-in handler name so the dispatch switch below fires natively.
+              const evType = (rawEvType !== undefined && evMap[rawEvType] !== undefined)
+                ? evMap[rawEvType]
+                : rawEvType;
+              // Payload normalizer: some backends flatten fields onto the top-level
+              // event object instead of nesting them under `data`. We read both paths
+              // so remapped events from any backend shape are handled correctly.
+              const evRaw = ev as unknown as Record<string, unknown>;
+              const evData = (evRaw.data as Record<string, unknown> | undefined) ?? {};
+              // For text_delta: try ev.data.delta first, fall back to ev.delta
+              const textDelta = (evData.delta ?? evRaw.delta ?? "") as string;
+              // For tool_call: try ev.data.{toolName,callId} first, fall back to ev.{name,call_id}
+              const toolCallName = (evData.toolName ?? evRaw.name ?? evRaw.toolName ?? "") as string;
+              const toolCallId = (evData.callId ?? evRaw.call_id ?? evRaw.callId ?? "") as string;
+              // For tool_result: try ev.data.{toolName,callId,output,error}, fall back to top-level
+              const toolResultName = (evData.toolName ?? evRaw.name ?? evRaw.toolName ?? "") as string;
+              const toolResultCallId = (evData.callId ?? evRaw.call_id ?? evRaw.callId ?? "") as string;
+              const toolResultOutput = evData.output ?? evRaw.output;
+              const toolResultError = evData.error ?? evRaw.error;
               const evChan = chField ? (ev as unknown as Record<string, unknown>)[chField] as string | undefined : null;
               const chanMatches = (expected: string) => chField === null || evChan === expected;
 
-              if (evType === "thinking_delta" && chanMatches("thinking")) {
-                const delta = (ev as { data: { delta: string } }).data.delta ?? "";
+              if (evType === "text_delta") {
+                // Accumulate streaming text. For remapped events (e.g. 'text' → 'text_delta'),
+                // the delta may come from ev.delta or ev.data.delta — both normalised above.
+                textBufRef.current += textDelta;
+                const text = textBufRef.current.trim();
+                if (text) {
+                  setMessages((prev) => {
+                    if (!textMsgIdRef.current) textMsgIdRef.current = nextId();
+                    const id = textMsgIdRef.current;
+                    const existing = prev.find((m) => m.id === id);
+                    if (existing)
+                      return prev.map((m) => (m.id === id ? { ...m, content: text } : m));
+                    return [...prev, { id, role: "assistant" as const, content: text }];
+                  });
+                }
+              } else if (evType === "thinking_delta" && chanMatches("thinking")) {
+                const delta = textDelta;
                 textBufRef.current += delta;
                 const text = textBufRef.current.trim();
                 if (text) {
@@ -290,7 +349,7 @@ export function useAgentRun(
                 }
               } else if (evType === "tool_call" && chanMatches("tool")) {
                 flushText(setMessages);
-                const d = (ev as { data: { toolName: string; callId: string } }).data;
+                const d = { toolName: toolCallName, callId: toolCallId };
                 setMessages((prev) => [
                   ...prev,
                   {
@@ -302,11 +361,7 @@ export function useAgentRun(
                   },
                 ]);
               } else if (evType === "tool_result" && chanMatches("tool")) {
-                const d = (
-                  ev as {
-                    data: { toolName: string; callId: string; output?: unknown; error?: unknown };
-                  }
-                ).data;
+                const d = { toolName: toolResultName, callId: toolResultCallId, output: toolResultOutput, error: toolResultError };
                 const isError = !!d.error;
                 // Show tool output when available (e.g. "OK: written 371 chars to src/App.tsx")
                 const outputStr = String(d.output ?? "").trim();
@@ -405,7 +460,7 @@ export function useAgentRun(
       })();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [endpoint, resolvedOpts.onEvent, resolvedOpts.headers, resolvedOpts.resume, resolvedOpts.eventField, resolvedOpts.channelField]
+    [endpoint, resolvedOpts.onEvent, resolvedOpts.headers, resolvedOpts.resume, resolvedOpts.eventField, resolvedOpts.channelField, resolvedOpts.eventMap]
   );
 
   return {

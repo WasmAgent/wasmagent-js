@@ -320,3 +320,182 @@ describe("useAgentRun eventField/channelField option (D1)", () => {
     expect(state.messages[0]?.isError).toBe(true);
   });
 });
+
+// ── E1 — eventMap option ─────────────────────────────────────────────────────
+//
+// eventMap lets callers remap incoming event names (from alternative backends)
+// to the hook's built-in handler names. We test the mapping + payload
+// normalization logic in isolation.
+
+type BuiltinEventName = 'text_delta' | 'tool_call' | 'tool_result' | 'final_answer' | 'thinking_delta' | 'error';
+
+function processEventWithMap(
+  state: MsgState,
+  ev: Record<string, unknown>,
+  evField: string,
+  chField: string | null,
+  evMap: Partial<Record<string, BuiltinEventName>>,
+): MsgState {
+  const s = { ...state, messages: [...state.messages] };
+  const rawEvType = ev[evField] as string | undefined;
+  const evType = (rawEvType !== undefined && evMap[rawEvType] !== undefined)
+    ? evMap[rawEvType]
+    : rawEvType;
+  const chanMatches = (expected: string) => chField === null || (ev[chField] as string | undefined) === expected;
+
+  // Payload normalization — read both nested data.* and top-level ev.* paths.
+  const evData = (ev.data as Record<string, unknown> | undefined) ?? {};
+  const textDelta = (evData.delta ?? ev.delta ?? "") as string;
+  const toolCallName = (evData.toolName ?? ev.name ?? ev.toolName ?? "") as string;
+  const toolCallId = (evData.callId ?? ev.call_id ?? ev.callId ?? "") as string;
+  const toolResultName = (evData.toolName ?? ev.name ?? ev.toolName ?? "") as string;
+  const toolResultCallId = (evData.callId ?? ev.call_id ?? ev.callId ?? "") as string;
+  const toolResultOutput = evData.output ?? ev.output;
+  const toolResultError = evData.error ?? ev.error;
+
+  if (evType === "text_delta") {
+    const text = (s as unknown as Record<string, unknown>)._buf
+      ? (((s as unknown as Record<string, unknown>)._buf as string) + textDelta).trim()
+      : textDelta.trim();
+    if (text) s.messages.push({ role: "assistant", content: text });
+  } else if (evType === "tool_call" && chanMatches("tool")) {
+    const d = { toolName: toolCallName, callId: toolCallId };
+    s.messages.push({ role: "tool", content: `Calling ${d.toolName}…`, toolName: d.toolName });
+  } else if (evType === "tool_result" && chanMatches("tool")) {
+    const d = { toolName: toolResultName, callId: toolResultCallId, output: toolResultOutput, error: toolResultError };
+    const isError = !!d.error;
+    s.messages = s.messages.map((m) =>
+      m.toolName === d.toolName && m.content.startsWith("Calling")
+        ? { ...m, content: isError ? `${d.toolName} failed` : `${d.toolName} done`, isError }
+        : m
+    );
+  } else if (evType === "final_answer" && chanMatches("text")) {
+    const answer = String((ev.data as { answer: unknown } | undefined)?.answer ?? "");
+    s.finalAnswer = answer;
+    s.messages.push({ role: "assistant", content: answer });
+    s.status = "complete";
+  } else if (evType === "error") {
+    const msg = ((ev.data as { error: string } | undefined)?.error ?? ev.error ?? "error") as string;
+    s.messages.push({ role: "error", content: msg });
+    s.status = "error";
+  }
+  return s;
+}
+
+describe("useAgentRun eventMap option (E1)", () => {
+  it("remaps 'text' to 'text_delta' and reads top-level delta field", () => {
+    let state: MsgState = { messages: [], finalAnswer: null, status: "running" };
+    state = processEventWithMap(
+      state,
+      { type: "text", delta: "Hello " },
+      "type",
+      null,
+      { text: "text_delta" },
+    );
+    state = processEventWithMap(
+      state,
+      { type: "text", delta: "world" },
+      "type",
+      null,
+      { text: "text_delta" },
+    );
+    // Each delta appended and pushed as assistant message
+    expect(state.messages.some((m) => m.role === "assistant")).toBe(true);
+  });
+
+  it("remaps 'tool_start' to 'tool_call' and reads top-level name/call_id fields", () => {
+    let state: MsgState = { messages: [], finalAnswer: null, status: "running" };
+    state = processEventWithMap(
+      state,
+      { type: "tool_start", call_id: "c1", name: "search" },
+      "type",
+      "channel",
+      { tool_start: "tool_call" },
+    );
+    // chanMatches("tool") is false (no channel field), so this should NOT match
+    // because chField="channel" and ev.channel is undefined
+    expect(state.messages).toHaveLength(0);
+  });
+
+  it("remaps 'tool_start' to 'tool_call' with channelField=null (no filter)", () => {
+    let state: MsgState = { messages: [], finalAnswer: null, status: "running" };
+    state = processEventWithMap(
+      state,
+      { type: "tool_start", call_id: "c1", name: "search" },
+      "type",
+      null,
+      { tool_start: "tool_call" },
+    );
+    expect(state.messages[0]?.content).toBe("Calling search…");
+    expect(state.messages[0]?.toolName).toBe("search");
+  });
+
+  it("remaps 'tool_end' to 'tool_result' and reads top-level call_id", () => {
+    let state: MsgState = { messages: [], finalAnswer: null, status: "running" };
+    // First add a tool_call message
+    state = processEventWithMap(
+      state,
+      { type: "tool_start", call_id: "c2", name: "write" },
+      "type",
+      null,
+      { tool_start: "tool_call" },
+    );
+    state = processEventWithMap(
+      state,
+      { type: "tool_end", call_id: "c2", name: "write", count: 3 },
+      "type",
+      null,
+      { tool_start: "tool_call", tool_end: "tool_result" },
+    );
+    expect(state.messages[0]?.content).toBe("write done");
+    expect(state.messages[0]?.isError).toBeFalsy();
+  });
+
+  it("remaps 'tool_end' with error to 'tool_result' with isError=true", () => {
+    let state: MsgState = { messages: [], finalAnswer: null, status: "running" };
+    state = processEventWithMap(
+      state,
+      { type: "tool_start", call_id: "c3", name: "exec" },
+      "type",
+      null,
+      { tool_start: "tool_call", tool_end: "tool_result" },
+    );
+    state = processEventWithMap(
+      state,
+      { type: "tool_end", call_id: "c3", name: "exec", error: { message: "timeout" } },
+      "type",
+      null,
+      { tool_start: "tool_call", tool_end: "tool_result" },
+    );
+    expect(state.messages[0]?.content).toBe("exec failed");
+    expect(state.messages[0]?.isError).toBe(true);
+  });
+
+  it("passes unmapped events through to onEvent without built-in accumulation", () => {
+    // 'ui_action' is not in the map — should not fire any built-in handler
+    let state: MsgState = { messages: [], finalAnswer: null, status: "running" };
+    state = processEventWithMap(
+      state,
+      { type: "ui_action", action: "show_panel" },
+      "type",
+      null,
+      { text: "text_delta", tool_start: "tool_call" },
+    );
+    expect(state.messages).toHaveLength(0);
+    expect(state.status).toBe("running");
+  });
+
+  it("empty eventMap behaves identically to no eventMap (default passthrough)", () => {
+    let state: MsgState = { messages: [], finalAnswer: null, status: "running" };
+    // Standard final_answer with default eventField=event should still work
+    state = processEventWithMap(
+      state,
+      { event: "final_answer", channel: "text", data: { answer: "ok" } },
+      "event",
+      "channel",
+      {},
+    );
+    expect(state.finalAnswer).toBe("ok");
+    expect(state.status).toBe("complete");
+  });
+});
