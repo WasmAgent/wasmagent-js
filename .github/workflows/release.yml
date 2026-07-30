@@ -47,6 +47,14 @@ jobs:
       - name: Build
         run: bun run build
 
+      # Pre-publish provable-chain gate: prove the core → compliance → AEP
+      # seam still holds on the freshly-built workspace BEFORE anything is
+      # published to npm. A break here (a verified task can no longer become
+      # signed, verifiable evidence) fails the release rather than shipping a
+      # broken chain. Runs against workspace builds, not published versions.
+      - name: Provable-chain pre-publish gate
+        run: bun examples/integration-smoke/provable-chain.mjs
+
       - name: Set npm registry
         run: |
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
