@@ -1,5 +1,16 @@
 # @agentkit-js/cli
 
+## 1.3.12
+
+### Patch Changes
+
+- Updated dependencies [355c401]
+  - @wasmagent/core@3.3.0
+  - @wasmagent/devtools@1.7.8
+  - @wasmagent/evals-runner@1.10.8
+  - @wasmagent/model-local@1.0.11
+  - @wasmagent/models@2.0.4
+
 ## 1.3.11
 
 ### Patch Changes
