@@ -481,5 +481,8 @@ export {
   ProbabilisticSampler,
   RateLimitingSampler,
 } from "./Sampler.js";
+// ── #306 — spanFromChatTurn factory ───────────────────────────────────────────
+export type { SpanFromChatTurnOptions } from "./spanFromChatTurn.js";
+export { spanFromChatTurn } from "./spanFromChatTurn.js";
 export type { TraceRedactorOpts } from "./TraceRedactor.js";
 export { TraceRedactor } from "./TraceRedactor.js";
