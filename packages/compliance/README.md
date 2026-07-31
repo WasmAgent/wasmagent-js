@@ -135,3 +135,14 @@ Top features: `n_hard_violations` (38.5%), `n_violations` (30.8%), `prompt_token
 ## License
 
 Apache-2.0
+
+## EU AI Act Article 19 compliance
+
+`@wasmagent/compliance` records, combined with `@wasmagent/aep` evidence records, satisfy
+the automatic logging obligations of EU AI Act Article 19 (in force 2 August 2026).
+
+See [`docs/eu-ai-act-article19-compliance.md`](../../docs/eu-ai-act-article19-compliance.md)
+for the field-by-field mapping between AEP schema fields and Article 19 requirements.
+
+For regulated deployments, use `recording_mode: full` and configure the
+`trace-pipeline` archival layer for lifetime retention.
