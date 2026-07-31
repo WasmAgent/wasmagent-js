@@ -135,3 +135,13 @@ Top features: `n_hard_violations` (38.5%), `n_violations` (30.8%), `prompt_token
 ## License
 
 Apache-2.0
+
+## Regulatory coverage
+
+### EU AI Act Article 19 — Automatic Logging
+
+`@wasmagent/compliance` works with `@wasmagent/aep` to satisfy EU AI Act Article 19 (automatic logging) requirements for high-risk AI systems (effective 2 August 2026).
+
+AEP records with `recording_mode: full` capture all Article 19 mandatory fields: timestamps, agent identity, action types, inputs/outputs, session IDs, policy decisions, and tamper-evident signatures.
+
+See [`docs/eu-ai-act-article19-compliance.md`](../../docs/eu-ai-act-article19-compliance.md) for the full field mapping.
