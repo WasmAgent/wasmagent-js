@@ -1,6 +1,6 @@
 # Governance
 
-> Last refreshed: **2026-06-12**.
+> Last refreshed: **2026-07-31**.
 
 ## Why this file exists
 
@@ -16,7 +16,13 @@ public description of how decisions get made until then.
 - **Code merges into `main`** — the primary maintainer (the GitHub
   account holding `repo:write` on the `wasmagent` org), with the
   CI gates from [`CONTRIBUTING.md`](CONTRIBUTING.md) honored on every
-  PR (lint / typecheck / test / benchmark CI gate).
+  PR (lint / typecheck / test / benchmark CI gate). Branch protection
+  is **enforced**: `main` requires at least one approving review and
+  passing CI (`Build, Typecheck & Test`) before merge. CODEOWNERS
+  (`@WasmAgent/security`) must approve changes to `packages/mcp-firewall/`,
+  `packages/aep/`, `packages/mcp-gateway/`, `packages/mcp-policy/`,
+  `packages/mcp-attestation/`, `packages/kernel-wasmtime/`, and
+  `packages/kernel-quickjs/`.
 - **npm publishes** — the same account, via the GitHub Actions
   release workflow when a `v<version>` tag is pushed. Hand-publishes
   from a dev machine are not done.
