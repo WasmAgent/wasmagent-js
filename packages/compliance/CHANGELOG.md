@@ -1,5 +1,11 @@
 # @wasmagent/compliance
 
+## 3.1.2
+
+### Patch Changes
+
+- 02e6e69: Add EU AI Act Article 19 regulatory coverage note to README, linking to new AEP field mapping document.
+
 ## 3.1.1
 
 ### Patch Changes
