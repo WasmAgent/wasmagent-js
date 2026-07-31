@@ -1,5 +1,12 @@
 # @wasmagent/aep
 
+## 2.3.1
+
+### Patch Changes
+
+- bbb7397: Internal: apply Biome import-ordering and formatting fixes to source files.
+  No public API, type, or runtime behavior change.
+
 ## 2.3.0
 
 ### Minor Changes

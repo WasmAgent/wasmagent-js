@@ -1,5 +1,11 @@
 # @agentkit-js/model-deepseek
 
+## 2.0.5
+
+### Patch Changes
+
+- @wasmagent/models@2.0.5
+
 ## 2.0.4
 
 ### Patch Changes

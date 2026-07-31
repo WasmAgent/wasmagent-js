@@ -1,5 +1,14 @@
 # local-offline
 
+## 0.1.32
+
+### Patch Changes
+
+- Updated dependencies [bbb7397]
+  - @wasmagent/core@3.3.1
+  - @wasmagent/kernel-quickjs@1.2.9
+  - @wasmagent/model-local@1.0.12
+
 ## 0.1.31
 
 ### Patch Changes

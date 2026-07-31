@@ -1,5 +1,14 @@
 # @wasmagent/compliance
 
+## 3.1.1
+
+### Patch Changes
+
+- bbb7397: Internal: apply Biome import-ordering and formatting fixes to source files.
+  No public API, type, or runtime behavior change.
+- Updated dependencies [bbb7397]
+  - @wasmagent/core@3.3.1
+
 ## 3.1.0
 
 ### Minor Changes

@@ -1,5 +1,12 @@
 # @agentkit-js/kernel-wasmtime
 
+## 1.19.9
+
+### Patch Changes
+
+- Updated dependencies [bbb7397]
+  - @wasmagent/core@3.3.1
+
 ## 1.19.8
 
 ### Patch Changes
