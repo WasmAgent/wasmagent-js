@@ -95,3 +95,16 @@ Looking at the completed milestones, I see the foundation for evidence tracking,
 {
   "milestone": "## Milestone 8 — Distributed Trust Relay\n\n- Implement a `TrustRelay` transport that exchanges signed AEP records between independent wasmagent runtimes over WebSocket/HTTP, with automatic reconnection and backoff.\n- Add `verifyRemoteChain()` API that requests a Merkle inclusion proof from a remote `EvidenceStore` and validates it locally without requiring full history download.\n- Add hybrid logical clock (HLC) timestamps to AEP records so distributed agents can be ordered deterministically across machines.\n- Implement an idempotent record ingestion endpoint that rejects duplicate `run_id`/`action_id` pairs and detects fork attempts.\n- Add consent-sync namespace so `ask_user` firewall decisions made on one agent are propagated and honored by sibling agents with the same identity.\n- Add AgentBOM-aware handshake: on connection, agents exchange identity and capability documents, and refuse to relay records from agents whose declared scopes exclude the action.\n- Implement E2E encrypted evidence relay with per-agent key rotation, using the existing canonical serialization for ciphertext metadata.\n- Add network partition simulator and CI chaos tests proving the ledger remains consistent and verifiable under dropped messages and concurrent writes.\n- Expose Prometheus/browser-observability bridge for relay health, chain length divergence, and unresolved verification failures.\n- Add audit export command producing a signed, self-contained run bundle (records + proofs + manifests) shareable with external auditors."
 }
+
+## Milestone 8 — Federated Agent Operations & Reliability
+
+- [ ] Implement a versioned run registry for discovering agents, runtimes, capabilities, and health status across deployments
+- [ ] Add resumable execution checkpoints so interrupted agent runs can continue without duplicating completed actions
+- [ ] Implement idempotency keys and deduplication for retried tool calls and evidence writes
+- [ ] Add remote evidence synchronization with batching, backpressure, retry, and offline buffering
+- [ ] Provide correlation APIs linking parent runs, delegated agents, tool calls, and shared-state transitions
+- [ ] Add runtime health metrics for latency, failures, timeouts, policy denials, and resource consumption
+- [ ] Implement configurable retention, redaction, and export policies for operational telemetry and evidence
+- [ ] Add incident replay support using recorded inputs, policy decisions, tool outcomes, and deterministic execution metadata
+- [ ] Provide conformance tests for interoperability between browser, Node.js, edge, and server-side runtimes
+- [ ] Add integration examples for deploying and monitoring multiple cooperating WasmAgent instances
