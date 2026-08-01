@@ -20,7 +20,7 @@
     },
     "examples/a2a-interop": {
       "name": "wasmagent-example-a2a-interop",
-      "version": "0.0.31",
+      "version": "0.0.32",
       "dependencies": {
         "@wasmagent/a2a": "workspace:*",
         "@wasmagent/core": "workspace:*",
@@ -28,7 +28,7 @@
     },
     "examples/aisdk-quickjs": {
       "name": "aisdk-quickjs",
-      "version": "0.1.12",
+      "version": "0.1.13",
       "dependencies": {
         "@ai-sdk/openai": "^1.0.0",
         "@jitl/quickjs-wasmfile-release-sync": "^0.31.0",
@@ -53,7 +53,7 @@
     },
     "examples/basic-agent": {
       "name": "basic-agent",
-      "version": "0.1.32",
+      "version": "0.1.33",
       "dependencies": {
         "@anthropic-ai/sdk": "^0.37.0",
         "@wasmagent/core": "workspace:*",
@@ -61,7 +61,7 @@
     },
     "examples/browser-screenshot": {
       "name": "example-browser-screenshot",
-      "version": "0.1.32",
+      "version": "0.1.33",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/model-anthropic": "workspace:*",
@@ -73,7 +73,7 @@
     },
     "examples/chat-cards": {
       "name": "chat-cards",
-      "version": "0.1.14",
+      "version": "0.1.15",
       "dependencies": {
         "@terrastruct/d2": "^0.1.33",
         "@wasmagent/react": "workspace:*",
@@ -94,7 +94,7 @@
     },
     "examples/claude-agent-quickjs": {
       "name": "claude-agent-quickjs",
-      "version": "0.1.11",
+      "version": "0.1.12",
       "dependencies": {
         "@jitl/quickjs-wasmfile-release-sync": "^0.31.0",
         "@wasmagent/claude-agent-sdk": "workspace:*",
@@ -136,7 +136,7 @@
     },
     "examples/eval-suite": {
       "name": "example-eval-suite",
-      "version": "0.1.32",
+      "version": "0.1.33",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/model-anthropic": "workspace:*",
@@ -144,7 +144,7 @@
     },
     "examples/integration-smoke": {
       "name": "wasmagent-integration-smoke",
-      "version": "0.0.33",
+      "version": "0.0.35",
       "dependencies": {
         "@wasmagent/aep": "workspace:*",
         "@wasmagent/aisdk": "workspace:*",
@@ -167,7 +167,7 @@
     },
     "examples/kernel-only": {
       "name": "wasmagent-example-kernel-only",
-      "version": "0.0.12",
+      "version": "0.0.13",
       "dependencies": {
         "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
         "@wasmagent/kernel-quickjs": "workspace:*",
@@ -177,7 +177,7 @@
     },
     "examples/local-offline": {
       "name": "local-offline",
-      "version": "0.1.31",
+      "version": "0.1.32",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/kernel-quickjs": "workspace:*",
@@ -186,7 +186,7 @@
     },
     "examples/mastra-quickjs": {
       "name": "mastra-quickjs",
-      "version": "0.1.12",
+      "version": "0.1.13",
       "dependencies": {
         "@jitl/quickjs-wasmfile-release-sync": "^0.31.0",
         "@wasmagent/kernel-quickjs": "workspace:*",
@@ -205,7 +205,7 @@
     },
     "examples/mcp-memory-server": {
       "name": "@wasmagent-example/mcp-memory-server",
-      "version": "0.1.33",
+      "version": "0.1.34",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/mcp-server": "workspace:*",
@@ -213,7 +213,7 @@
     },
     "examples/mcp-portal": {
       "name": "mcp-portal",
-      "version": "0.1.33",
+      "version": "0.1.34",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/mcp-server": "workspace:*",
@@ -238,7 +238,7 @@
     },
     "examples/openai-agents-quickjs": {
       "name": "openai-agents-quickjs",
-      "version": "0.1.11",
+      "version": "0.1.12",
       "dependencies": {
         "@jitl/quickjs-wasmfile-release-sync": "^0.31.0",
         "@wasmagent/kernel-quickjs": "workspace:*",
@@ -265,7 +265,7 @@
     },
     "examples/tool-calling-agent": {
       "name": "tool-calling-agent-example",
-      "version": "0.1.32",
+      "version": "0.1.33",
       "dependencies": {
         "@anthropic-ai/sdk": "^0.37.0",
         "@wasmagent/core": "workspace:*",
@@ -274,7 +274,7 @@
     },
     "examples/tool-search-rag": {
       "name": "example-tool-search-rag",
-      "version": "0.1.32",
+      "version": "0.1.33",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/model-anthropic": "workspace:*",
@@ -284,7 +284,7 @@
     },
     "packages/a2a": {
       "name": "@wasmagent/a2a",
-      "version": "1.0.11",
+      "version": "1.0.12",
       "dependencies": {
         "@wasmagent/core": "^1.0.3",
       },
@@ -296,7 +296,7 @@
     },
     "packages/aep": {
       "name": "@wasmagent/aep",
-      "version": "2.3.0",
+      "version": "2.3.1",
       "dependencies": {
         "@noble/ed25519": "^3.1.0",
         "zod": "^3.23.0",
@@ -309,7 +309,7 @@
     },
     "packages/ag-ui": {
       "name": "@wasmagent/ag-ui",
-      "version": "1.0.11",
+      "version": "1.0.12",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -328,7 +328,7 @@
     },
     "packages/aisdk": {
       "name": "@wasmagent/aisdk",
-      "version": "1.0.11",
+      "version": "1.0.12",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -345,7 +345,7 @@
     },
     "packages/capability-compiler": {
       "name": "@wasmagent/capability-compiler",
-      "version": "1.7.8",
+      "version": "1.7.9",
       "dependencies": {
         "@wasmagent/core": "^1.7.0",
       },
@@ -357,7 +357,7 @@
     },
     "packages/claude-agent-sdk": {
       "name": "@wasmagent/claude-agent-sdk",
-      "version": "1.0.11",
+      "version": "1.0.12",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -376,7 +376,7 @@
     },
     "packages/cli": {
       "name": "@wasmagent/cli",
-      "version": "1.3.12",
+      "version": "1.3.13",
       "bin": {
         "wasmagent": "./dist/index.js",
         "wasmagent-cli": "./dist/index.js",
@@ -385,11 +385,14 @@
         "@wasmagent/core": "workspace:*",
         "@wasmagent/devtools": "workspace:*",
         "@wasmagent/evals-runner": "workspace:*",
+        "@wasmagent/mcp-gateway": "workspace:*",
         "@wasmagent/models": "workspace:*",
+        "js-yaml": "^4.1.0",
         "zod": "^3.23.0",
       },
       "devDependencies": {
         "@anthropic-ai/sdk": "^0.37.0",
+        "@types/js-yaml": "^4.0.9",
         "@wasmagent/model-local": "workspace:*",
         "typescript": "^5.7.0",
       },
@@ -422,7 +425,7 @@
     },
     "packages/compliance": {
       "name": "@wasmagent/compliance",
-      "version": "3.1.0",
+      "version": "3.1.2",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/protocol": "0.1.5",
@@ -435,7 +438,7 @@
     },
     "packages/core": {
       "name": "@wasmagent/core",
-      "version": "3.3.0",
+      "version": "3.3.1",
       "dependencies": {
         "@wasmagent/agent-prompts": "workspace:*",
         "@wasmagent/protocol": "^0.1.5",
@@ -458,7 +461,7 @@
     },
     "packages/devtools": {
       "name": "@wasmagent/devtools",
-      "version": "1.7.8",
+      "version": "1.7.9",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -481,7 +484,7 @@
     },
     "packages/eliza-rollout-plugin": {
       "name": "@wasmagent/eliza-rollout-plugin",
-      "version": "1.0.12",
+      "version": "1.0.13",
       "dependencies": {
         "@wasmagent/core": "^1.0.3",
       },
@@ -498,7 +501,7 @@
     },
     "packages/evals-runner": {
       "name": "@wasmagent/evals-runner",
-      "version": "1.10.8",
+      "version": "1.10.9",
       "bin": {
         "wasmagent-evals": "./dist/cli.js",
       },
@@ -516,7 +519,7 @@
     },
     "packages/kernel-pyodide": {
       "name": "@wasmagent/kernel-pyodide",
-      "version": "1.0.11",
+      "version": "1.0.12",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -530,7 +533,7 @@
     },
     "packages/kernel-quickjs": {
       "name": "@wasmagent/kernel-quickjs",
-      "version": "1.2.8",
+      "version": "1.2.9",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -552,7 +555,7 @@
     },
     "packages/kernel-remote": {
       "name": "@wasmagent/kernel-remote",
-      "version": "1.3.12",
+      "version": "1.3.13",
       "dependencies": {
         "@wasmagent/core": "^1.3.4",
       },
@@ -570,7 +573,7 @@
     },
     "packages/kernel-wasmtime": {
       "name": "@wasmagent/kernel-wasmtime",
-      "version": "1.19.8",
+      "version": "1.19.9",
       "dependencies": {
         "@seda-protocol/wasm-metering-ts": "^2.0.1",
         "@wasmagent/core": "workspace:*",
@@ -583,7 +586,7 @@
     },
     "packages/mastra-sandbox": {
       "name": "@wasmagent/mastra-sandbox",
-      "version": "1.0.11",
+      "version": "1.0.12",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -605,9 +608,9 @@
     },
     "packages/mcp-firewall": {
       "name": "@wasmagent/mcp-firewall",
-      "version": "2.0.3",
+      "version": "2.0.4",
       "dependencies": {
-        "@wasmagent/mcp-server": "^1.1.0",
+        "@wasmagent/mcp-server": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^26.1.1",
@@ -618,9 +621,9 @@
     },
     "packages/mcp-gateway": {
       "name": "@wasmagent/mcp-gateway",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "dependencies": {
-        "@wasmagent/mcp-firewall": "^1.1.0",
+        "@wasmagent/mcp-firewall": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^26.1.1",
@@ -640,7 +643,7 @@
     },
     "packages/mcp-posture": {
       "name": "@wasmagent/mcp-posture",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@wasmagent/protocol": "0.1.7",
       },
@@ -651,7 +654,7 @@
     },
     "packages/mcp-server": {
       "name": "@wasmagent/mcp-server",
-      "version": "1.1.9",
+      "version": "1.1.10",
       "bin": {
         "wasmagent-mcp-server": "./dist/stdio.js",
       },
@@ -666,7 +669,7 @@
     },
     "packages/model-anthropic": {
       "name": "@wasmagent/model-anthropic",
-      "version": "2.0.4",
+      "version": "2.0.5",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -680,7 +683,7 @@
     },
     "packages/model-deepseek": {
       "name": "@wasmagent/model-deepseek",
-      "version": "2.0.4",
+      "version": "2.0.5",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -694,7 +697,7 @@
     },
     "packages/model-doubao": {
       "name": "@wasmagent/model-doubao",
-      "version": "2.0.4",
+      "version": "2.0.5",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -708,7 +711,7 @@
     },
     "packages/model-local": {
       "name": "@wasmagent/model-local",
-      "version": "1.0.11",
+      "version": "1.0.12",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/models": "workspace:*",
@@ -726,7 +729,7 @@
     },
     "packages/model-minimax": {
       "name": "@wasmagent/model-minimax",
-      "version": "2.0.4",
+      "version": "2.0.5",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -741,7 +744,7 @@
     },
     "packages/model-moonshot": {
       "name": "@wasmagent/model-moonshot",
-      "version": "2.0.4",
+      "version": "2.0.5",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -755,7 +758,7 @@
     },
     "packages/model-openai": {
       "name": "@wasmagent/model-openai",
-      "version": "2.0.4",
+      "version": "2.0.5",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -770,7 +773,7 @@
     },
     "packages/model-qwen": {
       "name": "@wasmagent/model-qwen",
-      "version": "2.0.4",
+      "version": "2.0.5",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -784,7 +787,7 @@
     },
     "packages/model-zhipu": {
       "name": "@wasmagent/model-zhipu",
-      "version": "2.0.4",
+      "version": "2.0.5",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -798,7 +801,7 @@
     },
     "packages/models": {
       "name": "@wasmagent/models",
-      "version": "2.0.4",
+      "version": "2.0.5",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -818,7 +821,7 @@
     },
     "packages/openai-agents": {
       "name": "@wasmagent/openai-agents",
-      "version": "1.0.11",
+      "version": "1.0.12",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -837,7 +840,7 @@
     },
     "packages/otel-exporter": {
       "name": "@wasmagent/otel-exporter",
-      "version": "3.0.0",
+      "version": "3.0.2",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -852,7 +855,7 @@
     },
     "packages/react": {
       "name": "@wasmagent/react",
-      "version": "1.4.1",
+      "version": "1.4.2",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -867,7 +870,7 @@
     },
     "packages/tools-browser": {
       "name": "@wasmagent/tools-browser",
-      "version": "1.0.11",
+      "version": "1.0.12",
       "dependencies": {
         "@wasmagent/core": "^1.0.3",
         "zod": "^3.23.0",
@@ -886,7 +889,7 @@
     },
     "packages/tools-rag": {
       "name": "@wasmagent/tools-rag",
-      "version": "1.0.11",
+      "version": "1.0.12",
       "dependencies": {
         "@wasmagent/core": "^1.0.3",
         "zod": "^3.23.0",
@@ -898,7 +901,7 @@
     },
     "packages/tools-web": {
       "name": "@wasmagent/tools-web",
-      "version": "1.0.11",
+      "version": "1.0.12",
       "dependencies": {
         "@wasmagent/core": "^1.0.3",
         "zod": "^3.23.0",
@@ -946,7 +949,7 @@
     },
     "tests/integration": {
       "name": "@wasmagent/integration-tests",
-      "version": "1.19.8",
+      "version": "1.19.9",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/kernel-quickjs": "workspace:*",
@@ -1508,6 +1511,8 @@
 
     "@types/hast": ["@types/hast@3.0.4", "https://registry.npmmirror.com/@types/hast/-/hast-3.0.4.tgz", { "dependencies": { "@types/unist": "*" } }, "sha512-WPs+bbQw5aCj+x6laNGWLH3wviHtoCv/P3+otBhbOhJgG8qtpdAMlTCxLtsTWA7LH1Oh/bFCHsBn0TPS5m30EQ=="],
 
+    "@types/js-yaml": ["@types/js-yaml@4.0.9", "https://registry.npmmirror.com/@types/js-yaml/-/js-yaml-4.0.9.tgz", {}, "sha512-k4MGaQl5TGo/iipqb2UDG2UwjXziSWkh0uysQelTlJpX1qGlpUZYm8PnO4DxG1qBomtJUdYJ6qR6xdIah10JLg=="],
+
     "@types/json-schema": ["@types/json-schema@7.0.15", "https://registry.npmmirror.com/@types/json-schema/-/json-schema-7.0.15.tgz", {}, "sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA=="],
 
     "@types/linkify-it": ["@types/linkify-it@5.0.0", "https://registry.npmmirror.com/@types/linkify-it/-/linkify-it-5.0.0.tgz", {}, "sha512-sVDA58zAw4eWAffKOaQH5/5j3XeayukzDk+ewSsnv3p4yJEZHCCzMDiZM8e0OUrRvmpGZ85jf4yDHkHsgBNr9Q=="],
@@ -1756,7 +1761,7 @@
 
     "ansi-styles": ["ansi-styles@6.2.3", "https://registry.npmmirror.com/ansi-styles/-/ansi-styles-6.2.3.tgz", {}, "sha512-4Dj6M28JB+oAH8kFkTLUo+a2jwOFkuqb3yucU0CANcRRUbxS0cP0nZYCGjcc3BNXwRIsUVmDGgzawme7zvJHvg=="],
 
-    "argparse": ["argparse@1.0.10", "https://registry.npmmirror.com/argparse/-/argparse-1.0.10.tgz", { "dependencies": { "sprintf-js": "~1.0.2" } }, "sha512-o5Roy6tNG4SL/FOkCAN6RzjiakZS25RLYFrcMttJqbdd8BWrnA+fGz57iN5Pb06pvBGvl5gQ0B48dJlslXvoTg=="],
+    "argparse": ["argparse@2.0.1", "https://registry.npmmirror.com/argparse/-/argparse-2.0.1.tgz", {}, "sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q=="],
 
     "aria-query": ["aria-query@5.3.0", "https://registry.npmmirror.com/aria-query/-/aria-query-5.3.0.tgz", { "dependencies": { "dequal": "^2.0.3" } }, "sha512-b0P0sZPKtyu8HkeRAfCq0IfURZK+SuwMjY1UXGBU27wpAiTwQAIlq56IbIO+ytk/JjS1fMR14ee5WBBfKi5J6A=="],
 
@@ -2270,7 +2275,7 @@
 
     "js-tokens": ["js-tokens@4.0.0", "https://registry.npmmirror.com/js-tokens/-/js-tokens-4.0.0.tgz", {}, "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="],
 
-    "js-yaml": ["js-yaml@3.14.1", "https://registry.npmmirror.com/js-yaml/-/js-yaml-3.14.1.tgz", { "dependencies": { "argparse": "^1.0.7", "esprima": "^4.0.0" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-okMH7OXXJ7YrN9Ok3/SXrnu4iX9yOk+25nqX4imS2npuvTYDmo/QEZoqwZkYaIDk3jVvBOTOIEgEhaLOynBS9g=="],
+    "js-yaml": ["js-yaml@4.2.0", "https://registry.npmmirror.com/js-yaml/-/js-yaml-4.2.0.tgz", { "dependencies": { "argparse": "^2.0.1" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-ePWsvanv0DWuDRsW8dnt+R4jQ31SCRCQ7hhNcPXZPsoBZiemuZNYGf7adZdqX2D86j6rvKp3RpCxVTSb8WQlOw=="],
 
     "jsdom": ["jsdom@29.1.1", "https://registry.npmmirror.com/jsdom/-/jsdom-29.1.1.tgz", { "dependencies": { "@asamuzakjp/css-color": "^5.1.11", "@asamuzakjp/dom-selector": "^7.1.1", "@bramus/specificity": "^2.4.2", "@csstools/css-syntax-patches-for-csstree": "^1.1.3", "@exodus/bytes": "^1.15.0", "css-tree": "^3.2.1", "data-urls": "^7.0.0", "decimal.js": "^10.6.0", "html-encoding-sniffer": "^6.0.0", "is-potential-custom-element-name": "^1.0.1", "lru-cache": "^11.3.5", "parse5": "^8.0.1", "saxes": "^6.0.0", "symbol-tree": "^3.2.4", "tough-cookie": "^6.0.1", "undici": "^7.25.0", "w3c-xmlserializer": "^5.0.0", "webidl-conversions": "^8.0.1", "whatwg-mimetype": "^5.0.0", "whatwg-url": "^16.0.1", "xml-name-validator": "^5.0.0" }, "peerDependencies": { "canvas": "^3.0.0" }, "optionalPeers": ["canvas"] }, "sha512-ECi4Fi2f7BdJtUKTflYRTiaMxIB0O6zfR1fX0GXpUrf6flp8QIYn1UT20YQqdSOfk2dfkCwS8LAFoJDEppNK5Q=="],
 
@@ -3070,8 +3075,6 @@
 
     "@babel/helper-compilation-targets/semver": ["semver@6.3.1", "https://registry.npmmirror.com/semver/-/semver-6.3.1.tgz", { "bin": { "semver": "bin/semver.js" } }, "sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA=="],
 
-    "@changesets/parse/js-yaml": ["js-yaml@4.2.0", "https://registry.npmmirror.com/js-yaml/-/js-yaml-4.2.0.tgz", { "dependencies": { "argparse": "^2.0.1" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-ePWsvanv0DWuDRsW8dnt+R4jQ31SCRCQ7hhNcPXZPsoBZiemuZNYGf7adZdqX2D86j6rvKp3RpCxVTSb8WQlOw=="],
-
     "@jridgewell/gen-mapping/@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "https://registry.npmmirror.com/@jridgewell/trace-mapping/-/trace-mapping-0.3.31.tgz", { "dependencies": { "@jridgewell/resolve-uri": "3.1.2", "@jridgewell/sourcemap-codec": "1.5.5" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
     "@jridgewell/remapping/@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "https://registry.npmmirror.com/@jridgewell/trace-mapping/-/trace-mapping-0.3.31.tgz", { "dependencies": { "@jridgewell/resolve-uri": "3.1.2", "@jridgewell/sourcemap-codec": "1.5.5" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
@@ -3138,11 +3141,7 @@
 
     "@wasmagent/mcp-attestation/@types/node": ["@types/node@26.1.1", "https://registry.npmmirror.com/@types/node/-/node-26.1.1.tgz", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-nxAkRSVkN1Y0JC1W8ky/fTfkGsMmcrRsbx+3XoZE+rMOX71kLYTV7fLXpqud1GpbpP5TuffXFqfX7fH2GgZREw=="],
 
-    "@wasmagent/mcp-firewall/@types/node": ["@types/node@26.1.1", "https://registry.npmmirror.com/@types/node/-/node-26.1.1.tgz", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-nxAkRSVkN1Y0JC1W8ky/fTfkGsMmcrRsbx+3XoZE+rMOX71kLYTV7fLXpqud1GpbpP5TuffXFqfX7fH2GgZREw=="],
-
     "@wasmagent/mcp-firewall/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
-
-    "@wasmagent/mcp-gateway/@types/node": ["@types/node@26.1.1", "https://registry.npmmirror.com/@types/node/-/node-26.1.1.tgz", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-nxAkRSVkN1Y0JC1W8ky/fTfkGsMmcrRsbx+3XoZE+rMOX71kLYTV7fLXpqud1GpbpP5TuffXFqfX7fH2GgZREw=="],
 
     "@wasmagent/mcp-policy/@types/node": ["@types/node@26.1.1", "https://registry.npmmirror.com/@types/node/-/node-26.1.1.tgz", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-nxAkRSVkN1Y0JC1W8ky/fTfkGsMmcrRsbx+3XoZE+rMOX71kLYTV7fLXpqud1GpbpP5TuffXFqfX7fH2GgZREw=="],
 
@@ -3376,6 +3375,8 @@
 
     "wrap-ansi-cjs/strip-ansi": ["strip-ansi@6.0.1", "https://registry.npmmirror.com/strip-ansi/-/strip-ansi-6.0.1.tgz", { "dependencies": { "ansi-regex": "5.0.1" } }, "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A=="],
 
+    "xmlbuilder2/js-yaml": ["js-yaml@3.14.1", "https://registry.npmmirror.com/js-yaml/-/js-yaml-3.14.1.tgz", { "dependencies": { "argparse": "^1.0.7", "esprima": "^4.0.0" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-okMH7OXXJ7YrN9Ok3/SXrnu4iX9yOk+25nqX4imS2npuvTYDmo/QEZoqwZkYaIDk3jVvBOTOIEgEhaLOynBS9g=="],
+
     "yargs/string-width": ["string-width@4.2.3", "https://registry.npmmirror.com/string-width/-/string-width-4.2.3.tgz", { "dependencies": { "emoji-regex": "8.0.0", "is-fullwidth-code-point": "3.0.0", "strip-ansi": "6.0.1" } }, "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g=="],
 
     "zod-to-json-schema/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
@@ -3387,8 +3388,6 @@
     "@ai-sdk/ui-utils/@ai-sdk/provider-utils/nanoid": ["nanoid@3.3.12", "https://registry.npmmirror.com/nanoid/-/nanoid-3.3.12.tgz", { "bin": { "nanoid": "bin/nanoid.cjs" } }, "sha512-ZB9RH/39qpq5Vu6Y+NmUaFhQR6pp+M2Xt76XBnEwDaGcVAqhlvxrl3B2bKS5D3NH3QR76v3aSrKaF/Kiy7lEtQ=="],
 
     "@babel/helper-compilation-targets/lru-cache/yallist": ["yallist@3.1.1", "https://registry.npmmirror.com/yallist/-/yallist-3.1.1.tgz", {}, "sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g=="],
-
-    "@changesets/parse/js-yaml/argparse": ["argparse@2.0.1", "https://registry.npmmirror.com/argparse/-/argparse-2.0.1.tgz", {}, "sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q=="],
 
     "@puppeteer/browsers/tar-fs/tar-stream": ["tar-stream@3.2.0", "https://registry.npmmirror.com/tar-stream/-/tar-stream-3.2.0.tgz", { "dependencies": { "b4a": "1.8.1", "bare-fs": "4.7.2", "fast-fifo": "1.3.2", "streamx": "2.27.0" } }, "sha512-ojzvCvVaNp6aOTFmG7jaRD0meowIAuPc3cMMhSgKiVWws1GyHbGd/xvnyuRKcKlMpt3qvxx6r0hreCNITP9hIg=="],
 
@@ -3532,6 +3531,8 @@
 
     "openai/@types/node/undici-types": ["undici-types@5.26.5", "https://registry.npmmirror.com/undici-types/-/undici-types-5.26.5.tgz", {}, "sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA=="],
 
+    "read-yaml-file/js-yaml/argparse": ["argparse@1.0.10", "https://registry.npmmirror.com/argparse/-/argparse-1.0.10.tgz", { "dependencies": { "sprintf-js": "~1.0.2" } }, "sha512-o5Roy6tNG4SL/FOkCAN6RzjiakZS25RLYFrcMttJqbdd8BWrnA+fGz57iN5Pb06pvBGvl5gQ0B48dJlslXvoTg=="],
+
     "string-width-cjs/strip-ansi/ansi-regex": ["ansi-regex@5.0.1", "https://registry.npmmirror.com/ansi-regex/-/ansi-regex-5.0.1.tgz", {}, "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ=="],
 
     "tool-calling-agent-example/@anthropic-ai/sdk/@types/node": ["@types/node@18.19.130", "https://registry.npmmirror.com/@types/node/-/node-18.19.130.tgz", { "dependencies": { "undici-types": "5.26.5" } }, "sha512-GRaXQx6jGfL8sKfaIDD6OupbIHBr9jv7Jnaml9tB7l4v068PAOXqfcujMMo5PhbIs6ggR1XODELqahT2R8v0fg=="],
@@ -3595,6 +3596,8 @@
     "wrap-ansi/string-width/is-fullwidth-code-point": ["is-fullwidth-code-point@3.0.0", "https://registry.npmmirror.com/is-fullwidth-code-point/-/is-fullwidth-code-point-3.0.0.tgz", {}, "sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg=="],
 
     "wrap-ansi/strip-ansi/ansi-regex": ["ansi-regex@5.0.1", "https://registry.npmmirror.com/ansi-regex/-/ansi-regex-5.0.1.tgz", {}, "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ=="],
+
+    "xmlbuilder2/js-yaml/argparse": ["argparse@1.0.10", "https://registry.npmmirror.com/argparse/-/argparse-1.0.10.tgz", { "dependencies": { "sprintf-js": "~1.0.2" } }, "sha512-o5Roy6tNG4SL/FOkCAN6RzjiakZS25RLYFrcMttJqbdd8BWrnA+fGz57iN5Pb06pvBGvl5gQ0B48dJlslXvoTg=="],
 
     "yargs/string-width/emoji-regex": ["emoji-regex@8.0.0", "https://registry.npmmirror.com/emoji-regex/-/emoji-regex-8.0.0.tgz", {}, "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A=="],
 

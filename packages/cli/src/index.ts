@@ -33,6 +33,7 @@ import type { RankedBranch } from "@wasmagent/core/beta";
 import { toDpoRecord, toJsonl, toPpoRecords } from "@wasmagent/core/beta";
 import type { AnthropicModelId, AnthropicModelOptions } from "@wasmagent/models";
 import { AnthropicModel, AnthropicModels } from "@wasmagent/models";
+import { parseGuardPolicy, redactGuardReport } from "./policy.js";
 
 /**
  * Build an `AnthropicModel` from CLI flags + env vars.
@@ -824,6 +825,15 @@ async function guardCommand(
   const configPath = typeof opts.config === "string" ? opts.config : "wasmagent.policy.yaml";
   const upstream = typeof opts.upstream === "string" ? opts.upstream : undefined;
 
+  let policy: ReturnType<typeof parseGuardPolicy>;
+  try {
+    policy = parseGuardPolicy(await fsReadFile(configPath, "utf8"));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    console.error(`Error: could not load policy ${configPath}: ${message}`);
+    process.exit(1);
+  }
+
   // Load vetting + policy from @wasmagent/mcp-gateway (dynamic import)
   type McpGatewayVetResult = {
     blocked: boolean;
@@ -832,18 +842,21 @@ async function guardCommand(
   };
   type McpGatewayPolicyResult = { decision: string; reasons: string[] };
   let vetTools: (tool: unknown) => McpGatewayVetResult;
+  let defaultRules: unknown[];
   let evaluatePolicy: (
     name: string,
     args: unknown,
     vetting: unknown,
-    consent: unknown[]
+    consent: unknown[],
+    rules: unknown[]
   ) => McpGatewayPolicyResult;
   try {
     // biome-ignore lint/suspicious/noExplicitAny: dynamic peer dep — no types available at compile time
     const gw = (await import("@wasmagent/mcp-gateway" as string)) as any;
     vetTools = (tool: unknown) => gw.vetTool(tool) as McpGatewayVetResult;
-    evaluatePolicy = (name, args, vetting, consent) =>
-      gw.evaluatePolicy(name, args, vetting, consent) as McpGatewayPolicyResult;
+    defaultRules = gw.DEFAULT_RULES as unknown[];
+    evaluatePolicy = (name, args, vetting, consent, rules) =>
+      gw.evaluatePolicy(name, args, vetting, consent, rules) as McpGatewayPolicyResult;
   } catch {
     console.error("Error: @wasmagent/mcp-gateway is required for wasmagent guard.");
     console.error("  npm install @wasmagent/mcp-gateway");
@@ -884,12 +897,29 @@ async function guardCommand(
   let denied = 0;
   const rows: Array<{ tool: string; decision: string; severity: string; reason: string }> = [];
 
-  for (const tool of tools) {
+  for (const [index, tool] of tools.entries()) {
     const vetting = vetTools(tool);
-    const decision = evaluatePolicy(tool.name, {}, vetting, []);
+    const policyMatches = policy.rules.filter(
+      (rule) => rule.evaluate(tool.name, {}, null) !== undefined
+    );
+    const decision = evaluatePolicy(tool.name, {}, vetting, [], [...defaultRules, ...policy.rules]);
+    if (policy.maxToolCalls !== undefined && index >= policy.maxToolCalls) {
+      decision.decision = "deny";
+      decision.reasons.push(`Denied by policy: budget-max-tool-calls (${policy.maxToolCalls})`);
+    }
     const severity = vetting.findings[0]?.severity ?? "none";
-    const reason = vetting.findings[0]?.category ?? decision.reasons[0] ?? "—";
-    rows.push({ tool: tool.name, decision: decision.decision, severity, reason });
+    const reason = redactGuardReport(
+      vetting.findings[0]?.category ??
+        decision.reasons[0] ??
+        (policyMatches[0] ? `Matched policy: ${policyMatches[0].policyId}` : "—"),
+      policy.redactionPatterns
+    );
+    rows.push({
+      tool: redactGuardReport(tool.name, policy.redactionPatterns),
+      decision: decision.decision,
+      severity,
+      reason,
+    });
     if (decision.decision === "deny") denied++;
   }
 
@@ -907,7 +937,7 @@ async function guardCommand(
     } else {
       console.log(jsonOut);
     }
-    if (denied > 0) process.exit(1);
+    if (denied > 0 && policy.mode === "enforce") process.exit(1);
     return;
   }
 
@@ -926,11 +956,15 @@ async function guardCommand(
   console.log("─".repeat(colW + 40));
   console.log(`\n${tools.length} tools scanned. ${denied} denied.`);
 
-  if (denied > 0) {
+  if (denied > 0 && policy.mode === "enforce") {
     console.error(`\n✗ Guard failed: ${denied} tool(s) blocked by policy.`);
     process.exit(1);
   }
-  console.log("\n✓ All tools passed policy check.");
+  console.log(
+    denied > 0
+      ? `\n✓ Policy findings reported in ${policy.mode} mode.`
+      : "\n✓ All tools passed policy check."
+  );
 }
 
 // ── scan-mcp command ───────────────────────────────────────────────────────────

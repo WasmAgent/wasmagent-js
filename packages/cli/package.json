@@ -18,8 +18,10 @@
     "@wasmagent/core": "workspace:*",
     "@wasmagent/devtools": "workspace:*",
     "@wasmagent/evals-runner": "workspace:*",
+    "@wasmagent/mcp-gateway": "workspace:*",
     "zod": "^3.23.0",
-    "@wasmagent/models": "workspace:*"
+    "@wasmagent/models": "workspace:*",
+    "js-yaml": "^4.1.0"
   },
   "peerDependencies": {
     "@wasmagent/model-local": "workspace:*"
@@ -30,6 +32,7 @@
     }
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@wasmagent/model-local": "workspace:*",
     "@anthropic-ai/sdk": "^0.37.0",
     "typescript": "^5.7.0"
