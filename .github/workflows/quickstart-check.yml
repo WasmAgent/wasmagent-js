@@ -1,0 +1,73 @@
+name: Quick Start
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "README.md"
+      - "**/README.md"
+      - "package.json"
+      - "**/package.json"
+      - ".github/workflows/quickstart-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  quickstart:
+    name: Public package install and usage
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up a clean Node environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Create a fresh npm project
+        id: project
+        run: |
+          set -euo pipefail
+          directory="$RUNNER_TEMP/wasmagent-quickstart"
+          mkdir "$directory"
+          (cd "$directory" && npm init --yes)
+          echo "directory=$directory" >> "$GITHUB_OUTPUT"
+
+      - name: Install the public Quick Start package
+        working-directory: ${{ steps.project.outputs.directory }}
+        run: |
+          set -euo pipefail
+          npm install --cache "$RUNNER_TEMP/npm-cache" @wasmagent/mcp-firewall
+
+      - name: Run the README Quick Start
+        working-directory: ${{ steps.project.outputs.directory }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'EOF'
+          import { evaluatePolicy, snapshotTool, taintObservation, vetTool } from "@wasmagent/mcp-firewall";
+
+          const entry = {
+            name: "read_file",
+            description: "Read a file from disk",
+            inputSchema: { type: "object", properties: { path: { type: "string" } } },
+          };
+          const args = { path: "/tmp/report.txt" };
+          const consentRecords = [];
+
+          const snap = snapshotTool(entry, "my-server");
+          const vetting = vetTool(entry);
+          const decision = evaluatePolicy(entry.name, args, vetting, consentRecords);
+          if (decision.decision === "deny") {
+            throw new Error(`Blocked: ${decision.reasons.join("; ")}`);
+          }
+
+          const rawResult = "example report contents";
+          const obs = taintObservation(entry.name, rawResult);
+          if (!snap.descriptionHash || !obs.contentHash) {
+            throw new Error("Quick Start objects were not created");
+          }
+          EOF

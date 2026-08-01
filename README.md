@@ -3,6 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/@wasmagent/core.svg?label=%40wasmagent%2Fcore)](https://www.npmjs.com/package/@wasmagent/core)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![CI](https://github.com/WasmAgent/wasmagent-js/actions/workflows/ci.yml/badge.svg)](https://github.com/WasmAgent/wasmagent-js/actions/workflows/ci.yml)
+[![Quick Start](https://github.com/WasmAgent/wasmagent-js/actions/workflows/quickstart-check.yml/badge.svg)](https://github.com/WasmAgent/wasmagent-js/actions/workflows/quickstart-check.yml)
 [![Docs](https://img.shields.io/badge/docs-vitepress-brightgreen.svg)](https://WasmAgent.github.io/wasmagent-js/)
 
 > **WasmAgent adds a verifiable evidence layer to agent tool use: protect tool calls, record what happened, audit the result, and admit trusted traces into downstream systems.**
@@ -39,19 +40,28 @@ npm install @wasmagent/mcp-firewall
 ```
 
 ```ts
-import { vetTool, evaluatePolicy, taintObservation, snapshotTool } from "@wasmagent/mcp-firewall";
+import { evaluatePolicy, snapshotTool, taintObservation, vetTool } from "@wasmagent/mcp-firewall";
+
+const entry = {
+  name: "read_file",
+  description: "Read a file from disk",
+  inputSchema: { type: "object", properties: { path: { type: "string" } } },
+};
+const args = { path: "/tmp/report.txt" };
+const consentRecords = [];
 
 // Before calling a tool
 const snap     = snapshotTool(entry, "my-server");   // hash descriptor at registration
 const vetting  = vetTool(entry);                     // static scan: injection / exfil / rug-pull
 const decision = evaluatePolicy(entry.name, args, vetting, consentRecords);
 
-if (decision.decision === "deny")   throw new Error(`Blocked: ${decision.reason}`);
+if (decision.decision === "deny")   throw new Error(`Blocked: ${decision.reasons.join("; ")}`);
 if (decision.decision === "ask_user") {
   // surface consent UI, then call recordConsent(...)
 }
 
 // After receiving result
+const rawResult = "example report contents";
 const obs = taintObservation(entry.name, rawResult);  // boundary-tagged, safe to assemble into prompt
 ```
 
