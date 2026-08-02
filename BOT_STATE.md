@@ -1,12 +1,12 @@
 # Bot State
 
-_Last updated: 2026-08-02 02:27 UTC by patrol_
+_Last updated: 2026-08-02 06:03 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 5 |
+| Pending | 10 |
 | Active (running/reviewing) | 0 |
 | Blocked | 0 |
 | Completed/Merged (all time) | 67 |
@@ -23,6 +23,7 @@ _Last updated: 2026-08-02 02:27 UTC by patrol_
 
 ## Waiting for Human
 
+- #368: [milestone Milestone 8 ] Implement a versioned run registry for discovering agents, runtimes, capabilitie...
 - #352: code-review: Publish the Cloudflare workflow integration
 
 ---
