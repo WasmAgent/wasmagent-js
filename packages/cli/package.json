@@ -18,7 +18,7 @@
     "@wasmagent/core": "workspace:*",
     "@wasmagent/devtools": "workspace:*",
     "@wasmagent/evals-runner": "workspace:*",
-    "zod": "^3.23.0",
+    "zod": "^4.4.3",
     "@wasmagent/models": "workspace:*"
   },
   "peerDependencies": {

@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@wasmagent/core": "workspace:*",
-    "zod": "^3.23.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
