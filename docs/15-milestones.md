@@ -80,7 +80,20 @@
 
 Looking at the completed milestones, I see the foundation for evidence tracking, policy enforcement, sandboxing, shared state, and chain verification. The natural next step would focus on **operational resilience and multi-agent coordination** — moving from single-agent evidence chains to production-grade multi-agent workflows with recovery and observability.
 
-## Milestone 7 — Distributed Evidence Coordination & Recovery
+## Milestone 8 — Distributed Trust Relay
+
+- Implement a `TrustRelay` transport that exchanges signed AEP records between independent wasmagent runtimes over WebSocket/HTTP, with automatic reconnection and backoff.
+- Add `verifyRemoteChain()` API that requests a Merkle inclusion proof from a remote `EvidenceStore` and validates it locally without requiring full history download.
+- Add hybrid logical clock (HLC) timestamps to AEP records so distributed agents can be ordered deterministically across machines.
+- Implement an idempotent record ingestion endpoint that rejects duplicate `run_id`/`action_id` pairs and detects fork attempts.
+- Add consent-sync namespace so `ask_user` firewall decisions made on one agent are propagated and honored by sibling agents with the same identity.
+- Add AgentBOM-aware handshake: on connection, agents exchange identity and capability documents, and refuse to relay records from agents whose declared scopes exclude the action.
+- Implement E2E encrypted evidence relay with per-agent key rotation, using the existing canonical serialization for ciphertext metadata.
+- Add network partition simulator and CI chaos tests proving the ledger remains consistent and verifiable under dropped messages and concurrent writes.
+- Expose Prometheus/browser-observability bridge for relay health, chain length divergence, and unresolved verification failures.
+- Add audit export command producing a signed, self-contained run bundle (records + proofs + manifests) shareable with external auditors.
+
+## Milestone 9 — Distributed Evidence Coordination & Recovery
 
 - Implement `EvidenceCompressor` to generate auditable summaries and cryptographic commitments from long evidence chains, enabling efficient storage and fast verification without sacrificing chain integrity
 - Add multi-agent evidence coordination with `run_id` namespace isolation, allowing agent teams to contribute to shared evidence chains while maintaining per-agent provenance boundaries
@@ -92,11 +105,7 @@ Looking at the completed milestones, I see the foundation for evidence tracking,
 - Add evidence-based policy adaptation hooks that allow MCP firewall rules to evolve based on observed action patterns and anomaly detection from historical chains
 - Add integration tests for multi-agent evidence merge conflicts, recovery from incomplete chains, cross-system import/export roundtrips, and long-running agent retention
 
-{
-  "milestone": "## Milestone 8 — Distributed Trust Relay\n\n- Implement a `TrustRelay` transport that exchanges signed AEP records between independent wasmagent runtimes over WebSocket/HTTP, with automatic reconnection and backoff.\n- Add `verifyRemoteChain()` API that requests a Merkle inclusion proof from a remote `EvidenceStore` and validates it locally without requiring full history download.\n- Add hybrid logical clock (HLC) timestamps to AEP records so distributed agents can be ordered deterministically across machines.\n- Implement an idempotent record ingestion endpoint that rejects duplicate `run_id`/`action_id` pairs and detects fork attempts.\n- Add consent-sync namespace so `ask_user` firewall decisions made on one agent are propagated and honored by sibling agents with the same identity.\n- Add AgentBOM-aware handshake: on connection, agents exchange identity and capability documents, and refuse to relay records from agents whose declared scopes exclude the action.\n- Implement E2E encrypted evidence relay with per-agent key rotation, using the existing canonical serialization for ciphertext metadata.\n- Add network partition simulator and CI chaos tests proving the ledger remains consistent and verifiable under dropped messages and concurrent writes.\n- Expose Prometheus/browser-observability bridge for relay health, chain length divergence, and unresolved verification failures.\n- Add audit export command producing a signed, self-contained run bundle (records + proofs + manifests) shareable with external auditors."
-}
-
-## Milestone 8 — Federated Agent Operations & Reliability
+## Milestone 10 — Federated Agent Operations & Reliability
 
 - [ ] Implement a versioned run registry for discovering agents, runtimes, capabilities, and health status across deployments
 - [ ] Add resumable execution checkpoints so interrupted agent runs can continue without duplicating completed actions
@@ -109,4 +118,15 @@ Looking at the completed milestones, I see the foundation for evidence tracking,
 - [ ] Provide conformance tests for interoperability between browser, Node.js, edge, and server-side runtimes
 - [ ] Add integration examples for deploying and monitoring multiple cooperating WasmAgent instances
 
-{"milestone":"## Milestone 8 — Run Replay & Forensic Investigation\n\n### Deliverables\n- [ ] Implement a `RunRecorder` that captures all AEP records, shared-state deltas, and sandbox execution logs for a session\n- [ ] Add a time-indexed replay API that reconstructs tool invocations and state mutations from a stored evidence chain\n- [ ] Implement `analyzeRun()` to surface unauthorized access, policy violations, and anomalous tool sequences\n- [ ] Add SARIF and OpenTelemetry exporters so evidence and replay data plug directly into existing observability stacks\n- [ ] Add differential replay: compare two runs from the same `run_id` to detect tool drift, output divergence, or policy changes\n- [ ] Add a query layer for filtering runs by `run_id`, model_id, tool name, policy decision, or time range\n- [ ] Integrate with AgentBOM compliance scoring so replayed runs can emit inventory findings and compliance deltas\n- [ ] Add tests for deterministic replay, corrupted ledger handling, and export schema validation\n- [ ] Add a lightweight CLI (`wasmagent-replay`) to inspect and replay runs outside a live host"}
+## Milestone 11 — Run Replay & Forensic Investigation
+
+### Deliverables
+- [ ] Implement a `RunRecorder` that captures all AEP records, shared-state deltas, and sandbox execution logs for a session
+- [ ] Add a time-indexed replay API that reconstructs tool invocations and state mutations from a stored evidence chain
+- [ ] Implement `analyzeRun()` to surface unauthorized access, policy violations, and anomalous tool sequences
+- [ ] Add SARIF and OpenTelemetry exporters so evidence and replay data plug directly into existing observability stacks
+- [ ] Add differential replay: compare two runs from the same `run_id` to detect tool drift, output divergence, or policy changes
+- [ ] Add a query layer for filtering runs by `run_id`, model_id, tool name, policy decision, or time range
+- [ ] Integrate with AgentBOM compliance scoring so replayed runs can emit inventory findings and compliance deltas
+- [ ] Add tests for deterministic replay, corrupted ledger handling, and export schema validation
+- [ ] Add a lightweight CLI (`wasmagent-replay`) to inspect and replay runs outside a live host
