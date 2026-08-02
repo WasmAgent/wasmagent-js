@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-08-02 19:35 UTC by patrol_
+_Last updated: 2026-08-02 21:12 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 0 |
+| Pending | 4 |
 | Active (running/reviewing) | 0 |
-| Blocked | 8 |
-| Completed/Merged (all time) | 69 |
+| Blocked | 3 |
+| Completed/Merged (all time) | 70 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #351 | code-review: Wire MCP gateway dependencies into the publi... | merged/auto_closed_resolved | 2026-08-02 |
 | #351 | code-review: Wire MCP gateway dependencies into the publi... | completed/maintenance_done | 2026-08-02 |
 | #354 | docs: Milestone 8 was inserted as invalid JSON instead of... | merged/merged | 2026-08-02 |
 | #363 | Publish @wasmagent/cloudflare-worker as a public npm package | merged/merged | 2026-08-02 |
 | #352 | code-review: Publish the Cloudflare workflow integration | completed/maintenance_done | 2026-08-02 |
-| #354 | docs: Milestone 8 was inserted as invalid JSON instead of... | completed/maintenance_done | 2026-08-02 |
 
 ## Waiting for Human
 
