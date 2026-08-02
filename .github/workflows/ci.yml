@@ -89,6 +89,14 @@ jobs:
       - name: Build
         run: bun run build
 
+      # Issue #363 — @wasmagent/cloudflare-worker publish readiness. Run an npm
+      # pack dry-run right after the workspace build so a broken metadata or
+      # build config (missing dist, bad types entry, missing LICENSE/README)
+      # is caught on every CI run instead of only at tagged-release time.
+      - name: Publish dry-run (@wasmagent/cloudflare-worker)
+        run: npm pack --dry-run --ignore-scripts
+        working-directory: packages/cloudflare-worker
+
       - name: Stable API gate
         run: node scripts/check-stable-api.mjs
 
