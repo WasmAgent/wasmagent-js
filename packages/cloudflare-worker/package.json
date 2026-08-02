@@ -35,7 +35,7 @@
     "@size-limit/preset-big-lib": "^12.1.0",
     "size-limit": "^12.1.0",
     "typescript": "^5.7.0",
-    "wrangler": "^3.93.0"
+    "wrangler": "^4.115.0"
   },
   "license": "Apache-2.0",
   "repository": {
