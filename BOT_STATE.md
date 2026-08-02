@@ -1,13 +1,13 @@
 # Bot State
 
-_Last updated: 2026-08-01 10:13 UTC by patrol_
+_Last updated: 2026-08-02 00:24 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 4 |
-| Active (running/reviewing) | 1 |
+| Pending | 6 |
+| Active (running/reviewing) | 0 |
 | Blocked | 0 |
 | Completed/Merged (all time) | 62 |
 
@@ -20,6 +20,10 @@ _Last updated: 2026-08-01 10:13 UTC by patrol_
 | #341 | Document key architecture decisions to reduce bus factor:... | completed/issue_closed_upstream | 2026-07-31 |
 | #272 | [milestone Milestone 7 ] Implement `EvidenceCompressor` t... | completed/issue_closed_upstream | 2026-07-31 |
 | #279 | Fix WasmAgent/wasmagent-js#276 ([milestone Milestone 7 ] ... | completed/issue_closed_upstream | 2026-07-31 |
+
+## Waiting for Human
+
+- #352: code-review: Publish the Cloudflare workflow integration
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
