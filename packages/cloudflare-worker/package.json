@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/cloudflare-worker",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Cloudflare Workers integration for wasmagent — HTTP API with SSE streaming, KV session caching, and the CloudflareWorkflowEngine workflow adapter",
   "type": "module",
   "main": "./dist/index.js",
