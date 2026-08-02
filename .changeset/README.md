@@ -24,7 +24,9 @@ The publish step requires:
 - `dist/` built for every changed package (`bun run build`),
 - workspace `*` references handled — `changeset publish` rewrites them to the just-bumped semver before tarballing.
 
-`@wasmagent/cloudflare-worker` is `private: true` and ignored by changesets — it ships only via Workers deploy, never to npm.
+`@wasmagent/cloudflare-worker` is published to npm alongside the other
+`@wasmagent/*` packages (removed from the changesets ignore list in #363); the
+same Worker also continues to ship via Workers deploy from CI.
 
 ## Why we use `@changesets/changelog-git`, not `@changesets/changelog-github`
 
