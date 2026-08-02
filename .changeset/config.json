@@ -8,7 +8,6 @@
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [
-    "@wasmagent/cloudflare-worker",
     "dangerous-tool-demo",
     "@wasmagent/mcp-policy",
     "@wasmagent/mcp-attestation"
