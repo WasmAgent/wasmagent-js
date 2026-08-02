@@ -1,5 +1,0 @@
----
-"@wasmagent/cloudflare-worker": minor
----
-
-Publish `@wasmagent/cloudflare-worker` to npm (issue #363). Removes `"private": true`, sets `publishConfig.access: "public"`, declares the compiled `dist/index.js` / `dist/index.d.ts` entry points, ships `dist` + `LICENSE` + `README.md` in the tarball, and includes the package in the changesets Release workflow (removed from `.changeset/config.json#ignore`) so CI publishes it on tagged releases.
