@@ -52,7 +52,7 @@
   },
   "dependencies": {
     "@wasmagent/agent-prompts": "workspace:*",
-    "@wasmagent/protocol": "^0.1.5",
+    "@wasmagent/protocol": "^0.1.7",
     "zod": "^3.23.0",
     "zod-to-json-schema": "^3.25.2"
   },
