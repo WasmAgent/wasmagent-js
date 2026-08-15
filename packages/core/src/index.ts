@@ -344,3 +344,6 @@ export {
   createObservationalMemory,
   createTokenBudget,
 } from "./factories.js";
+
+export { HealthMetrics } from "./observability/HealthMetrics.js";
+export type { HealthSnapshot } from "./observability/HealthMetrics.js";
