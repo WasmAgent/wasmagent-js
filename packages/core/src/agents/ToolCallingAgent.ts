@@ -30,6 +30,7 @@ import { randomUUID } from "../util/runtime.js";
 import { runPlanningStep, TOOL_DEP_INSTRUCTIONS } from "./prompts.js";
 import type { StopCondition } from "./stopConditions.js";
 import { callFingerprint, parseStopPolicies } from "./stopConditions.js";
+import { HealthMetrics } from "../observability/HealthMetrics.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant. Use the provided tools to answer questions.
 When you have a final answer, respond with plain text (no tool call).
@@ -500,6 +501,7 @@ export class ToolCallingAgent {
           score: 0,
           claim_ids: [],
         });
+        HealthMetrics.getInstance().recordPolicyDenial();
         yield {
           traceId,
           parentTraceId,
@@ -535,6 +537,7 @@ export class ToolCallingAgent {
       // Emit model_done so the frontend TokenMeter can display live token stats.
       const stats = budget.toStats();
       const modelId = (this.#model as { modelId?: string }).modelId ?? "unknown";
+      HealthMetrics.getInstance().recordResourceUsage((stats.inputTokens ?? 0) + (stats.outputTokens ?? 0));
       yield {
         traceId,
         parentTraceId,
@@ -674,6 +677,7 @@ export class ToolCallingAgent {
             score: 0,
             claim_ids: [],
           });
+          HealthMetrics.getInstance().recordPolicyDenial();
           yield {
             traceId,
             parentTraceId,
@@ -821,6 +825,7 @@ export class ToolCallingAgent {
               score: 0,
               claim_ids: [],
             });
+            HealthMetrics.getInstance().recordPolicyDenial();
             yield {
               traceId,
               parentTraceId,
@@ -977,6 +982,7 @@ export class ToolCallingAgent {
             resultMap.set(evt.nodeId, { output, isError, isUntrusted });
           } else if (evt.type === "node_error") {
             const reason = evt.error;
+            HealthMetrics.getInstance().recordFailure();
             resultMap.set(evt.nodeId, {
               output: `Tool dispatch threw: ${reason instanceof Error ? reason.message : String(reason ?? "unknown error")}`,
               isError: true,
@@ -1060,6 +1066,7 @@ export class ToolCallingAgent {
           let callIsError = false;
           let callIsUntrusted = false;
           const signal = this.#toolTimeoutMs ? AbortSignal.timeout(this.#toolTimeoutMs) : undefined;
+          const _toolCallStart = Date.now();
           const settled = this.#tools
             .call({
               toolName: call.name,
@@ -1069,9 +1076,11 @@ export class ToolCallingAgent {
             })
             .then(
               (r) => {
+                HealthMetrics.getInstance().recordLatency(Date.now() - _toolCallStart);
                 if (r.trust === "untrusted") callIsUntrusted = true;
                 if (r.error !== undefined) {
                   callIsError = true;
+                  HealthMetrics.getInstance().recordFailure();
                   return r.error.message || "Tool execution failed with no output.";
                 }
                 try {
@@ -1083,6 +1092,11 @@ export class ToolCallingAgent {
               },
               (e) => {
                 callIsError = true;
+                if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
+                  HealthMetrics.getInstance().recordTimeout();
+                } else {
+                  HealthMetrics.getInstance().recordFailure();
+                }
                 return `Tool dispatch threw: ${e instanceof Error ? e.message : String(e)}`;
               }
             );

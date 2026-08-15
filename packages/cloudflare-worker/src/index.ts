@@ -77,6 +77,7 @@ export type {
 export { CloudflareKvBackend, DurableObjectKvBackend } from "./kvAdapters.js";
 
 import { CloudflareKvBackend as CloudflareKvBackendImpl } from "./kvAdapters.js";
+import { HealthMetrics } from "@wasmagent/core";
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
@@ -153,7 +154,10 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/health" && request.method === "GET") {
-      return Response.json({ status: "ok", version: "0.1.0" }, { headers: corsHeaders });
+      return Response.json(
+        { status: "ok", version: "0.1.0", metrics: HealthMetrics.getInstance().getSnapshot() },
+        { headers: corsHeaders }
+      );
     }
 
     if (url.pathname === "/run" && request.method === "POST") {
