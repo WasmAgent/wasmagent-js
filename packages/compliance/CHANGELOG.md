@@ -1,5 +1,12 @@
 # @wasmagent/compliance
 
+## 3.1.4
+
+### Patch Changes
+
+- Updated dependencies [c947fbf]
+  - @wasmagent/core@3.5.0
+
 ## 3.1.3
 
 ### Patch Changes

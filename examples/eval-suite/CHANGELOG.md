@@ -1,5 +1,13 @@
 # example-eval-suite
 
+## 0.1.35
+
+### Patch Changes
+
+- Updated dependencies [c947fbf]
+  - @wasmagent/core@3.5.0
+  - @wasmagent/model-anthropic@2.0.7
+
 ## 0.1.34
 
 ### Patch Changes
