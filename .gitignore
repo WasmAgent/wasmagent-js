@@ -58,3 +58,8 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Raw benchmark output artifacts (#246) — keep human-authored summaries and
+# README stubs; raw JSON / per-run dumps go to the benchmarks archive release.
+docs/reports/**/*.json
+docs/reports/**/run-*/
