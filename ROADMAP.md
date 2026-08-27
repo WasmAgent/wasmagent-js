@@ -32,6 +32,17 @@ the same A6 commit; see also the embedded "Why" lines below).
   OpenAI Agents SDK sandbox provider, Mastra sandbox provider). The
   pitch is "swap the executor, keep your framework."
 
+  Upstream integration status — live scoreboard (verified 2026-08-27):
+  **2 merged/published · 2 open · 4 closed** across 8 ecosystems.
+  elizaOS [#9244](https://github.com/elizaOS/eliza/pull/9244) merged,
+  awesome-mcp-servers [#7910](https://github.com/punkpeye/awesome-mcp-servers/pull/7910)
+  merged, LangChain.js [#11104](https://github.com/langchain-ai/langchainjs/pull/11104)
+  and ag-ui [#2042](https://github.com/ag-ui-protocol/ag-ui/issues/2042)
+  still open. Full per-submission table, do-not-resubmit conditions,
+  and the per-draft docs:
+  [`docs/distribution/upstream-prs.md`](docs/distribution/upstream-prs.md)
+  (coverage enforced by `scripts/check-upstream-pr-status.mjs`).
+
 - **S1' — Be the runtime governance + isolation layer (★ new line).**
   OWASP Agentic Top 10 (2025-12), Colorado AI Act (executable 2026-06),
   EU AI Act high-risk obligations (2026-08), and 75% of enterprises

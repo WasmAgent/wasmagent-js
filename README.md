@@ -352,6 +352,10 @@ Full provider reference and proxy/custom endpoint setup: [docs/guides/openai-com
 | [bscode](https://github.com/WasmAgent/bscode) | Flagship Cloudflare deploy template — wires every wasmagent-js capability into a real edge product |
 | [trace-pipeline](https://github.com/WasmAgent/trace-pipeline) | Training data factory — converts ranked rollouts into DPO/PPO datasets |
 
+Upstream integration status (PRs filed to Vercel AI SDK, Mastra,
+LangChain.js, ElizaOS, MCP registry, …) is tracked in
+[`docs/distribution/upstream-prs.md`](./docs/distribution/upstream-prs.md).
+
 ---
 
 ## Development

@@ -125,6 +125,16 @@ jobs:
           print(core['version'] if core else 'unknown')
           ")
           TAG="v${CORE_VERSION}"
+          # Rapid-major-bump guard (#244): refuse a NEW major aggregate tag
+          # within 24h of the previous distinct major (the 2026-07-23
+          # v2→v3-in-3-minutes incident). Already-existing releases skip
+          # via the idempotency guard below before this matters.
+          if node scripts/check-rapid-major-bump.mjs "$TAG"; then
+            echo "rapid-major guard passed for $TAG"
+          else
+            echo "✗ $TAG blocked by scripts/check-rapid-major-bump.mjs — see docs/strategy/release-cadence-log.md"
+            exit 1
+          fi
           # Idempotency guard: when core-four packages publish in batches
           # (e.g. core+mcp-firewall first, aep+compliance to align after),
           # the second Release run targets the same aggregate tag. Skip if
@@ -148,3 +158,12 @@ jobs:
             --title "wasmagent $TAG" \
             --notes "$NOTES" \
             --latest
+
+          # Refresh the GOVERNANCE current-state table (#243) so the
+          # published metrics stay tied to the release that changed them.
+          # Informational only — never block the release on a docs commit.
+          if node scripts/update-governance-current-state.mjs "${CORE_VERSION}"; then
+            git push origin "HEAD:${{ github.ref_name }}" || echo "⚠ governance commit push skipped"
+          else
+            echo "⚠ governance refresh skipped"
+          fi
