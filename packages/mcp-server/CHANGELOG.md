@@ -1,5 +1,12 @@
 # @agentkit-js/mcp-server
 
+## 1.1.12
+
+### Patch Changes
+
+- Updated dependencies [c947fbf]
+  - @wasmagent/core@3.5.0
+
 ## 1.1.11
 
 ### Patch Changes
