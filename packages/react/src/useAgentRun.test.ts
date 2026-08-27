@@ -149,12 +149,20 @@ interface AttemptInputs {
   payload: Record<string, unknown>;
   traceId: string | null;
   lastEventId: string | null;
-  baseHeaders?: Record<string, string>;
+  baseHeaders?: Record<string, string> | ((reqBody: unknown) => Record<string, string>);
 }
 function shapeRequest({ payload, traceId, lastEventId, baseHeaders = {} }: AttemptInputs) {
-  const reqHeaders: Record<string, string> = { "Content-Type": "application/json", ...baseHeaders };
-  if (lastEventId) reqHeaders["Last-Event-ID"] = lastEventId;
+  // Mirrors the hook's attemptStream(): the body is resolved FIRST so the
+  // headers function (#309) receives the exact payload being sent —
+  // including `resumeTraceId` on retries.
   const reqBody = traceId ? { ...payload, resumeTraceId: traceId } : payload;
+  const resolvedHeaders =
+    typeof baseHeaders === "function" ? baseHeaders(reqBody) : { ...baseHeaders };
+  const reqHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...resolvedHeaders,
+  };
+  if (lastEventId) reqHeaders["Last-Event-ID"] = lastEventId;
   return { reqHeaders, reqBody };
 }
 
@@ -202,6 +210,47 @@ describe("useAgentRun resume request shaping (C1)", () => {
     expect(reqHeaders.Authorization).toBe("Bearer xyz");
     expect(reqHeaders["X-Session-Id"]).toBe("s1");
     expect(reqHeaders["Last-Event-ID"]).toBe("000000000003");
+  });
+
+  it("header factory receives the exact body, including resumeTraceId on retries (#309)", () => {
+    const seen: unknown[] = [];
+    const { reqHeaders } = shapeRequest({
+      payload: { messages: [{ role: "user", content: "hi" }] },
+      traceId: "run-abc-9",
+      lastEventId: "000000000042",
+      baseHeaders: (reqBody) => {
+        seen.push(reqBody);
+        return {
+          "x-panel-session": `session-${(reqBody as { resumeTraceId?: string }).resumeTraceId}`,
+        };
+      },
+    });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toEqual({
+      messages: [{ role: "user", content: "hi" }],
+      resumeTraceId: "run-abc-9",
+    });
+    expect(reqHeaders["x-panel-session"]).toBe("session-run-abc-9");
+    expect(reqHeaders["Last-Event-ID"]).toBe("000000000042");
+  });
+
+  it("header function is re-invoked per attempt so values are read fresh (#309)", () => {
+    let counter = 0;
+    const first = shapeRequest({
+      payload: { task: "a" },
+      traceId: null,
+      lastEventId: null,
+      baseHeaders: () => ({ "x-attempt": String(++counter) }),
+    });
+    const second = shapeRequest({
+      payload: { task: "a" },
+      traceId: null,
+      lastEventId: null,
+      baseHeaders: () => ({ "x-attempt": String(++counter) }),
+    });
+    // Two calls to shapeRequest stand in for two fetch attempts inside one run().
+    expect(first.reqHeaders["x-attempt"]).toBe("1");
+    expect(second.reqHeaders["x-attempt"]).toBe("2");
   });
 });
 

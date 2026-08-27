@@ -27,10 +27,11 @@
  *   assembler,
  *   model: myModel,
  *   sessionId: "session-1",
+ *   // autoNote defaults to true — noteStep() fires on every addStep() below
+ *   // automatically. Pass autoNote: false for manual control.
  * });
  * // After each step:
- * assembler.addStep(step);
- * memory.noteStep();
+ * assembler.addStep(step); // observation threshold check runs on its own
  * ```
  *
  * @example Using CheckpointableRun in a custom loop:

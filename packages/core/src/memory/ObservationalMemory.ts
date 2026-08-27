@@ -92,6 +92,14 @@ export interface ObservationalMemoryOptions {
    * fit within this; we do not clip server-side.
    */
   maxObserverTokens?: number;
+  /**
+   * Auto-call {@link noteStep} whenever the assembler appends a step, so the
+   * agent loop never has to remember to (#307). Default: true — subscribing
+   * costs one token estimate per step and is harmless when callers also call
+   * noteStep() manually. Set to false to keep purely manual control; call
+   * {@link dispose} to detach the hook without discarding observations.
+   */
+  autoNote?: boolean;
 }
 
 const DEFAULT_TOKEN_THRESHOLD = 6000;
@@ -156,6 +164,9 @@ export class ObservationalMemory {
   readonly #tokenThreshold: number;
   readonly #keepRecentSteps: number;
   readonly #maxObserverTokens: number;
+  readonly #autoNote: boolean;
+  /** Unsubscribe fn for the assembler onStep hook when autoNote is enabled. */
+  #unsubscribe: (() => void) | null = null;
 
   /** Observations indexed by seqId — fast in-memory access for tests / queries. */
   readonly #cache = new Map<number, Observation>();
@@ -182,6 +193,20 @@ export class ObservationalMemory {
     this.#tokenThreshold = opts.tokenThreshold ?? DEFAULT_TOKEN_THRESHOLD;
     this.#keepRecentSteps = Math.max(1, opts.keepRecentSteps ?? DEFAULT_KEEP_RECENT);
     this.#maxObserverTokens = opts.maxObserverTokens ?? DEFAULT_MAX_OBSERVER_TOKENS;
+    this.#autoNote = opts.autoNote ?? true;
+    if (this.#autoNote) {
+      this.#unsubscribe = opts.assembler.onStep(() => this.noteStep());
+    }
+  }
+
+  /**
+   * Detach the auto-note hook (idempotent). After calling this only explicit
+   * noteStep() calls drive observation. The instance stays usable — already
+   * persisted observations are untouched.
+   */
+  dispose(): void {
+    this.#unsubscribe?.();
+    this.#unsubscribe = null;
   }
 
   /**

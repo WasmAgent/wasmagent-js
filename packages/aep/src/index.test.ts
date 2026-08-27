@@ -2770,7 +2770,11 @@ describe("Ledger.compact() — evidence record compaction and rollup (#255)", ()
     runId = "run-compact",
     toolName = "tool_a",
     ts = 1_700_000_000_000,
-    opts: { state_changing?: boolean; side_effect_class?: SideEffectClass } = {}
+    opts: {
+      state_changing?: boolean;
+      side_effect_class?: SideEffectClass;
+      outcome?: string;
+    } = {}
   ) {
     const signer = createLocalSignerFromSeed(LEDGER_SEED, LEDGER_KEY_ID);
     const emitter = new AEPEmitter({
@@ -2781,6 +2785,7 @@ describe("Ledger.compact() — evidence record compaction and rollup (#255)", ()
       tool_name: toolName,
       state_changing: opts.state_changing ?? false,
       side_effect_class: opts.side_effect_class ?? "read",
+      ...(opts.outcome !== undefined ? { outcome: opts.outcome } : {}),
     });
     return emitter.emit(ts);
   }
@@ -3111,6 +3116,36 @@ describe("Ledger.compact() — evidence record compaction and rollup (#255)", ()
     expect(rollups[0]!.tool_name).toBe("bash");
     expect(rollups[0]!.count).toBe(3);
     expect(rollups[0]!.state_changing_count).toBe(3);
+    // No outcome recorded → nothing counts as an error.
+    expect(rollups[0]!.error_count).toBe(0);
+    expect(rollups[0]!.error_rate).toBe(0);
+  });
+
+  it("buildToolRollups tallies error_count/error_rate and outcome_distribution (#308)", async () => {
+    const ledger = new Ledger();
+    for (let i = 0; i < 10; i++) {
+      await ledger.append(
+        await emitRecord("run-errors", "bash", 1_700_000_000_000 + i, {
+          // 3 errors out of 10.
+          outcome: i < 3 ? "error" : "success",
+        })
+      );
+    }
+    await ledger.append(
+      await emitRecord("run-errors", "read_file", 1_700_000_010_000, { outcome: "failed" })
+    );
+
+    const rollups = buildToolRollups(ledger.records);
+    const bash = rollups.find((r) => r.tool_name === "bash");
+    expect(bash!.count).toBe(10);
+    expect(bash!.error_count).toBe(3);
+    expect(bash!.error_rate).toBeCloseTo(0.3, 10);
+    expect(bash!.outcome_distribution).toEqual({ error: 3, success: 7 });
+
+    const readFile = rollups.find((r) => r.tool_name === "read_file");
+    // "failed" is part of the error-outcome vocabulary alongside "error"/"failure".
+    expect(readFile!.error_count).toBe(1);
+    expect(readFile!.error_rate).toBe(1);
   });
 });
 

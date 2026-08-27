@@ -37,10 +37,15 @@ export interface UseAgentRunOptions {
   /** POST /run endpoint URL. Default: "/run". */
   endpoint?: string;
   /** Extra headers to send with the request.
-   * May be a plain object (evaluated once) or a function that is called on
-   * each request / reconnect so that session IDs or auth tokens can be
-   * injected dynamically. */
-  headers?: Record<string, string> | (() => Record<string, string>);
+   * May be a plain object or a function that receives the exact request
+   * body payload and is called on each request / reconnect, so session IDs,
+   * auth tokens, or locale can be injected fresh per run (#309):
+   *
+   * ```ts
+   * headers: (payload) => ({ "x-panel-session": getPanelSessionId() })
+   * ```
+   */
+  headers?: Record<string, string> | ((payload: unknown) => Record<string, string>);
   /** Called whenever a new AgentEvent is received. */
   onEvent?: (event: AgentEvent) => void;
   /**
@@ -211,22 +216,24 @@ export function useAgentRun(
           | { kind: "error"; msg: string }
           | { kind: "interrupted" };
         const attemptStream = async (): Promise<AttemptOutcome> => {
-          // Build headers, including Last-Event-ID on retries.
+          // On retry the server uses `resumeTraceId` to skip starting a new
+          // agent and replay-only the missing tail. Always set on retries so
+          // a worker that crashed mid-run can be resumed by a different
+          // worker instance — both share KV-persisted EventLog.
+          const reqBody = traceId ? { ...payload, resumeTraceId: traceId } : payload;
+
+          // Build headers, including Last-Event-ID on retries. The function
+          // form receives the exact body being sent so per-request values
+          // (session IDs, auth tokens) are derived fresh on every attempt.
           const resolvedHeaders =
             typeof resolvedOpts.headers === "function"
-              ? resolvedOpts.headers()
+              ? resolvedOpts.headers(reqBody)
               : (resolvedOpts.headers ?? {});
           const reqHeaders: Record<string, string> = {
             "Content-Type": "application/json",
             ...resolvedHeaders,
           };
           if (lastEventId) reqHeaders["Last-Event-ID"] = lastEventId;
-
-          // On retry the server uses `resumeTraceId` to skip starting a new
-          // agent and replay-only the missing tail. Always set on retries so
-          // a worker that crashed mid-run can be resumed by a different
-          // worker instance — both share KV-persisted EventLog.
-          const reqBody = traceId ? { ...payload, resumeTraceId: traceId } : payload;
 
           const resp = await fetch(endpoint, {
             method: "POST",
