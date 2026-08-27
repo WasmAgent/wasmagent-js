@@ -109,6 +109,10 @@ describe("ObservationalMemory", () => {
       model,
       sessionId: "s2",
       tokenThreshold: 100,
+      // autoNote:false pins the purely-manual contract here: with the default
+      // subscription (#307) passes also fire during step appends, which the
+      // auto-note block below covers.
+      autoNote: false,
     });
     mem.noteStep();
     await mem.flush();
@@ -256,5 +260,77 @@ describe("ObservationalMemory", () => {
     expect(callCount).toBe(2);
     const obs = await mem.list();
     expect(obs.length).toBe(2);
+  });
+});
+
+// ── Auto-note wiring (#307) ─────────────────────────────────────────────────
+//
+// autoNote defaults to true: the memory subscribes to assembler appends and
+// fires noteStep() on its own, so agent loops can't silently forget it and
+// let sessions grow unbounded.
+
+describe("ObservationalMemory auto-note wiring (#307)", () => {
+  afterEach(() => {
+    mem?.dispose();
+  });
+
+  it("fires noteStep automatically when the assembler gains steps", async () => {
+    const assembler = makeAssembler();
+    const { model, calls } = mockObserver(['{"priority":"low","text":"auto"}']);
+    // Constructed BEFORE any step is added — the hook must still see appends.
+    mem = new ObservationalMemory({
+      assembler,
+      model,
+      sessionId: "s-auto",
+      tokenThreshold: 100,
+    });
+    for (let i = 0; i < 12; i++) assembler.addStep(userStep(`msg ${i} ${"x".repeat(200)}`));
+    await mem.flush(); // no manual noteStep() anywhere in this test
+    expect(calls.length).toBeGreaterThan(0);
+    expect((await mem.list()).length).toBe(calls.length);
+  });
+
+  it("autoNote: false keeps purely manual control", async () => {
+    const assembler = makeAssembler();
+    const { model, calls } = mockObserver(['{"priority":"low","text":"manual"}']);
+    mem = new ObservationalMemory({
+      assembler,
+      model,
+      sessionId: "s-manual",
+      tokenThreshold: 100,
+      autoNote: false,
+    });
+    for (let i = 0; i < 12; i++) assembler.addStep(userStep(`msg ${i} ${"x".repeat(200)}`));
+    await mem.flush();
+    expect(calls.length).toBe(0);
+    mem.noteStep();
+    await mem.flush();
+    expect(calls.length).toBe(1);
+  });
+
+  it("dispose() detaches the hook but explicit noteStep() still works", async () => {
+    const assembler = makeAssembler();
+    const { model, calls } = mockObserver(['{"priority":"low","text":"d"}']);
+    mem = new ObservationalMemory({
+      assembler,
+      model,
+      sessionId: "s-dispose",
+      tokenThreshold: 100,
+    });
+    // Cross the threshold once so we know the hook was live.
+    for (let i = 0; i < 6; i++) assembler.addStep(userStep(`msg ${i} ${"x".repeat(200)}`));
+    await mem.flush();
+    expect(calls.length).toBeGreaterThan(0);
+
+    mem.dispose();
+    const detachedAt = calls.length;
+    for (let i = 0; i < 6; i++) assembler.addStep(userStep(`msg2 ${i} ${"y".repeat(200)}`));
+    await mem.flush();
+    expect(calls.length).toBe(detachedAt); // subscription detached — no auto fire
+
+    mem.noteStep();
+    await mem.flush();
+    expect(calls.length).toBe(detachedAt + 1); // manual path unaffected
+    mem.dispose(); // idempotent
   });
 });

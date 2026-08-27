@@ -153,6 +153,34 @@ resolveRepoCommit({
 - [wasmagent-js security pack](https://WasmAgent.github.io/wasmagent-js/security-governance-pack/)
 - [trace-pipeline evomerge](https://github.com/WasmAgent/trace-pipeline)
 
+## Tool call rollups (audit dashboards)
+
+`buildToolRollups()` summarizes a sequence of ledger records into per-tool statistics. Its return type is fully documented:
+
+```ts
+import { buildToolRollups, type ToolCallRollup } from "@wasmagent/aep";
+
+const rollups = buildToolRollups(ledger.records); // ToolCallRollup[]
+```
+
+Each `ToolCallRollup` entry carries:
+
+| Field | Meaning |
+|---|---|
+| `tool_name` | The tool being summarized. |
+| `count` | Total invocations in the range. |
+| `state_changing_count` | Invocations with `state_changing: true` ("write ops"). |
+| `side_effect_classes` | Distribution of `side_effect_class` values (`read`, `mutate-local`, …). |
+| `error_count` | Invocations whose `outcome` was `"error"`, `"failed"`, or `"failure"`. Actions without a recorded outcome count as successes. |
+| `error_rate` | `error_count / count` as a 0–1 fraction. |
+| `outcome_distribution` | Raw counts of every recorded `outcome` label, so custom vocabularies stay inspectable. |
+
+```ts
+for (const r of rollups) {
+  console.log(`${r.tool_name}: ${r.count} calls, ${(r.error_rate * 100).toFixed(1)}% errors`);
+}
+```
+
 ## Recording Modes
 
 Each `ActionEvidence` entry carries a `recording_mode` field that controls how much content is captured:

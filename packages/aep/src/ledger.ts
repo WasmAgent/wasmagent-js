@@ -37,6 +37,20 @@ export interface ToolCallRollup {
   state_changing_count: number;
   /** Distribution of side_effect_class values across invocations. */
   side_effect_classes: Record<string, number>;
+  /**
+   * How many invocations reported a failure outcome — action.outcome of
+   * "error", "failed", or "failure" (same labels isErrorOutcome() in
+   * core's state-recovery treats as errors). Actions with no outcome
+   * recorded are counted as successes.
+   */
+  error_count: number;
+  /** `error_count / count` as a 0–1 fraction. 0 when nothing errored. */
+  error_rate: number;
+  /**
+   * Distribution of raw action.outcome labels across invocations (when the
+   * emitter recorded them). Absent keys mean no invocation produced that label.
+   */
+  outcome_distribution: Record<string, number>;
 }
 
 /**
@@ -84,7 +98,8 @@ export interface CompactionResult {
  * Build compressed tool-call rollups from a sequence of ledger records.
  *
  * Groups actions by `tool_name` and counts invocations, state-changing
- * calls, and side-effect class distributions.
+ * calls, failures (error_count/error_rate), and side-effect class /
+ * outcome distributions — everything an audit dashboard needs per tool.
  */
 export function buildToolRollups(records: ReadonlyArray<LedgerRecord>): ToolCallRollup[] {
   const map = new Map<string, ToolCallRollup>();
@@ -98,6 +113,9 @@ export function buildToolRollups(records: ReadonlyArray<LedgerRecord>): ToolCall
           count: 0,
           state_changing_count: 0,
           side_effect_classes: {},
+          error_count: 0,
+          error_rate: 0,
+          outcome_distribution: {},
         };
         map.set(action.tool_name, entry);
       }
@@ -105,10 +123,27 @@ export function buildToolRollups(records: ReadonlyArray<LedgerRecord>): ToolCall
       if (action.state_changing) entry.state_changing_count++;
       const sec = action.side_effect_class ?? "unknown";
       entry.side_effect_classes[sec] = (entry.side_effect_classes[sec] ?? 0) + 1;
+      if (action.outcome != null) {
+        entry.outcome_distribution[action.outcome] =
+          (entry.outcome_distribution[action.outcome] ?? 0) + 1;
+        if (isErrorOutcome(action.outcome)) entry.error_count++;
+      }
     }
   }
 
+  for (const entry of map.values()) {
+    entry.error_rate = entry.count === 0 ? 0 : entry.error_count / entry.count;
+  }
+
   return [...map.values()];
+}
+
+/**
+ * Outcome labels treated as failures by rollup error accounting.
+ * Mirrors the convention in core's state-recovery.isErrorOutcome().
+ */
+function isErrorOutcome(outcome: string): boolean {
+  return outcome === "error" || outcome === "failed" || outcome === "failure";
 }
 
 /**

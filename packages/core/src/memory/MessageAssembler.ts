@@ -84,6 +84,8 @@ export class MessageAssembler {
    * preserving Anthropic cache prefix stability.
    */
   #scratchpad: string | null = null;
+  /** Subscribers notified at the end of every addStep(). See onStep(). */
+  #stepListeners: Array<() => void> = [];
 
   constructor(config: AssemblerConfig) {
     this.#config = config;
@@ -92,6 +94,21 @@ export class MessageAssembler {
       role: "system",
       content: this.#buildSystemContent(),
       cacheBreakpoint: ttl === "1h" ? { type: "ephemeral", ttl: "1h" } : { type: "ephemeral" },
+    };
+  }
+
+  /**
+   * Subscribe to assembler appends. The listener fires synchronously at the
+   * end of every {@link addStep}. Returns an unsubscribe function.
+   *
+   * Used by ObservationalMemory's auto-note wiring (#307) so agent loops
+   * don't have to remember to call noteStep() after each turn.
+   */
+  onStep(listener: () => void): () => void {
+    this.#stepListeners.push(listener);
+    return () => {
+      const idx = this.#stepListeners.indexOf(listener);
+      if (idx >= 0) this.#stepListeners.splice(idx, 1);
     };
   }
 
@@ -109,6 +126,7 @@ export class MessageAssembler {
         this.#sealedAt.add(this.#history.length - 1);
       }
     }
+    for (const listener of this.#stepListeners) listener();
   }
 
   /**
