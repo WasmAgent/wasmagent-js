@@ -23,6 +23,20 @@ mock.module("@jitl/quickjs-wasmfile-release-sync", () => ({ default: {} }));
 // Partial mock: override only agent/model classes, pass real EventLog/formatSseFrame through.
 mock.module("@wasmagent/core", () => {
   return {
+    // /health imports the HealthMetrics singleton; provide the same shape.
+    HealthMetrics: {
+      getInstance() {
+        return {
+          getSnapshot: () => ({
+            latency: { count: 0, totalMs: 0, avgMs: 0 },
+            failures: 0,
+            timeouts: 0,
+            policyDenials: 0,
+            resourceTokensUsed: 0,
+          }),
+        };
+      },
+    },
     EventLog,
     formatSseFrame,
     KvCheckpointer,
