@@ -1,5 +1,15 @@
 # example-tool-search-rag
 
+## 0.1.36
+
+### Patch Changes
+
+- Updated dependencies [6bcdbc2]
+  - @wasmagent/core@3.6.0
+  - @wasmagent/tools-rag@1.0.15
+  - @wasmagent/tools-web@1.0.15
+  - @wasmagent/model-anthropic@2.0.8
+
 ## 0.1.35
 
 ### Patch Changes

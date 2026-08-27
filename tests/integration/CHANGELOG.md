@@ -1,5 +1,14 @@
 # @agentkit-js/integration-tests
 
+## 1.19.12
+
+### Patch Changes
+
+- Updated dependencies [6bcdbc2]
+  - @wasmagent/core@3.6.0
+  - @wasmagent/kernel-quickjs@1.2.12
+  - @wasmagent/models@2.0.8
+
 ## 1.19.11
 
 ### Patch Changes

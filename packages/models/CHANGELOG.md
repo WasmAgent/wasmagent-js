@@ -1,5 +1,12 @@
 # @wasmagent/models
 
+## 2.0.8
+
+### Patch Changes
+
+- Updated dependencies [6bcdbc2]
+  - @wasmagent/core@3.6.0
+
 ## 2.0.7
 
 ### Patch Changes
