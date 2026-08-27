@@ -1,5 +1,11 @@
 # @wasmagent/mcp-gateway
 
+## 0.1.12
+
+### Patch Changes
+
+- @wasmagent/mcp-firewall@2.0.7
+
 ## 0.1.11
 
 ### Patch Changes

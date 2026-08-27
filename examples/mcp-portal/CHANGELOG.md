@@ -1,5 +1,13 @@
 # mcp-portal
 
+## 0.1.37
+
+### Patch Changes
+
+- Updated dependencies [6bcdbc2]
+  - @wasmagent/core@3.6.0
+  - @wasmagent/mcp-server@1.1.13
+
 ## 0.1.36
 
 ### Patch Changes
