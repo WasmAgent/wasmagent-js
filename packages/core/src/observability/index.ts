@@ -544,5 +544,5 @@ export async function* withOtel(
   }
 }
 
-export { HealthMetrics } from "./HealthMetrics.js";
 export type { HealthSnapshot } from "./HealthMetrics.js";
+export { HealthMetrics } from "./HealthMetrics.js";

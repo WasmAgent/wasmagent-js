@@ -76,8 +76,8 @@ export type {
 } from "./kvAdapters.js";
 export { CloudflareKvBackend, DurableObjectKvBackend } from "./kvAdapters.js";
 
-import { CloudflareKvBackend as CloudflareKvBackendImpl } from "./kvAdapters.js";
 import { HealthMetrics } from "@wasmagent/core";
+import { CloudflareKvBackend as CloudflareKvBackendImpl } from "./kvAdapters.js";
 
 export interface Env {
   ANTHROPIC_API_KEY: string;

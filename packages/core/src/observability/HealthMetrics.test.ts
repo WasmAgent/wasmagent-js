@@ -1,10 +1,12 @@
-import { describe, expect, it, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { HealthMetrics } from "./HealthMetrics.js";
 
 describe("HealthMetrics", () => {
   const m = HealthMetrics.getInstance();
 
-  beforeEach(() => { m.reset(); });
+  beforeEach(() => {
+    m.reset();
+  });
 
   it("returns zero snapshot initially", () => {
     const s = m.getSnapshot();

@@ -11,6 +11,7 @@ import { LazyObservationHandle } from "../memory/LazyObservationHandle.js";
 import { MessageAssembler } from "../memory/MessageAssembler.js";
 import type { EnhancementPolicy, Model, ModelMessage } from "../models/types.js";
 import { TokenBudget } from "../models/types.js";
+import { HealthMetrics } from "../observability/HealthMetrics.js";
 import { deriveDependencies } from "../scheduler/deriveDeps.js";
 import type { IRNode } from "../scheduler/ir.js";
 import { SimpleIR } from "../scheduler/ir.js";
@@ -30,7 +31,6 @@ import { randomUUID } from "../util/runtime.js";
 import { runPlanningStep, TOOL_DEP_INSTRUCTIONS } from "./prompts.js";
 import type { StopCondition } from "./stopConditions.js";
 import { callFingerprint, parseStopPolicies } from "./stopConditions.js";
-import { HealthMetrics } from "../observability/HealthMetrics.js";
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert assistant. Use the provided tools to answer questions.
 When you have a final answer, respond with plain text (no tool call).
@@ -537,7 +537,9 @@ export class ToolCallingAgent {
       // Emit model_done so the frontend TokenMeter can display live token stats.
       const stats = budget.toStats();
       const modelId = (this.#model as { modelId?: string }).modelId ?? "unknown";
-      HealthMetrics.getInstance().recordResourceUsage((stats.inputTokens ?? 0) + (stats.outputTokens ?? 0));
+      HealthMetrics.getInstance().recordResourceUsage(
+        (stats.inputTokens ?? 0) + (stats.outputTokens ?? 0)
+      );
       yield {
         traceId,
         parentTraceId,
