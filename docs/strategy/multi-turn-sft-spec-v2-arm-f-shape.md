@@ -188,8 +188,10 @@ regeneration is too expensive.
 
 ## Run H artifacts
 
-- `WasmAgent/docs/reports/multi-turn-scaffold-ablation-2026-06-13/run-H-sft-diagnostic/report.md`
-- `WasmAgent/docs/reports/multi-turn-scaffold-ablation-2026-06-13/run-H-sft-diagnostic/raw.json`
+Raw data moved out of the repo (#246) — available as
+[`multi-turn-scaffold-ablation-2026-06-13.zip` on the benchmarks-2026-06 release](https://github.com/WasmAgent/wasmagent-js/releases/download/benchmarks-2026-06/multi-turn-scaffold-ablation-2026-06-13.zip)
+and in git history; see
+[`docs/reports/multi-turn-scaffold-ablation-2026-06-13/`](../reports/multi-turn-scaffold-ablation-2026-06-13/).
 - This spec: `WasmAgent/docs/strategy/multi-turn-sft-spec-v2-arm-f-shape.md`
 
 ## Cross-reference
