@@ -1,5 +1,12 @@
 # @wasmagent/eliza-rollout-plugin
 
+## 1.0.14
+
+### Patch Changes
+
+- Updated dependencies [2f93dfc]
+  - @wasmagent/core@3.4.0
+
 ## 1.0.13
 
 ### Patch Changes

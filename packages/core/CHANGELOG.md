@@ -1,5 +1,15 @@
 # @agentkit-js/core
 
+## 3.4.0
+
+### Minor Changes
+
+- 2f93dfc: Address #307, #308, #309:
+
+  - **core**: `ObservationalMemory` now auto-subscribes to assembler appends (`autoNote: true` by default) so agent loops no longer have to call `noteStep()` manually after each turn — the silent "forgot to call noteStep, session grows unbounded" failure mode is gone. Opt out with `autoNote: false`; call `dispose()` to detach. Enabled by a new `MessageAssembler.onStep()` subscription hook.
+  - **aep**: `ToolCallRollup` / `buildToolRollups()` now include `error_count`, `error_rate`, and `outcome_distribution` alongside the existing counters, and the type + README are documented for audit-dashboard consumers.
+  - **react**: `useAgentRun` accepts a header factory `(payload) => Record<string, string>` that receives the exact request body (including `resumeTraceId` on retries), so per-request values like panel session IDs can go in headers instead of the payload body.
+
 ## 3.3.1
 
 ### Patch Changes

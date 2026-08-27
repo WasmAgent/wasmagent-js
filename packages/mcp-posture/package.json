@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/mcp-posture",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "MCP attack-surface posture snapshot validator and drift analyzer",
   "type": "module",
   "main": "./dist/index.js",

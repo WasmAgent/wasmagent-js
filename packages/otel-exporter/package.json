@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/otel-exporter",
-  "version": "3.0.2",
+  "version": "4.0.0",
   "description": "OTLP/HTTP span exporter for @wasmagent/core OtelBridge — production-ready OpenTelemetry export",
   "type": "module",
   "main": "./dist/index.js",
