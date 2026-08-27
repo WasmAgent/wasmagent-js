@@ -11,3 +11,19 @@ export type {
   SpanExporter,
 } from "./observability/index.js";
 export { InMemorySpanExporter, OtelBridge, withOtel } from "./observability/index.js";
+
+// Telemetry policy primitives — retention / redaction / export (#389)
+export type {
+  RedactionOptions,
+  RedactionRule,
+  RetentionPolicy,
+  TelemetryPolicy,
+  TimestampExtractor,
+} from "./observability/TelemetryPolicy.js";
+export {
+  applyRetention,
+  BatchingExporter,
+  defaultTimestampExtractor,
+  redactText,
+  redactValue,
+} from "./observability/TelemetryPolicy.js";
