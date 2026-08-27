@@ -543,3 +543,6 @@ export async function* withOtel(
     bridge.forceFlush();
   }
 }
+
+export type { HealthSnapshot } from "./HealthMetrics.js";
+export { HealthMetrics } from "./HealthMetrics.js";

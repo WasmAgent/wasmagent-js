@@ -26,6 +26,21 @@ let mockAgentEvents: AgentEvent[] = [mockFinalAnswerEvent];
 
 mock.module("@wasmagent/core", () => {
   return {
+    // /health surfaces the live HealthMetrics snapshot; the mock must expose
+    // the same singleton shape the worker imports.
+    HealthMetrics: {
+      getInstance() {
+        return {
+          getSnapshot: () => ({
+            latency: { count: 0, totalMs: 0, avgMs: 0 },
+            failures: 0,
+            timeouts: 0,
+            policyDenials: 0,
+            resourceTokensUsed: 0,
+          }),
+        };
+      },
+    },
     CodeAgent: class {
       run(_task: string) {
         return (async function* () {
@@ -200,8 +215,24 @@ describe("Cloudflare Worker routing", () => {
       mockCtx as never
     );
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { status: string };
+    const json = (await res.json()) as {
+      status: string;
+      metrics?: {
+        latency: { count: number };
+        failures: number;
+        timeouts: number;
+        policyDenials: number;
+        resourceTokensUsed: number;
+      };
+    };
     expect(json.status).toBe("ok");
+    // /health must expose the operational-health snapshot (#388).
+    expect(json.metrics).toBeDefined();
+    expect(json.metrics?.latency).toBeDefined();
+    expect(typeof json.metrics?.failures).toBe("number");
+    expect(typeof json.metrics?.timeouts).toBe("number");
+    expect(typeof json.metrics?.policyDenials).toBe("number");
+    expect(typeof json.metrics?.resourceTokensUsed).toBe("number");
   });
 
   it("GET /unknown → 404", async () => {
