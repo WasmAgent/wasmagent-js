@@ -1,6 +1,21 @@
 # Governance
 
-> Last refreshed: **2026-07-31**.
+> Last refreshed: **2026-08-27**.
+
+## Current state (updated 2026-08-27)
+
+Fact table kept honest against reality — every row corresponds to a
+commitment made below or in a linked ledger. Refresh this on each tagged
+release (automated in `.github/workflows/release.yml`).
+
+| Metric | Status |
+|---|---|
+| npm latest (`@wasmagent/core`) | v3.4.0 (published 2026-08-27) |
+| Co-maintainers | 0 — recruiting (public solicitation, see "What we are explicitly trying to change") |
+| Last security drill | Not yet executed — format defined in [`docs/strategy/security-drill-log.md`](docs/strategy/security-drill-log.md), first drill still unscheduled |
+| Release cadence log | Retroactive ledger rows backfilled through v3.0.2 on 2026-08-27 ([`docs/strategy/release-cadence-log.md`](docs/strategy/release-cadence-log.md)) |
+| Branch protection | Enabled — `main` requires `Build, Typecheck & Test` to pass |
+| Upstream integration status | Tracked in [`docs/distribution/upstream-prs.md`](docs/distribution/upstream-prs.md), validated by `scripts/check-upstream-pr-status.mjs` |
 
 ## Why this file exists
 
@@ -62,11 +77,18 @@ public description of how decisions get made until then.
   — synthetic findings exercise the disclosure path each quarter
   so the SLA is a rehearsed process, not a paper commitment.
 
-- **1.0 freeze date.** Public commitment to ship
-  `@wasmagent/core@1.0.0` on **2026-12-15**, with a checklist
-  (co-maintainer landed, six bi-weekly releases without stall,
-  drill record on file, public benchmark number, experimental
-  table reviewed, migration note) gating the tag. See
+- **Stability milestones.** The original public commitment — ship
+  `@wasmagent/core@1.0.0` behind a stability checklist by a fixed
+  year-end freeze date — has been overtaken by reality: `1.0.0` through `3.x` are already
+  published, and the rapid v2→v3 sequence on 2026-07-23 is recorded as
+  a retrospective in
+  [`docs/strategy/release-cadence-log.md`](docs/strategy/release-cadence-log.md)
+  with a CI guard (`scripts/check-rapid-major-bump.mjs`) against a
+  repeat. The next meaningful stability milestone replaces the old
+  freeze date and keeps the same gates: a second maintainer landed,
+  one full quarter of bi-weekly releases without a stall, a completed
+  security drill on file, a public benchmark number, and the
+  experimental-surface table reviewed. See
   [`docs/strategy/api-stability.md`](docs/strategy/api-stability.md#10-freeze-schedule).
 
 ## How decisions get made when we have ≥2 maintainers
