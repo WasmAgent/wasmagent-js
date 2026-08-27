@@ -1,5 +1,12 @@
 # chat-cards
 
+## 0.1.16
+
+### Patch Changes
+
+- Updated dependencies [2f93dfc]
+  - @wasmagent/react@1.5.0
+
 ## 0.1.15
 
 ### Patch Changes

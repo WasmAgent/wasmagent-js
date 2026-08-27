@@ -1,5 +1,15 @@
 # @wasmagent/cloudflare-worker
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies [2f93dfc]
+  - @wasmagent/core@3.4.0
+  - @wasmagent/ag-ui@1.0.13
+  - @wasmagent/kernel-quickjs@1.2.10
+  - @wasmagent/models@2.0.6
+
 ## 0.2.0
 
 ### Minor Changes
