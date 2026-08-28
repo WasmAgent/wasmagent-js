@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/react",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "React hooks for wasmagent — useAgentRun() for streaming agent events",
   "type": "module",
   "main": "./dist/index.js",

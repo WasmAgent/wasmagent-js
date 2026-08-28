@@ -1,5 +1,12 @@
 # basic-agent
 
+## 0.1.37
+
+### Patch Changes
+
+- Updated dependencies [696744a]
+  - @wasmagent/core@3.7.0
+
 ## 0.1.36
 
 ### Patch Changes

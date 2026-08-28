@@ -1,5 +1,11 @@
 # agentkit-example-kernel-only
 
+## 0.0.17
+
+### Patch Changes
+
+- @wasmagent/kernel-quickjs@1.2.13
+
 ## 0.0.16
 
 ### Patch Changes
