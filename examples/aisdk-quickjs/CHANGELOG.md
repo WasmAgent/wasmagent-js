@@ -1,5 +1,12 @@
 # aisdk-quickjs
 
+## 0.1.17
+
+### Patch Changes
+
+- @wasmagent/aisdk@1.0.16
+- @wasmagent/kernel-quickjs@1.2.13
+
 ## 0.1.16
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @agentkit-js/tools-web
 
+## 1.0.16
+
+### Patch Changes
+
+- Updated dependencies [696744a]
+  - @wasmagent/core@3.7.0
+
 ## 1.0.15
 
 ### Patch Changes

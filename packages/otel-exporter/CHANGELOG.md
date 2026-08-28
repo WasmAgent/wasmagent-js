@@ -1,5 +1,12 @@
 # @agentkit-js/otel-exporter
 
+## 7.0.0
+
+### Patch Changes
+
+- Updated dependencies [696744a]
+  - @wasmagent/core@3.7.0
+
 ## 6.0.0
 
 ### Patch Changes

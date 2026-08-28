@@ -1,5 +1,11 @@
 # @agentkit-js/model-minimax
 
+## 2.0.9
+
+### Patch Changes
+
+- @wasmagent/models@2.0.9
+
 ## 2.0.8
 
 ### Patch Changes
