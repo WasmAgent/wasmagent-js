@@ -8,6 +8,8 @@
  * `data` automatically based on which `event` variant is matched — no unsafe casts needed.
  */
 
+import type { ModelMessage } from "../models/types.js";
+
 interface AgentEventBase {
   /** Unique identifier for this agent's execution branch. */
   traceId: string;
@@ -392,10 +394,26 @@ export interface UserMessageStep {
   content: string;
 }
 
+/**
+ * RawMessageStep — a pre-built {@link ModelMessage} injected verbatim into
+ * conversation history. Used by `MessageAssembler.addRawMessage` (and
+ * `injectHistoryIntoAssembler`) to replay prior turns byte-for-byte.
+ *
+ * Unlike every other step type this renders to exactly the stored message —
+ * no `<observation>`/`<thoughts>` wrappers — so replayed Anthropic wire
+ * shapes (including `tool_use`/`tool_result` block pairs) survive intact.
+ */
+export interface RawMessageStep {
+  type: "raw_message";
+  /** The message, emitted verbatim by `build()`. */
+  message: ModelMessage;
+}
+
 export type Step =
   | ActionStep
   | PlanningStep
   | FinalAnswerStep
   | ToolUseStep
   | ParallelToolUseStep
-  | UserMessageStep;
+  | UserMessageStep
+  | RawMessageStep;

@@ -109,6 +109,13 @@ export interface GoalAgentOptions {
    */
   tokenBudget?: number;
   /**
+   * SI-7 — Pre-bound AbortSignal. Checked before each iteration and
+   * forwarded to every inner ToolCallingAgent.run(), so an aborted signal
+   * stops the goal loop promptly instead of continuing through up to
+   * maxIterations × maxStepsPerIteration model calls.
+   */
+  signal?: AbortSignal;
+  /**
    * Optional system-prompt addendum baked into every iteration. Useful
    * for state hints, project conventions, or "you are L1/L2/L3" role
    * differentiation when this GoalAgent is part of a tiered stack.
@@ -183,6 +190,7 @@ export class GoalAgent {
   readonly #systemPromptAddendum: string | undefined;
   readonly #enableToolSynthesis: boolean | { codeToolName: string } | undefined;
   readonly #maxNoProgressIterations: number;
+  readonly #signal: AbortSignal | undefined;
 
   constructor(opts: GoalAgentOptions) {
     this.#model = opts.model;
@@ -196,6 +204,7 @@ export class GoalAgent {
     // for callers that drive GoalAgent directly). The high-level
     // GoalDirectedAgent overrides this default to 2 — see its constructor.
     this.#maxNoProgressIterations = opts.maxNoProgressIterations ?? Number.POSITIVE_INFINITY;
+    this.#signal = opts.signal;
   }
 
   async *run(goal: Goal, parentTraceId: string | null = null): AsyncGenerator<AgentEvent> {
@@ -240,6 +249,17 @@ export class GoalAgent {
     }
 
     while (iteration < this.#maxIterations) {
+      // SI-7: honour the pre-bound signal between iterations — aborting must
+      // stop the loop, not burn through the remaining iteration budget.
+      if (this.#signal?.aborted) {
+        outcome = "error";
+        lastError = "aborted via signal";
+        yield this.#mkStatusEvent(parentTraceId, "goal_iteration_start", {
+          iteration,
+          ...(lastHint ? { hint: lastHint } : {}),
+        });
+        break;
+      }
       iteration++;
       yield this.#mkStatusEvent(parentTraceId, "goal_iteration_start", {
         iteration,
@@ -265,7 +285,11 @@ export class GoalAgent {
       });
 
       try {
-        for await (const ev of agent.run(prompt, parentTraceId)) {
+        for await (const ev of agent.run(
+          prompt,
+          parentTraceId,
+          this.#signal ? { signal: this.#signal } : undefined
+        )) {
           // Re-yield the iteration's events. Track tokens for the
           // cross-iteration budget check.
           if (ev.event === "model_done") {

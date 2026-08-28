@@ -70,8 +70,9 @@ export async function checkRateLimit(
     } catch {
       // Parse failure → fail closed for one window. The alternative
       // (silently resetting to 0) lets a malicious or buggy writer
-      // erase the rate limiter, so we refuse the request and let the
-      // next put() above re-establish a clean record.
+      // erase the rate limiter. NOTE: the rejected call does NOT put()
+      // a clean record — recovery happens after the corrupted key's TTL
+      // expires, or when a later allowed call overwrites it.
       return {
         allowed: false,
         retryAtMs: now + windowMs,

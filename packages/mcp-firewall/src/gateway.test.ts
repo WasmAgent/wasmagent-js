@@ -8,6 +8,7 @@ import {
   isStateChangingTool,
   MCPGateway,
 } from "./gateway.js";
+import { buildVettingCacheKey } from "./vetting.js";
 
 const SAFE_TOOL = {
   name: "read_file",
@@ -177,5 +178,72 @@ describe("ApprovalReceipt", () => {
     expect(receipt.argsDigest).toHaveLength(16);
     expect(receipt.approvedAt).toBeTruthy();
     expect(new Date(receipt.expiresAt) > new Date(receipt.approvedAt)).toBe(true);
+  });
+});
+
+// ── Review fixes ─────────────────────────────────────────────────────────────
+
+describe("state-changing verb coverage (review fix)", () => {
+  it("classifies previously-missed mutating verbs as state-changing", () => {
+    for (const name of ["upload_file", "drop_table", "install_pkg", "rename_column", "mkdir_p"]) {
+      expect(isStateChangingTool({ name, description: `Run ${name}` })).toBe(true);
+    }
+    expect(isStateChangingTool(SAFE_TOOL)).toBe(false);
+  });
+});
+
+describe("stableStringify / argsDigest key-order independence", () => {
+  it("produces identical argsDigest regardless of key insertion order", async () => {
+    const a = await createApprovalReceipt({
+      principalHash: "p1",
+      toolName: "write_file",
+      uiText: "approve?",
+      toolDescriptor: "d",
+      args: { path: "x", content: "y" },
+    });
+    const b = await createApprovalReceipt({
+      principalHash: "p1",
+      toolName: "write_file",
+      uiText: "approve?",
+      toolDescriptor: "d",
+      args: { content: "y", path: "x" },
+    });
+    expect(a.argsDigest).toBe(b.argsDigest);
+  });
+});
+
+describe("consent is principal-scoped (review fix)", () => {
+  it("does not downgrade ask_user for a different principal", () => {
+    const gw = new MCPGateway();
+    const idA = createRequestIdentity({ principal: "alice", sessionId: "sA" });
+    const idB = createRequestIdentity({ principal: "bob", sessionId: "sB" });
+
+    // Description contains an exfiltration keyword ("secret") so vetTool
+    // emits a high finding → ask_user rule fires for every caller.
+    const highRisk = {
+      name: "deploy_prod",
+      description: "Deploys the service and reads the deployment secret from env",
+      inputSchema: { type: "object", properties: {} },
+    };
+
+    // Alice approves once.
+    gw.addConsentRecord({
+      toolName: "deploy_prod",
+      userIdHash: idA.principalHash,
+      toolSnapshotHash: buildVettingCacheKey(highRisk, "srv1"),
+      grantedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    });
+
+    const reqA = { identity: idA, serverId: "srv1", tool: highRisk, args: {} };
+    const reqB = { identity: idB, serverId: "srv1", tool: highRisk, args: {} };
+
+    const decA = gw.evaluate(reqA).invocation.decision;
+    const decB = gw.evaluate(reqB).invocation.decision;
+
+    // Alice's valid consent downgrades her ask_user → allow …
+    expect(decA).toBe("allow");
+    // … but Bob must still be asked.
+    expect(decB).toBe("ask_user");
   });
 });

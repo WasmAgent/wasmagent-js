@@ -198,6 +198,9 @@ export function useAgentRun(
       let lastEventId: string | null = null;
       let traceId: string | null = null;
       let receivedFinalAnswer = false;
+      // A definitive `error` event ends the run — retries after it would just
+      // repeat a known failure.
+      let sawTerminalError = false;
       const resumeOpts = resolvedOpts.resume ?? {};
       const maxAttempts = resumeOpts.maxAttempts ?? 0;
       const delayMs = resumeOpts.delayMs ?? 1000;
@@ -282,6 +285,23 @@ export function useAgentRun(
             for (const line of lines) {
               if (line.startsWith("id: ")) {
                 pendingId = line.slice(4).trim();
+                // Id-regression guard: the server re-executed the run (ids
+                // restart at 0 after a crash-recovery re-run). Without this,
+                // the fresh event stream would append onto the old partial
+                // text and duplicate the answer. Reset per-attempt state once.
+                if (
+                  pendingId !== lastEventId &&
+                  /^\d+$/.test(pendingId) &&
+                  /^\d+$/.test(lastEventId ?? "") &&
+                  Number(pendingId) <= Number(lastEventId)
+                ) {
+                  textBufRef.current = "";
+                  textMsgIdRef.current = null;
+                  setMessages([]);
+                  setFinalAnswer(null);
+                  receivedFinalAnswer = false;
+                  lastEventId = null;
+                }
                 continue;
               }
               if (line === "") {
@@ -432,6 +452,7 @@ export function useAgentRun(
                 setStatus("complete");
               } else if (evType === "error" && chanMatches("text")) {
                 const errMsg = (ev as { data: { error: string } }).data.error ?? "Unknown error";
+                sawTerminalError = true;
                 setMessages((prev) => [
                   ...prev,
                   { id: nextId(), role: "error" as const, content: errMsg },
@@ -461,8 +482,16 @@ export function useAgentRun(
               return;
             }
             // outcome.kind === "interrupted"
+            // A streamed `error` event is terminal — retrying would repeat a
+            // known failure.
+            if (sawTerminalError) break;
             if (attempts >= maxAttempts) break;
             attempts++;
+            // Each attempt starts a fresh text bubble: the server replays the
+            // missed tail (or a fresh stream after re-execution, handled by
+            // the id-regression reset inside attemptStream).
+            textBufRef.current = "";
+            textMsgIdRef.current = null;
             // Wait before retry; abort signal short-circuits the wait.
             await new Promise<void>((resolve) => {
               const t = setTimeout(resolve, delayMs);
@@ -477,7 +506,9 @@ export function useAgentRun(
             });
             if (ac.signal.aborted) return;
           }
-          if (!receivedFinalAnswer) {
+          // Don't clobber a terminal "error" status with "idle" — the run did
+          // end, but it did not end cleanly.
+          if (!receivedFinalAnswer && !sawTerminalError) {
             setStatus("idle");
           }
         } catch (e) {

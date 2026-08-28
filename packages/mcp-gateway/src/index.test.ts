@@ -91,3 +91,44 @@ describe("composeMiddleware", () => {
     expect(order).toEqual([1, 2]);
   });
 });
+
+describe("composeMiddleware double-next guard (review fix)", () => {
+  it("throws when a middleware calls next() twice", async () => {
+    const { composeMiddleware } = await import("./middleware.js");
+    const calls: string[] = [];
+    const downsteam = {
+      name: "downstream",
+      handle: async (ctx, _next) => {
+        calls.push("downstream");
+        return ctx;
+      },
+    };
+    const doubleNext = {
+      name: "double-next",
+      handle: async (ctx, next) => {
+        await next(ctx);
+        return next(ctx); // second call must throw, not re-run the chain
+      },
+    };
+    const dispatch = composeMiddleware([doubleNext, downsteam]);
+    await expect(dispatch({ request: {} as never, metadata: {} })).rejects.toThrow(
+      /next\(\) twice/
+    );
+    expect(calls).toEqual(["downstream"]); // executed exactly once
+  });
+
+  it("still composes ordering correctly (a then b)", async () => {
+    const { composeMiddleware } = await import("./middleware.js");
+    const order: string[] = [];
+    const mk = (name: string) => ({
+      name,
+      handle: async (ctx, next) => {
+        order.push(name);
+        return next(ctx);
+      },
+    });
+    const dispatch = composeMiddleware([mk("a"), mk("b")]);
+    await dispatch({ request: {} as never, metadata: {} });
+    expect(order).toEqual(["a", "b"]);
+  });
+});

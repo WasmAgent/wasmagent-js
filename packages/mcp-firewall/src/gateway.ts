@@ -9,7 +9,7 @@
  *   5. MCPGateway — stateful gateway that wraps a set of firewall primitives
  */
 
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { McpToolEntry } from "@wasmagent/mcp-server";
 import type { ConsentRecord, PolicyRule, ToolInvocationDecision } from "./policy.js";
 import { DEFAULT_RULES, evaluatePolicy } from "./policy.js";
@@ -112,8 +112,11 @@ export function createScopeLease(opts: {
   const ttl = opts.ttlSeconds ?? 300;
   const expiry = new Date(Date.now() + ttl * 1000).toISOString();
   return {
+    // RandomUUID salt: without it two leases for the same principal+server
+    // created in the same millisecond collide, making receipts that
+    // reference leaseId ambiguous.
     leaseId: createHash("sha256")
-      .update(opts.principalHash + opts.serverId + expiry)
+      .update(opts.principalHash + opts.serverId + expiry + randomUUID())
       .digest("hex")
       .slice(0, 16),
     principalHash: opts.principalHash,
@@ -153,6 +156,31 @@ export interface ApprovalReceipt {
   expiresAt: string;
 }
 
+/**
+ * Deterministic JSON serialisation (sorted object keys) for digest inputs.
+ * `JSON.stringify` is key-insertion-order dependent, so the same logical
+ * args re-serialised with a different key order produced different
+ * argsDigests and legitimately-approved calls failed receipt matching.
+ * BigInt is stringified (JSON.stringify would throw).
+ */
+export function stableStringify(value: unknown): string {
+  if (value === null || typeof value === "number" || typeof value === "boolean") {
+    return JSON.stringify(value) ?? "null";
+  }
+  if (typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "bigint") return JSON.stringify(String(value));
+  if (typeof value === "undefined") return "null";
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(",")}}`;
+  }
+  // Functions / symbols have no JSON representation.
+  return "null";
+}
+
 export function createApprovalReceipt(opts: {
   leaseId?: string;
   principalHash: string;
@@ -175,7 +203,7 @@ export function createApprovalReceipt(opts: {
     toolName: opts.toolName,
     uiTextHash: createHash("sha256").update(opts.uiText).digest("hex").slice(0, 16),
     toolDescriptorHash: createHash("sha256").update(opts.toolDescriptor).digest("hex").slice(0, 16),
-    argsDigest: createHash("sha256").update(JSON.stringify(opts.args)).digest("hex").slice(0, 16),
+    argsDigest: createHash("sha256").update(stableStringify(opts.args)).digest("hex").slice(0, 16),
     approvedAt: now,
     expiresAt: expiry,
   };
@@ -199,6 +227,22 @@ const STATE_CHANGING_PATTERNS = [
   /\bpost\b/,
   /\bsend\b/,
   /\bsubmit\b/,
+  // Found missing in review: common mutating verbs that previously classified
+  // as read-only (e.g. `upload_file`, `drop_table`, `rename_column`).
+  /\bupload\b/,
+  /\binstall\b/,
+  /\bimport\b/,
+  /\bdrop\b/,
+  /\binsert\b/,
+  /\btruncate\b/,
+  /\brename\b/,
+  /\bmove\b/,
+  /\bmkdir\b/,
+  /\bpatch\b/,
+  /\bmerge\b/,
+  /\bkill\b/,
+  /\bformat\b/,
+  /\bapply\b/,
 ];
 
 /** Heuristic: returns true if the tool's name or description suggests it mutates state. */
@@ -206,6 +250,9 @@ export function isStateChangingTool(tool: McpToolEntry): boolean {
   const text = (tool.name + " " + tool.description).toLowerCase();
   return STATE_CHANGING_PATTERNS.some((p) => p.test(text));
 }
+
+/** Max vetting results cached (LRU) — cache keys are descriptor hashes. */
+const VETTING_CACHE_CAP = 500;
 
 // ── Gateway Context ───────────────────────────────────────────────────────────
 
@@ -253,6 +300,8 @@ export interface MCPGatewayOptions {
 export class MCPGateway {
   readonly #rules: PolicyRule[];
   readonly #serverCards: Map<string, ServerCard>;
+  /** LRU-capped: keys are full descriptor hashes, so a hostile server rotating
+   * its tool description on every tools/list mints a fresh key per cycle. */
   readonly #vettingCache: Map<string, VettingResult>;
   readonly #consentRecords: ConsentRecord[];
 
@@ -269,6 +318,15 @@ export class MCPGateway {
 
   addConsentRecord(record: ConsentRecord): void {
     this.#consentRecords.push(record);
+    // Prune expired entries so long-lived gateways don't accumulate dead
+    // consent records forever. Non-expiring records (no expiresAt) are kept.
+    const now = new Date();
+    for (let i = this.#consentRecords.length - 1; i >= 0; i--) {
+      const c = this.#consentRecords[i];
+      if (c?.expiresAt && new Date(c.expiresAt) <= now) {
+        this.#consentRecords.splice(i, 1);
+      }
+    }
   }
 
   evaluate(req: GatewayRequest): GatewayDecision {
@@ -276,16 +334,27 @@ export class MCPGateway {
     let vetting = this.#vettingCache.get(cacheKey);
     if (!vetting) {
       vetting = vetTool(req.tool);
+      // LRU: refresh insertion order and evict the least-recently used entry
+      // beyond the cap.
+      this.#vettingCache.delete(cacheKey);
       this.#vettingCache.set(cacheKey, vetting);
+      if (this.#vettingCache.size > VETTING_CACHE_CAP) {
+        const oldest = this.#vettingCache.keys().next().value;
+        if (oldest !== undefined) this.#vettingCache.delete(oldest);
+      }
     }
 
+    // Consent is principal-scoped: without the userIdHash, one principal's
+    // approved high-risk tool would be downgraded to "allow" for every other
+    // principal sharing this gateway instance.
     const invocation = evaluatePolicy(
       req.tool.name,
       req.args,
       vetting,
       this.#consentRecords,
       this.#rules,
-      cacheKey
+      cacheKey,
+      req.identity.principalHash
     );
 
     const stateChanging = isStateChangingTool(req.tool);

@@ -193,6 +193,12 @@ export class ToolCallingAgent {
   readonly #policy: EnhancementPolicy | undefined;
   readonly #toolsSchema: object[];
   readonly #toolTimeoutMs: number | undefined;
+  /**
+   * Token totals this run has already reported via model_done. The event is
+   * per-step, so each emission subtracts these to produce per-call deltas
+   * (TokenBudget.toStats() itself is cumulative across the run).
+   */
+  #lastModelDoneStats = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, calls: 0 };
   readonly #schedulerMode: "dag" | "parallel";
   readonly #stopWhen: StopCondition[];
   readonly #checkpointer: Checkpointer | undefined;
@@ -441,6 +447,19 @@ export class ToolCallingAgent {
       const pendingCalls: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
       let receivedUsage = false;
 
+      // E1: open the per-step inference span (GenAI semconv). Without this,
+      // OtelBridge's chat spans and O2 usage metrics are dead code on the
+      // primary `withOtel(agent.run(...))` path.
+      const modelId = (this.#model as { modelId?: string }).modelId ?? "unknown";
+      yield {
+        traceId,
+        parentTraceId,
+        channel: "model" as const,
+        event: "model_start" as const,
+        data: { modelId, step },
+        timestampMs: Date.now(),
+      };
+
       // A1: on step 1, resolve input guardrails concurrently with model generation.
       // After step 1, input was already checked — skip the await.
       let inputGuardrailTripwire: Awaited<typeof inputGuardrailPromise> = null;
@@ -535,27 +554,47 @@ export class ToolCallingAgent {
       }
 
       // Emit model_done so the frontend TokenMeter can display live token stats.
+      // `budget.toStats()` is CUMULATIVE across the run, but model_done is a
+      // per-step event — every consumer (GoalAgent/GoalDirectedAgent budget
+      // guards, AgentSupervisor, OtelBridge usage metrics, HealthMetrics)
+      // sums these values as per-call deltas. Emit the delta against what
+      // this run already reported, not the running total.
       const stats = budget.toStats();
-      const modelId = (this.#model as { modelId?: string }).modelId ?? "unknown";
-      HealthMetrics.getInstance().recordResourceUsage(
-        (stats.inputTokens ?? 0) + (stats.outputTokens ?? 0)
-      );
+      const delta = {
+        inputTokens: Math.max(0, (stats.inputTokens ?? 0) - this.#lastModelDoneStats.inputTokens),
+        outputTokens: Math.max(
+          0,
+          (stats.outputTokens ?? 0) - this.#lastModelDoneStats.outputTokens
+        ),
+        cacheReadTokens: Math.max(
+          0,
+          (stats.cacheReadTokens ?? 0) - this.#lastModelDoneStats.cacheReadTokens
+        ),
+        calls: Math.max(0, (stats.calls ?? 0) - this.#lastModelDoneStats.calls),
+      };
+      this.#lastModelDoneStats = {
+        inputTokens: stats.inputTokens ?? 0,
+        outputTokens: stats.outputTokens ?? 0,
+        cacheReadTokens: stats.cacheReadTokens ?? 0,
+        calls: stats.calls ?? 0,
+      };
+      HealthMetrics.getInstance().recordResourceUsage(delta.inputTokens + delta.outputTokens);
       yield {
         traceId,
         parentTraceId,
         channel: "model" as const,
-        event: "model_done",
+        event: "model_done" as const,
         data: {
           modelId,
           step,
           finishReason: "stop",
-          inputTokens: stats.inputTokens,
-          outputTokens: stats.outputTokens,
-          cacheReadTokens: stats.cacheReadTokens,
+          inputTokens: delta.inputTokens,
+          outputTokens: delta.outputTokens,
+          cacheReadTokens: delta.cacheReadTokens,
           // Include derived metrics for richer frontend display
           cacheHitRate: budget.cacheHitRate,
           estimatedUsd: budget.estimatedUsdFor(modelId),
-          calls: stats.calls,
+          calls: delta.calls,
         },
         timestampMs: Date.now(),
       };
@@ -900,6 +939,7 @@ export class ToolCallingAgent {
 
           // Poll for response.
           let approved = false;
+          let pollTimedOut = true;
           for (let poll = 0; poll < 600; poll++) {
             await new Promise<void>((r) => setTimeout(r, 100));
             const snapshot = await this.#checkpointer.load(traceId);
@@ -907,12 +947,19 @@ export class ToolCallingAgent {
               const resp = snapshot.humanResponse.response.trim().toLowerCase();
               approved =
                 resp === "yes" || resp === "y" || resp === "approve" || resp === "approved";
+              pollTimedOut = false;
               await this.#checkpointer.delete(traceId);
               break;
             }
           }
 
           if (!approved) {
+            // Deny or poll-timeout: the run ends here, so the pending-approval
+            // checkpoint must not linger — a later resumeFromHuman() against it
+            // would "approve" a dead run (and the snapshot leaks in KV).
+            if (pollTimedOut) {
+              await this.#checkpointer.delete(traceId);
+            }
             yield {
               traceId,
               parentTraceId,
@@ -963,8 +1010,14 @@ export class ToolCallingAgent {
           string,
           { output: string; isError: boolean; isUntrusted: boolean }
         >();
+        // Health-metrics timing for the DAG path: node_start opens the clock
+        // per tool, node_done/node_error close it. Without this the default
+        // scheduler mode recorded no latency at all.
+        const nodeStarts = new Map<string, number>();
         for await (const evt of scheduler.execute(ir)) {
-          if (evt.type === "node_done") {
+          if (evt.type === "node_start") {
+            nodeStarts.set(evt.nodeId, Date.now());
+          } else if (evt.type === "node_done") {
             const toolResult = evt.result as import("../tools/types.js").ToolResult;
             let output: string;
             let isError = false;
@@ -972,6 +1025,7 @@ export class ToolCallingAgent {
             if (toolResult?.error !== undefined) {
               isError = true;
               output = toolResult.error.message || "Tool execution failed with no output.";
+              HealthMetrics.getInstance().recordFailure();
             } else {
               try {
                 output =
@@ -979,12 +1033,32 @@ export class ToolCallingAgent {
               } catch (e) {
                 isError = true;
                 output = `Tool output could not be serialised: ${e instanceof Error ? e.message : String(e)}`;
+                HealthMetrics.getInstance().recordFailure();
               }
+            }
+            const startedAtMs = nodeStarts.get(evt.nodeId);
+            if (startedAtMs !== undefined) {
+              HealthMetrics.getInstance().recordLatency(Date.now() - startedAtMs);
+              nodeStarts.delete(evt.nodeId);
             }
             resultMap.set(evt.nodeId, { output, isError, isUntrusted });
           } else if (evt.type === "node_error") {
             const reason = evt.error;
-            HealthMetrics.getInstance().recordFailure();
+            // Classify aborts/timeouts like the parallel path does; run-level
+            // cancellation arrives with error === undefined and stays a failure.
+            if (
+              reason instanceof Error &&
+              (reason.name === "TimeoutError" || reason.name === "AbortError")
+            ) {
+              HealthMetrics.getInstance().recordTimeout();
+            } else {
+              HealthMetrics.getInstance().recordFailure();
+            }
+            const startedAtMs = nodeStarts.get(evt.nodeId);
+            if (startedAtMs !== undefined) {
+              HealthMetrics.getInstance().recordLatency(Date.now() - startedAtMs);
+              nodeStarts.delete(evt.nodeId);
+            }
             resultMap.set(evt.nodeId, {
               output: `Tool dispatch threw: ${reason instanceof Error ? reason.message : String(reason ?? "unknown error")}`,
               isError: true,
@@ -1089,6 +1163,7 @@ export class ToolCallingAgent {
                   return r.output === undefined ? "null" : JSON.stringify(r.output);
                 } catch (e) {
                   callIsError = true;
+                  HealthMetrics.getInstance().recordFailure();
                   return `Tool output could not be serialised: ${e instanceof Error ? e.message : String(e)}`;
                 }
               },

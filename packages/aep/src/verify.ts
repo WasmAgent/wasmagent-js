@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import * as ed from "@noble/ed25519";
 import { canonicalBytes } from "./canonical.js";
-import { verifyDSSEEnvelope } from "./dsse.js";
+import { type InTotoStatement, verifyDSSEEnvelope } from "./dsse.js";
 import type { AEPRecord } from "./types.js";
 
 /**
@@ -13,16 +13,72 @@ export interface ChainVerificationResult {
   brokenAt?: number;
 }
 
+/** Hex SHA-256 of canonical bytes — content equality for two values. */
+function canonicalDigest(value: unknown): string {
+  return createHash("sha256").update(canonicalBytes(value)).digest("hex");
+}
+
+/**
+ * Bind a v0.4 record's inline fields to its DSSE envelope.
+ *
+ * The envelope's signature only covers the in-toto Statement payload —
+ * without this check an attacker could modify `actions`, `run_id`,
+ * `created_at_ms`, `prev_record_hash`, etc. on a signed record and still
+ * pass verification. Two bindings are enforced:
+ *
+ * 1. **Predicate binding** — `statement.predicate` must equal the record
+ *    minus `signature` / `dsse_envelope` / `timestamp_proof` (the proof is
+ *    attached after signing by design, and carries its own authority
+ *    signature). Records emitted before the schema_version stamp moved
+ *    pre-signing carry `aep/v0.3` inside the predicate; that single field
+ *    is normalised to the record's value before comparison.
+ * 2. **Subject binding** — `subject[0].digest.sha256` must be the SHA-256
+ *    of the canonical predicate bytes (the emitter's payloadDigest), and
+ *    `subject[0].name` must reference the record's run_id.
+ */
+function dsseEnvelopeBindsRecord(record: AEPRecord): boolean {
+  const envelope = record.dsse_envelope;
+  if (!envelope) return false;
+  try {
+    const statement = JSON.parse(
+      Buffer.from(envelope.payload, "base64").toString("utf8")
+    ) as InTotoStatement;
+    if (statement.predicate === undefined || !Array.isArray(statement.subject)) return false;
+
+    const { signature: _sig, dsse_envelope: _dsse, timestamp_proof: _tp, ...unsigned } = record;
+
+    // 1. Predicate binding (schema_version normalised for pre-fix emitters).
+    const predicate = { ...(statement.predicate as Record<string, unknown>) };
+    if (predicate.schema_version !== unsigned.schema_version) {
+      predicate.schema_version = unsigned.schema_version;
+    }
+    if (canonicalDigest(predicate) !== canonicalDigest(unsigned)) return false;
+
+    // 2. Subject binding.
+    const subject = statement.subject[0];
+    if (!subject) return false;
+    const digestMatches =
+      subject.digest?.sha256 === canonicalDigest(predicate) ||
+      // Pre-fix emitters digested the un-normalised predicate bytes — same
+      // bytes as `predicate` here, so the first check covers them; keep the
+      // unsigned-record hash as an alternate for forward compatibility.
+      subject.digest?.sha256 === canonicalDigest(unsigned);
+    if (!digestMatches) return false;
+    if (subject.name && unsigned.run_id && !subject.name.includes(unsigned.run_id)) return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * verifyAEPRecord — verify the ed25519 signature on an AEPRecord.
  *
- * For v0.4 records with a `dsse_envelope`, verifies via DSSE (PAE encoding).
+ * For v0.4 records with a `dsse_envelope`, verifies via DSSE (PAE encoding)
+ * AND checks that the envelope's signed payload binds the record's inline
+ * fields — an envelope lifted from another (or tampered) record fails.
  * For legacy records, falls back to canonical-bytes verification.
- *
- * Steps (legacy):
- * 1. Strip the `signature` field to reconstruct the unsigned payload.
- * 2. Re-compute the canonical bytes the signer would have signed.
- * 3. Base64-decode the `sig` field and verify against the provided public key.
  *
  * @param record    - A complete AEPRecord (including `signature`).
  * @param publicKey - 32-byte Ed25519 public key matching the `key_id` in the record.
@@ -36,9 +92,10 @@ export async function verifyAEPRecord(record: AEPRecord, publicKey: Uint8Array):
     );
   }
   try {
-    // If DSSE envelope is present, verify via DSSE
+    // DSSE path: envelope signature + payload↔record field binding.
     if (record.dsse_envelope) {
-      return await verifyDSSEEnvelope(record.dsse_envelope, publicKey);
+      if (!(await verifyDSSEEnvelope(record.dsse_envelope, publicKey))) return false;
+      return dsseEnvelopeBindsRecord(record);
     }
 
     // Legacy verification path

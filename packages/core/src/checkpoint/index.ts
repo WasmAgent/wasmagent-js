@@ -80,7 +80,17 @@ export class InMemoryCheckpointer implements Checkpointer {
   }
 
   async load(traceId: string): Promise<AgentSnapshot | null> {
-    return this.#store.get(traceId) ?? null;
+    const snapshot = this.#store.get(traceId);
+    if (!snapshot) return null;
+    // Copy on read — a caller mutating the loaded snapshot (e.g. writing
+    // humanResponse directly) must not corrupt the store or forge approvals.
+    return {
+      ...snapshot,
+      ...(snapshot.pendingHumanInput
+        ? { pendingHumanInput: { ...snapshot.pendingHumanInput } }
+        : {}),
+      ...(snapshot.humanResponse ? { humanResponse: { ...snapshot.humanResponse } } : {}),
+    };
   }
 
   async delete(traceId: string): Promise<void> {

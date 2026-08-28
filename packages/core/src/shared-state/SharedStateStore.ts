@@ -189,6 +189,12 @@ export class SharedStateStore<S, A extends { type: string }> {
       return await fn();
     } finally {
       resolve?.();
+      // Drop the chain tail once this waiter is done — otherwise one Map
+      // entry + settled promise leaks per session forever, even after the
+      // session itself is LRU-evicted from #memory.
+      if (this.#locks.get(sessionId) === next) {
+        this.#locks.delete(sessionId);
+      }
     }
   }
 
