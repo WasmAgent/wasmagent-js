@@ -391,8 +391,10 @@ export class Ledger {
     const toolRollups = buildToolRollups(compactedRecords);
 
     const timestamps = compactedRecords.map((lr) => lr.record.created_at_ms);
-    const startedAtMs = timestamps[0] ?? 0;
-    const endedAtMs = timestamps[timestamps.length - 1] ?? 0;
+    // min/max, not first/last: multi-run ledgers and caller-supplied
+    // createdAtMs make element order non-chronological.
+    const startedAtMs = timestamps.length > 0 ? Math.min(...timestamps) : 0;
+    const endedAtMs = timestamps.length > 0 ? Math.max(...timestamps) : 0;
 
     const runIds = [...new Set(compactedRecords.map((lr) => lr.record.run_id))];
 

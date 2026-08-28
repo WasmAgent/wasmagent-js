@@ -17,9 +17,12 @@
  *     Anthropic cache_control awareness)
  *
  * The class does NOT mutate the assembler synchronously on every step; that
- * would defeat the prompt cache. Instead, when tokens cross a configured
- * threshold it spawns an asynchronous compression pass, and only swaps in
- * the result on success. If the agent runs another step before the pass
+ * would defeat the prompt cache. When tokens cross a configured threshold it
+ * runs an asynchronous observation pass and PERSISTS the resulting paragraph
+ * (to KV + cache) for later retrieval via `list()` — it never edits or
+ * truncates the assembler history itself, so context size is unchanged
+ * (wire `list()` output into your own prompt assembly to realise the
+ * compression benefit). If the agent runs another step before the pass
  * completes, the next observation cycle picks up from there.
  */
 

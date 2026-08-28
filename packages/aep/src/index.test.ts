@@ -1772,6 +1772,57 @@ describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
     expect(valid).toBe(true);
   });
 
+  it("verifyAEPRecord rejects tampered inline fields on DSSE records (payload binding)", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({ run_id: "run-dsse-bind", signer, useDsse: true });
+    emitter.addAction({ tool_name: "deploy", state_changing: true });
+    const record = await emitter.emit(1_700_000_000_000);
+    const publicKey = await signer.getPublicKey();
+
+    // Each of these mutates only the INLINE fields — the envelope (and its
+    // signature) is untouched, which used to be enough to pass verification.
+    const tamperedActions = {
+      ...record,
+      actions: [
+        {
+          ...record.actions[0]!,
+          tool_name: "rm -rf /",
+          state_changing: false,
+        },
+      ],
+    };
+    await expect(verifyAEPRecord(tamperedActions as AEPRecord, publicKey)).resolves.toBe(false);
+
+    const tamperedRun = { ...record, run_id: "someone-elses-run" };
+    await expect(verifyAEPRecord(tamperedRun as AEPRecord, publicKey)).resolves.toBe(false);
+
+    const tamperedTime = { ...record, created_at_ms: 1 };
+    await expect(verifyAEPRecord(tamperedTime as AEPRecord, publicKey)).resolves.toBe(false);
+
+    const strippedChain = {
+      ...record,
+      prev_record_hash: null,
+    } as AEPRecord;
+    if ("prev_record_hash" in strippedChain) delete strippedChain.prev_record_hash;
+    await expect(verifyAEPRecord(strippedChain, publicKey)).resolves.toBe(false);
+  });
+
+  it("verifyAEPRecord rejects a DSSE envelope lifted from a different record (subject binding)", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitterA = new AEPEmitter({ run_id: "run-dsse-a", signer, useDsse: true });
+    emitterA.addAction({ tool_name: "a_tool", state_changing: true });
+    const recordA = await emitterA.emit(1_700_000_000_000);
+
+    const emitterB = new AEPEmitter({ run_id: "run-dsse-b", signer, useDsse: true });
+    emitterB.addAction({ tool_name: "b_tool", state_changing: false });
+    const recordB = await emitterB.emit(1_700_000_000_001);
+
+    const publicKey = await signer.getPublicKey();
+    // Record B's inline fields paired with record A's envelope.
+    const hybrid = { ...recordB, dsse_envelope: recordA.dsse_envelope } as AEPRecord;
+    await expect(verifyAEPRecord(hybrid, publicKey)).resolves.toBe(false);
+  });
+
   it("verifyAEPRecord still works for legacy records (backward compat)", async () => {
     const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
     const emitter = new AEPEmitter({
@@ -5388,5 +5439,24 @@ describe("EvidenceCompressor (#272)", () => {
     const summary = compressor.compress([r1, r2, r3], { nowMs: 0 });
     expect(summary.startedAtMs).toBe(1_000);
     expect(summary.endedAtMs).toBe(3_000);
+  });
+});
+
+describe("addAction explicit-undefined defaults (review fix)", () => {
+  it("does not let explicit undefined clobber generated action_id/timestamp", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({ run_id: "run-undef", signer });
+    emitter.addAction({
+      tool_name: "t",
+      state_changing: false,
+      // Spreading partially-filled objects produces explicit undefined keys.
+      action_id: undefined,
+      timestamp_ms: undefined,
+    } as Parameters<AEPEmitter["addAction"]>[0]);
+    const record = await emitter.emit(1_700_000_000_000);
+    expect(record.actions[0]?.action_id).toBe("action-0");
+    // timestamp_ms falls back to Date.now() at addAction() time (emit()'s
+    // createdAtMs applies to the record, not retroactively to actions).
+    expect(record.actions[0]?.timestamp_ms).toBeGreaterThan(0);
   });
 });

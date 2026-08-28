@@ -106,9 +106,13 @@ export class AEPEmitter {
     const recording_mode = action.recording_mode ?? this.#opts.recordingMode ?? "validation";
     const side_effect_class = action.side_effect_class ?? this.#opts.sideEffectClass ?? "unknown";
     this.#actions.push({
+      ...action,
+      // Defaults applied AFTER the spread: an explicit `action_id: undefined`
+      // (common when spreading partially-filled objects) must not clobber
+      // them — the zod schema has no defaults here, so emit() would die on
+      // validation instead of generating the id/timestamp.
       action_id: action.action_id ?? `action-${this.#actions.length}`,
       timestamp_ms: action.timestamp_ms ?? Date.now(),
-      ...action,
       recording_mode,
       side_effect_class,
     } as ActionEvidence);
@@ -225,14 +229,29 @@ export class AEPEmitter {
     } = normalised;
 
     if (this.#opts.useDsse) {
-      // DSSE/in-toto path (v0.4)
-      const bytes = canonicalBytes(normalisedUnsigned);
+      // DSSE/in-toto path (v0.4).
+      // Stamp the final schema_version BEFORE building the statement so the
+      // signed predicate covers every field the record carries — otherwise
+      // inline fields are not cryptographically bound to the envelope and
+      // verifyAEPRecord could accept tampered records.
+      const stamped = AEPRecordSchema.parse({
+        ...normalisedUnsigned,
+        schema_version: "aep/v0.4",
+        signature: placeholder,
+      });
+      const {
+        signature: _placeholderFinal,
+        dsse_envelope: _dsseIgnoreFinal,
+        ...unsignedFinal
+      } = stamped;
+
+      const bytes = canonicalBytes(unsignedFinal);
       const payloadDigest = createHash("sha256").update(bytes).digest("hex");
 
       // Wrap into in-toto Statement
       const statement = wrapInTotoStatement(
-        normalisedUnsigned as unknown as Record<string, unknown>,
-        normalisedUnsigned.run_id,
+        unsignedFinal as unknown as Record<string, unknown>,
+        unsignedFinal.run_id,
         payloadDigest
       );
       const statementJson = JSON.stringify(statement);
@@ -258,8 +277,7 @@ export class AEPEmitter {
       };
 
       const record = AEPRecordSchema.parse({
-        ...normalisedUnsigned,
-        schema_version: "aep/v0.4",
+        ...unsignedFinal,
         dsse_envelope: dsseEnvelope,
         signature,
       });
@@ -267,7 +285,7 @@ export class AEPEmitter {
       // If a timestamper is configured, request a timestamp proof and attach it
       const timestamper = this.#opts.timestamper;
       if (timestamper) {
-        const tsBytes = canonicalBytes(normalisedUnsigned);
+        const tsBytes = canonicalBytes(unsignedFinal);
         const proof = await timestamper.timestamp(tsBytes);
         record.timestamp_proof = proof;
       }

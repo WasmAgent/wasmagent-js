@@ -96,3 +96,37 @@ describe("ToolCallingAgent HealthMetrics instrumentation (DAG path)", () => {
     expect(s.timeouts).toBe(0);
   });
 });
+
+describe("model_done per-step deltas (review fix)", () => {
+  it("emits deltas, not cumulative run totals, across a multi-step run", async () => {
+    // tool call (step 1) → tool_result → final text (step 2): two model_done.
+    const tool: ToolDefinition<{ a: number; b: number }, number> = {
+      name: "add",
+      description: "Adds two numbers",
+      inputSchema: z.object({ a: z.number(), b: z.number() }),
+      outputSchema: z.number(),
+      readOnly: true,
+      idempotent: true,
+      forward: async ({ a, b }) => a + b,
+    };
+    const agent = new ToolCallingAgent({
+      tools: [tool],
+      model: oneToolCallModel("add", { a: 1, b: 2 }, "the sum is 3"),
+      maxSteps: 3,
+    });
+    const doneTokens: Array<{ input: number; output: number }> = [];
+    for await (const e of agent.run("add 1 and 2")) {
+      if (e.event === "model_done") {
+        const d = e.data as { inputTokens: number; outputTokens: number };
+        doneTokens.push({ input: d.inputTokens, output: d.outputTokens });
+      }
+    }
+    expect(doneTokens.length).toBe(2);
+    // Consumers sum model_done as per-call deltas. Under the old behaviour
+    // each event carried the CUMULATIVE run total, so HealthMetrics' counter
+    // would overshoot the true consumption (≈2× for a 2-step run).
+    const sum = doneTokens.reduce((acc, t) => acc + t.input + t.output, 0);
+    expect(sum).toBeGreaterThan(0);
+    expect(HealthMetrics.getInstance().getSnapshot().resourceTokensUsed).toBe(sum);
+  });
+});

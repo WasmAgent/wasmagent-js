@@ -61,12 +61,38 @@ mock.module("@wasmagent/core", () => {
       SONNET_LATEST: "claude-sonnet-4-6",
       HAIKU_LATEST: "claude-haiku-4-5-20251001",
     },
-    // A2 — EventLog + formatSseFrame: tests run without an event log binding,
-    // so the EventLog constructor is only ever invoked when the integration
-    // wires it up; tests pass the format helper through unchanged.
+    // A2 — EventLog + formatSseFrame: the mock implements replay() against
+    // the real backend key format (`evlog:<traceId>:<paddedId>`) so resume
+    // tests can seed a KV store and exercise the HTTP path end-to-end.
     EventLog: class {
-      async *replay(): AsyncGenerator<unknown> {
-        // no persisted events in mocked tests
+      #backend: {
+        get(key: string): Promise<string | null>;
+        put(key: string, value: string): Promise<void>;
+        delete(key: string): Promise<void>;
+        list(prefix: string): Promise<string[]>;
+      };
+      constructor(backendInstance: {
+        get(key: string): Promise<string | null>;
+        put(key: string, value: string): Promise<void>;
+        delete(key: string): Promise<void>;
+        list(prefix: string): Promise<string[]>;
+      }) {
+        this.#backend = backendInstance;
+      }
+      async *replay(
+        traceId: string,
+        afterId?: string | null
+      ): AsyncGenerator<{ eventId: string; event: unknown }> {
+        const prefix = `evlog:${traceId}:`;
+        const keys = (await this.#backend.list(prefix)).sort();
+        const cutoff = afterId && /^\d+$/.test(afterId) ? afterId.padStart(12, "0") : null;
+        for (const key of keys) {
+          const eventId = key.slice(prefix.length);
+          if (cutoff && eventId <= cutoff) continue;
+          const raw = await this.#backend.get(key);
+          if (!raw) continue;
+          yield { eventId, event: JSON.parse(raw) as unknown };
+        }
       }
       async *tap<T>(source: AsyncGenerator<T>): AsyncGenerator<{ eventId: string; event: T }> {
         let i = 0;
@@ -639,5 +665,86 @@ describe("POST /resume — HITL persisted resume (A3)", () => {
       makeEnv({ WASMAGENT_CHECKPOINTS: kv, WASMAGENT_CLIENT_TOKEN: "secret" })
     );
     expect(res.status).toBe(401);
+  });
+});
+
+// ── Resume-only mode (review fix) ────────────────────────────────────────────
+//
+// When the client asks to resume (resumeTraceId / Last-Event-ID) and the
+// event log still has content, the worker must REPLAY ONLY — re-executing
+// the task double-bills the model call and streams duplicated text.
+
+describe("POST /run — resume-only mode (review fix)", () => {
+  it("replays a persisted log for resumeTraceId without re-executing the task", async () => {
+    const store = new Map<string, string>();
+    const kv = {
+      async get(key: string) {
+        return store.get(key) ?? null;
+      },
+      async put(key: string, value: string) {
+        store.set(key, value);
+      },
+      async delete(key: string) {
+        store.delete(key);
+      },
+      async list(opts?: { prefix?: string }) {
+        const keys = [...store.keys()]
+          .filter((k) => !opts?.prefix || k.startsWith(opts.prefix))
+          .map((name) => ({ name }));
+        return { keys, list_complete: true, cursor: "" };
+      },
+    };
+    // Seed the event log with one persisted event for trace "tr-abc".
+    const persisted = {
+      traceId: "tr-abc",
+      channel: "text",
+      event: "text_delta",
+      data: { delta: "persisted chunk" },
+      timestampMs: Date.now(),
+    };
+    await kv.put("evlog:tr-abc:000000000000", JSON.stringify(persisted));
+
+    const res = await runPost(
+      { task: "fresh task", resumeTraceId: "tr-abc" },
+      makeEnv({ WASMAGENT_EVENT_LOG: kv })
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("X-Agentkit-Trace-Id")).toBe("tr-abc");
+    const lines = await readSSELines(res);
+    const joined = lines.join("\n");
+    // Replay contains the persisted event and the [DONE] sentinel…
+    expect(joined).toContain("persisted chunk");
+    expect(joined).toContain("[DONE]");
+    // …and NOT a second execution (the mocked agent answers "42").
+    expect(joined).not.toContain("42");
+  });
+
+  it("falls through to a live run when the log is empty (KV eventual consistency)", async () => {
+    const store = new Map<string, string>();
+    const kv = {
+      async get(key: string) {
+        return store.get(key) ?? null;
+      },
+      async put(key: string, value: string) {
+        store.set(key, value);
+      },
+      async delete(key: string) {
+        store.delete(key);
+      },
+      async list(opts?: { prefix?: string }) {
+        const keys = [...store.keys()]
+          .filter((k) => !opts?.prefix || k.startsWith(opts.prefix))
+          .map((name) => ({ name }));
+        return { keys, list_complete: true, cursor: "" };
+      },
+    };
+    const res = await runPost(
+      { task: "fresh task", resumeTraceId: "tr-nothing" },
+      makeEnv({ WASMAGENT_EVENT_LOG: kv })
+    );
+    expect(res.status).toBe(200);
+    const lines = await readSSELines(res);
+    // Nothing persisted → execute normally and stream the answer.
+    expect(lines.join("\n")).toContain("42");
   });
 });

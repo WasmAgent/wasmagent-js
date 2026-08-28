@@ -82,6 +82,12 @@ export class CodeAgent {
   readonly #tools: ToolRegistry;
   readonly #model: Model;
   readonly #maxSteps: number;
+  /**
+   * Token totals already reported via model_done — the event is per-step, so
+   * each emission subtracts these to produce per-call deltas from the
+   * cumulative TokenBudget.toStats().
+   */
+  #lastModelDoneStats = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, calls: 0 };
   readonly #planningInterval: number | undefined;
   readonly #kernelPromise: Promise<WasmKernel>;
   readonly #assembler: MessageAssembler;
@@ -294,7 +300,28 @@ export class CodeAgent {
       }
 
       // Emit model_done so the frontend TokenMeter can display live token stats.
+      // Delta against what this run already reported — see the field comment
+      // on #lastModelDoneStats; consumers sum model_done events as per-step
+      // deltas, and TokenBudget.toStats() is cumulative across the run.
       const stats = budget.toStats();
+      const delta = {
+        inputTokens: Math.max(0, (stats.inputTokens ?? 0) - this.#lastModelDoneStats.inputTokens),
+        outputTokens: Math.max(
+          0,
+          (stats.outputTokens ?? 0) - this.#lastModelDoneStats.outputTokens
+        ),
+        cacheReadTokens: Math.max(
+          0,
+          (stats.cacheReadTokens ?? 0) - this.#lastModelDoneStats.cacheReadTokens
+        ),
+        calls: Math.max(0, (stats.calls ?? 0) - this.#lastModelDoneStats.calls),
+      };
+      this.#lastModelDoneStats = {
+        inputTokens: stats.inputTokens ?? 0,
+        outputTokens: stats.outputTokens ?? 0,
+        cacheReadTokens: stats.cacheReadTokens ?? 0,
+        calls: stats.calls ?? 0,
+      };
       const modelId = (this.#model as { modelId?: string }).modelId ?? "unknown";
       yield {
         traceId,
@@ -305,12 +332,12 @@ export class CodeAgent {
           modelId,
           step,
           finishReason: "stop",
-          inputTokens: stats.inputTokens,
-          outputTokens: stats.outputTokens,
-          cacheReadTokens: stats.cacheReadTokens,
+          inputTokens: delta.inputTokens,
+          outputTokens: delta.outputTokens,
+          cacheReadTokens: delta.cacheReadTokens,
           cacheHitRate: budget.cacheHitRate,
           estimatedUsd: budget.estimatedUsdFor(modelId),
-          calls: stats.calls,
+          calls: delta.calls,
         },
         timestampMs: Date.now(),
       };

@@ -78,6 +78,7 @@ export { CloudflareKvBackend, DurableObjectKvBackend } from "./kvAdapters.js";
 
 import { HealthMetrics } from "@wasmagent/core";
 import { CloudflareKvBackend as CloudflareKvBackendImpl } from "./kvAdapters.js";
+import { checkRateLimit, rateLimitedResponse } from "./rateLimit.js";
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
@@ -114,6 +115,17 @@ export interface Env {
    * Falls back to "*" when not set — restrict in production.
    */
   WASMAGENT_ALLOWED_ORIGIN?: string;
+  /**
+   * Optional KV namespace for per-identity rate limiting of /run.
+   * When bound, each request is counted against the caller's Authorization
+   * hash before a model run starts; over-quota callers get 429.
+   */
+  WASMAGENT_RATE_LIMIT?: KVNamespace;
+  /**
+   * Requests per minute for the rate limiter (requires WASMAGENT_RATE_LIMIT).
+   * Default: 60.
+   */
+  WASMAGENT_RATE_LIMIT_RPM?: string;
 }
 
 const SESSION_TTL_SECONDS = 3600; // 1 hour
@@ -161,6 +173,28 @@ export default {
     }
 
     if (url.pathname === "/run" && request.method === "POST") {
+      // Per-identity rate limiting — only when the KV binding is present, so
+      // existing deployments keep working until they opt in. Keyed on the
+      // Authorization header hash (not the raw token) so KV contents never
+      // contain the secret and different tokens never share a bucket.
+      if (env.WASMAGENT_RATE_LIMIT) {
+        const auth = request.headers.get("Authorization") ?? "";
+        // Web Crypto (Workers has no node:crypto): hash the Authorization
+        // header so KV contents never contain the token and different
+        // tokens never share a bucket.
+        const authDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(auth));
+        const identityKey = `rl:${[...new Uint8Array(authDigest)]
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("")
+          .slice(0, 24)}`;
+        const rpm = Number.parseInt(env.WASMAGENT_RATE_LIMIT_RPM ?? "60", 10);
+        const check = await checkRateLimit(env.WASMAGENT_RATE_LIMIT, identityKey, {
+          rpm: Number.isFinite(rpm) && rpm > 0 ? rpm : 60,
+        });
+        if (!check.allowed) {
+          return rateLimitedResponse(check, "Rate limit exceeded for /run");
+        }
+      }
       return handleRun(request, env, ctx, corsHeaders);
     }
 
@@ -185,6 +219,12 @@ interface RunBody {
    *   - On subsequent runs with the same sessionId: cached events are replayed.
    */
   sessionId?: string;
+  /**
+   * A2 — Trace id of a previously-started run (from `X-Agentkit-Trace-Id`).
+   * When present, the SSE event log for that trace is replayed and, if it
+   * still has content, the task is NOT re-executed (crashed-worker resume).
+   */
+  resumeTraceId?: string;
 }
 
 function isRunBody(v: unknown): v is RunBody {
@@ -311,6 +351,10 @@ async function handleRun(
   let agentType: "code" | "tool-calling" = "code";
   let maxSteps = 10;
   let agUiRunId: string | undefined;
+  /** Alias key under which the completed session is ALSO cached (resume/threadId). */
+  let sessionAliasKey: string | null = null;
+  /** A2 — explicit trace id of the log to resume (body.resumeTraceId). */
+  let resumeTraceId: string | undefined;
 
   if (isRunAgentInput(body)) {
     const parsed = fromRunAgentInput(body as RunAgentInput);
@@ -323,7 +367,8 @@ async function handleRun(
     // and replay them — resolves the session key from `resume` (string) or `threadId` (true).
     const resumeField = parsed.resume;
     if (resumeField && env.WASMAGENT_SESSIONS) {
-      const sessionKey = typeof resumeField === "string" ? resumeField : (parsed.threadId ?? null);
+      sessionAliasKey = typeof resumeField === "string" ? resumeField : (parsed.threadId ?? null);
+      const sessionKey = sessionAliasKey;
       if (sessionKey) {
         let priorCached: string | null = null;
         try {
@@ -364,6 +409,7 @@ async function handleRun(
     task = body.task;
     agentType = body.agentType ?? "code";
     maxSteps = body.maxSteps ?? 10;
+    resumeTraceId = body.resumeTraceId;
   } else {
     return jsonError(
       'Body must include { "task": string } or a RunAgentInput object',
@@ -481,6 +527,10 @@ async function handleRun(
   if (useAgUiSse) {
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
+    // Same derivation as the event log below so AG-UI clients can also
+    // resume via X-Agentkit-Trace-Id + Last-Event-ID.
+    const traceIdHeader =
+      resumeTraceId ?? explicitEventLogTraceId ?? agUiRunId ?? kvKey ?? crypto.randomUUID();
 
     ctx.waitUntil(
       (async () => {
@@ -510,9 +560,18 @@ async function handleRun(
           }
           if (kvKey && env.WASMAGENT_SESSIONS && ranSuccessfully && allEvents.length > 0) {
             try {
-              await env.WASMAGENT_SESSIONS.put(kvKey, JSON.stringify(allEvents), {
+              const payload = JSON.stringify(allEvents);
+              await env.WASMAGENT_SESSIONS.put(kvKey, payload, {
                 expirationTtl: SESSION_TTL_SECONDS,
               });
+              // Alias write: AG-UI resume resolves sessions from
+              // `resume`/`threadId`, which is not the content-hash key —
+              // without this alias the resume lookup can never hit.
+              if (sessionAliasKey && sessionAliasKey !== kvKey) {
+                await env.WASMAGENT_SESSIONS.put(sessionAliasKey, payload, {
+                  expirationTtl: SESSION_TTL_SECONDS,
+                });
+              }
             } catch (err) {
               console.error(
                 "[wasmagent-worker] KV session write failed:",
@@ -543,7 +602,12 @@ async function handleRun(
     );
 
     return new Response(readable, {
-      headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", ...corsHeaders },
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "X-Agentkit-Trace-Id": traceIdHeader,
+        ...corsHeaders,
+      },
     });
   }
 
@@ -553,15 +617,22 @@ async function handleRun(
   const writer = writable.getWriter();
   const encoder = new TextEncoder();
 
-  // traceId for the durable event log: prefer the checkpoint trace id (set
-  // when WASMAGENT_CHECKPOINTS is bound, so checkpoints + events share an id),
-  // then the AG-UI runId, then the content-hash session key (stable across
-  // retries of the same task), and fall back to a fresh UUID for one-off runs.
-  const eventLogTraceId = explicitEventLogTraceId ?? agUiRunId ?? kvKey ?? crypto.randomUUID();
+  // traceId for the durable event log: an explicit resume request wins
+  // (body.resumeTraceId — the client tells us which log to resume), then the
+  // checkpoint trace id (set when WASMAGENT_CHECKPOINTS is bound, so
+  // checkpoints + events share an id), then the AG-UI runId, then the
+  // content-hash session key (stable across retries of the same task), and
+  // fall back to a fresh UUID for one-off runs.
+  const eventLogTraceId =
+    resumeTraceId ?? explicitEventLogTraceId ?? agUiRunId ?? kvKey ?? crypto.randomUUID();
+  // A client asking to resume (Last-Event-ID or resumeTraceId) must not
+  // trigger a second model execution when the log still has content —
+  // replay-only mode below handles that.
+  const lastEventId = request.headers.get("Last-Event-ID");
+  const isResumeRequest = lastEventId !== null || resumeTraceId !== undefined;
   const eventLog = env.WASMAGENT_EVENT_LOG
     ? new EventLog(new CloudflareKvBackendImpl(env.WASMAGENT_EVENT_LOG))
     : null;
-  const lastEventId = request.headers.get("Last-Event-ID");
 
   ctx.waitUntil(
     (async () => {
@@ -569,10 +640,22 @@ async function handleRun(
       let ranSuccessfully = false;
       try {
         // ── Resume path: replay any persisted events the client missed. ──
-        if (eventLog && lastEventId !== null) {
-          for await (const logged of eventLog.replay(eventLogTraceId, lastEventId)) {
+        // If the log still has content, this IS the resume: re-executing the
+        // task would double-bill the model call and stream duplicated text.
+        let replayedAny = false;
+        if (eventLog && isResumeRequest) {
+          for await (const logged of eventLog.replay(eventLogTraceId, lastEventId ?? "")) {
             await writer.write(encoder.encode(formatSseFrame(logged)));
+            replayedAny = true;
           }
+          if (replayedAny) {
+            await writer.write(encoder.encode("data: [DONE]\n\n"));
+            await writer.close().catch(() => {});
+            return;
+          }
+          // Nothing persisted (KV is eventually consistent — the log may not
+          // be visible yet after a crash): fall through and execute, so the
+          // client gets an answer instead of an empty stream.
         }
 
         // Compute starting sequence so newly tapped events continue numbering
@@ -616,9 +699,16 @@ async function handleRun(
 
         if (kvKey && env.WASMAGENT_SESSIONS && ranSuccessfully && allEvents.length > 0) {
           try {
-            await env.WASMAGENT_SESSIONS.put(kvKey, JSON.stringify(allEvents), {
+            const payload = JSON.stringify(allEvents);
+            await env.WASMAGENT_SESSIONS.put(kvKey, payload, {
               expirationTtl: SESSION_TTL_SECONDS,
             });
+            // Alias write for AG-UI resume/threadId lookups (see AG-UI path).
+            if (sessionAliasKey && sessionAliasKey !== kvKey && env.WASMAGENT_SESSIONS) {
+              await env.WASMAGENT_SESSIONS.put(sessionAliasKey, payload, {
+                expirationTtl: SESSION_TTL_SECONDS,
+              });
+            }
           } catch (err) {
             console.error(
               "[wasmagent-worker] KV session write failed:",

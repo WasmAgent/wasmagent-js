@@ -473,6 +473,9 @@ export class OtelBridge {
     this.#steps.clear();
     this.#tools.clear();
     this.#inferences.clear();
+    // WasmAgent→OTel trace-id mappings live one run; without this the map
+    // grows one entry per run for the lifetime of the process.
+    this.#traceIdMap.clear();
     this.flush();
   }
 

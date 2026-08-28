@@ -131,6 +131,9 @@ function worstDecision(decisions: InvocationDecision[]): InvocationDecision {
  * @param rules     Policy rules to apply (defaults to DEFAULT_RULES).
  * @param currentSnapshotHash  Current tool descriptor hash — consent is only
  *   valid when it matches, preventing rug-pull after consent was granted.
+ * @param userIdHash  Hash of the calling principal. When provided, consent
+ *   downgrades only apply to the same principal — without it, one user's
+ *   recorded approval would silently authorise every other user.
  */
 export function evaluatePolicy(
   toolName: string,
@@ -138,7 +141,8 @@ export function evaluatePolicy(
   vetting: VettingResult | null,
   consent: ConsentRecord[] | ConsentStore,
   rules: PolicyRule[] = DEFAULT_RULES,
-  currentSnapshotHash?: string
+  currentSnapshotHash?: string,
+  userIdHash?: string
 ): ToolInvocationDecision {
   // Normalize to an array. When a store is passed we read its current contents;
   // the lookup below filters to the relevant, still-valid record.
@@ -160,8 +164,9 @@ export function evaluatePolicy(
 
   // Check consent records — if valid consent exists, downgrade ask_user → allow.
   // Consent is only honoured when the tool's snapshot hash matches, preventing
-  // rug-pull attacks where the MCP server changes tool behavior post-consent.
-  const validConsent = lookupConsent(consentRecords, toolName, currentSnapshotHash);
+  // rug-pull attacks where the MCP server changes tool behavior post-consent,
+  // and (when a principal hash is supplied) only for the same principal.
+  const validConsent = lookupConsent(consentRecords, toolName, currentSnapshotHash, userIdHash);
   if (validConsent) {
     const idx = decisions.indexOf("ask_user");
     if (idx !== -1) decisions.splice(idx, 1);
