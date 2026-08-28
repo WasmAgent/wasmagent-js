@@ -963,8 +963,14 @@ export class ToolCallingAgent {
           string,
           { output: string; isError: boolean; isUntrusted: boolean }
         >();
+        // Health-metrics timing for the DAG path: node_start opens the clock
+        // per tool, node_done/node_error close it. Without this the default
+        // scheduler mode recorded no latency at all.
+        const nodeStarts = new Map<string, number>();
         for await (const evt of scheduler.execute(ir)) {
-          if (evt.type === "node_done") {
+          if (evt.type === "node_start") {
+            nodeStarts.set(evt.nodeId, Date.now());
+          } else if (evt.type === "node_done") {
             const toolResult = evt.result as import("../tools/types.js").ToolResult;
             let output: string;
             let isError = false;
@@ -972,6 +978,7 @@ export class ToolCallingAgent {
             if (toolResult?.error !== undefined) {
               isError = true;
               output = toolResult.error.message || "Tool execution failed with no output.";
+              HealthMetrics.getInstance().recordFailure();
             } else {
               try {
                 output =
@@ -979,12 +986,32 @@ export class ToolCallingAgent {
               } catch (e) {
                 isError = true;
                 output = `Tool output could not be serialised: ${e instanceof Error ? e.message : String(e)}`;
+                HealthMetrics.getInstance().recordFailure();
               }
+            }
+            const startedAtMs = nodeStarts.get(evt.nodeId);
+            if (startedAtMs !== undefined) {
+              HealthMetrics.getInstance().recordLatency(Date.now() - startedAtMs);
+              nodeStarts.delete(evt.nodeId);
             }
             resultMap.set(evt.nodeId, { output, isError, isUntrusted });
           } else if (evt.type === "node_error") {
             const reason = evt.error;
-            HealthMetrics.getInstance().recordFailure();
+            // Classify aborts/timeouts like the parallel path does; run-level
+            // cancellation arrives with error === undefined and stays a failure.
+            if (
+              reason instanceof Error &&
+              (reason.name === "TimeoutError" || reason.name === "AbortError")
+            ) {
+              HealthMetrics.getInstance().recordTimeout();
+            } else {
+              HealthMetrics.getInstance().recordFailure();
+            }
+            const startedAtMs = nodeStarts.get(evt.nodeId);
+            if (startedAtMs !== undefined) {
+              HealthMetrics.getInstance().recordLatency(Date.now() - startedAtMs);
+              nodeStarts.delete(evt.nodeId);
+            }
             resultMap.set(evt.nodeId, {
               output: `Tool dispatch threw: ${reason instanceof Error ? reason.message : String(reason ?? "unknown error")}`,
               isError: true,
@@ -1089,6 +1116,7 @@ export class ToolCallingAgent {
                   return r.output === undefined ? "null" : JSON.stringify(r.output);
                 } catch (e) {
                   callIsError = true;
+                  HealthMetrics.getInstance().recordFailure();
                   return `Tool output could not be serialised: ${e instanceof Error ? e.message : String(e)}`;
                 }
               },

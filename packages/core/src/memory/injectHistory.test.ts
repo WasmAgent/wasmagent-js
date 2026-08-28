@@ -140,3 +140,56 @@ describe("injectHistoryIntoAssembler (#303)", () => {
     expect(nonSystem[2]?.content).toBe("Third");
   });
 });
+
+// ── Regression: raw-injected history must survive compact()/buildAsync() ────
+//
+// addRawMessage used to bypass #history, so (a) compact() dropped every
+// injected message when it rebuilt #msgCache from #history, (b) buildAsync
+// misaligned #history[i]↔#msgCache[i], and (c) historyLength stayed 0, so
+// ToolCallingAgent.run() reset the assembler and wiped pre-injected history.
+
+describe("raw history survival (review regression)", () => {
+  test("injected messages survive compact() when inside the recent window", async () => {
+    const assembler = makeAssembler();
+    // Oldest turns get summarized away; the raw-injected pair sits inside
+    // the keepRecentSteps window and must survive the rebuild verbatim.
+    for (let i = 0; i < 3; i++) {
+      assembler.addStep({ type: "user_message", content: `oldest turn ${i} ${"x".repeat(50)}` });
+    }
+    const messages: ModelMessage[] = [
+      { role: "user", content: "earlier question" },
+      { role: "assistant", content: "earlier answer" },
+    ];
+    injectHistoryIntoAssembler(assembler, messages);
+    for (let i = 0; i < 2; i++) {
+      assembler.addStep({ type: "user_message", content: `newest turn ${i} ${"x".repeat(50)}` });
+    }
+    const summarizer = {
+      providerId: "mock/summarizer",
+      async *generate(): AsyncGenerator<StreamEvent> {
+        yield { type: "text_delta", delta: "summary of earlier turns" };
+        yield { type: "stop", stopReason: "end_turn" };
+      },
+    };
+    await assembler.compact(summarizer, 5);
+    const built = assembler.build();
+    const roles = built.map((m) => m.role);
+    expect(roles).toContain("user");
+    // The injected user turn must still be present after compaction.
+    const earlier = built.find(
+      (m) => m.role === "user" && String(m.content).includes("earlier question")
+    );
+    expect(earlier).toBeDefined();
+  });
+
+  test("historyLength counts injected messages so run() preserves them", () => {
+    const assembler = makeAssembler();
+    injectHistoryIntoAssembler(assembler, [
+      { role: "user", content: "prior turn" },
+      { role: "assistant", content: "prior reply" },
+    ]);
+    // ToolCallingAgent.run() gates its reset() on historyLength === 0 —
+    // injected history must count, or it gets wiped.
+    expect(assembler.historyLength).toBe(2);
+  });
+});

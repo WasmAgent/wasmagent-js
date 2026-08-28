@@ -245,11 +245,11 @@ export class MessageAssembler {
   /**
    * Inject a raw ModelMessage directly into the assembled output.
    * Used for pre-populating conversation history (e.g., from a previous session).
-   * The message is stored as a single-element cache entry and counts toward historyLength.
+   * Recorded as a {@link RawMessageStep} so history/msgCache stay aligned and
+   * the message survives compact() and buildAsync() verbatim.
    */
   addRawMessage(msg: ModelMessage): void {
-    this.#msgCache.push([msg]);
-    this.#flatMsgCount += 1;
+    this.addStep({ type: "raw_message", message: msg });
   }
 
   /** Returns a shallow copy of the recorded step history (for checkpointing). */
@@ -527,6 +527,8 @@ export class MessageAssembler {
         return [];
       case "user_message":
         return [{ role: "user", content: step.content }];
+      case "raw_message":
+        return [step.message];
     }
   }
 }

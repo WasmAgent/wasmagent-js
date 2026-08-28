@@ -211,8 +211,13 @@ export class EvidenceCompressor {
     }
     const chainFingerprint = buildChainFingerprint(perRecordHashes);
 
-    const firstRecord = records[0]!;
-    const lastRecord = records[records.length - 1]!;
+    const firstRecord = records.at(0);
+    const lastRecord = records.at(-1);
+    const firstRecordHash = perRecordHashes.at(0);
+    const lastRecordHash = perRecordHashes.at(-1);
+    if (!firstRecord || !lastRecord || !firstRecordHash || !lastRecordHash) {
+      throw new RangeError("EvidenceCompressor.compress: records array must not be empty");
+    }
 
     // --- tool stats ---
     const toolMap = new Map<
@@ -343,8 +348,8 @@ export class EvidenceCompressor {
 
     const summary: CompressedChainSummary = {
       chainFingerprint,
-      firstRecordHash: perRecordHashes[0]!,
-      lastRecordHash: perRecordHashes[perRecordHashes.length - 1]!,
+      firstRecordHash: firstRecordHash,
+      lastRecordHash: lastRecordHash,
       chainPrevHash: firstRecord.prev_record_hash ?? null,
       recordCount: records.length,
       startedAtMs,
