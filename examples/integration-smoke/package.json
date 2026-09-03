@@ -31,6 +31,6 @@
     "@wasmagent/kernel-quickjs": "workspace:*",
     "@wasmagent/mastra-sandbox": "workspace:*",
     "@wasmagent/mcp-server": "workspace:*",
-    "zod": "^3.22.0"
+    "zod": "^4.5.4"
   }
 }
