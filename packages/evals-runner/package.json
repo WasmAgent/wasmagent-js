@@ -31,7 +31,7 @@
   "dependencies": {
     "@wasmagent/core": "workspace:*",
     "@wasmagent/devtools": "workspace:*",
-    "zod": "^3.23.0",
+    "zod": "^4.5.4",
     "@wasmagent/models": "workspace:*"
   },
   "devDependencies": {

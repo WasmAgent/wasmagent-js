@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@noble/ed25519": "^3.1.0",
-    "zod": "^3.23.0"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
