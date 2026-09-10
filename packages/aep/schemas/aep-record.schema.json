@@ -9,7 +9,8 @@
           "enum": [
             "aep/v0.1",
             "aep/v0.2",
-            "aep/v0.3"
+            "aep/v0.3",
+            "aep/v0.4"
           ]
         },
         "run_id": {
@@ -408,7 +409,7 @@
               },
               "state_digest_coverage": {
                 "type": "object",
-                "additionalProperties": true
+                "additionalProperties": {}
               },
               "argument_drift": {
                 "type": "object",
@@ -578,6 +579,12 @@
         "created_at_ms": {
           "type": "number"
         },
+        "prev_record_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "run_context": {
           "type": "object",
           "properties": {
@@ -622,6 +629,65 @@
             "network-egress",
             "unknown"
           ]
+        },
+        "timestamp_proof": {
+          "type": "object",
+          "properties": {
+            "timestamp": {
+              "type": "string"
+            },
+            "authority": {
+              "type": "string"
+            },
+            "proof": {
+              "type": "string"
+            },
+            "logIndex": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "timestamp",
+            "authority",
+            "proof"
+          ],
+          "additionalProperties": false
+        },
+        "dsse_envelope": {
+          "type": "object",
+          "properties": {
+            "payloadType": {
+              "type": "string"
+            },
+            "payload": {
+              "type": "string"
+            },
+            "signatures": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "keyid": {
+                    "type": "string"
+                  },
+                  "sig": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "keyid",
+                  "sig"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "payloadType",
+            "payload",
+            "signatures"
+          ],
+          "additionalProperties": false
         },
         "signature": {
           "type": "object",
