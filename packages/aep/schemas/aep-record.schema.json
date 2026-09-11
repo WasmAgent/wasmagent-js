@@ -10,7 +10,8 @@
             "aep/v0.1",
             "aep/v0.2",
             "aep/v0.3",
-            "aep/v0.4"
+            "aep/v0.4",
+            "aep/v0.5"
           ]
         },
         "run_id": {
@@ -21,6 +22,58 @@
         },
         "subject_id": {
           "type": "string"
+        },
+        "authorized_by": {
+          "type": "string"
+        },
+        "authority_origin": {
+          "type": "string",
+          "enum": [
+            "subject_consented",
+            "administrator_assigned",
+            "organization_wide",
+            "unknown"
+          ]
+        },
+        "identity_source": {
+          "type": "string",
+          "enum": [
+            "self_asserted",
+            "organization_attested",
+            "notified_eid",
+            "qualified_certificate",
+            "unknown"
+          ]
+        },
+        "attribution_backing": {
+          "type": "string",
+          "enum": [
+            "operator_asserted",
+            "principal_key_signed",
+            "qualified_signature",
+            "unknown"
+          ]
+        },
+        "run_attribution_backing_floor": {
+          "type": "string",
+          "enum": [
+            "operator_asserted",
+            "principal_key_signed",
+            "qualified_signature",
+            "unknown"
+          ]
+        },
+        "run_attribution_backing_observed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "operator_asserted",
+              "principal_key_signed",
+              "qualified_signature",
+              "unknown"
+            ]
+          }
         },
         "trace_id": {
           "type": "string"

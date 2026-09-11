@@ -5460,3 +5460,89 @@ describe("addAction explicit-undefined defaults (review fix)", () => {
     expect(record.actions[0]?.timestamp_ms).toBeGreaterThan(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// AEP v0.5 — attribution grading (canonical wasmagent-protocol 0.1.9)
+// ---------------------------------------------------------------------------
+
+describe("AEP v0.5 — attribution grading", () => {
+  it("build() emits v0.3 by default when no schemaVersion is set (backward compat)", () => {
+    const emitter = new AEPEmitter({ run_id: "run-v05-default" });
+    emitter.addAction({ tool_name: "bash", state_changing: false });
+    const record = emitter.build();
+    expect(record.schema_version).toBe("aep/v0.3");
+  });
+
+  it("build() carries the six attribution fields when schemaVersion is aep/v0.5", () => {
+    const emitter = new AEPEmitter({
+      run_id: "run-v05-attrib-001",
+      user_id: "user-dana@acme.example",
+      schemaVersion: "aep/v0.5",
+      authorized_by: "manager-ade@acme.example",
+      authority_origin: "subject_consented",
+      identity_source: "organization_attested",
+      attribution_backing: "principal_key_signed",
+      run_attribution_backing_floor: "operator_asserted",
+      run_attribution_backing_observed: ["operator_asserted", "principal_key_signed"],
+    });
+    emitter.addAction({ tool_name: "bash", state_changing: false });
+    const record = emitter.build();
+
+    expect(record.schema_version).toBe("aep/v0.5");
+    expect(record.authorized_by).toBe("manager-ade@acme.example");
+    expect(record.authority_origin).toBe("subject_consented");
+    expect(record.identity_source).toBe("organization_attested");
+    expect(record.attribution_backing).toBe("principal_key_signed");
+    // Floor honestly below the strongest observed grade — MUST NOT round up.
+    expect(record.run_attribution_backing_floor).toBe("operator_asserted");
+    expect(record.run_attribution_backing_observed).toEqual([
+      "operator_asserted",
+      "principal_key_signed",
+    ]);
+    expect(record.user_id).toBe("user-dana@acme.example");
+  });
+
+  it("emit() with useDsse keeps aep/v0.5 when schemaVersion is explicitly v0.5", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-v05-dsse-001",
+      signer,
+      schemaVersion: "aep/v0.5",
+      useDsse: true,
+      attribution_backing: "qualified_signature",
+    });
+    emitter.addAction({ tool_name: "write_file", state_changing: true });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    expect(record.schema_version).toBe("aep/v0.5");
+    expect(record.dsse_envelope).toBeDefined();
+    expect(record.attribution_backing).toBe("qualified_signature");
+  });
+
+  it("emit() with useDsse still stamps aep/v0.4 when schemaVersion is the default", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-v04-default-001",
+      signer,
+      useDsse: true,
+    });
+    emitter.addAction({ tool_name: "bash", state_changing: false });
+    const record = await emitter.emit(1_700_000_000_000);
+    expect(record.schema_version).toBe("aep/v0.4");
+  });
+
+  it("verifyAEPRecord accepts a signed v0.5 record", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
+    const emitter = new AEPEmitter({
+      run_id: "run-v05-verify-001",
+      signer,
+      schemaVersion: "aep/v0.5",
+      authority_origin: "administrator_assigned",
+    });
+    emitter.addAction({ tool_name: "bash", state_changing: false });
+    const record = await emitter.emit(1_700_000_000_000);
+    const publicKey = await signer.getPublicKey();
+    const valid = await verifyAEPRecord(record, publicKey);
+    expect(valid).toBe(true);
+  });
+});

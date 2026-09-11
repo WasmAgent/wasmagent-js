@@ -216,10 +216,37 @@ export type RunContext = z.infer<typeof RunContextSchema>;
 
 // AEPRecord — the top-level Agent Evidence Protocol record
 export const AEPRecordSchema = z.object({
-  schema_version: z.enum(["aep/v0.1", "aep/v0.2", "aep/v0.3", "aep/v0.4"]),
+  schema_version: z.enum(["aep/v0.1", "aep/v0.2", "aep/v0.3", "aep/v0.4", "aep/v0.5"]),
   run_id: z.string(),
   user_id: z.string().optional(),
   subject_id: z.string().optional(),
+  // v0.5: attribution grading (canonical wasmagent-protocol 0.1.9).
+  // authorized_by distinguishes the party that granted/approved the
+  // authority from user_id (the principal the run acted on behalf of);
+  // the run-level floor MUST NOT round up — it reports the weakest
+  // attribution backing present across the authorizations the run relied on.
+  authorized_by: z.string().optional(),
+  authority_origin: z
+    .enum(["subject_consented", "administrator_assigned", "organization_wide", "unknown"])
+    .optional(),
+  identity_source: z
+    .enum([
+      "self_asserted",
+      "organization_attested",
+      "notified_eid",
+      "qualified_certificate",
+      "unknown",
+    ])
+    .optional(),
+  attribution_backing: z
+    .enum(["operator_asserted", "principal_key_signed", "qualified_signature", "unknown"])
+    .optional(),
+  run_attribution_backing_floor: z
+    .enum(["operator_asserted", "principal_key_signed", "qualified_signature", "unknown"])
+    .optional(),
+  run_attribution_backing_observed: z
+    .array(z.enum(["operator_asserted", "principal_key_signed", "qualified_signature", "unknown"]))
+    .optional(),
   trace_id: z.string().optional(),
   parent_trace_id: z.string().nullish(),
   repo_commit: z.string().optional(),

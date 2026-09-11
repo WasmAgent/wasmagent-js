@@ -40,6 +40,39 @@ export interface AEPEmitterOptions {
   run_id: string;
   user_id?: string;
   subject_id?: string;
+  /** Target schema version. Default: "aep/v0.3". useDsse stamps "aep/v0.4" unless this is "aep/v0.5". */
+  schemaVersion?: "aep/v0.3" | "aep/v0.4" | "aep/v0.5";
+  /** v0.5: principal that granted/approved the authority (may differ from user_id). */
+  authorized_by?: string;
+  /** v0.5: how the principal's authority was obtained. */
+  authority_origin?:
+    | "subject_consented"
+    | "administrator_assigned"
+    | "organization_wide"
+    | "unknown";
+  /** v0.5: how the identity behind the backing key was established. */
+  identity_source?:
+    | "self_asserted"
+    | "organization_attested"
+    | "notified_eid"
+    | "qualified_certificate"
+    | "unknown";
+  /** v0.5: what backs the human attribution. */
+  attribution_backing?:
+    | "operator_asserted"
+    | "principal_key_signed"
+    | "qualified_signature"
+    | "unknown";
+  /** v0.5: weakest backing present across the run — MUST NOT round up. */
+  run_attribution_backing_floor?:
+    | "operator_asserted"
+    | "principal_key_signed"
+    | "qualified_signature"
+    | "unknown";
+  /** v0.5: every backing grade observed across the run (floor and itemization ship together). */
+  run_attribution_backing_observed?: Array<
+    "operator_asserted" | "principal_key_signed" | "qualified_signature" | "unknown"
+  >;
   trace_id?: string;
   parent_trace_id?: string | null;
   repo_commit?: string;
@@ -229,14 +262,14 @@ export class AEPEmitter {
     } = normalised;
 
     if (this.#opts.useDsse) {
-      // DSSE/in-toto path (v0.4).
+      // DSSE/in-toto path (v0.4; stays v0.5 when an explicit v0.5 target was set).
       // Stamp the final schema_version BEFORE building the statement so the
       // signed predicate covers every field the record carries — otherwise
       // inline fields are not cryptographically bound to the envelope and
       // verifyAEPRecord could accept tampered records.
       const stamped = AEPRecordSchema.parse({
         ...normalisedUnsigned,
-        schema_version: "aep/v0.4",
+        schema_version: this.#opts.schemaVersion === "aep/v0.5" ? "aep/v0.5" : "aep/v0.4",
         signature: placeholder,
       });
       const {
@@ -358,14 +391,29 @@ export class AEPEmitter {
       run_context,
       recordingMode: _rm,
       sideEffectClass: _sec,
+      schemaVersion,
+      authorized_by,
+      authority_origin,
+      identity_source,
+      attribution_backing,
+      run_attribution_backing_floor,
+      run_attribution_backing_observed,
       ...opts
     } = this.#opts;
     const runSideEffectMax = this.#computeRunSideEffectClassMax();
     return {
-      schema_version: "aep/v0.3",
+      schema_version: schemaVersion ?? "aep/v0.3",
       ...opts,
       ...(this.#userId !== undefined && { user_id: this.#userId }),
       ...(this.#subjectId !== undefined && { subject_id: this.#subjectId }),
+      ...(authorized_by !== undefined && { authorized_by }),
+      ...(authority_origin !== undefined && { authority_origin }),
+      ...(identity_source !== undefined && { identity_source }),
+      ...(attribution_backing !== undefined && { attribution_backing }),
+      ...(run_attribution_backing_floor !== undefined && { run_attribution_backing_floor }),
+      ...(run_attribution_backing_observed !== undefined && {
+        run_attribution_backing_observed,
+      }),
       input_refs: this.#inputRefs,
       output_refs: this.#outputRefs,
       capability_decisions: this.#capabilityDecisions,
