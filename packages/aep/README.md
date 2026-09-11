@@ -1,10 +1,10 @@
 # @wasmagent/aep
 
-> **Maturity: beta (v0.3 schema)** — AEP v0.3 extends the evidence schema with side-effect classification, state-digest metadata, argument-drift detection, and approval-mode semantics. The Ed25519 signature contract remains stable from v0.2. The signing key management story (KMS rotation, key revocation) is still evolving; treat key-id semantics as beta-stable.
+> **Maturity: beta (aep/v0.5 schema)** — the record vocabulary spans side-effect classification, state-digest metadata, argument-drift detection and approval-mode semantics (v0.3), DSSE attestation (v0.4), and attribution grading (v0.5). The Ed25519 signature contract remains stable from v0.2. The signing key management story (KMS rotation, key revocation) is still evolving; treat key-id semantics as beta-stable.
 
 Agent Evidence Protocol — runtime action evidence and run provenance types for WasmAgent.
 
-Emit verifiable `AEPRecord` evidence after every agent run. Records are schema-versioned; v0.3 is the current shipped schema. v0.1 and v0.2 records are still parsed for backward compatibility but no longer produced. Records are consumable by `evomerge` for audit and training data export.
+Emit verifiable `AEPRecord` evidence after every agent run. Records are schema-versioned: the emitter defaults to `aep/v0.3`, and opts into `aep/v0.4` (DSSE attestation) or `aep/v0.5` (attribution grading) via the `schemaVersion` option. `aep/v0.1`–`v0.4` records remain valid and parseable. Records are consumable by `evomerge` for audit and training data export.
 
 ## Install
 
@@ -290,13 +290,42 @@ emitter.addCapabilityDecision({
 });
 ```
 
-## Signature contract v0.2
+## DSSE attestation (aep/v0.4)
+
+When the emitter is constructed with `useDsse: true`, `emit()` wraps the record in a DSSE/in-toto envelope, signs it via PAE, and stamps `schema_version: "aep/v0.4"` (the legacy `signature` field stays populated for backward compatibility):
+
+```ts
+const emitter = new AEPEmitter({ run_id: "run-001", signer, useDsse: true });
+const record = await emitter.emit();
+```
+
+## Attribution grading (aep/v0.5)
+
+Six optional fields make the human authorization machine-checkable — a record that merely names a principal is not evidence that the principal consented (the Entra finding documented in OWASP MCP Top 10 #44):
+
+```ts
+const emitter = new AEPEmitter({
+  run_id: "run-001",
+  user_id: "user-dana@acme.example",
+  schemaVersion: "aep/v0.5",
+  authorized_by: "manager-ade@acme.example",   // may differ from user_id
+  authority_origin: "subject_consented",       // how the authority was obtained
+  identity_source: "organization_attested",    // how the identity was established
+  attribution_backing: "principal_key_signed", // what backs the attribution
+  run_attribution_backing_floor: "operator_asserted", // weakest grade — MUST NOT round up
+  run_attribution_backing_observed: ["operator_asserted", "principal_key_signed"],
+});
+```
+
+Vocabulary shared with the OWASP MCP Top 10 "Verifiable Authorization Lineage" recommended control (`wasmagent-protocol` 0.1.9).
+
+## Signature contract
 
 Every `AEPRecord` emitted via `AEPEmitter.emit()` carries a mandatory `signature` block:
 
 ```ts
 signature: {
-  alg: "ed25519",   // always "ed25519" in v0.2
+  alg: "ed25519",   // always "ed25519"
   key_id: string,   // stable identifier for the signing key (e.g. "local-dev-key-01")
   sig: string,      // base64-encoded 64-byte Ed25519 signature
 }

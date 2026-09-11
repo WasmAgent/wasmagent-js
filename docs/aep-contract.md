@@ -1,12 +1,12 @@
-# AEP Schema Contract (aep/v0.3; DSSE variant aep/v0.4)
+# AEP Schema Contract (aep/v0.3; DSSE variant aep/v0.4; attribution aep/v0.5)
 
-The Agent Evidence Protocol (AEP) is the cross-repo evidence contract for the WasmAgent ecosystem. `AEPRecord` is emitted by `@wasmagent/aep` after every agent run and consumed by `trace-pipeline` (`evomerge`) for audit and training data export. New emitters build `aep/v0.3` records; when the emitter is configured with `useDsse: true`, `emit()` produces `aep/v0.4` DSSE/in-toto envelopes. The canonical schema (`WasmAgent/wasmagent-protocol`, published as 0.1.9) has since moved to `aep/v0.5` with additive attribution-grading fields (`authority_origin`, `identity_source`, `attribution_backing`, `run_attribution_backing_floor`, `run_attribution_backing_observed`, `authorized_by`) — emitter adoption is tracked separately; this document describes what `@wasmagent/aep` emits today.
+The Agent Evidence Protocol (AEP) is the cross-repo evidence contract for the WasmAgent ecosystem. `AEPRecord` is emitted by `@wasmagent/aep` after every agent run and consumed by `trace-pipeline` (`evomerge`) for audit and training data export. New emitters build `aep/v0.3` records; `useDsse: true` produces `aep/v0.4` DSSE/in-toto envelopes; `schemaVersion: "aep/v0.5"` emits the canonical attribution-grading vocabulary (`authority_origin`, `identity_source`, `attribution_backing`, `run_attribution_backing_floor`, `run_attribution_backing_observed`, `authorized_by` — canonical `WasmAgent/wasmagent-protocol` 0.1.9, shared with the OWASP Verifiable Authorization Lineage recommended control).
 
 ---
 
-## Schema version: `aep/v0.3`
+## Schema versions
 
-Current shipped contract. `aep/v0.3` builds on the v0.2 schema — which introduced the **required** Ed25519 `signature` field (the emitter always signs records via `AEPSigner`; default `LocalEd25519Signer`, KMS adapter slot reserved) — and adds:
+**`aep/v0.3`** — the base contract. `aep/v0.3` builds on the v0.2 schema — which introduced the **required** Ed25519 `signature` field (the emitter always signs records via `AEPSigner`; default `LocalEd25519Signer`, KMS adapter slot reserved) — and adds:
 
 - `recording_mode` and `side_effect_class` on every `ActionEvidence` (defaults `"validation"` / `"unknown"`)
 - run-level `run_side_effect_class_max`
@@ -18,9 +18,24 @@ Current shipped contract. `aep/v0.3` builds on the v0.2 schema — which introdu
 
 **`aep/v0.4`** is the DSSE/in-toto emission variant: when the emitter is constructed with `useDsse: true`, `emit()` wraps the record in a DSSE envelope (`dsse_envelope`), signs the envelope via PAE, and stamps `schema_version: "aep/v0.4"` while still populating the legacy `signature` field for backward compatibility.
 
-v0.1 and v0.2 records are still parsed for backward compatibility but no longer produced. New emitters always write `"aep/v0.3"` (or `"aep/v0.4"` when DSSE emission is enabled).
+**`aep/v0.5`** adds the attribution-grading vocabulary as optional fields (see below). `useDsse: true` combined with `schemaVersion: "aep/v0.5"` emits a DSSE-signed v0.5 record.
 
-New optional fields may be added without a version bump. Breaking changes require `aep/v0.4` (or later) and a migration script.
+v0.1 and v0.2 records are still parsed for backward compatibility but no longer produced. By default new emitters write `"aep/v0.3"` (or `"aep/v0.4"` when DSSE emission is enabled); pass `schemaVersion: "aep/v0.5"` to emit the attribution fields.
+
+New optional fields may be added without a version bump. Breaking changes require a version bump and a migration script.
+
+### v0.5 attribution grading
+
+| Field | Meaning |
+|---|---|
+| `authorized_by` | Principal that granted/approved the authority, when it differs from `user_id` (requester vs authorizer) |
+| `authority_origin` | `subject_consented` / `administrator_assigned` / `organization_wide` / `unknown` — how the authority was conferred |
+| `identity_source` | `self_asserted` / `organization_attested` / `notified_eid` / `qualified_certificate` / `unknown` — how the identity behind the backing key was established |
+| `attribution_backing` | `operator_asserted` / `principal_key_signed` / `qualified_signature` / `unknown` — what stands behind the attribution |
+| `run_attribution_backing_floor` | Weakest grade present across the run — MUST NOT round up |
+| `run_attribution_backing_observed` | Every grade observed across the run (floor and itemization ship together) |
+
+Vocabulary shared with the OWASP MCP Top 10 "Verifiable Authorization Lineage" recommended control.
 
 ---
 
@@ -28,7 +43,7 @@ New optional fields may be added without a version bump. Breaking changes requir
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `schema_version` | `"aep/v0.1" \| "aep/v0.2" \| "aep/v0.3" \| "aep/v0.4"` | **yes** | The literal schema tag. New emitters always write `"aep/v0.3"` (or `"aep/v0.4"` when emitting a DSSE-signed record via `useDsse`). |
+| `schema_version` | `"aep/v0.1" \| "aep/v0.2" \| "aep/v0.3" \| "aep/v0.4" \| "aep/v0.5"` | **yes** | The literal schema tag. Default `"aep/v0.3"`; `"aep/v0.4"` when DSSE emission is enabled; `"aep/v0.5"` when `schemaVersion: "aep/v0.5"` is set. |
 | `run_id` | `string` | **yes** | Unique identifier for this agent run |
 | `user_id` | `string` | no | User identity for cross-run behavior audit |
 | `subject_id` | `string` | no | Subject identity for cross-run behavior audit |
