@@ -117,13 +117,24 @@ jobs:
         run: |
           # Parse published packages from changesets output
           PACKAGES='${{ steps.changesets.outputs.publishedPackages }}'
-          # Get the core version (representative of the release)
+          # Get the core version (representative of the release).
+          # The current action major no longer emits a parseable
+          # publishedPackages blob (observed: a blank value) — it creates
+          # the per-package GitHub Releases itself, so when nothing parses
+          # we skip the aggregate release instead of crashing.
           CORE_VERSION=$(echo "$PACKAGES" | python3 -c "
           import sys, json
-          pkgs = json.load(sys.stdin)
+          try:
+              pkgs = json.load(sys.stdin)
+          except Exception:
+              pkgs = []
           core = next((p for p in pkgs if p['name'] == '@wasmagent/core'), pkgs[0] if pkgs else None)
           print(core['version'] if core else 'unknown')
           ")
+          if [ "$CORE_VERSION" = "unknown" ] || [ -z "$CORE_VERSION" ]; then
+            echo "No publishedPackages JSON from the changesets action (per-package Releases were created by the action itself) — skipping aggregate release."
+            exit 0
+          fi
           TAG="v${CORE_VERSION}"
           # Rapid-major-bump guard (#244): refuse a NEW major aggregate tag
           # within 24h of the previous distinct major (the 2026-07-23
