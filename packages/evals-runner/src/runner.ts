@@ -48,7 +48,21 @@ const WARMUP_PROMPT = "Reply with the word OK only.";
 export function defaultProvider(): ModelProvider {
   return {
     async call({ model, messages, abortSignal }) {
-      const url = `${model.baseUrl.replace(/\/$/, "")}/chat/completions`;
+      // SSRF guard: operator-configured base URLs may only target https, or
+      // plain http on loopback for local model servers (ollama, vLLM).
+      const url = new URL(`${model.baseUrl.replace(/\/$/, "")}/chat/completions`);
+      const loopback =
+        url.hostname === "localhost" ||
+        url.hostname.endsWith(".localhost") ||
+        url.hostname === "127.0.0.1" ||
+        url.hostname === "::1" ||
+        url.hostname === "[::1]";
+      if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback)) {
+        throw new Error(
+          `refusing provider endpoint ${url.protocol}//${url.hostname}: ` +
+            "use https, or http on loopback for local model servers"
+        );
+      }
       const apiKey = model.apiKey ?? process.env.OPENAI_API_KEY ?? "ollama";
       const init: RequestInit = {
         method: "POST",
