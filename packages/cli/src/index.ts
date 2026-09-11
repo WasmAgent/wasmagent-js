@@ -35,6 +35,24 @@ import type { AnthropicModelId, AnthropicModelOptions } from "@wasmagent/models"
 import { AnthropicModel, AnthropicModels } from "@wasmagent/models";
 
 /**
+ * Validate an operator-supplied filesystem path before any write.
+ *
+ * Rejects empty strings and NUL/control characters (path confusion), and
+ * returns the resolved absolute target so `..` segments cannot smuggle a
+ * write outside the caller's declared destination.
+ */
+function safeOutputPath(raw: string): string {
+  const hasControlChar = [...raw].some((ch) => {
+    const code = ch.charCodeAt(0);
+    return (code > 0 && code < 32) || code === 127;
+  });
+  if (!raw || raw.includes("\0") || hasControlChar) {
+    throw new Error(`invalid output path: ${JSON.stringify(raw)}`);
+  }
+  return pathResolve(raw);
+}
+
+/**
  * Build an `AnthropicModel` from CLI flags + env vars.
  *
  * The official `@anthropic-ai/sdk` honors `ANTHROPIC_BASE_URL` directly when
@@ -344,7 +362,7 @@ async function initProjectCommand(
   _opts: Record<string, string | boolean | undefined>
 ): Promise<void> {
   const kebab = projectName.replace(/\s+/g, "-").toLowerCase();
-  const dir = pathResolve(kebab);
+  const dir = safeOutputPath(kebab);
   await mkdir(dir, { recursive: true });
 
   await writeFile(
@@ -423,7 +441,7 @@ async function initToolCommand(opts: Record<string, string | boolean | undefined
     .join("");
   const snakeName = kebabName.replace(/-/g, "_");
 
-  const outputDir = typeof opts.output === "string" ? opts.output : ".";
+  const outputDir = safeOutputPath(typeof opts.output === "string" ? opts.output : ".");
   await mkdir(outputDir, { recursive: true });
 
   if (lang === "rust") {
@@ -902,7 +920,7 @@ async function guardCommand(
     );
     if (typeof opts.out === "string") {
       const { writeFile: wf } = await import("node:fs/promises");
-      await wf(opts.out as string, jsonOut, "utf8");
+      await wf(safeOutputPath(opts.out as string), jsonOut, "utf8");
       console.log(`Guard report written to ${opts.out}`);
     } else {
       console.log(jsonOut);
@@ -1028,7 +1046,7 @@ async function evidenceCommand(
   }
 
   const outputFmt = typeof opts.format === "string" ? opts.format : "json";
-  const outPath = typeof opts.out === "string" ? opts.out : undefined;
+  const outPath = typeof opts.out === "string" ? safeOutputPath(opts.out) : undefined;
 
   const { readFile, writeFile: wf } = await import("node:fs/promises");
   const raw = await readFile(inputPath, "utf8");
@@ -1904,7 +1922,7 @@ export async function evalsCommand(
   const reportFile = (opts["report-file"] as string | undefined) ?? null;
   if (reportFile) {
     const { writeFile: wf } = await import("node:fs/promises");
-    await wf(reportFile, md, "utf8");
+    await wf(safeOutputPath(reportFile), md, "utf8");
     console.log(`Report → ${reportFile}`);
   } else {
     console.log(md);

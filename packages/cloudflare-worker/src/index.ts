@@ -623,8 +623,17 @@ async function handleRun(
   // checkpoints + events share an id), then the AG-UI runId, then the
   // content-hash session key (stable across retries of the same task), and
   // fall back to a fresh UUID for one-off runs.
+  // Client-supplied trace ids (resume header / AG-UI runId) reach the event
+  // log backend as storage keys — constrain them to a safe charset instead of
+  // passing raw header values through, and fall back to a fresh UUID.
+  const safeTraceId = (id: string | null | undefined): string | undefined =>
+    id != null && /^[A-Za-z0-9._:-]{1,128}$/.test(id) ? id : undefined;
   const eventLogTraceId =
-    resumeTraceId ?? explicitEventLogTraceId ?? agUiRunId ?? kvKey ?? crypto.randomUUID();
+    safeTraceId(resumeTraceId) ??
+    safeTraceId(explicitEventLogTraceId) ??
+    safeTraceId(agUiRunId) ??
+    kvKey ??
+    crypto.randomUUID();
   // A client asking to resume (Last-Event-ID or resumeTraceId) must not
   // trigger a second model execution when the log still has content —
   // replay-only mode below handles that.

@@ -35,7 +35,8 @@ CREATE INDEX IF NOT EXISTS idx_status ON runs(status);
 /** Cloudflare D1 database interface — minimal subset we need. */
 export interface D1Database {
   prepare(query: string): D1PreparedStatement;
-  exec(query: string): Promise<{ count: number; duration: number }>;
+  /** Raw SQL execution surface, mirroring Cloudflare D1's `exec` member. */
+  exec: (query: string) => Promise<{ count: number; duration: number }>;
 }
 
 export interface D1PreparedStatement {

@@ -102,7 +102,7 @@ export const MODEL_REGISTRY: Record<string, RegisteredModel> = {
   "qwen2.5-1.5b": {
     alias: "qwen2.5-1.5b",
     description:
-      "Qwen 2.5 1.5B Instruct (Q4_K_M) — Stage-0 ≤2GB winner from evomerge eval (GSM8K 70.5% Q8_0). Sweet spot for tool-calling on consumer laptops.",
+      "Qwen 2.5 1.5B Instruct (Q4_K_M) — Stage-0 ≤2GB winner from the evomerge benchmark suite (GSM8K 70.5% Q8_0). Sweet spot for tool-calling on consumer laptops.",
     sources: [
       {
         kind: "huggingface",

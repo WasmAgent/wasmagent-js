@@ -414,11 +414,17 @@ function defaultTool(): McpToolEntry {
   };
 }
 
+/** Upper bound on the resolved task string — bounds one run's prompt size. */
+const MAX_TASK_LENGTH = 32_768;
+
 function defaultResolveTask(tool: McpToolEntry, input: Record<string, unknown>): string {
   if (tool.name === DEFAULT_TOOL_NAME) {
     const t = input.task;
     if (typeof t !== "string" || !t.length) {
       throw new Error(`run_agent requires a non-empty 'task' string; got ${JSON.stringify(t)}`);
+    }
+    if (t.length > MAX_TASK_LENGTH) {
+      throw new Error(`run_agent task exceeds the ${MAX_TASK_LENGTH}-character limit`);
     }
     return t;
   }

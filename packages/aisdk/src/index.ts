@@ -5,8 +5,8 @@
  * and agent loops — but its default tool execution path runs the JS function
  * `execute` straight in your runtime. That's fine for typed business
  * functions. It is NOT fine when the LLM is generating the code: an agent
- * that emits `eval(userPrompt)` on a Worker has no isolation between the
- * model's output and your service.
+ * that runs model-generated JavaScript inline on a Worker has no isolation
+ * between the model's output and your service.
  *
  * This package gives the AI SDK two reusable tool factories that delegate to
  * WasmAgent's `Kernel` family:
