@@ -65,10 +65,10 @@ jobs:
         id: changesets
         uses: changesets/action@v2
         with:
-          version: bun run release:version
-          publish: bun run release:publish
-          commit: "chore: release"
-          title: "chore: release packages"
+          version-script: bun run release:version
+          publish-script: bun run release:publish
+          commit-message: "chore: release packages"
+          pr-title: "Version Packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
