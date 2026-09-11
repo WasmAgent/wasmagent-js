@@ -54,6 +54,14 @@ jobs:
       - name: Check sub-path imports (beta/experimental use correct paths)
         run: node scripts/check-subpath-imports.mjs
 
+      - name: Check AEP schema export freshness
+        # packages/aep/schemas/aep-record.schema.json is generated from the
+        # runtime Zod model (AEPRecordSchema); this fails when the model
+        # changed without re-running `bun run schema:export`. The file once
+        # drifted to aep/v0.3 while the emitter already produced v0.4.
+        run: bun run schema:check
+        working-directory: packages/aep
+
       # A1 — Enforce that heavy optional deps are NEVER statically imported in core.
       # Any top-level "import ... from '@anthropic-ai/sdk'" (or the other three) in
       # packages/core/src must be "import type" only; actual value imports must use
