@@ -1,6 +1,6 @@
-# AEP Schema Contract (aep/v0.3)
+# AEP Schema Contract (aep/v0.3; DSSE variant aep/v0.4)
 
-The Agent Evidence Protocol (AEP) is the cross-repo evidence contract for the WasmAgent ecosystem. `AEPRecord` is emitted by `@wasmagent/aep` after every agent run and consumed by `trace-pipeline` (`evomerge`) for audit and training data export. New emitters build `aep/v0.3` records; when the emitter is configured with `useDsse: true`, `emit()` produces `aep/v0.4` DSSE/in-toto envelopes.
+The Agent Evidence Protocol (AEP) is the cross-repo evidence contract for the WasmAgent ecosystem. `AEPRecord` is emitted by `@wasmagent/aep` after every agent run and consumed by `trace-pipeline` (`evomerge`) for audit and training data export. New emitters build `aep/v0.3` records; when the emitter is configured with `useDsse: true`, `emit()` produces `aep/v0.4` DSSE/in-toto envelopes. The canonical schema (`WasmAgent/wasmagent-protocol`, published as 0.1.9) has since moved to `aep/v0.5` with additive attribution-grading fields (`authority_origin`, `identity_source`, `attribution_backing`, `run_attribution_backing_floor`, `run_attribution_backing_observed`, `authorized_by`) — emitter adoption is tracked separately; this document describes what `@wasmagent/aep` emits today.
 
 ---
 

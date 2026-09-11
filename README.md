@@ -85,7 +85,7 @@ emitter.addAction({ tool_name: "bash", outcome: "pass", exit_code: 0 });
 
 // At the end — emit the record
 const record = emitter.build();
-// record satisfies aep/v0.1 JSON Schema — ready for evomerge validate-aep
+// record satisfies aep/v0.3 JSON Schema — ready for evomerge validate-aep
 ```
 
 → [AEP schema](./packages/aep/) · [trace-pipeline 10-min tutorial](https://github.com/WasmAgent/trace-pipeline/blob/main/docs/TRACE_TO_TRAINING_10MIN.md)

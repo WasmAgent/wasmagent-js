@@ -47,6 +47,6 @@ The AEP schema itself does not impose a retention limit. Operators deploying hig
 
 ## Gaps / Open Items
 
-- [ ] `schema_version` field still enumerates `aep/v0.1–v0.3`; update to include `aep/v0.4` once schema version is bumped
+- [x] `schema_version` enumeration resolved — the emitter writes `aep/v0.3` (or `aep/v0.4` with DSSE), and the canonical schema (`wasmagent-protocol` 0.1.9) now enumerates `aep/v0.1`–`aep/v0.5`
 - [ ] `recording_mode: full` should be enforced by policy for high-risk deployments — currently opt-in
 - [ ] Lifetime retention implementation is in trace-pipeline Milestone 5 (pending)

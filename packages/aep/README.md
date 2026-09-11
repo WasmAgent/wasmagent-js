@@ -33,7 +33,7 @@ emitter.addAction({
 
 // At the end — build the signed evidence record
 const record = emitter.build();
-// record satisfies AEPRecord (aep/v0.1)
+// record satisfies AEPRecord (aep/v0.3)
 ```
 
 ## Factory / Builder API
