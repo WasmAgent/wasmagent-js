@@ -1,5 +1,15 @@
 # @agentkit-js/cli
 
+## 1.3.18
+
+### Patch Changes
+
+- e1c02d8: Security hardening from the sealed security-scan findings: safe arithmetic evaluator replaces `Function()` in the basic-agent example; output paths from CLI arguments are validated (NUL/control characters rejected, resolved) before writes; OpenAI-compatible eval provider refuses non-https endpoints except loopback; client-supplied event-log trace ids are constrained to a safe charset; MCP `run_agent` task strings get a hard length cap; the D1 `exec` interface member is declared as a property signature.
+- Updated dependencies [e1c02d8]
+  - @wasmagent/evals-runner@1.10.14
+  - @wasmagent/model-local@1.0.17
+  - @wasmagent/core@3.7.0
+
 ## 1.3.17
 
 ### Patch Changes
