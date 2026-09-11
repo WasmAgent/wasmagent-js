@@ -75,5 +75,16 @@
     "turbo": "^2.10.7",
     "typescript": "^5.7.0",
     "vitepress": "^1.6.4"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^4.0.65",
+    "@anthropic-ai/sdk": "^0.125.0",
+    "@cloudflare/workers-types": "^5.20260911.1",
+    "@vitejs/plugin-react": "^6.1.1",
+    "ai": "^7.0.97",
+    "openai": "^7.15.0",
+    "pyodide": "^314.0.6",
+    "wrangler": "^4.130.0",
+    "zod": "^4.6.2"
   }
 }
