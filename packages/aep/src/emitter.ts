@@ -355,11 +355,10 @@ export class AEPEmitter {
     } = this.#opts;
     const runSideEffectMax = this.#computeRunSideEffectClassMax();
 
-    // aep/v0.5 floor consistency: the floor MUST be the weakest observed
-    // grade (MUST NOT round up). Auto-compute it from the observed set when
-    // the caller omitted it; a caller-supplied floor that is not the weakest
-    // is a hard error — silently keeping it would produce exactly the
-    // masking the floor exists to prevent.
+    // aep/v0.5 floor consistency: the floor MUST be the weakest grade in
+    // `run_attribution_backing_observed` (MUST NOT round up). The check runs
+    // regardless of whether the observed set is empty — a floor without an
+    // itemization is exactly the masking the floor exists to prevent.
     const backingOrder = [
       "unknown",
       "operator_asserted",
@@ -372,6 +371,18 @@ export class AEPEmitter {
     };
     let floor = run_attribution_backing_floor;
     const observed = run_attribution_backing_observed;
+
+    // FAIL CLOSED: a caller-supplied floor without a non-empty observed set
+    // cannot be verified against the weakest-grade rule — reject it rather
+    // than silently accepting an unverifiable claim.
+    if (floor !== undefined && (!observed || observed.length === 0)) {
+      throw new Error(
+        `run_attribution_backing_floor "${floor}" was provided without a non-empty ` +
+          `run_attribution_backing_observed set — the floor cannot be verified. ` +
+          `Either provide a non-empty observed set or omit the floor.`
+      );
+    }
+
     if (observed !== undefined && observed.length > 0) {
       const weakest = observed.reduce((acc, g) => (backingRank(g) < backingRank(acc) ? g : acc));
       if (floor !== undefined && floor !== weakest) {
