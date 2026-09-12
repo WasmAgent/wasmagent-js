@@ -7,7 +7,7 @@
 // The output directory must resolve inside the current working directory.
 
 import { createHash } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { AEPRecord } from "@wasmagent/aep";
 import {
@@ -251,5 +251,10 @@ jsonl("chain/singleton-with-prev.jsonl", [
 ]);
 
 console.log(`corpus written to ${OUT}`);
-writeFileSync(join(OUT, "dsse", "js-verify-key.hex"), Buffer.from(jsPub).toString("hex"));
-console.log(`js verifying key (hex): ${Buffer.from(jsPub).toString("hex")}`);
+// The pinned rust-signed fixture ships with its own verifying key — copy the
+// real file so the corpus key is byte-identical to what wasmagent-js CI uses.
+const rustFixtureKey = readFileSync(
+  join(process.cwd(), "packages/aep/src/__fixtures__/rust-gateway-verify-key.hex")
+).toString();
+writeFileSync(join(OUT, "dsse", "rust-fixture-verify-key.hex"), rustFixtureKey);
+console.log(`rust fixture verifying key (hex): ${rustFixtureKey.trim()}`);
