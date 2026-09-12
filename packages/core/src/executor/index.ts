@@ -3,6 +3,7 @@ export {
   buildCapabilityGlobals,
   buildSandboxFetch,
   matchGlob,
+  resolveEffectiveCapabilities,
 } from "./capabilities.js";
 export { createKernel } from "./factory.js";
 export { JsKernel } from "./JsKernel.js";

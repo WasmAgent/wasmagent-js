@@ -168,7 +168,17 @@ export class WasmtimeKernel implements WasmKernel {
     this.#timeoutMs = opts?.timeoutMs ?? 10_000;
     // Fuel metering is the primary CPU-bound defence: same-thread timeout
     // cannot preempt a synchronous infinite loop, so fuel is ALWAYS on.
-    // Callers may raise/lower the budget explicitly.
+    // Callers may raise/lower the budget explicitly. Disabling it (0,
+    // negative, NaN) is a RangeError — unmetered execution must be an
+    // explicit, separate unsafe mode, never a silent default.
+    if (opts?.fuelLimit !== undefined) {
+      if (!Number.isSafeInteger(opts.fuelLimit) || opts.fuelLimit <= 0) {
+        throw new RangeError(
+          `fuelLimit must be a positive safe integer, got ${opts.fuelLimit} — ` +
+            `unmetered execution is not supported`
+        );
+      }
+    }
     this.#fuelLimit = opts?.fuelLimit ?? DEFAULT_FUEL_LIMIT;
     this.#maxMemoryBytes = opts?.maxMemoryBytes;
     this.#epochTickMs = opts?.epochTickMs ?? 10;
@@ -1063,18 +1073,20 @@ export function buildDefaultCostTable(
   _fuelLimit: number,
   maxMemoryBytes?: number
 ): Record<string, unknown> {
+  // Memory-cap semantics: only rewrite memory.maximum when an explicit cap
+  // was requested, and FLOOR the page count so the enforced ceiling never
+  // exceeds the requested bytes (a hard maximum must not widen).
+  // No cap requested → no invented 32MiB default.
   const maxPages =
-    maxMemoryBytes !== undefined ? Math.max(1, Math.ceil(maxMemoryBytes / 65536)) : 512; // Default: 32MB if no explicit limit
+    maxMemoryBytes !== undefined ? Math.max(1, Math.floor(maxMemoryBytes / 65536)) : undefined;
 
   return {
     // Per-opcode cost (DEFAULT = cost for any opcode not explicitly listed).
     code: {
       DEFAULT: 1,
     },
-    // Memory section rewrite: cap maximum pages.
-    memory: {
-      maximum: maxPages,
-    },
+    // Memory section rewrite: cap maximum pages (omitted when uncapped).
+    ...(maxPages !== undefined ? { memory: { maximum: maxPages } } : {}),
   };
 }
 

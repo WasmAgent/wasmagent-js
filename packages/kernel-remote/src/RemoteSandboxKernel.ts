@@ -1,8 +1,9 @@
-import type {
-  CapabilityManifest,
-  KernelOptions,
-  KernelResult,
-  WasmKernel,
+import {
+  type CapabilityManifest,
+  type KernelOptions,
+  type KernelResult,
+  resolveEffectiveCapabilities,
+  type WasmKernel,
 } from "@wasmagent/core/executor";
 
 export interface RemoteSandboxOptions extends KernelOptions {
@@ -12,6 +13,18 @@ export interface RemoteSandboxOptions extends KernelOptions {
   template?: string;
   /** Timeout for each code execution in milliseconds. Default: 30_000 */
   timeoutMs?: number;
+  /**
+   * FAIL-CLOSED acknowledgment: this kernel cannot enforce network-egress
+   * policy (no firewall). Default false — run() rejects unless explicitly
+   * acknowledged.
+   */
+  allowUnrestrictedNetwork?: boolean;
+  /**
+   * FAIL-CLOSED acknowledgment: this kernel cannot enforce FS allow-lists
+   * (the guest has unrestricted access to its own microVM filesystem).
+   * Default false — run() rejects unless explicitly acknowledged.
+   */
+  allowUnrestrictedSandboxFs?: boolean;
 }
 
 /** Result of a shell command execution via runCommand(). */
@@ -65,29 +78,54 @@ export class RemoteSandboxKernel implements WasmKernel {
   }
 
   async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
-    // FAIL CLOSED on capabilities this kernel cannot actually enforce.
-    // The E2B sandbox has no network-egress firewall wired into this kernel:
-    // allowedHosts (including the "empty = deny-all" contract) is decorative,
-    // and memoryLimitBytes is not enforced. Silent acceptance would make the
-    // capability manifest lie about isolation. Callers must explicitly
-    // acknowledge an UNRESTRICTED-network sandbox by omitting these fields.
-    if (capabilities) {
-      const unsupported: string[] = [];
-      if (Array.isArray(capabilities.allowedHosts)) unsupported.push("allowedHosts");
-      if (capabilities.memoryLimitBytes !== undefined) unsupported.push("memoryLimitBytes");
-      if (
-        Array.isArray(capabilities.allowedWritePaths) &&
-        capabilities.allowedWritePaths.length > 0
-      )
-        unsupported.push("allowedWritePaths");
-      if (unsupported.length > 0) {
-        throw new Error(
-          `RemoteSandboxKernel cannot enforce network/memory capability restrictions: ` +
-            `${unsupported.join(", ")}. This kernel provides sandbox-level isolation only — ` +
-            `omit these capability fields to acknowledge an UNRESTRICTED-network sandbox, ` +
-            `or use a kernel with hard enforcement (JsKernel / QuickJSKernel).`
-        );
-      }
+    // FAIL CLOSED — default deny. This kernel cannot enforce network egress
+    // or FS allow-lists: without explicit acknowledgment, ANY execution would
+    // run with unrestricted network/FS inside the microVM, which the
+    // CapabilityManifest contract treats as a lie about isolation.
+    //
+    // Semantics:
+    //   allowUnrestrictedNetwork = false (default) → reject.
+    //   allowUnrestrictedNetwork = true            → may execute; but a
+    //     requested allow-list STILL rejects — we cannot enforce it.
+    //   memoryLimitBytes requested                 → always reject (no
+    //     enforcement exists in this kernel).
+    // Constructor capabilities and per-call capabilities merge restrictively
+    // (resolveEffectiveCapabilities); the acknowledgment flags are NOT part
+    // of the manifest and cannot be widened per-call.
+    const merged = resolveEffectiveCapabilities(this.#opts.capabilities, capabilities);
+
+    // A defined list IS a requested restriction — deny-all ([], per the
+    // manifest contract) counts too, and none of these can be enforced here.
+    if (Array.isArray(merged.allowedHosts)) {
+      throw new Error(
+        "RemoteSandboxKernel cannot enforce a network allow-list (no egress firewall; " +
+          "an empty list requests deny-all, which is equally unenforceable). Use a kernel " +
+          "with hard network enforcement."
+      );
+    }
+    if (Array.isArray(merged.allowedReadPaths) || Array.isArray(merged.allowedWritePaths)) {
+      throw new Error(
+        "RemoteSandboxKernel cannot enforce filesystem allow-lists (the guest has " +
+          "unrestricted access to its own microVM filesystem). Use a kernel with hard " +
+          "FS enforcement, or acknowledge an unrestricted sandbox filesystem."
+      );
+    }
+    if (merged.memoryLimitBytes !== undefined) {
+      throw new Error(
+        "RemoteSandboxKernel cannot enforce a memory cap (no provider memory policy " +
+          "wired in). Use a kernel with hard enforcement."
+      );
+    }
+    if (
+      this.#opts.allowUnrestrictedNetwork !== true ||
+      this.#opts.allowUnrestrictedSandboxFs !== true
+    ) {
+      throw new Error(
+        "RemoteSandboxKernel cannot enforce network-egress or sandbox-FS policy. " +
+          "Set allowUnrestrictedNetwork: true and allowUnrestrictedSandboxFs: true in " +
+          "RemoteSandboxOptions to acknowledge an unrestricted-network, sandbox-FS-only " +
+          "environment, or use a kernel with hard enforcement (JsKernel / QuickJSKernel)."
+      );
     }
 
     const sandbox = await this.#getSandbox();

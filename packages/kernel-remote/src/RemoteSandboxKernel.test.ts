@@ -147,55 +147,61 @@ describe("RemoteSandboxKernel", () => {
   });
 
   // ── fail-closed capability guard ─────────────────────────────────────────
-  // The E2B kernel has no network-egress firewall: allowedHosts (including
-  // "empty = deny-all"), memoryLimitBytes, and allowedWritePaths are NOT
-  // enforceable here. run() must reject them BEFORE creating a sandbox —
-  // the guard throws before any network/credential access, so these tests
-  // never touch E2B.
+  // The E2B kernel cannot enforce network egress, FS allow-lists, or memory
+  // caps. Default is FAIL CLOSED: run() rejects unless BOTH
+  // allowUnrestrictedNetwork and allowUnrestrictedSandboxFs are explicitly
+  // acknowledged. Requested-but-unenforceable hard policies (a non-empty
+  // allow-list, a memory cap) are rejected even with the acknowledgment.
+  // The guard throws before any network/credential access — tests never touch E2B.
   describe("fail-closed capability guard", () => {
-    it("rejects allowedHosts: [] — empty means deny-all, which is not enforced", async () => {
+    it("rejects by default — no acknowledgment, no execution", async () => {
       const kernel = new RemoteSandboxKernel();
-      await expect(
-        kernel.run("fetch('https://evil.example')", { allowedHosts: [] })
-      ).rejects.toThrow(/cannot enforce network\/memory capability restrictions/);
+      await expect(kernel.run("fetch('https://evil.example')")).rejects.toThrow(
+        /allowUnrestrictedNetwork/
+      );
     });
 
-    it("rejects a non-empty allowedHosts allow-list", async () => {
-      const kernel = new RemoteSandboxKernel();
+    it("rejects allowedHosts: [] — deny-all requested but not enforceable", async () => {
+      const kernel = new RemoteSandboxKernel({ allowUnrestrictedNetwork: true });
       await expect(
-        kernel.run("fetch('https://api.example.com')", {
-          allowedHosts: ["api.example.com"],
-        })
-      ).rejects.toThrow(/allowedHosts/);
+        kernel.run("fetch('https://evil.example')", { allowedHosts: [] })
+      ).rejects.toThrow(/cannot enforce a network allow-list/);
+    });
+
+    it("rejects a non-empty allowedHosts allow-list even with acknowledgment", async () => {
+      const kernel = new RemoteSandboxKernel({
+        allowUnrestrictedNetwork: true,
+        allowUnrestrictedSandboxFs: true,
+      });
+      await expect(
+        kernel.run("fetch('https://api.example.com')", { allowedHosts: ["api.example.com"] })
+      ).rejects.toThrow(/network allow-list/);
     });
 
     it("rejects memoryLimitBytes — no memory enforcement exists", async () => {
-      const kernel = new RemoteSandboxKernel();
+      const kernel = new RemoteSandboxKernel({ allowUnrestrictedNetwork: true });
       await expect(kernel.run("1 + 1", { memoryLimitBytes: 64 * 1024 * 1024 })).rejects.toThrow(
-        /memoryLimitBytes/
+        /memory cap/
       );
     });
 
-    it("rejects non-empty allowedWritePaths", async () => {
-      const kernel = new RemoteSandboxKernel();
+    it("rejects FS allow-list paths — no FS enforcement exists", async () => {
+      const kernel = new RemoteSandboxKernel({ allowUnrestrictedNetwork: true });
       await expect(kernel.run("1 + 1", { allowedWritePaths: ["/tmp"] })).rejects.toThrow(
-        /allowedWritePaths/
+        /filesystem allow-lists/
       );
     });
 
-    it("runs without capability fields (explicitly unrestricted sandbox)", async () => {
-      // No capability fields → guard passes → proceeds to sandbox creation,
-      // which fails on missing/invalid E2B credentials in tests. The thrown
-      // error must NOT be the capability guard.
-      const kernel = new RemoteSandboxKernel({ apiKey: "invalid".concat("-for-guard-test") });
-      try {
-        await kernel.run("1 + 1");
-        expect.unreachable();
-      } catch (e) {
-        expect(String((e as Error)?.message ?? e)).not.toContain(
-          "cannot enforce network/memory capability restrictions"
-        );
-      }
+    it("executes when both unrestricted acknowledgments are set", async () => {
+      const kernel = new RemoteSandboxKernel({
+        apiKey: "invalid".concat("-for-guard-test"),
+        allowUnrestrictedNetwork: true,
+        allowUnrestrictedSandboxFs: true,
+      });
+      // Proceeds past the guard into sandbox creation, which fails on the
+      // invalid credential — the thrown error must NOT be the capability guard.
+      const err = await kernel.run("1 + 1").catch((e) => e as Error);
+      expect(String(err?.message ?? err)).not.toMatch(/allowUnrestricted|cannot enforce/);
     }, 15000);
   });
 });

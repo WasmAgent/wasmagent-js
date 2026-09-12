@@ -653,17 +653,17 @@ describe("resource limits — buildDefaultCostTable (unit)", () => {
     expect(mem.maximum).toBe(16);
   });
 
-  it("rounds up partial pages", () => {
-    // 100_000 bytes / 65536 = ~1.53 pages → 2 pages
+  it("floors partial pages — enforced ceiling never exceeds the request", () => {
+    // 100_000 bytes / 65536 = ~1.53 pages → 1 page (floor). A hard maximum
+    // must not be rounded upward.
     const table = buildDefaultCostTable(1_000_000, 100_000);
     const mem = table.memory as { maximum: number };
-    expect(mem.maximum).toBe(2);
+    expect(mem.maximum).toBe(1);
   });
 
-  it("uses 512 pages (32MB) as default when no memory limit specified", () => {
+  it("no memory cap requested → no memory.maximum rewrite at all", () => {
     const table = buildDefaultCostTable(1_000_000);
-    const mem = table.memory as { maximum: number };
-    expect(mem.maximum).toBe(512);
+    expect(table.memory).toBeUndefined();
   });
 
   it("ensures minimum of 1 page even for very small limits", () => {
@@ -678,6 +678,14 @@ describe("resource limits — WasmtimeKernel options (unit)", () => {
     const k = new WasmtimeKernel({ fuelLimit: 500_000 });
     // Kernel should construct without error.
     expect(k).toBeInstanceOf(WasmtimeKernel);
+  });
+
+  it("rejects non-positive / non-safe-integer fuelLimit (RangeError)", () => {
+    for (const bad of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => new WasmtimeKernel({ fuelLimit: bad as number })).toThrow(RangeError);
+    }
+    // Unmetered execution is not supported — 0 is not a valid budget.
+    expect(() => new WasmtimeKernel({ fuelLimit: 0 })).toThrow(/positive safe integer/);
   });
 
   it("accepts maxMemoryBytes option in constructor", () => {
