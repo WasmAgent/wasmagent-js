@@ -247,6 +247,8 @@ export const AEPRecordSchema = z.object({
   run_attribution_backing_observed: z
     .array(z.enum(["operator_asserted", "principal_key_signed", "qualified_signature", "unknown"]))
     .optional(),
+  // v0.5: selective-omission defense (canonical wasmagent-protocol 0.1.10).
+  authorization_evidence_count: z.number().int().min(0).optional(),
   trace_id: z.string().optional(),
   parent_trace_id: z.string().nullish(),
   repo_commit: z.string().optional(),

@@ -73,6 +73,8 @@ export interface AEPEmitterOptions {
   run_attribution_backing_observed?: Array<
     "operator_asserted" | "principal_key_signed" | "qualified_signature" | "unknown"
   >;
+  /** v0.5: selective-omission defense — commits the producer to a specific evidence population. */
+  authorization_evidence_count?: number;
   trace_id?: string;
   parent_trace_id?: string | null;
   repo_commit?: string;
