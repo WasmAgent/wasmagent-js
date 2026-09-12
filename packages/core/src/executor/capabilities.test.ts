@@ -4,6 +4,7 @@ import {
   buildCapabilityGlobals,
   buildSandboxFetch,
   matchGlob,
+  resolveEffectiveCapabilities,
 } from "../executor/capabilities.js";
 import { JsKernel } from "../executor/JsKernel.js";
 
@@ -358,5 +359,45 @@ describe("JsKernel __fs__ real I/O (A2)", () => {
     const { writeFile: nodeWriteFileP } = await import("node:fs/promises");
     await nodeWriteFileP(filePath, "ok", "utf8");
     await expect(assertRealpathContained(filePath, [tmpDir], "read")).resolves.toBeUndefined();
+  });
+});
+
+describe("resolveEffectiveCapabilities — restrictive merge (#214)", () => {
+  it("intersects list axes", () => {
+    const merged = resolveEffectiveCapabilities(
+      { allowedHosts: ["a.com", "b.com"], allowedWritePaths: ["/x", "/y"] },
+      { allowedHosts: ["b.com", "evil.com"], allowedWritePaths: ["/y"] }
+    );
+    expect(merged.allowedHosts).toEqual(["b.com"]);
+    expect(merged.allowedWritePaths).toEqual(["/y"]);
+  });
+
+  it("call-side entries outside the base ceiling are dropped", () => {
+    const merged = resolveEffectiveCapabilities(
+      { allowedHosts: ["a.com"] },
+      { allowedHosts: ["a.com", "evil.com"] }
+    );
+    expect(merged.allowedHosts).toEqual(["a.com"]);
+  });
+
+  it("numeric limits take the lower value", () => {
+    const merged = resolveEffectiveCapabilities(
+      { cpuMs: 5000, memoryLimitBytes: 1024 * 1024 },
+      { cpuMs: 1000, memoryLimitBytes: 4 * 1024 * 1024 }
+    );
+    expect(merged.cpuMs).toBe(1000);
+    expect(merged.memoryLimitBytes).toBe(1024 * 1024);
+  });
+
+  it("env keys outside the base allow-list are dropped", () => {
+    const merged = resolveEffectiveCapabilities(
+      { env: { API_KEY: "k" } },
+      { env: { API_KEY: "v1", SECRET: "nope" } }
+    );
+    expect(merged.env).toEqual({ API_KEY: "v1" });
+  });
+
+  it("absent base + absent call = empty", () => {
+    expect(resolveEffectiveCapabilities(undefined, undefined)).toEqual({});
   });
 });

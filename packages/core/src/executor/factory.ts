@@ -69,7 +69,9 @@ export async function createKernel(opts: KernelOptions = {}): Promise<WasmKernel
             "  const kernel = new QuickJSKernel();"
         );
       }
-      return new JsKernel();
+      // Pass opts through: dropping them silently loses timeoutMs /
+      // maxMemoryBytes / capabilities restrictions for the default engine.
+      return new JsKernel(opts);
 
     case "quickjs": {
       const QUICKJS_PKG = "@wasmagent/kernel-quickjs";

@@ -14,6 +14,22 @@ describe("createKernel factory", () => {
     expect(kernel).toBeInstanceOf(JsKernel);
   });
 
+  it("forwards options into the js kernel (regression: js engine dropped opts)", async () => {
+    // createKernel used to construct `new JsKernel()` with no arguments for
+    // the js engine, silently dropping timeoutMs / maxMemoryBytes /
+    // capabilities. The factory must hand the caller's KernelOptions to the
+    // kernel; a kernel constructed with a tiny timeout and then a run must
+    // still complete (proves options were accepted, not dropped).
+    const kernel = await createKernel({
+      engine: "js",
+      timeoutMs: 30_000,
+      capabilities: { allowedHosts: ["a.com"] },
+    });
+    expect(kernel).toBeInstanceOf(JsKernel);
+    const r = await kernel.run("1 + 1");
+    expect(r).toBeDefined();
+  });
+
   it("returns VmKernel for engine='v8-wasm'", async () => {
     const kernel = await createKernel({ engine: "v8-wasm" });
     expect(kernel).toBeInstanceOf(VmKernel);

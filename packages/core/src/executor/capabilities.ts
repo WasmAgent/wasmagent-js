@@ -369,3 +369,55 @@ export function matchGlob(pattern: string, value: string): boolean {
     .replace(/\?/g, "[^.]"); // ? matches one non-dot char
   return new RegExp(`^${regexStr}$`).test(value);
 }
+
+// ── Restrictive capability merge (#214 architecture) ────────────────────────
+// Constructor policy is an immutable CEILING; per-call policy is optional
+// TIGHTENING. Neither may widen the other:
+//   list axes      → intersection (base ∩ call); a restriction on either
+//                    side applies. Call-side entries not in the base ceiling
+//                    are dropped.
+//   env            → only keys permitted by the base env may survive.
+//   numeric limits → min(base, call).
+// No kernel may silently reinterpret omission as unrestricted.
+
+function intersectStrings(a: string[] | undefined, b: string[] | undefined): string[] | undefined {
+  if (a === undefined && b === undefined) return undefined;
+  const base = new Set(a ?? []);
+  return (b ?? []).filter((x) => base.has(x));
+}
+
+export function resolveEffectiveCapabilities(
+  base?: Partial<CapabilityManifest>,
+  call?: Partial<CapabilityManifest>
+): Partial<CapabilityManifest> {
+  if (!base && !call) return {};
+  const b: Partial<CapabilityManifest> = base ?? {};
+  const c: Partial<CapabilityManifest> = call ?? {};
+  const out: Partial<CapabilityManifest> = {};
+
+  for (const key of [
+    "allowedHosts",
+    "allowedReadPaths",
+    "allowedWritePaths",
+    "extraCapabilities",
+  ] as const) {
+    const merged = intersectStrings(b[key] as string[] | undefined, c[key] as string[] | undefined);
+    if (merged !== undefined) out[key] = merged;
+  }
+
+  for (const key of ["cpuMs", "memoryLimitBytes"] as const) {
+    const bv = b[key] as number | undefined;
+    const cv = c[key] as number | undefined;
+    if (bv !== undefined && cv !== undefined) out[key] = Math.min(bv, cv);
+    else if (bv !== undefined) out[key] = bv;
+    else if (cv !== undefined) out[key] = cv;
+  }
+
+  const mergedEnv: Record<string, string> = {};
+  for (const [k, v] of Object.entries(c.env ?? {})) {
+    if (b.env && k in b.env) mergedEnv[k] = v;
+  }
+  if (Object.keys(mergedEnv).length > 0) out.env = mergedEnv;
+
+  return out;
+}
