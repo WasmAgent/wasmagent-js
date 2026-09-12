@@ -60,25 +60,29 @@ describe("adversarial — envelope and key substitution", () => {
 // ---------------------------------------------------------------------------
 
 describe("adversarial — signature encodings", () => {
-  it("rejects a hex-encoded signature (legacy gateway format)", async () => {
+  it("rejects legacy inline-signature records — DSSE is required", async () => {
     const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
     const emitter = new AEPEmitter({ run_id: "r", signer, schemaVersion: "aep/v0.5" });
     emitter.addAction({ tool_name: "bash", state_changing: false });
     const record = await emitter.emit();
 
-    // The Rust gateway used to emit hex; simulate that encoding here and
-    // confirm the JS verifier still reads base64-only and rejects it.
+    // Strip the envelope: the mirror `signature` field alone is NOT an
+    // authenticity carrier. Historical inline-signed records are not a
+    // verification target anymore.
+    const { dsse_envelope: _removed, ...legacyShaped } = record;
     const pub = await signer.getPublicKey();
-    const sigB64 = record.signature.sig;
-    const raw = Buffer.from(sigB64, "base64");
-    const recordHex = {
-      ...record,
-      signature: { ...record.signature, sig: raw.toString("hex") },
+    expect(await verifyAEPRecord(legacyShaped as AEPRecord, pub)).toBe(false);
+
+    // ...and even a forged "perfect-looking" legacy signature block does not
+    // resurrect the record: without an envelope there is nothing to verify.
+    const forged = {
+      ...legacyShaped,
+      signature: { alg: "ed25519" as const, key_id: TEST_KEY_ID, sig: "AA==" },
     } as AEPRecord;
-    expect(await verifyAEPRecord(recordHex, pub)).toBe(false);
+    expect(await verifyAEPRecord(forged, pub)).toBe(false);
   });
 
-  it("rejects corrupted signature bytes for every corruption mode", async () => {
+  it("rejects corrupted envelope signature bytes for every corruption mode", async () => {
     const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
     const emitter = new AEPEmitter({ run_id: "r", signer });
     emitter.addAction({ tool_name: "bash", state_changing: false });
@@ -93,7 +97,10 @@ describe("adversarial — signature encodings", () => {
     ]) {
       const mutated = {
         ...record,
-        signature: { ...record.signature, sig: corruption },
+        dsse_envelope: {
+          ...record.dsse_envelope!,
+          signatures: [{ keyid: TEST_KEY_ID, sig: corruption }],
+        },
       } as AEPRecord;
       expect(await verifyAEPRecord(mutated, pub)).toBe(false);
     }

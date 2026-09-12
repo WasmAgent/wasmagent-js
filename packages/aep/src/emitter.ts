@@ -40,7 +40,7 @@ export interface AEPEmitterOptions {
   run_id: string;
   user_id?: string;
   subject_id?: string;
-  /** Target schema version. Default: "aep/v0.3". useDsse stamps "aep/v0.4" unless this is "aep/v0.5". */
+  /** Target schema version for emitted records. Default: "aep/v0.4" (DSSE); set "aep/v0.5" for the current attribution-graded vocabulary. build() stamps "aep/v0.3" on unsigned records. */
   schemaVersion?: "aep/v0.3" | "aep/v0.4" | "aep/v0.5";
   /** v0.5: principal that granted/approved the authority (may differ from user_id). */
   authorized_by?: string;
@@ -97,8 +97,6 @@ export interface AEPEmitterOptions {
   sideEffectClass?: SideEffectClass;
   /** When true, emit() will not throw if no actions have been recorded. */
   allowEmptyActions?: boolean;
-  /** When true, emit() wraps the record in a DSSE/in-toto envelope (v0.4). Default: false. */
-  useDsse?: boolean;
   /**
    * Optional evidence store. When provided, emit() automatically appends
    * the signed record to the store after signing and before returning.
@@ -207,19 +205,20 @@ export class AEPEmitter {
   }
 
   /**
-   * Build and sign an AEPRecord.
+   * Build and sign an AEPRecord — DSSE is the only signing profile.
    *
    * Sequence:
    * 1. Assemble the record payload (no signature field yet).
-   * 2. Serialise to canonical bytes.
-   * 3. Sign with the configured AEPSigner.
-   * 4. Attach the `signature` block and validate the full schema.
+   * 2. Wrap it in an in-toto Statement inside a DSSE envelope.
+   * 3. Sign the PAE encoding with the configured AEPSigner.
+   * 4. Attach `dsse_envelope`, stamp schema_version (aep/v0.5 when targeted,
+   *    otherwise aep/v0.4), and mirror the signature into the legacy
+   *    `signature` field as compatibility metadata only.
    *
-   * When `useDsse` is enabled:
-   * - Wraps the unsigned payload in an in-toto Statement inside a DSSE envelope.
-   * - Signs using PAE (Pre-Authentication Encoding) per the DSSE spec.
-   * - Attaches `dsse_envelope` to the record and sets schema_version to "aep/v0.4".
-   * - Still populates the legacy `signature` field for backward compatibility.
+   * The historical legacy emission path (inline Ed25519 over raw canonical
+   * bytes, schema stamped aep/v0.3) has been removed: new signed evidence is
+   * always DSSE. Historical records remain readable through the verifier's
+   * documented behaviour on non-DSSE records.
    *
    * @param createdAtMs - Override creation timestamp.
    * @throws If no signer was provided at construction time.
@@ -239,119 +238,76 @@ export class AEPEmitter {
     }
     const unsigned = this.#buildUnsigned(createdAtMs);
 
-    // Parse through zod with a placeholder so that zod normalises the record
-    // (applies defaults, strips unknown fields) before we compute canonical bytes.
+    // Parse through zod so that zod normalises the record (applies defaults,
+    // strips unknown fields) before we compute canonical bytes.
     // verifyAEPRecord strips `signature` from the already-parsed record and
     // recomputes the same canonical bytes, so both sides are consistent.
-    const placeholder: AEPRecord["signature"] = {
-      alg: "ed25519",
-      key_id: signer.keyId,
-      sig: "PLACEHOLDER",
-    };
-    const normalised = AEPRecordSchema.parse({
-      ...unsigned,
-      signature: placeholder,
-    });
+    const normalised = AEPRecordSchema.parse(unsigned);
     const {
       signature: _placeholder,
       dsse_envelope: _dsseIgnore,
       ...normalisedUnsigned
     } = normalised;
 
-    if (this.#opts.useDsse) {
-      // DSSE/in-toto path (v0.4; stays v0.5 when an explicit v0.5 target was set).
-      // Stamp the final schema_version BEFORE building the statement so the
-      // signed predicate covers every field the record carries — otherwise
-      // inline fields are not cryptographically bound to the envelope and
-      // verifyAEPRecord could accept tampered records.
-      const stamped = AEPRecordSchema.parse({
-        ...normalisedUnsigned,
-        schema_version: this.#opts.schemaVersion === "aep/v0.5" ? "aep/v0.5" : "aep/v0.4",
-        signature: placeholder,
-      });
-      const {
-        signature: _placeholderFinal,
-        dsse_envelope: _dsseIgnoreFinal,
-        ...unsignedFinal
-      } = stamped;
+    // DSSE/in-toto path — the only signing profile. Stamp the final
+    // schema_version BEFORE building the statement so the signed predicate
+    // covers every field the record carries — otherwise inline fields are
+    // not cryptographically bound to the envelope and verifyAEPRecord could
+    // accept tampered records.
+    const stamped = AEPRecordSchema.parse({
+      ...normalisedUnsigned,
+      schema_version: this.#opts.schemaVersion === "aep/v0.5" ? "aep/v0.5" : "aep/v0.4",
+    });
+    const unsignedFinal = stamped;
 
-      const bytes = canonicalBytes(unsignedFinal);
-      const payloadDigest = createHash("sha256").update(bytes).digest("hex");
+    const bytes = canonicalBytes(unsignedFinal);
+    const payloadDigest = createHash("sha256").update(bytes).digest("hex");
 
-      // Wrap into in-toto Statement
-      const statement = wrapInTotoStatement(
-        unsignedFinal as unknown as Record<string, unknown>,
-        unsignedFinal.run_id,
-        payloadDigest
-      );
-      const statementJson = JSON.stringify(statement);
-      const payloadB64 = Buffer.from(statementJson).toString("base64");
+    // Wrap into in-toto Statement
+    const statement = wrapInTotoStatement(
+      unsignedFinal as unknown as Record<string, unknown>,
+      unsignedFinal.run_id,
+      payloadDigest
+    );
+    const statementJson = JSON.stringify(statement);
+    const payloadB64 = Buffer.from(statementJson).toString("base64");
 
-      // Compute PAE and sign
-      const payloadType = "application/vnd.in-toto+json";
-      const paeBytes = paeEncode(payloadType, payloadB64);
-      const sig = await signer.sign(paeBytes);
+    // Compute PAE and sign
+    const payloadType = "application/vnd.in-toto+json";
+    const paeBytes = paeEncode(payloadType, payloadB64);
+    const sig = await signer.sign(paeBytes);
 
-      // Build DSSE envelope
-      const dsseEnvelope: DSSEEnvelope = {
-        payloadType,
-        payload: payloadB64,
-        signatures: [{ keyid: signer.keyId, sig }],
-      };
+    // Build DSSE envelope
+    const dsseEnvelope: DSSEEnvelope = {
+      payloadType,
+      payload: payloadB64,
+      signatures: [{ keyid: signer.keyId, sig }],
+    };
 
-      // Legacy signature field for backward compat (same key_id, sig from envelope)
-      const signature: AEPRecord["signature"] = {
-        alg: "ed25519",
-        key_id: signer.keyId,
-        sig,
-      };
-
-      const record = AEPRecordSchema.parse({
-        ...unsignedFinal,
-        dsse_envelope: dsseEnvelope,
-        signature,
-      });
-
-      // If a timestamper is configured, request a timestamp proof and attach it
-      const timestamper = this.#opts.timestamper;
-      if (timestamper) {
-        const tsBytes = canonicalBytes(unsignedFinal);
-        const proof = await timestamper.timestamp(tsBytes);
-        record.timestamp_proof = proof;
-      }
-
-      // Compute hash for chain linkage
-      const { signature: _sig, dsse_envelope: _dsse, ...recordUnsigned } = record;
-      const recordBytes = canonicalBytes(recordUnsigned);
-      this.#prevRecordHash = createHash("sha256").update(recordBytes).digest("hex");
-
-      // Stream to evidence store if configured
-      if (this.#opts.evidenceStore) {
-        await this.#opts.evidenceStore.append(record);
-      }
-
-      return record;
-    }
-
-    // Legacy signing path (v0.3 and earlier)
-    const bytes = canonicalBytes(normalisedUnsigned);
-    const sig = await signer.sign(bytes);
+    // Mirror the signature into the legacy `signature` field as
+    // compatibility metadata only — the DSSE envelope is the authenticity
+    // carrier; this field is not an independent signing contract.
     const signature: AEPRecord["signature"] = {
       alg: "ed25519",
       key_id: signer.keyId,
       sig,
     };
-    const record = AEPRecordSchema.parse({ ...normalisedUnsigned, signature });
+
+    const record = AEPRecordSchema.parse({
+      ...unsignedFinal,
+      dsse_envelope: dsseEnvelope,
+      signature,
+    });
 
     // If a timestamper is configured, request a timestamp proof and attach it
     const timestamper = this.#opts.timestamper;
     if (timestamper) {
-      const tsBytes = canonicalBytes(normalisedUnsigned);
+      const tsBytes = canonicalBytes(unsignedFinal);
       const proof = await timestamper.timestamp(tsBytes);
       record.timestamp_proof = proof;
     }
 
-    // Compute hash of this record (without signature) for the next record's prev_record_hash
+    // Compute hash for chain linkage
     const { signature: _sig, dsse_envelope: _dsse, ...recordUnsigned } = record;
     const recordBytes = canonicalBytes(recordUnsigned);
     this.#prevRecordHash = createHash("sha256").update(recordBytes).digest("hex");

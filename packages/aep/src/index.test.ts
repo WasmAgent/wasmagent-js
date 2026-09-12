@@ -1582,7 +1582,7 @@ describe("Verification result surface — binding window, profiles, chain status
     expect(detailed.binding).toBe("not-applicable");
   });
 
-  it("detailed: legacy raw-canonical profile is reported", async () => {
+  it("detailed: DSSE records report authenticity=dsse-valid with exact binding", async () => {
     const signer = createLocalSignerFromSeed(TEST_SEED_V, TEST_KEY_ID_V);
     const emitter = new AEPEmitter({ run_id: "run-profile-raw", signer });
     emitter.addAction({ tool_name: "noop", state_changing: false });
@@ -1591,36 +1591,38 @@ describe("Verification result surface — binding window, profiles, chain status
     const publicKey = await signer.getPublicKey();
     const detailed = await verifyAEPRecordDetailed(record, publicKey);
     expect(detailed.valid).toBe(true);
-    expect(detailed.authenticity).toBe("legacy-valid");
-    expect(detailed.profile).toBe("legacy-ed25519-canonical");
+    expect(detailed.authenticity).toBe("dsse-valid");
+    expect(detailed.binding).toBe("exact");
   });
 
-  it("detailed: sha256-profile legacy signature verifies with the profile named", async () => {
+  it("detailed: sha256-of-canonical construction does NOT verify — legacy inline signatures are unsupported", async () => {
     const signer = createLocalSignerFromSeed(TEST_SEED_V, TEST_KEY_ID_V);
     const emitter = new AEPEmitter({ run_id: "run-profile-sha", signer });
     emitter.addAction({ tool_name: "noop", state_changing: false });
     const record = await emitter.emit(1_700_000_000_000);
 
-    // Re-sign the same record with the Rust gateway construction:
-    // Ed25519 over SHA-256(canonical bytes). signer.sign returns base64.
-    const { signature: _sig, ...unsigned } = record;
+    // A record carrying ONLY an inline signature block (no DSSE envelope)
+    // is not a verification target, whatever construction it claims: strip
+    // the envelope, keep the mirror signature, and sign a sha256 digest —
+    // the verifier reports invalid either way.
+    const { signature: _sig, dsse_envelope: _env, ...unsigned } = record;
     const digest = createHash("sha256").update(canonicalBytes(unsigned)).digest();
     const shaSig = await signer.sign(new Uint8Array(digest));
     const shaRecord = {
-      ...record,
+      ...unsigned,
       signature: { alg: "ed25519" as const, key_id: TEST_KEY_ID_V, sig: shaSig },
     };
 
     const publicKey = await signer.getPublicKey();
     const detailed = await verifyAEPRecordDetailed(shaRecord, publicKey);
-    expect(detailed.valid).toBe(true);
-    expect(detailed.profile).toBe("legacy-ed25519-sha256");
-    expect(await verifyAEPRecord(shaRecord, publicKey)).toBe(true);
+    expect(detailed.valid).toBe(false);
+    expect(detailed.authenticity).toBe("invalid");
+    expect(await verifyAEPRecord(shaRecord, publicKey)).toBe(false);
   });
 
   it("detailed: DSSE legacy window (predicate v0.3, record v0.4) is legacy-normalized", async () => {
     const signer = createLocalSignerFromSeed(TEST_SEED_V, TEST_KEY_ID_V);
-    const emitter = new AEPEmitter({ run_id: "run-window", signer, useDsse: true });
+    const emitter = new AEPEmitter({ run_id: "run-window", signer });
     emitter.addAction({ tool_name: "noop", state_changing: false });
     const record = await emitter.emit(1_700_000_000_000);
 
@@ -1652,7 +1654,6 @@ describe("Verification result surface — binding window, profiles, chain status
     const emitter = new AEPEmitter({
       run_id: "run-uplift",
       signer,
-      useDsse: true,
       schemaVersion: "aep/v0.5",
     });
     emitter.addAction({ tool_name: "noop", state_changing: false });
@@ -1807,7 +1808,9 @@ describe("AEPEmitter.emit() — empty actions validation (#95)", () => {
 
     const record = await emitter.emit(1_700_000_000_000);
     expect(record.actions).toHaveLength(0);
-    expect(record.schema_version).toBe("aep/v0.3");
+    // Emission is DSSE-only: the record stamps the DSSE schema version.
+    expect(record.schema_version).toBe("aep/v0.4");
+    expect(record.dsse_envelope).toBeDefined();
   });
 
   it("does not throw when actions have been added", async () => {
@@ -1854,7 +1857,6 @@ describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
     const emitter = new AEPEmitter({
       run_id: "run-dsse-001",
       signer,
-      useDsse: true,
     });
 
     emitter.addAction({ tool_name: "write_file", state_changing: true });
@@ -1874,7 +1876,6 @@ describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
     const emitter = new AEPEmitter({
       run_id: "run-dsse-verify-001",
       signer,
-      useDsse: true,
     });
 
     emitter.addAction({ tool_name: "bash", state_changing: false });
@@ -1890,7 +1891,6 @@ describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
     const emitter = new AEPEmitter({
       run_id: "run-dsse-tamper-001",
       signer,
-      useDsse: true,
     });
 
     emitter.addAction({ tool_name: "bash", state_changing: false });
@@ -1911,7 +1911,6 @@ describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
     const emitter = new AEPEmitter({
       run_id: "run-dsse-full-verify",
       signer,
-      useDsse: true,
     });
 
     emitter.addAction({ tool_name: "deploy", state_changing: true });
@@ -1924,7 +1923,7 @@ describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
 
   it("verifyAEPRecord rejects tampered inline fields on DSSE records (payload binding)", async () => {
     const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
-    const emitter = new AEPEmitter({ run_id: "run-dsse-bind", signer, useDsse: true });
+    const emitter = new AEPEmitter({ run_id: "run-dsse-bind", signer });
     emitter.addAction({ tool_name: "deploy", state_changing: true });
     const record = await emitter.emit(1_700_000_000_000);
     const publicKey = await signer.getPublicKey();
@@ -1959,11 +1958,11 @@ describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
 
   it("verifyAEPRecord rejects a DSSE envelope lifted from a different record (subject binding)", async () => {
     const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
-    const emitterA = new AEPEmitter({ run_id: "run-dsse-a", signer, useDsse: true });
+    const emitterA = new AEPEmitter({ run_id: "run-dsse-a", signer });
     emitterA.addAction({ tool_name: "a_tool", state_changing: true });
     const recordA = await emitterA.emit(1_700_000_000_000);
 
-    const emitterB = new AEPEmitter({ run_id: "run-dsse-b", signer, useDsse: true });
+    const emitterB = new AEPEmitter({ run_id: "run-dsse-b", signer });
     emitterB.addAction({ tool_name: "b_tool", state_changing: false });
     const recordB = await emitterB.emit(1_700_000_000_001);
 
@@ -1973,31 +1972,11 @@ describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
     await expect(verifyAEPRecord(hybrid, publicKey)).resolves.toBe(false);
   });
 
-  it("verifyAEPRecord still works for legacy records (backward compat)", async () => {
-    const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
-    const emitter = new AEPEmitter({
-      run_id: "run-dsse-legacy-compat",
-      signer,
-      useDsse: false,
-    });
-
-    emitter.addAction({ tool_name: "noop", state_changing: false });
-    const record = await emitter.emit(1_700_000_000_000);
-
-    expect(record.schema_version).toBe("aep/v0.3");
-    expect(record.dsse_envelope).toBeUndefined();
-
-    const publicKey = await signer.getPublicKey();
-    const valid = await verifyAEPRecord(record, publicKey);
-    expect(valid).toBe(true);
-  });
-
   it("legacy signature field is still populated for backward compat in DSSE records", async () => {
     const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
     const emitter = new AEPEmitter({
       run_id: "run-dsse-legacy-sig",
       signer,
-      useDsse: true,
     });
 
     emitter.addAction({ tool_name: "write_file", state_changing: true });
@@ -2016,7 +1995,6 @@ describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
     const emitter = new AEPEmitter({
       run_id: "run-dsse-decode-001",
       signer,
-      useDsse: true,
     });
 
     emitter.addAction({ tool_name: "read_file", state_changing: false });
@@ -2073,7 +2051,6 @@ describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
     const emitter = new AEPEmitter({
       run_id: "run-dsse-chain",
       signer,
-      useDsse: true,
     });
 
     emitter.addAction({ tool_name: "read_file", state_changing: false });
@@ -2574,7 +2551,6 @@ describe("AEPEmitter evidenceStore streaming", () => {
       run_id: "run-dsse-stream",
       signer,
       evidenceStore: store,
-      useDsse: true,
     });
     emitter.addAction({
       tool_name: "write_file",
@@ -5658,7 +5634,6 @@ describe("AEP v0.5 — attribution grading", () => {
       run_id: "run-v05-dsse-001",
       signer,
       schemaVersion: "aep/v0.5",
-      useDsse: true,
       attribution_backing: "qualified_signature",
     });
     emitter.addAction({ tool_name: "write_file", state_changing: true });
@@ -5674,7 +5649,6 @@ describe("AEP v0.5 — attribution grading", () => {
     const emitter = new AEPEmitter({
       run_id: "run-v04-default-001",
       signer,
-      useDsse: true,
     });
     emitter.addAction({ tool_name: "bash", state_changing: false });
     const record = await emitter.emit(1_700_000_000_000);

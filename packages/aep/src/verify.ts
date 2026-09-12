@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import * as ed from "@noble/ed25519";
 import { canonicalBytes } from "./canonical.js";
 import { type InTotoStatement, verifyDSSEEnvelope } from "./dsse.js";
 import type { AEPRecord } from "./types.js";
@@ -23,27 +22,12 @@ export type BindingMode = "exact" | "legacy-normalized" | "not-applicable" | "in
  * `unsigned` is distinct from `invalid`: an unsigned record is
  * protocol-valid, it just carries no authenticity claim.
  */
-export type AuthenticityMode =
-  | "dsse-valid"
-  | "legacy-valid"
-  | "unsigned"
-  | "invalid"
-  | "not-checked";
-
-/**
- * Legacy (non-DSSE) signatures were historically constructed two different
- * ways: JS signs the raw canonical bytes, Rust signed SHA-256(canonical
- * bytes). Verification accepts both profiles and reports which one held, so
- * `valid: true` never hides WHICH assumption was satisfied.
- */
-export type LegacySignatureProfile = "legacy-ed25519-canonical" | "legacy-ed25519-sha256";
+export type AuthenticityMode = "dsse-valid" | "unsigned" | "invalid" | "not-checked";
 
 export interface AEPDetailedVerificationResult {
   valid: boolean;
   authenticity: AuthenticityMode;
   binding: BindingMode;
-  /** Present only on the legacy (non-DSSE) signature path. */
-  profile?: LegacySignatureProfile;
 }
 
 /** Assurance state of the inter-record hash chain (see verifyAEPChain). */
@@ -132,17 +116,15 @@ function dsseEnvelopeBinding(record: AEPRecord): BindingMode {
 
 /**
  * verifyAEPRecord — verify the ed25519 signature on an AEPRecord.
- *
  * For v0.4+ records with a `dsse_envelope`, verifies via DSSE (PAE encoding)
  * AND checks that the envelope's signed payload binds the record's inline
  * fields — an envelope lifted from another (or tampered) record fails.
- * For legacy records, falls back to canonical-bytes verification and accepts
- * both historical message constructions (raw canonical bytes, or
- * SHA-256(canonical bytes) as emitted by the Rust gateway signer).
+ * DSSE is the only supported signing profile: records without a
+ * `dsse_envelope` are `unsigned` (no signature field) or `invalid`
+ * (a legacy inline signature — no longer a verification target).
  *
  * Use {@link verifyAEPRecordDetailed} when the caller needs to know WHICH
- * guarantee held: boolean `true` intentionally covers both signature
- * profiles, and an unsigned record returns `false` rather than throwing.
+ * guarantee held; an unsigned record returns `false` rather than throwing.
  *
  * @param record    - A complete AEPRecord (including `signature`, if signed).
  * @param publicKey - 32-byte Ed25519 public key matching the `key_id` in the record.
@@ -156,8 +138,7 @@ export async function verifyAEPRecord(record: AEPRecord, publicKey: Uint8Array):
 /**
  * Detailed verification — same checks as {@link verifyAEPRecord}, but the
  * result distinguishes WHY: unsigned vs invalid, exact vs legacy-normalized
- * DSSE binding, and which legacy signature profile verified. See
- * {@link AEPDetailedVerificationResult}.
+ * DSSE binding. See {@link AEPDetailedVerificationResult}.
  */
 export async function verifyAEPRecordDetailed(
   record: AEPRecord,
@@ -183,31 +164,10 @@ export async function verifyAEPRecordDetailed(
       };
     }
 
-    // Legacy path — two historical message constructions.
-    const { signature, dsse_envelope: _dsse, ...unsigned } = record;
-    if (!signature) {
+    // No envelope: unsigned if no signature field at all; a legacy inline
+    // signature (historical construction, unsupported) is simply invalid.
+    if (!record.signature) {
       return { valid: false, authenticity: "unsigned", binding: "not-applicable" };
-    }
-    const sigBytes = Uint8Array.from(Buffer.from(signature.sig, "base64"));
-
-    // Profile 1: Ed25519 over the raw canonical bytes (JS emitters).
-    if (await ed.verifyAsync(sigBytes, canonicalBytes(unsigned), publicKey)) {
-      return {
-        valid: true,
-        authenticity: "legacy-valid",
-        binding: "not-applicable",
-        profile: "legacy-ed25519-canonical",
-      };
-    }
-    // Profile 2: Ed25519 over SHA-256(canonical bytes) (Rust gateway signer).
-    const digest = createHash("sha256").update(canonicalBytes(unsigned)).digest();
-    if (await ed.verifyAsync(sigBytes, digest, publicKey)) {
-      return {
-        valid: true,
-        authenticity: "legacy-valid",
-        binding: "not-applicable",
-        profile: "legacy-ed25519-sha256",
-      };
     }
     return { valid: false, authenticity: "invalid", binding: "not-applicable" };
   } catch {
