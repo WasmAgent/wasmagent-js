@@ -180,7 +180,12 @@ export class WasmtimeKernel implements WasmKernel {
     // Per-call cpuMs (capability) takes precedence over the constructor
     // default (opts.timeoutMs). This matches the "capability honouring
     // matrix" in @wasmagent/core/executor/types: cpuMs is per-call.
-    const effectiveTimeoutMs = capabilities?.cpuMs ?? this.#timeoutMs;
+    // "Lower value wins": per-call limits may narrow, never widen, the
+    // constructor ceiling (@wasmagent/core/executor contract).
+    const effectiveTimeoutMs = Math.min(
+      capabilities?.cpuMs ?? Number.POSITIVE_INFINITY,
+      this.#timeoutMs
+    );
 
     // Generate a per-run HMAC secret so the harness can sign stdout writes.
     const runId = randomRunId();
