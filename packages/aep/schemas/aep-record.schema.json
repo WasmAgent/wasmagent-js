@@ -75,6 +75,10 @@
             ]
           }
         },
+        "authorization_evidence_count": {
+          "type": "integer",
+          "minimum": 0
+        },
         "trace_id": {
           "type": "string"
         },
