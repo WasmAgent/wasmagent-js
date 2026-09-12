@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { canonicalBytes } from "./canonical.js";
 import { type AEPRecord, AEPRecordSchema } from "./types.js";
-import { verifyAEPChain, verifyAEPRecord } from "./verify.js";
+import { type ChainStatus, verifyAEPChain, verifyAEPRecord } from "./verify.js";
 
 /**
  * exportBundle.ts — verifiable evidence bundle export adapter (Milestone 5).
@@ -110,8 +110,10 @@ export interface EvidenceBundleVerificationResult {
   record_digests_valid: boolean;
   /** `record_count` agrees with both `records.length` and `manifest.records.length`. */
   record_count_valid: boolean;
-  /** Inter-record hash chain is continuous (trivially true for ≤1 record). */
+  /** Chain assurance: true only when the chain status is intact (or the bundle holds a single unlinked record). */
   chain_valid: boolean;
+  /** Full chain assurance state — partial/orphaned chains set chain_valid=false. */
+  chain_status: ChainStatus;
   /** Index of the first record whose digest mismatches, when known. */
   broken_record_at?: number;
   /** Index of the first broken hash link, when known. */
@@ -235,9 +237,14 @@ export async function verifyEvidenceBundle(
   const { bundle_digest: _bd, ...manifestBase } = manifest;
   const bundle_digest_valid = computeBundleDigest(manifestBase) === manifest.bundle_digest;
 
-  // 4. inter-record hash chain
+  // 4. inter-record hash chain — assurance propagation: a partial chain
+  // (some links missing) must NOT read as a valid chain in a multi-record
+  // bundle. Only an intact chain (or, for a standalone record, the
+  // chain-absent case) counts as chain_valid.
   const chainResult = verifyAEPChain(records);
-  const chain_valid = chainResult.valid;
+  const chain_valid =
+    chainResult.status === "intact" ||
+    (chainResult.status === "not-present" && records.length <= 1);
 
   // 5. per-record signatures (optional)
   let signatures: Array<{ index: number; valid: boolean }> | undefined;
@@ -260,6 +267,7 @@ export async function verifyEvidenceBundle(
     record_digests_valid,
     bundle_digest_valid,
     chain_valid,
+    chain_status: chainResult.status,
   };
   if (broken_record_at !== undefined) result.broken_record_at = broken_record_at;
   if (chainResult.brokenAt !== undefined) result.broken_chain_at = chainResult.brokenAt;

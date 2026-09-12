@@ -31,7 +31,7 @@ export interface AEPDetailedVerificationResult {
 }
 
 /** Assurance state of the inter-record hash chain (see verifyAEPChain). */
-export type ChainStatus = "intact" | "not-present" | "partial" | "broken";
+export type ChainStatus = "intact" | "not-present" | "partial" | "orphaned" | "broken";
 
 /**
  * Result of verifying a chain of AEP records for hash-chain continuity.
@@ -84,6 +84,10 @@ function dsseEnvelopeBinding(record: AEPRecord): BindingMode {
     // verifier). Empty, unrelated, or future predicate versions fail closed.
     if (statement.predicateType !== AEP_PREDICATE_TYPE) return "invalid";
 
+    // 0b. in-toto statement type + single-subject policy.
+    if (statement._type !== "https://in-toto.io/Statement/v1") return "invalid";
+    if (statement.subject.length !== 1) return "invalid";
+
     const { signature: _sig, dsse_envelope: _dsse, timestamp_proof: _tp, ...unsigned } = record;
 
     // 1. Predicate binding.
@@ -99,7 +103,9 @@ function dsseEnvelopeBinding(record: AEPRecord): BindingMode {
     }
     if (canonicalDigest(predicate) !== canonicalDigest(unsigned)) return "invalid";
 
-    // 2. Subject binding.
+    // 2. Subject binding — digest AND exact canonical subject name
+    // ("urn:wasmagent:run:<run_id>"). Substring or absent names are rejected:
+    // the name binds the attestation to this specific run.
     const subject = statement.subject[0];
     if (!subject) return "invalid";
     const digestMatches =
@@ -109,8 +115,8 @@ function dsseEnvelopeBinding(record: AEPRecord): BindingMode {
       // unsigned-record hash as an alternate for forward compatibility.
       subject.digest?.sha256 === canonicalDigest(unsigned);
     if (!digestMatches) return "invalid";
-    if (subject.name && unsigned.run_id && !subject.name.includes(unsigned.run_id))
-      return "invalid";
+    if (!unsigned.run_id) return "invalid";
+    if (subject.name !== `urn:wasmagent:run:${unsigned.run_id}`) return "invalid";
 
     return binding;
   } catch {
@@ -205,7 +211,12 @@ export function verifyAEPChain(records: AEPRecord[]): ChainVerificationResult {
     return { valid: true, status: "not-present" };
   }
   if (records.length === 1) {
-    return { valid: true, status: records[0]?.prev_record_hash == null ? "not-present" : "intact" };
+    // A single record with a prev_record_hash points at a predecessor we do
+    // not have — the link cannot be verified, so this is orphaned, not intact.
+    return {
+      valid: true,
+      status: records[0]?.prev_record_hash == null ? "not-present" : "orphaned",
+    };
   }
 
   let linked = 0;
@@ -237,5 +248,8 @@ export function verifyAEPChain(records: AEPRecord[]): ChainVerificationResult {
 
   if (linked === 0) return { valid: true, status: "not-present" };
   if (missing > 0) return { valid: true, status: "partial" };
+  // Truncated prefix: the first record still claims a predecessor we cannot
+  // verify. Internally consistent, but not a complete chain.
+  if (records[0]?.prev_record_hash != null) return { valid: true, status: "orphaned" };
   return { valid: true, status: "intact" };
 }
