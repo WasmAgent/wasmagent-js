@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { canonicalBytes } from "./canonical.js";
 import { paeEncode, verifyDSSEEnvelope, wrapInTotoStatement } from "./dsse.js";
 import { AEPEmitter } from "./emitter.js";
 import {
@@ -52,14 +54,14 @@ import { resolveRepoCommit } from "./resolve-repo-commit.js";
 import { createLocalSignerFromSeed } from "./signer.js";
 import { LocalTimestamper } from "./timestamperLocal.js";
 import type { AEPRecord, SideEffectClass } from "./types.js";
-import { AEPRecordSchema } from "./types.js";
+import { AEPRecordSchema, AEPSignedRecordSchema } from "./types.js";
 import {
   clearStatefulVerbs,
   isStateChangingTool,
   registerStatefulVerbs,
   STATE_CHANGING_PATTERNS,
 } from "./utils.js";
-import { verifyAEPChain, verifyAEPRecord } from "./verify.js";
+import { verifyAEPChain, verifyAEPRecord, verifyAEPRecordDetailed } from "./verify.js";
 
 // Deterministic seed for tests (32 bytes as hex)
 const TEST_SEED = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
@@ -337,7 +339,9 @@ describe("AEP Ed25519 signature chain", () => {
 });
 
 describe("AEPRecord schema validation", () => {
-  it("schema parse fails when signature is missing", () => {
+  it("schema parses an unsigned record — absence means unsigned, not invalid", () => {
+    // Canonical aep-record keeps `signature` optional: an unsigned record is
+    // protocol-valid. `verifyAEPRecord` is what reports it as unsigned.
     const recordWithoutSig = {
       schema_version: "aep/v0.3",
       run_id: "run-nosig",
@@ -350,7 +354,11 @@ describe("AEPRecord schema validation", () => {
     };
 
     const result = AEPRecordSchema.safeParse(recordWithoutSig);
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.signature).toBeUndefined();
+
+    const signed = AEPSignedRecordSchema.safeParse(recordWithoutSig);
+    expect(signed.success).toBe(false);
   });
 
   it("schema parse fails when signature.alg is not 'ed25519'", () => {
@@ -1517,6 +1525,7 @@ describe("Inter-record hash chain (#40)", () => {
 
     const result = verifyAEPChain(legacyRecords as any);
     expect(result.valid).toBe(true);
+    expect(result.status).toBe("not-present");
   });
 
   it("prev_record_hash is a 64-char hex string (SHA-256)", async () => {
@@ -1530,6 +1539,147 @@ describe("Inter-record hash chain (#40)", () => {
     const r2 = await emitter.emit(1_700_000_001_000);
 
     expect(r2.prev_record_hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("chain statuses: intact / partial are distinguishable", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED_CHAIN, TEST_KEY_ID_CHAIN);
+    const emitter = new AEPEmitter({ run_id: "run-chain-status", signer });
+
+    emitter.addAction({ tool_name: "read_file", state_changing: false });
+    const r1 = await emitter.emit(1_700_000_000_000);
+    emitter.addAction({ tool_name: "write_file", state_changing: true });
+    const r2 = await emitter.emit(1_700_000_001_000);
+    emitter.addAction({ tool_name: "deploy", state_changing: true });
+    const r3 = await emitter.emit(1_700_000_002_000);
+
+    expect(verifyAEPChain([r1, r2, r3]).status).toBe("intact");
+
+    // Drop the LAST record's link only: earlier links stay intact, so some
+    // links present, one missing. (Stripping a middle record's link would
+    // also change that record's bytes and break the NEXT link — different
+    // scenario, that is "broken".)
+    const { prev_record_hash: _dropped, ...r3Unlinked } = r3;
+    const partial = verifyAEPChain([r1, r2, r3Unlinked as AEPRecord]);
+    expect(partial.valid).toBe(true);
+    expect(partial.status).toBe("partial");
+  });
+});
+
+describe("Verification result surface — binding window, profiles, chain status (#214)", () => {
+  const TEST_SEED_V = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+  const TEST_KEY_ID_V = "test-verify-key-01";
+
+  it("detailed: unsigned record reports authenticity=unsigned, not invalid", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED_V, TEST_KEY_ID_V);
+    const emitter = new AEPEmitter({ run_id: "run-unsigned", signer });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.signature).toBeUndefined();
+
+    const detailed = await verifyAEPRecordDetailed(record, new Uint8Array(32));
+    expect(detailed.valid).toBe(false);
+    expect(detailed.authenticity).toBe("unsigned");
+    expect(detailed.binding).toBe("not-applicable");
+  });
+
+  it("detailed: legacy raw-canonical profile is reported", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED_V, TEST_KEY_ID_V);
+    const emitter = new AEPEmitter({ run_id: "run-profile-raw", signer });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    const publicKey = await signer.getPublicKey();
+    const detailed = await verifyAEPRecordDetailed(record, publicKey);
+    expect(detailed.valid).toBe(true);
+    expect(detailed.authenticity).toBe("legacy-valid");
+    expect(detailed.profile).toBe("legacy-ed25519-canonical");
+  });
+
+  it("detailed: sha256-profile legacy signature verifies with the profile named", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED_V, TEST_KEY_ID_V);
+    const emitter = new AEPEmitter({ run_id: "run-profile-sha", signer });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    // Re-sign the same record with the Rust gateway construction:
+    // Ed25519 over SHA-256(canonical bytes). signer.sign returns base64.
+    const { signature: _sig, ...unsigned } = record;
+    const digest = createHash("sha256").update(canonicalBytes(unsigned)).digest();
+    const shaSig = await signer.sign(new Uint8Array(digest));
+    const shaRecord = {
+      ...record,
+      signature: { alg: "ed25519" as const, key_id: TEST_KEY_ID_V, sig: shaSig },
+    };
+
+    const publicKey = await signer.getPublicKey();
+    const detailed = await verifyAEPRecordDetailed(shaRecord, publicKey);
+    expect(detailed.valid).toBe(true);
+    expect(detailed.profile).toBe("legacy-ed25519-sha256");
+    expect(await verifyAEPRecord(shaRecord, publicKey)).toBe(true);
+  });
+
+  it("detailed: DSSE legacy window (predicate v0.3, record v0.4) is legacy-normalized", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED_V, TEST_KEY_ID_V);
+    const emitter = new AEPEmitter({ run_id: "run-window", signer, useDsse: true });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    // Re-emit the exact historical quirk: signed predicate says v0.3 while
+    // the record stamps v0.4. Rewrite the payload and re-sign it for real.
+    const envelope = record.dsse_envelope!;
+    const statement = JSON.parse(Buffer.from(envelope.payload, "base64").toString("utf8"));
+    statement.predicate.schema_version = "aep/v0.3";
+    const payloadB64 = Buffer.from(JSON.stringify(statement)).toString("base64");
+    const pae = paeEncode(envelope.payloadType, payloadB64);
+    const sig = await signer.sign(pae);
+    const rewritten = {
+      ...record,
+      dsse_envelope: {
+        ...envelope,
+        payload: payloadB64,
+        signatures: [{ keyid: TEST_KEY_ID_V, sig }],
+      },
+    };
+
+    const publicKey = await signer.getPublicKey();
+    const detailed = await verifyAEPRecordDetailed(rewritten, publicKey);
+    expect(detailed.valid).toBe(true);
+    expect(detailed.binding).toBe("legacy-normalized");
+  });
+
+  it("binding: signed v0.3 predicate on a v0.5 record FAILS — no silent uplift", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED_V, TEST_KEY_ID_V);
+    const emitter = new AEPEmitter({
+      run_id: "run-uplift",
+      signer,
+      useDsse: true,
+      schemaVersion: "aep/v0.5",
+    });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = await emitter.emit(1_700_000_000_000);
+
+    // Signed predicate carries v0.3; outer record claims v0.5.
+    const envelope = record.dsse_envelope!;
+    const statement = JSON.parse(Buffer.from(envelope.payload, "base64").toString("utf8"));
+    statement.predicate.schema_version = "aep/v0.3";
+    const payloadB64 = Buffer.from(JSON.stringify(statement)).toString("base64");
+    const pae = paeEncode(envelope.payloadType, payloadB64);
+    const sig = await signer.sign(pae);
+    const uplifted = {
+      ...record,
+      schema_version: "aep/v0.5" as const,
+      dsse_envelope: {
+        ...envelope,
+        payload: payloadB64,
+        signatures: [{ keyid: TEST_KEY_ID_V, sig }],
+      },
+    };
+
+    const publicKey = await signer.getPublicKey();
+    const detailed = await verifyAEPRecordDetailed(uplifted, publicKey);
+    expect(detailed.valid).toBe(false);
+    expect(detailed.binding).toBe("invalid");
+    expect(await verifyAEPRecord(uplifted, publicKey)).toBe(false);
   });
 });
 

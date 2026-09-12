@@ -293,10 +293,30 @@ export const AEPRecordSchema = z.object({
       ),
     })
     .optional(),
-  signature: z.object({
-    alg: z.literal("ed25519"),
-    key_id: z.string(),
-    sig: z.string(),
-  }),
+  signature: z
+    .object({
+      alg: z.literal("ed25519"),
+      key_id: z.string(),
+      sig: z.string(),
+    })
+    .optional(),
 });
 export type AEPRecord = z.infer<typeof AEPRecordSchema>;
+
+export const AEPSignatureSchema = z.object({
+  alg: z.literal("ed25519"),
+  key_id: z.string(),
+  sig: z.string(),
+});
+
+/**
+ * A record that MUST carry a signature — the signed refinement of the
+ * protocol record. Canonical aep-record keeps `signature` optional so an
+ * unsigned record is protocol-valid; use this type (or `verifyAEPRecord`)
+ * wherever a signature is required. Absence of `signature` means "unsigned",
+ * never "signature-shaped placeholder".
+ */
+export const AEPSignedRecordSchema = AEPRecordSchema.extend({
+  signature: AEPSignatureSchema,
+});
+export type AEPSignedRecord = z.infer<typeof AEPSignedRecordSchema>;

@@ -187,28 +187,23 @@ export class AEPEmitter {
   }
 
   /**
-   * Build an unsigned AEPRecord. A placeholder `signature` block is included
-   * so the record satisfies the schema (signature is required since v0.2).
+   * Build an unsigned AEPRecord. Canonical aep-record keeps `signature`
+   * optional: an unsigned record is protocol-valid, and verifyAEPRecord
+   * reports it as unsigned rather than schema-invalid. Use `emit()` for a
+   * signed record, or `AEPSignedRecordSchema` where a signature is required.
    *
-   * For a fully signed record use `emit()` instead.
+   * Historical note: this used to attach a deterministic
+   * `sig: "UNSIGNED_PLACEHOLDER"` block because the runtime schema still
+   * required `signature` — that disguised "not signed" as a
+   * signature-shaped object and is no longer emitted.
    *
    * @param createdAtMs - Override creation timestamp (defaults to Date.now()).
    * @param signerOverride - Optional: provide a signer to sign inline (async variant).
    *   Prefer `emit()` for async signing.
    */
   build(createdAtMs?: number): AEPRecord {
-    const signer = this.#opts.signer;
-    if (signer) {
-      // Caller should use emit() when a signer is configured — but if they
-      // call build() synchronously we return a placeholder-signed record.
-      // The placeholder is stable and deterministic; it will fail verifyAEPRecord.
-      // This path is only reached in synchronous test helpers.
-    }
     const unsigned = this.#buildUnsigned(createdAtMs);
-    const placeholder: AEPRecord["signature"] = signer
-      ? { alg: "ed25519", key_id: signer.keyId, sig: "UNSIGNED_PLACEHOLDER" }
-      : { alg: "ed25519", key_id: "none", sig: "UNSIGNED_PLACEHOLDER" };
-    return AEPRecordSchema.parse({ ...unsigned, signature: placeholder });
+    return AEPRecordSchema.parse(unsigned);
   }
 
   /**
