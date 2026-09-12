@@ -30,14 +30,18 @@ export interface CommandResult {
  *
  * Security properties:
  *   - True microVM isolation: E2B spins up a firecracker microVM per sandbox.
- *   - Network policy: CapabilityManifest.allowedHosts controls outbound access
- *     at the kernel level (future: maps to E2B network policies when available).
+ *   - Network policy: NOT ENFORCED by this kernel. CapabilityManifest.allowedHosts
+ *     is rejected at run() (fail closed) because the E2B egress firewall is not
+ *     wired in — an unrestricted-network sandbox must be acknowledged explicitly.
  *   - FS isolation: the microVM has its own ephemeral filesystem, no host access.
+ *   - Memory: memoryLimitBytes is not enforceable here and is likewise rejected.
  *
  * Cross-run state:
- *   Unlike VmKernel/JsKernel, state does NOT persist between run() calls by default
- *   (each sandbox is ephemeral). Pass { keepAlive: true } in options to reuse the
- *   same sandbox across calls (stateful session).
+ *   The sandbox is REUSED across run() calls until reset()/dispose() — the
+ *   opposite of the historical docstring. Filesystem and process state persist
+ *   across calls within one sandbox lifetime. Treat each run as sharing a
+ *   session; for fresh isolation, call reset() between runs.
+ *   (keepAlive/ephemeral-per-run semantics are on the roadmap.)
  *
  * Prerequisites:
  *   `e2b` npm package must be installed:
@@ -61,6 +65,31 @@ export class RemoteSandboxKernel implements WasmKernel {
   }
 
   async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
+    // FAIL CLOSED on capabilities this kernel cannot actually enforce.
+    // The E2B sandbox has no network-egress firewall wired into this kernel:
+    // allowedHosts (including the "empty = deny-all" contract) is decorative,
+    // and memoryLimitBytes is not enforced. Silent acceptance would make the
+    // capability manifest lie about isolation. Callers must explicitly
+    // acknowledge an UNRESTRICTED-network sandbox by omitting these fields.
+    if (capabilities) {
+      const unsupported: string[] = [];
+      if (Array.isArray(capabilities.allowedHosts)) unsupported.push("allowedHosts");
+      if (capabilities.memoryLimitBytes !== undefined) unsupported.push("memoryLimitBytes");
+      if (
+        Array.isArray(capabilities.allowedWritePaths) &&
+        capabilities.allowedWritePaths.length > 0
+      )
+        unsupported.push("allowedWritePaths");
+      if (unsupported.length > 0) {
+        throw new Error(
+          `RemoteSandboxKernel cannot enforce network/memory capability restrictions: ` +
+            `${unsupported.join(", ")}. This kernel provides sandbox-level isolation only — ` +
+            `omit these capability fields to acknowledge an UNRESTRICTED-network sandbox, ` +
+            `or use a kernel with hard enforcement (JsKernel / QuickJSKernel).`
+        );
+      }
+    }
+
     const sandbox = await this.#getSandbox();
     // Per-call cpuMs (capability) takes precedence over the constructor
     // default (opts.timeoutMs).

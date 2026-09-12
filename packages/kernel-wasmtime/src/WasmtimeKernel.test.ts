@@ -5,6 +5,7 @@ import {
   buildDefaultCostTable,
   buildJavySource,
   computeHostHmac,
+  DEFAULT_FUEL_LIMIT,
   ENVELOPE_MAGIC,
   STATE_RESTORE_RESERVED,
   WasmtimeKernel,
@@ -171,6 +172,11 @@ describe("buildJavySource harness (unit, no javy CLI required)", () => {
     const { stdout } = await simulateHarnessRunLegacy(src, "{}");
     expect(parseEnvelopeLegacy(stdout).isFinalAnswer).toBe(true);
     expect(parseEnvelopeLegacy(stdout).finalAnswer).toBe("done");
+  });
+
+  it("exports a positive DEFAULT_FUEL_LIMIT — fuel is always on", () => {
+    expect(DEFAULT_FUEL_LIMIT).toBeGreaterThan(0);
+    expect(Number.isFinite(DEFAULT_FUEL_LIMIT)).toBe(true);
   });
 
   it("signals final answer via __final_answer__ (snake_case alias)", async () => {

@@ -32,6 +32,17 @@ export const ENVELOPE_MAGIC_HEX = "574153...4e54"; // for logging only
 const ENVELOPE_HEADER_SIZE = ENVELOPE_MAGIC.length + 4; // 8 + 4 = 12 bytes
 
 /**
+ * Default fuel budget applied when no explicit fuelLimit is configured.
+ *
+ * Fuel metering is the primary CPU-bound execution defence: a same-thread
+ * timeout cannot preempt a synchronous `while (true) {}` in the guest. A
+ * metered binary traps (FuelExhausted) instead of hanging the host event
+ * loop. 1e9 points is a generous budget for ordinary tools while strictly
+ * bounding runaway execution; raise it explicitly for heavy workloads.
+ */
+export const DEFAULT_FUEL_LIMIT = 1_000_000_000;
+
+/**
  * Reserved global names that user code must never overwrite via state restore.
  * Attempting to restore into these keys is silently rejected and audit-logged.
  */
@@ -105,9 +116,17 @@ export interface WasmtimeKernelOptions extends KernelOptions {
  *   - Envelope protocol: stdout bytes are only accepted when prefixed with the
  *     WASMAGNT magic header + length-prefix. Any bytes that bypass this framing are
  *     discarded and audit-logged.
- *   - HMAC authentication: the harness ASM helper signs (run_id || stdout_bytes) with
- *     a per-run secret so the host can verify the envelope was emitted by the harness,
- *     not injected by user code via a Javy.IO forgery.
+ *   - Integrity tags (NOT cryptographic HMAC): the harness helper computes an
+ *     FNV-1a tag over (run_id || frame bytes) with a per-run secret mixed into
+ *     the length input. This is an integrity MARKER against accidental
+ *     cross-frame confusion — it is not a MAC against a determined attacker
+ *     (the "secret" is embedded in the same guest-visible harness source).
+ *     Frames missing or mismatching tags are discarded, and a run with zero
+ *     authenticated frames fails closed.
+ *   - Bounded execution: fuel metering is ALWAYS on (DEFAULT_FUEL_LIMIT) — a
+ *     synchronous `while (true) {}` traps with FuelExhausted instead of
+ *     hanging the host event loop. The wall-clock timeout remains best-effort
+ *     for I/O waits; it is not the CPU-bound defence.
  *   - State-restore guard: reserved globals (fetch, Reflect, Proxy, __check_host__,
  *     etc.) cannot be overwritten via state restore — attempts are audit-logged.
  *
@@ -137,7 +156,7 @@ export interface WasmtimeKernelOptions extends KernelOptions {
 export class WasmtimeKernel implements WasmKernel {
   readonly #javyPath: string;
   readonly #timeoutMs: number;
-  readonly #fuelLimit: number | undefined;
+  readonly #fuelLimit: number;
   readonly #maxMemoryBytes: number | undefined;
   readonly #epochTickMs: number;
 
@@ -147,7 +166,10 @@ export class WasmtimeKernel implements WasmKernel {
   constructor(opts?: WasmtimeKernelOptions) {
     this.#javyPath = opts?.javyPath ?? "javy";
     this.#timeoutMs = opts?.timeoutMs ?? 10_000;
-    this.#fuelLimit = opts?.fuelLimit;
+    // Fuel metering is the primary CPU-bound defence: same-thread timeout
+    // cannot preempt a synchronous infinite loop, so fuel is ALWAYS on.
+    // Callers may raise/lower the budget explicitly.
+    this.#fuelLimit = opts?.fuelLimit ?? DEFAULT_FUEL_LIMIT;
     this.#maxMemoryBytes = opts?.maxMemoryBytes;
     this.#epochTickMs = opts?.epochTickMs ?? 10;
   }
@@ -293,7 +315,8 @@ export class WasmtimeKernel implements WasmKernel {
  *   3. __finalAnswer__ / __final_answer__ are detected.
  *   4. A result envelope is written to stdout via the ASM helper that:
  *      a. Frames the JSON with the WASMAGNT magic header + length-prefix.
- *      b. Appends an HMAC-SHA256 signature tag for host verification.
+ *      b. Appends an FNV-1a integrity tag for host verification (not a
+ *         cryptographic MAC — see the class docstring).
  *   5. The updated state bag is serialised and appended using the same helper.
  *
  * fetch() is provided as a capability-gated shim if allowedHosts is non-empty;
@@ -846,6 +869,12 @@ export async function runWasm(
   const decoder = new TextDecoder();
   const stderr = decoder.decode(concatUint8Arrays(stderrChunks));
 
+  // The harness emits one integrity tag per envelope frame, in stderr
+  // order — frame i must match tag i (the host previously reused the FIRST
+  // tag for every frame).
+  const frameTags = [...stderr.matchAll(/__hmac_tag__=([0-9a-f]+)/g)].map((m) => m[1]);
+  let tagIndex = 0;
+
   // ── Parse envelope protocol from raw stdout bytes ────────────────────────
   // Walk the raw byte stream and extract frames that match:
   //   MAGIC(8B) + len(4B BE) + payload(len B)
@@ -907,25 +936,42 @@ export async function runWasm(
     const payloadBytes = rawStdout.subarray(payloadStart, payloadEnd);
     const payloadStr = decoder.decode(payloadBytes);
 
-    // Verify HMAC tag if a secret was provided.
+    // Verify the integrity tag when a secret was provided. Tags are emitted
+    // by the harness in stderr order — frame i must match tag i (the host
+    // previously reused the FIRST tag for every frame, which could let a
+    // state frame ride on a result frame's tag).
     if (hmacSecret) {
       const expectedTag = computeHostHmac(runId, payloadStr, hmacSecret);
-      // Extract tag from stderr (emitted by harness as "__hmac_tag__=<hex>\n")
-      const tagMatch = stderr.match(/__hmac_tag__=([0-9a-f]+)/);
-      if (tagMatch) {
-        const actualTag = tagMatch[1];
-        if (actualTag !== expectedTag) {
-          auditLog.push(`envelope: HMAC mismatch for frame at offset ${magicStart} — discarded`);
-          pos = payloadEnd;
-          continue;
-        }
+      const actualTag = frameTags[tagIndex];
+      if (actualTag === undefined) {
+        auditLog.push(
+          `envelope: missing integrity tag for frame at offset ${magicStart} — discarded (fail-closed)`
+        );
+        pos = payloadEnd;
+        tagIndex++;
+        continue;
       }
-      // If no tag in stderr, we accept the frame but log it (harness may not have
-      // HMAC support in very old Javy builds).
+      tagIndex++;
+      if (actualTag !== expectedTag) {
+        auditLog.push(
+          `envelope: integrity tag mismatch for frame at offset ${magicStart} — discarded`
+        );
+        pos = payloadEnd;
+        continue;
+      }
     }
 
     acceptedFrames.push(payloadStr);
     pos = payloadEnd;
+  }
+
+  // Fail closed: when a secret is configured, at least one authenticated
+  // frame is required. A run whose every frame failed authentication must
+  // not degrade to an empty result object.
+  if (hmacSecret && acceptedFrames.length === 0) {
+    throw new Error(
+      "runWasm: no authenticated output frames — every envelope failed integrity verification"
+    );
   }
 
   // Harness emits two envelope frames: result envelope + updated state bag.
