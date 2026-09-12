@@ -79,6 +79,11 @@ export function paeEncode(payloadType: string, payload: string): Uint8Array {
  */
 export const AEP_PREDICATE_TYPE = "https://wasmagent.dev/attestations/aep/v0.4";
 
+/**
+ * The payloadType every AEP DSSE envelope MUST carry (in-toto statement).
+ */
+export const IN_TOTO_PAYLOAD_TYPE = "application/vnd.in-toto+json";
+
 export function wrapInTotoStatement(
   record: Record<string, unknown>,
   runId: string,
@@ -95,26 +100,29 @@ export function wrapInTotoStatement(
 /**
  * Verify a DSSE envelope against a public key.
  *
+ * AEP signature-count policy: exactly one signature. Zero or multiple
+ * signatures are rejected — current emitters produce one signature and this
+ * verifier deliberately does not define multisig/threshold semantics.
+ *
  * Steps:
- * 1. Reconstruct PAE from envelope.payloadType + envelope.payload
- * 2. Verify each signature against PAE bytes
- * 3. Return true if at least one signature verifies
+ * 1. Require exactly one signature and the in-toto payload type
+ * 2. Reconstruct PAE from envelope.payloadType + envelope.payload
+ * 3. Verify the signature against the PAE bytes
  */
 export async function verifyDSSEEnvelope(
   envelope: DSSEEnvelope,
   publicKey: Uint8Array
 ): Promise<boolean> {
   try {
-    if (!envelope.signatures || envelope.signatures.length === 0) {
+    if (!envelope.signatures || envelope.signatures.length !== 1) {
+      return false;
+    }
+    if (envelope.payloadType !== IN_TOTO_PAYLOAD_TYPE) {
       return false;
     }
     const paeBytes = paeEncode(envelope.payloadType, envelope.payload);
-    for (const sig of envelope.signatures) {
-      const sigBytes = Uint8Array.from(Buffer.from(sig.sig, "base64"));
-      const valid = await ed.verifyAsync(sigBytes, paeBytes, publicKey);
-      if (valid) return true;
-    }
-    return false;
+    const sigBytes = Uint8Array.from(Buffer.from(envelope.signatures[0]!.sig, "base64"));
+    return await ed.verifyAsync(sigBytes, paeBytes, publicKey);
   } catch {
     return false;
   }
