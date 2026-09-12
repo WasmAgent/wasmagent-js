@@ -72,6 +72,13 @@ export function paeEncode(payloadType: string, payload: string): Uint8Array {
 /**
  * Wrap an unsigned AEP record into an in-toto Statement.
  */
+/**
+ * The predicateType every AEP DSSE envelope MUST carry. Exactly this value —
+ * matching the Rust verifier's AEP_PREDICATE_TYPE — is required at
+ * verification; unknown or future versions fail closed until supported.
+ */
+export const AEP_PREDICATE_TYPE = "https://wasmagent.dev/attestations/aep/v0.4";
+
 export function wrapInTotoStatement(
   record: Record<string, unknown>,
   runId: string,
@@ -80,7 +87,7 @@ export function wrapInTotoStatement(
   return {
     _type: "https://in-toto.io/Statement/v1",
     subject: [{ name: `urn:wasmagent:run:${runId}`, digest: { sha256: payloadDigest } }],
-    predicateType: "https://wasmagent.dev/attestations/aep/v0.4",
+    predicateType: AEP_PREDICATE_TYPE,
     predicate: record,
   };
 }

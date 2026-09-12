@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { canonicalBytes } from "./canonical.js";
-import { type InTotoStatement, verifyDSSEEnvelope } from "./dsse.js";
+import { AEP_PREDICATE_TYPE, type InTotoStatement, verifyDSSEEnvelope } from "./dsse.js";
 import type { AEPRecord } from "./types.js";
 
 /**
@@ -79,6 +79,10 @@ function dsseEnvelopeBinding(record: AEPRecord): BindingMode {
       Buffer.from(envelope.payload, "base64").toString("utf8")
     ) as InTotoStatement;
     if (statement.predicate === undefined || !Array.isArray(statement.subject)) return "invalid";
+
+    // 0. Predicate type — must be exactly the AEP type (mirrors the Rust
+    // verifier). Empty, unrelated, or future predicate versions fail closed.
+    if (statement.predicateType !== AEP_PREDICATE_TYPE) return "invalid";
 
     const { signature: _sig, dsse_envelope: _dsse, timestamp_proof: _tp, ...unsigned } = record;
 

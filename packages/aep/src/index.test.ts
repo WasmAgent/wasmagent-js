@@ -1582,6 +1582,43 @@ describe("Verification result surface — binding window, profiles, chain status
     expect(detailed.binding).toBe("not-applicable");
   });
 
+  it("binding: wrong or missing predicateType fails closed (parity with Rust)", async () => {
+    const signer = createLocalSignerFromSeed(TEST_SEED_V, TEST_KEY_ID_V);
+
+    for (const predicateType of [
+      "https://example.com/unrelated/1.0",
+      "", // empty
+      "https://wasmagent.dev/attestations/aep/v0.9", // future version — unsupported
+    ]) {
+      const emitter = new AEPEmitter({ run_id: "run-ptype", signer });
+      emitter.addAction({ tool_name: "noop", state_changing: false });
+      const record = await emitter.emit(1_700_000_000_000);
+
+      // Re-sign honestly with a foreign/future predicateType: the PAE
+      // signature is valid, but this is not an AEP attestation.
+      const envelope = record.dsse_envelope!;
+      const statement = JSON.parse(Buffer.from(envelope.payload, "base64").toString("utf8"));
+      statement.predicateType = predicateType;
+      const payloadB64 = Buffer.from(JSON.stringify(statement)).toString("base64");
+      const pae = paeEncode(envelope.payloadType, payloadB64);
+      const sig = await signer.sign(pae);
+      const forged = {
+        ...record,
+        dsse_envelope: {
+          ...envelope,
+          payload: payloadB64,
+          signatures: [{ keyid: TEST_KEY_ID_V, sig }],
+        },
+      };
+
+      const publicKey = await signer.getPublicKey();
+      const detailed = await verifyAEPRecordDetailed(forged, publicKey);
+      expect(detailed.valid).toBe(false);
+      expect(detailed.binding).toBe("invalid");
+      expect(await verifyAEPRecord(forged, publicKey)).toBe(false);
+    }
+  });
+
   it("detailed: DSSE records report authenticity=dsse-valid with exact binding", async () => {
     const signer = createLocalSignerFromSeed(TEST_SEED_V, TEST_KEY_ID_V);
     const emitter = new AEPEmitter({ run_id: "run-profile-raw", signer });
