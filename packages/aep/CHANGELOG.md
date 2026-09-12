@@ -1,5 +1,11 @@
 # @wasmagent/aep
 
+## 2.7.1
+
+### Patch Changes
+
+- 1547b60: Add `authorization_evidence_count` field (selective-omission defense); regenerate schema export after rebase.
+
 ## 2.7.0
 
 ### Minor Changes
