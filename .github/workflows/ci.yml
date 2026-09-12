@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+
+# Least privilege by default; publish/deploy jobs escalate explicitly.
+permissions:
+  contents: read
 jobs:
   ci:
     name: Build, Typecheck & Test

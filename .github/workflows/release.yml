@@ -61,6 +61,13 @@ jobs:
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      # BLOCKING pre-publish readiness gate: every public package must pass
+      # metadata/dist/LICENSE/README/pack checks BEFORE anything reaches npm.
+      # (The post-publish run below is kept as registry verification, but it
+      # can no longer be the only line of defence.)
+      - name: Publish readiness — all public packages (blocking)
+        run: bun run publish:check
+
       - name: Create release PR or publish
         id: changesets
         uses: changesets/action@v2
@@ -74,10 +81,9 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
 
-      - name: Publish-readiness check (only when packages were published)
-        # Continue even if individual packages fail metadata checks — they
-        # were already accepted by npm. The check here is informational, not
-        # blocking, so we don't lose the GitHub Release creation that follows.
+      - name: Post-publish registry verification (non-blocking observation)
+        # This is a POST-publish observation, not the pre-publish gate — the
+        # blocking readiness check runs before changesets publish above.
         if: steps.changesets.outputs.published == 'true'
         continue-on-error: true
         run: bun run publish:check

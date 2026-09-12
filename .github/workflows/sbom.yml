@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
 
+
+# Least privilege by default; publish/deploy jobs escalate explicitly.
+permissions:
+  contents: read
 jobs:
   sbom:
     name: Generate CycloneDX SBOM
