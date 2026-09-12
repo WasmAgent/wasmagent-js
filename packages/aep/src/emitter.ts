@@ -401,6 +401,34 @@ export class AEPEmitter {
       ...opts
     } = this.#opts;
     const runSideEffectMax = this.#computeRunSideEffectClassMax();
+
+    // aep/v0.5 floor consistency: the floor MUST be the weakest observed
+    // grade (MUST NOT round up). Auto-compute it from the observed set when
+    // the caller omitted it; a caller-supplied floor that is not the weakest
+    // is a hard error — silently keeping it would produce exactly the
+    // masking the floor exists to prevent.
+    const backingOrder = [
+      "unknown",
+      "operator_asserted",
+      "principal_key_signed",
+      "qualified_signature",
+    ] as const;
+    const backingRank = (g: string): number => {
+      const i = (backingOrder as readonly string[]).indexOf(g);
+      return i === -1 ? backingOrder.length : i;
+    };
+    let floor = run_attribution_backing_floor;
+    const observed = run_attribution_backing_observed;
+    if (observed !== undefined && observed.length > 0) {
+      const weakest = observed.reduce((acc, g) => (backingRank(g) < backingRank(acc) ? g : acc));
+      if (floor !== undefined && floor !== weakest) {
+        throw new Error(
+          `run_attribution_backing_floor "${floor}" is not the weakest observed grade "${weakest}" — the floor MUST NOT round up.`
+        );
+      }
+      if (floor === undefined) floor = weakest;
+    }
+
     return {
       schema_version: schemaVersion ?? "aep/v0.3",
       ...opts,
@@ -410,9 +438,9 @@ export class AEPEmitter {
       ...(authority_origin !== undefined && { authority_origin }),
       ...(identity_source !== undefined && { identity_source }),
       ...(attribution_backing !== undefined && { attribution_backing }),
-      ...(run_attribution_backing_floor !== undefined && { run_attribution_backing_floor }),
-      ...(run_attribution_backing_observed !== undefined && {
-        run_attribution_backing_observed,
+      ...(floor !== undefined && { run_attribution_backing_floor: floor }),
+      ...(observed !== undefined && {
+        run_attribution_backing_observed: observed,
       }),
       input_refs: this.#inputRefs,
       output_refs: this.#outputRefs,

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { paeEncode, verifyDSSEEnvelope, wrapInTotoStatement } from "./dsse.js";
@@ -5544,5 +5544,39 @@ describe("AEP v0.5 — attribution grading", () => {
     const publicKey = await signer.getPublicKey();
     const valid = await verifyAEPRecord(record, publicKey);
     expect(valid).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cross-language — DSSE envelope signed by the Rust gateway (aep-core)
+// ---------------------------------------------------------------------------
+// The fixtures were emitted by wasmagent-proxy's emit_aep_samples example
+// (fixed test key [42u8;32]; verifying key exported alongside). These tests
+// pin the Rust↔JS DSSE interop: same PAE bytes, same canonical predicate
+// binding, same base64 signature encoding on both sides.
+
+describe("cross-language — Rust gateway DSSE envelope", () => {
+  const fixtureDir = join(import.meta.dir, "__fixtures__");
+  const loadFixture = (name: string): AEPRecord =>
+    JSON.parse(readFileSync(join(fixtureDir, name), "utf-8")) as AEPRecord;
+  const loadPubKey = (): Uint8Array => {
+    const hex = readFileSync(join(fixtureDir, "rust-gateway-verify-key.hex"), "utf-8").trim();
+    return Uint8Array.from(hex.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
+  };
+
+  it("verifyDSSEEnvelope accepts a Rust-signed gateway envelope", async () => {
+    const record = loadFixture("rust-gateway-dsse.json");
+    expect(await verifyDSSEEnvelope(record.dsse_envelope!, loadPubKey())).toBe(true);
+  });
+
+  it("verifyAEPRecord accepts the Rust-signed record (binding + legacy signature)", async () => {
+    const record = loadFixture("rust-gateway-dsse.json");
+    expect(await verifyAEPRecord(record, loadPubKey())).toBe(true);
+  });
+
+  it("rejects a tampered Rust-signed record", async () => {
+    const record = loadFixture("rust-gateway-dsse.json");
+    const tampered = { ...record, user_id: "user-attacker" } as AEPRecord;
+    expect(await verifyAEPRecord(tampered, loadPubKey())).toBe(false);
   });
 });

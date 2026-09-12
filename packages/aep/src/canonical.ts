@@ -39,9 +39,18 @@
 
 function sortedReplacer(_key: string, value: unknown): unknown {
   if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    // defineProperty (not assignment) so a literal `"__proto__"` key is
+    // preserved as an own property: plain assignment would trigger the
+    // prototype setter and silently DROP the key, making our canonical
+    // bytes diverge from the Rust verifier's (serde BTreeMap keeps it).
     const sorted: Record<string, unknown> = {};
     for (const k of Object.keys(value as Record<string, unknown>).sort()) {
-      sorted[k] = (value as Record<string, unknown>)[k];
+      Object.defineProperty(sorted, k, {
+        value: (value as Record<string, unknown>)[k],
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
     }
     return sorted;
   }
