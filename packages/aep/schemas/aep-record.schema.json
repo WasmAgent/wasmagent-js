@@ -771,8 +771,7 @@
       "required": [
         "schema_version",
         "run_id",
-        "created_at_ms",
-        "signature"
+        "created_at_ms"
       ],
       "additionalProperties": false
     }
