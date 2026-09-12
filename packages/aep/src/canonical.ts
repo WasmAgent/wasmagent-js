@@ -29,13 +29,38 @@
  * predicate version bump.
  *
  * Rules:
- * - Object keys are sorted lexicographically (recursive).
+ * - Object keys are sorted lexicographically by UTF-8 byte order (recursive) —
+ *   the same ordering the Rust verifier's `serde_json::Map` (BTreeMap) uses,
+ *   so canonical bytes agree across languages even for non-ASCII keys.
  * - Arrays preserve order.
  * - The result is UTF-8 encoded JSON with no trailing newline.
  *
  * The `signature` field MUST be stripped before calling this function.
  * That is the responsibility of the caller (AEPEmitter / verifyAEPRecord).
  */
+
+const utf8Encoder = new TextEncoder();
+
+/**
+ * Byte-wise UTF-8 key comparison — the same ordering `serde_json::Map`
+ * (BTreeMap) uses on the Rust verifier side. JS's default `Array.sort()`
+ * compares UTF-16 code units, which disagrees with UTF-8 byte order for
+ * astral-plane keys (e.g. "𐀀" U+10000 sorts before "Ａ" U+FF21 by code
+ * units but after it by bytes). Cross-language verification of a record
+ * containing such keys would fail closed; sorting by UTF-8 bytes keeps
+ * canonical bytes identical on both sides.
+ */
+function compareUtf8(a: string, b: string): number {
+  const A = utf8Encoder.encode(a);
+  const B = utf8Encoder.encode(b);
+  const n = Math.min(A.length, B.length);
+  for (let i = 0; i < n; i++) {
+    const x = A[i] ?? 0;
+    const y = B[i] ?? 0;
+    if (x !== y) return x - y;
+  }
+  return A.length - B.length;
+}
 
 function sortedReplacer(_key: string, value: unknown): unknown {
   if (value !== null && typeof value === "object" && !Array.isArray(value)) {
@@ -44,7 +69,7 @@ function sortedReplacer(_key: string, value: unknown): unknown {
     // prototype setter and silently DROP the key, making our canonical
     // bytes diverge from the Rust verifier's (serde BTreeMap keeps it).
     const sorted: Record<string, unknown> = {};
-    for (const k of Object.keys(value as Record<string, unknown>).sort()) {
+    for (const k of Object.keys(value as Record<string, unknown>).sort(compareUtf8)) {
       Object.defineProperty(sorted, k, {
         value: (value as Record<string, unknown>)[k],
         writable: true,
