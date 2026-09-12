@@ -188,10 +188,12 @@ write(
 );
 write(
   "dsse/tampered-run-id.json",
-  (() => {
-    const r = JSON.parse(JSON.stringify(emitter("conf-tampered").build(1_700_000_000_000)));
-    r.run_id = "run-impersonated";
-    return r;
+  await (async () => {
+    // Emit a real DSSE record FIRST, then mutate the inline run_id — the
+    // tampered record keeps its (now stale) envelope, so the fixture
+    // exercises binding failure, not an unsigned record.
+    const record = await emitter("conf-tampered").emit(1_700_000_000_000);
+    return { ...record, run_id: "run-impersonated" };
   })()
 );
 
