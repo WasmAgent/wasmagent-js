@@ -9,9 +9,9 @@
  */
 
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -51,9 +51,7 @@ for (const key of FORBIDDEN_CAMEL) {
 
 // ── 2. Schema files must be present ──────────────────────────────────────────
 
-const SCHEMA_FILES = [
-  "packages/core/src/ranking/schemas/training-record.schema.json",
-];
+const SCHEMA_FILES = ["packages/core/src/ranking/schemas/training-record.schema.json"];
 
 for (const f of SCHEMA_FILES) {
   try {
@@ -68,9 +66,12 @@ for (const f of SCHEMA_FILES) {
 // rollout-wire is now canonical in @wasmagent/protocol; resolve it via Node
 // module resolution (works with bun's isolated node_modules layout).
 const wireSchema = JSON.parse(
-  readFileSync(createRequire(import.meta.url).resolve(
-    "@wasmagent/protocol/schemas/compliance/rollout-wire.schema.json"
-  ), "utf8")
+  readFileSync(
+    createRequire(import.meta.url).resolve(
+      "@wasmagent/protocol/schemas/compliance/rollout-wire.schema.json"
+    ),
+    "utf8"
+  )
 );
 
 const dpoProvFields = Object.keys(wireSchema.$defs.DpoProvenance.properties);

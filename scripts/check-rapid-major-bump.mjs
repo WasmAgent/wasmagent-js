@@ -65,7 +65,9 @@ if (newTag) {
     process.exit(0);
   }
   if (newMajor <= previous.major) {
-    console.log(`✓ ${newTag} (major ${newMajor}) does not advance past v${previous.major}.0.0-line (${previous.tag})`);
+    console.log(
+      `✓ ${newTag} (major ${newMajor}) does not advance past v${previous.major}.0.0-line (${previous.tag})`
+    );
     process.exit(0);
   }
   // The candidate tag does not exist yet when this guard runs pre-tag —
@@ -84,7 +86,9 @@ if (newTag) {
     );
     process.exit(1);
   }
-  console.log(`✓ ${newTag} is ${gapH.toFixed(1)}h after ${previous.tag} — outside the rapid-bump window`);
+  console.log(
+    `✓ ${newTag} is ${gapH.toFixed(1)}h after ${previous.tag} — outside the rapid-bump window`
+  );
   process.exit(0);
 }
 

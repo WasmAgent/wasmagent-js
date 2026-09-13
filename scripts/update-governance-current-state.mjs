@@ -30,7 +30,7 @@ const coreVersion = process.argv[2];
 if (coreVersion) {
   text = text.replace(
     /\| npm latest \(`@wasmagent\/core`\) \| v[\w.]+ \(published \d{4}-\d{2}-\d{2}\) \|/,
-    `\| npm latest (\`@wasmagent/core\`) \| v${coreVersion.replace(/^v/, "")} (published ${today}) \|`
+    `| npm latest (\`@wasmagent/core\`) | v${coreVersion.replace(/^v/, "")} (published ${today}) |`
   );
 }
 
