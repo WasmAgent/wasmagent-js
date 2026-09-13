@@ -1,0 +1,39 @@
+name: notify-protocol
+
+# Consumer-side refresh signal for Gate C.
+#
+# When this repository's main moves, notify wasmagent-protocol so its Gate C
+# latest-head monitor re-runs the exact-SHA consumer matrix against the new
+# consumer state. This is a COMPATIBILITY WATCH, not a certified target —
+# certified four-repo closure is only ever recorded by protocol-side Gate C
+# runs on pinned SHAs.
+#
+# Cross-repo repository_dispatch needs a token with `actions:write` on
+# wasmagent-protocol: configure the org/repo secret REPO_DISPATCH_TOKEN
+# (fine-grained PAT, wasmagent-protocol only). Without it this workflow
+# exits gracefully — the hourly schedule on the protocol side remains the
+# fallback refresh path.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send aep-consumer-main-updated to wasmagent-protocol
+        env:
+          GH_TOKEN: ${{ secrets.REPO_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "REPO_DISPATCH_TOKEN not configured — skipping dispatch."
+            echo "The protocol-side hourly Gate C monitor remains the fallback."
+            exit 0
+          fi
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/WasmAgent/wasmagent-protocol/dispatches \
+            -d '{"event_type":"aep-consumer-main-updated","client_payload":{"repo":"'"$GITHUB_REPOSITORY"'","sha":"'"$GITHUB_SHA"'"}}'
