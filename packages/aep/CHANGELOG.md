@@ -1,5 +1,12 @@
 # @wasmagent/aep
 
+## 2.8.0
+
+### Minor Changes
+
+- cdf945a: DSSE PAE now covers decoded serialized-body bytes (not base64 text), conforming to DSSE 1.0 §2. `paeEncode` accepts `Uint8Array` payload; `paeEncodeString` added for convenience. All existing signatures must be regenerated.
+- cdf945a: DSSE PAE now covers decoded serialized-body bytes per DSSE 1.0.2 §2 (was: base64 text). `paeEncode` accepts `Uint8Array`. All existing DSSE signatures must be regenerated.
+
 ## 2.7.2
 
 ### Patch Changes
