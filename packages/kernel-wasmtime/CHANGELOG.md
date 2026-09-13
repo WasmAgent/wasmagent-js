@@ -1,5 +1,13 @@
 # @agentkit-js/kernel-wasmtime
 
+## 1.20.1
+
+### Patch Changes
+
+- ce63ca5: The constructor `capabilities` manifest is now stored as a frozen immutable authority ceiling: every `run()` merges it restrictively with the per-call manifest (`resolveEffectiveCapabilities`), so a per-call manifest may narrow but never widen the constructor grant.
+- Updated dependencies [ce63ca5]
+  - @wasmagent/core@3.8.0
+
 ## 1.20.0
 
 ### Minor Changes

@@ -1,5 +1,12 @@
 # @wasmagent/aisdk
 
+## 1.0.18
+
+### Patch Changes
+
+- Updated dependencies [ce63ca5]
+  - @wasmagent/core@3.8.0
+
 ## 1.0.17
 
 ### Patch Changes

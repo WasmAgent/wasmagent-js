@@ -1,5 +1,12 @@
 # @agentkit-js/tools-browser
 
+## 1.0.17
+
+### Patch Changes
+
+- Updated dependencies [ce63ca5]
+  - @wasmagent/core@3.8.0
+
 ## 1.0.16
 
 ### Patch Changes
