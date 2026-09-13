@@ -1,5 +1,13 @@
 # @agentkit-js/kernel-remote
 
+## 1.3.18
+
+### Patch Changes
+
+- ce63ca5: `RemoteSandboxKernel.runCommand()` now goes through the same fail-closed authority gate as `run()` (`#resolveAndAssertExecutionPolicy`): restrictive capability merge, rejection of unenforceable restrictions, and the `allowUnrestrictedNetwork` / `allowUnrestrictedSandboxFs` acknowledgments — all BEFORE the sandbox is allocated. New optional per-call `capabilities` parameter; per-call `cpuMs` now narrows the command timeout like it does for `run()`. Hostile regression tests RC01–RC08 pin the gate (default-deny, single-flag rejection, constructor-ceiling bypass attempts, no sandbox allocation on rejected policy, timeout narrowing).
+- Updated dependencies [ce63ca5]
+  - @wasmagent/core@3.8.0
+
 ## 1.3.17
 
 ### Patch Changes
