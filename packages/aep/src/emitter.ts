@@ -272,9 +272,11 @@ export class AEPEmitter {
     const statementJson = JSON.stringify(statement);
     const payloadB64 = Buffer.from(statementJson).toString("base64");
 
-    // Compute PAE and sign
+    // Compute PAE over the DECODED serialized body bytes (DSSE 1.0.2 §2):
+    // sign PAE(payloadType, serialized_body), NOT PAE(payloadType, base64_text).
     const payloadType = "application/vnd.in-toto+json";
-    const paeBytes = paeEncode(payloadType, payloadB64);
+    const statementBytes = new TextEncoder().encode(statementJson);
+    const paeBytes = paeEncode(payloadType, statementBytes);
     const sig = await signer.sign(paeBytes);
 
     // Build DSSE envelope

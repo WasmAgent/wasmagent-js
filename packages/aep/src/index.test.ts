@@ -1668,8 +1668,10 @@ describe("Verification result surface — binding window, profiles, chain status
     const envelope = record.dsse_envelope!;
     const statement = JSON.parse(Buffer.from(envelope.payload, "base64").toString("utf8"));
     statement.predicate.schema_version = "aep/v0.3";
-    const payloadB64 = Buffer.from(JSON.stringify(statement)).toString("base64");
-    const pae = paeEncode(envelope.payloadType, payloadB64);
+    const rewrittenJson = JSON.stringify(statement);
+    const payloadB64 = Buffer.from(rewrittenJson).toString("base64");
+    const rewrittenBytes = new TextEncoder().encode(rewrittenJson);
+    const pae = paeEncode(envelope.payloadType, rewrittenBytes);
     const sig = await signer.sign(pae);
     const rewritten = {
       ...record,

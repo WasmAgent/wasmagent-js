@@ -53,20 +53,33 @@ export interface InTotoStatement {
  * PAE (Pre-Authentication Encoding) — the canonical encoding DSSE signs over.
  * PAE(type, body) = "DSSEv1" + SP + len(type) + SP + type + SP + len(body) + SP + body
  */
-export function paeEncode(payloadType: string, payload: string): Uint8Array {
+/**
+ * PAE (Pre-Authentication Encoding) — the canonical encoding DSSE signs over.
+ *
+ * DSSE 1.0.2 §2 signs PAE(PAYLOAD_TYPE, PAYLOAD) where PAYLOAD is the raw
+ * serialized body bytes (NOT the base64 text from the JSON envelope). This
+ * function accepts those decoded body bytes directly.
+ *
+ * PAE(type, body) = "DSSEv1" + SP + len(type) + SP + type + SP + len(body) + SP + body
+ */
+export function paeEncode(payloadType: string, payload: Uint8Array): Uint8Array {
   const encoder = new TextEncoder();
   const typeBytes = encoder.encode(payloadType);
-  const payloadBytes = encoder.encode(payload);
   const header = encoder.encode(`DSSEv1 ${typeBytes.length} `);
-  const mid = encoder.encode(` ${payloadBytes.length} `);
-  const result = new Uint8Array(
-    header.length + typeBytes.length + mid.length + payloadBytes.length
-  );
+  const mid = encoder.encode(` ${payload.length} `);
+  const result = new Uint8Array(header.length + typeBytes.length + mid.length + payload.length);
   result.set(header, 0);
   result.set(typeBytes, header.length);
   result.set(mid, header.length + typeBytes.length);
-  result.set(payloadBytes, header.length + typeBytes.length + mid.length);
+  result.set(payload, header.length + typeBytes.length + mid.length);
   return result;
+}
+
+/**
+ * Convenience: compute PAE over a UTF-8 string payload (signing path).
+ */
+export function paeEncodeString(payloadType: string, payload: string): Uint8Array {
+  return paeEncode(payloadType, new TextEncoder().encode(payload));
 }
 
 /**
@@ -120,7 +133,8 @@ export async function verifyDSSEEnvelope(
     if (envelope.payloadType !== IN_TOTO_PAYLOAD_TYPE) {
       return false;
     }
-    const paeBytes = paeEncode(envelope.payloadType, envelope.payload);
+    const payloadBytes = new Uint8Array(Buffer.from(envelope.payload, "base64"));
+    const paeBytes = paeEncode(envelope.payloadType, payloadBytes);
     const sigBytes = Uint8Array.from(Buffer.from(envelope.signatures[0]!.sig, "base64"));
     return await ed.verifyAsync(sigBytes, paeBytes, publicKey);
   } catch {

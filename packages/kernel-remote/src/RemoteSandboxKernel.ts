@@ -132,13 +132,13 @@ export class RemoteSandboxKernel implements WasmKernel {
     // "Lower value wins": per-call limits may narrow, never widen, the
     // constructor ceiling (@wasmagent/core/executor contract).
     const timeoutMs = Math.min(
-      capabilities?.cpuMs ?? Number.POSITIVE_INFINITY,
+      merged.cpuMs ?? Number.POSITIVE_INFINITY,
       this.#opts.timeoutMs ?? Number.POSITIVE_INFINITY
     );
     const effectiveTimeoutMs = timeoutMs === Number.POSITIVE_INFINITY ? 30_000 : timeoutMs;
 
-    // Wrap code to capture output and produce a structured result.
-    const harness = buildHarness(code, capabilities);
+    // Use effective capabilities (not raw per-call) for harness construction.
+    const harness = buildHarness(code, merged);
 
     const execution = await sandbox.runCode(harness, { timeoutMs: effectiveTimeoutMs });
     const logs = execution.logs.stdout.concat(execution.logs.stderr);
