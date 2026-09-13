@@ -174,15 +174,10 @@ export class RemoteSandboxKernel implements WasmKernel {
   /**
    * Run a shell command inside the sandbox and return structured output.
    *
-   * Unlike run() (which evaluates a JS/Python code snippet via runCode()),
-   * this method executes a real shell command — e.g. `npm install`, `vite build`.
-   * Use this for build/install steps where you need the real stdout/stderr/exitCode
-   * rather than a structured code-execution result.
-   *
-   * @example
-   * ```ts
-   * const { stdout, stderr, exitCode } = await kernel.runCommand("npm install");
-   * ```
+   * SECURITY: this method executes a real shell command inside the microVM.
+   * It shares the same sandbox lifecycle as run() and is gated by the same
+   * allowUnrestrictedNetwork / allowUnrestrictedSandboxFs acknowledgments —
+   * without those, the sandbox itself is not created and this call fails.
    */
   async runCommand(cmd: string): Promise<CommandResult> {
     const sandbox = await this.#getSandbox();

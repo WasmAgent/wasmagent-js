@@ -271,15 +271,23 @@ export class QuickJSKernel implements WasmKernel {
     }
     // Memory limit: QuickJS exposes a hard runtime cap. We only honour the
     // *lower* of the constructor default and the per-call request — never widen.
+    // FAIL-CLOSED: if a hard memory cap was requested but the runtime helper
+    // is unavailable, refuse to run rather than silently executing uncapped.
     if (capabilities?.memoryLimitBytes && capabilities.memoryLimitBytes > 0 && this.#runtime) {
+      const rt = this.#runtime as unknown as { setMemoryLimit?: (n: number) => void };
+      if (typeof rt.setMemoryLimit !== "function") {
+        throw new Error(
+          "QuickJSKernel: memory limit requested but this quickjs-emscripten build " +
+            "does not expose setMemoryLimit — refusing to execute without the requested cap"
+        );
+      }
       try {
-        // setMemoryLimit is available on QuickJSRuntime; -1 disables the limit.
-        // Cast through unknown so we don't depend on a specific quickjs-emscripten
-        // type version exposing the method on its public surface.
-        const rt = this.#runtime as unknown as { setMemoryLimit?: (n: number) => void };
-        rt.setMemoryLimit?.(capabilities.memoryLimitBytes);
-      } catch {
-        // Best effort — older quickjs-emscripten builds did not export the helper.
+        rt.setMemoryLimit(capabilities.memoryLimitBytes);
+      } catch (cause) {
+        throw new Error(
+          `QuickJSKernel: failed to apply memory limit — refusing uncapped execution`,
+          { cause }
+        );
       }
     }
 
