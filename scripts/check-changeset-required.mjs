@@ -167,7 +167,13 @@ try {
     if (prNumber) {
       const headMsg = execSync(
         `gh pr view ${prNumber} --json commits --jq '.commits[-1].messageBody'`,
-        { cwd: ROOT, encoding: "utf8" },
+        {
+          cwd: ROOT,
+          encoding: "utf8",
+          // gh requires an explicit token env in Actions; the job's
+          // GITHUB_TOKEN has contents:read, sufficient for pr view.
+          env: { ...process.env, GH_TOKEN: process.env.GITHUB_TOKEN ?? "" },
+        },
       );
       candidates.push(headMsg);
     }
