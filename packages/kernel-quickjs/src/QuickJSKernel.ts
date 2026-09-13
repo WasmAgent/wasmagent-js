@@ -1,8 +1,9 @@
-import type {
-  CapabilityManifest,
-  KernelOptions,
-  KernelResult,
-  WasmKernel,
+import {
+  type CapabilityManifest,
+  type KernelOptions,
+  type KernelResult,
+  resolveEffectiveCapabilities,
+  type WasmKernel,
 } from "@wasmagent/core/executor";
 
 // We import Scope for RAII handle management (Q5).
@@ -112,8 +113,15 @@ export class QuickJSKernel implements WasmKernel {
   #jsonObj: (QHandle & { dispose(): void }) | null = null;
   #stringify: (QHandle & { dispose(): void }) | null = null;
 
+  // Constructor manifest = immutable authority ceiling (K01–K12 kernel
+  // contract): per-call manifests may narrow it, never widen it.
+  readonly #baseCapabilities: Partial<CapabilityManifest> | undefined;
+
   constructor(opts?: QuickJSKernelOptions) {
     this.#timeoutMs = opts?.timeoutMs ?? 5_000;
+    this.#baseCapabilities = opts?.capabilities
+      ? Object.freeze({ ...opts.capabilities })
+      : undefined;
     this.#variant = opts?.variant;
     this.#variantLoader = opts?.variantLoader;
   }
@@ -218,6 +226,9 @@ export class QuickJSKernel implements WasmKernel {
     if (this.#disposed) {
       throw new Error("KernelError: cannot run() on a disposed QuickJSKernel");
     }
+    // Restrictive merge of the constructor ceiling and this call's manifest —
+    // after this line only `effective` is consulted.
+    const effective = resolveEffectiveCapabilities(this.#baseCapabilities, capabilities);
     const ctx = await this.#ensureContext();
     const { Scope } = await import("quickjs-emscripten");
     const ScopeStatic = Scope as unknown as ScopeStatic;
@@ -259,21 +270,21 @@ export class QuickJSKernel implements WasmKernel {
       )
       ?.dispose?.();
 
-    if (capabilities?.allowedHosts?.length) {
-      this.#injectFetchWrapper(ctx, capabilities.allowedHosts);
+    if (effective.allowedHosts?.length) {
+      this.#injectFetchWrapper(ctx, effective.allowedHosts);
     }
 
     // Code-mode unified policy face (S1/A1, 2026-06): env injection mirrors
     // buildCapabilityGlobals so the same manifest yields the same `__env__`
     // surface in QuickJS as in JsKernel/VmKernel.
-    if (capabilities?.env && Object.keys(capabilities.env).length > 0) {
-      this.#injectEnv(ctx, capabilities.env);
+    if (effective.env && Object.keys(effective.env).length > 0) {
+      this.#injectEnv(ctx, effective.env);
     }
     // Memory limit: QuickJS exposes a hard runtime cap. We only honour the
     // *lower* of the constructor default and the per-call request — never widen.
     // FAIL-CLOSED: if a hard memory cap was requested but the runtime helper
     // is unavailable, refuse to run rather than silently executing uncapped.
-    if (capabilities?.memoryLimitBytes && capabilities.memoryLimitBytes > 0 && this.#runtime) {
+    if (effective.memoryLimitBytes && effective.memoryLimitBytes > 0 && this.#runtime) {
       const rt = this.#runtime as unknown as { setMemoryLimit?: (n: number) => void };
       if (typeof rt.setMemoryLimit !== "function") {
         throw new Error(
@@ -282,7 +293,7 @@ export class QuickJSKernel implements WasmKernel {
         );
       }
       try {
-        rt.setMemoryLimit(capabilities.memoryLimitBytes);
+        rt.setMemoryLimit(effective.memoryLimitBytes);
       } catch (cause) {
         throw new Error(
           `QuickJSKernel: failed to apply memory limit — refusing uncapped execution`,
@@ -295,7 +306,7 @@ export class QuickJSKernel implements WasmKernel {
     // The interrupt handler sets #timedOut = true before the QuickJS error propagates.
     this.#timedOut = false;
     // Per-call timeout: cpuMs (if set) tightens the kernel default; never widens.
-    const cpuMs = capabilities?.cpuMs;
+    const cpuMs = effective.cpuMs;
     const effectiveTimeout =
       cpuMs != null && cpuMs > 0 ? Math.min(this.#timeoutMs, cpuMs) : this.#timeoutMs;
     const deadline = Date.now() + effectiveTimeout;

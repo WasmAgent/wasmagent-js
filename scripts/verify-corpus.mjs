@@ -35,6 +35,30 @@ if (!existsSync(join(CORPUS, "manifest.json"))) {
 const { verifyAEPChain, verifyAEPRecordDetailed } = await import("../packages/aep/src/index.ts");
 
 const manifest = JSON.parse(readFileSync(join(CORPUS, "manifest.json"), "utf8"));
+
+// Signing-profile gate: refuse a corpus whose manifest profile is not the one
+// this verifier implements — a stale manifest must fail loudly.
+const SUPPORTED_PROFILE = "aep-dsse-ed25519-decoded-body-v1";
+if (manifest.signing_profile_id !== SUPPORTED_PROFILE) {
+  console.error(
+    `[verify-corpus] unsupported or stale signing_profile_id ${JSON.stringify(
+      manifest.signing_profile_id
+    )} — expected ${JSON.stringify(SUPPORTED_PROFILE)}`
+  );
+  process.exit(2);
+}
+
+// Per-entry path containment: manifest-declared paths are joined into the
+// corpus root, so defend the tool against traversal (.. / absolute) entries.
+function insideCorpus(rel) {
+  const p = resolve(CORPUS, String(rel));
+  if (p !== CORPUS && !p.startsWith(CORPUS + "/")) {
+    console.error(`FAIL manifest path escapes corpus: ${rel}`);
+    process.exit(2);
+  }
+  return p;
+}
+
 const keyHexDefault = readFileSync(join(CORPUS, "dsse", "js-verify-key.hex"), "utf8").trim();
 
 let failures = 0;
@@ -44,7 +68,7 @@ const authentic = manifest.conformance_target.filter(
   (e) => e.authenticity === "dsse-valid" || e.authenticity === "invalid"
 );
 for (const entry of authentic) {
-  const fixture = join(CORPUS, entry.path);
+  const fixture = insideCorpus(entry.path);
   const raw = readFileSync(fixture, "utf8");
   const records = entry.path.endsWith(".jsonl")
     ? raw
@@ -55,7 +79,7 @@ for (const entry of authentic) {
   // Per-entry verifying key: the pinned Rust fixture was emitted with the
   // legacy test seed, not the corpus seed.
   const keyHex = entry.verify_key
-    ? readFileSync(join(CORPUS, entry.verify_key), "utf8").trim()
+    ? readFileSync(insideCorpus(entry.verify_key), "utf8").trim()
     : keyHexDefault;
   const publicKey = new Uint8Array(keyHex.match(/../g).map((b) => parseInt(b, 16)));
   executed++;
@@ -81,7 +105,7 @@ const chained = manifest.conformance_target.filter(
   (e) => e.chain && e.chain !== "not-checked" && String(e.path).endsWith(".jsonl")
 );
 for (const entry of chained) {
-  const records = readFileSync(join(CORPUS, entry.path), "utf8")
+  const records = readFileSync(insideCorpus(entry.path), "utf8")
     .trim()
     .split("\n")
     .map((l) => JSON.parse(l));

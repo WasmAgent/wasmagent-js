@@ -381,9 +381,14 @@ export function matchGlob(pattern: string, value: string): boolean {
 // No kernel may silently reinterpret omission as unrestricted.
 
 function intersectStrings(a: string[] | undefined, b: string[] | undefined): string[] | undefined {
+  // Omission semantics (K10): an ABSENT axis on either side is NOT an empty
+  // allow-list — it means "no constraint from this side". The other side's
+  // value then stands; only when BOTH sides specify a list does the
+  // intersection apply. (An explicit [] is a set axis: deny-all.)
   if (a === undefined && b === undefined) return undefined;
-  const base = new Set(a ?? []);
-  return (b ?? []).filter((x) => base.has(x));
+  if (a === undefined) return b === undefined ? undefined : [...b];
+  if (b === undefined) return [...a];
+  return b.filter((x) => a.includes(x));
 }
 
 export function resolveEffectiveCapabilities(
@@ -413,9 +418,17 @@ export function resolveEffectiveCapabilities(
     else if (cv !== undefined) out[key] = cv;
   }
 
+  // env (K04): when the constructor declares an env map, it is an explicit
+  // allow-list of KEYS — per-call values fill those keys and nothing else.
+  // When the constructor omits env entirely, there is no ceiling on the axis
+  // (omission ≠ empty allow-list): the per-call env stands as-is.
   const mergedEnv: Record<string, string> = {};
-  for (const [k, v] of Object.entries(c.env ?? {})) {
-    if (b.env && k in b.env) mergedEnv[k] = v;
+  if (b.env === undefined) {
+    Object.assign(mergedEnv, c.env ?? {});
+  } else {
+    for (const [k, v] of Object.entries(c.env ?? {})) {
+      if (k in b.env) mergedEnv[k] = v;
+    }
   }
   if (Object.keys(mergedEnv).length > 0) out.env = mergedEnv;
 

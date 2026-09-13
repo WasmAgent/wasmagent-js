@@ -77,21 +77,16 @@ export class RemoteSandboxKernel implements WasmKernel {
     this.#opts = opts;
   }
 
-  async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
-    // FAIL CLOSED — default deny. This kernel cannot enforce network egress
-    // or FS allow-lists: without explicit acknowledgment, ANY execution would
-    // run with unrestricted network/FS inside the microVM, which the
-    // CapabilityManifest contract treats as a lie about isolation.
-    //
-    // Semantics:
-    //   allowUnrestrictedNetwork = false (default) → reject.
-    //   allowUnrestrictedNetwork = true            → may execute; but a
-    //     requested allow-list STILL rejects — we cannot enforce it.
-    //   memoryLimitBytes requested                 → always reject (no
-    //     enforcement exists in this kernel).
-    // Constructor capabilities and per-call capabilities merge restrictively
-    // (resolveEffectiveCapabilities); the acknowledgment flags are NOT part
-    // of the manifest and cannot be widened per-call.
+  /**
+   * One authority gate shared by every execution path (run, runCommand):
+   * merges constructor + per-call capabilities restrictively, rejects any
+   * restriction this kernel cannot enforce, and requires the explicit
+   * unrestricted-environment acknowledgments. Must be called BEFORE
+   * #getSandbox() so a rejected policy never allocates a remote sandbox.
+   */
+  #resolveAndAssertExecutionPolicy(
+    capabilities?: Partial<CapabilityManifest>
+  ): Partial<CapabilityManifest> {
     const merged = resolveEffectiveCapabilities(this.#opts.capabilities, capabilities);
 
     // A defined list IS a requested restriction — deny-all ([], per the
@@ -127,6 +122,25 @@ export class RemoteSandboxKernel implements WasmKernel {
           "environment, or use a kernel with hard enforcement (JsKernel / QuickJSKernel)."
       );
     }
+    return merged;
+  }
+
+  async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
+    // FAIL CLOSED — default deny. This kernel cannot enforce network egress
+    // or FS allow-lists: without explicit acknowledgment, ANY execution would
+    // run with unrestricted network/FS inside the microVM, which the
+    // CapabilityManifest contract treats as a lie about isolation.
+    //
+    // Semantics:
+    //   allowUnrestrictedNetwork = false (default) → reject.
+    //   allowUnrestrictedNetwork = true            → may execute; but a
+    //     requested allow-list STILL rejects — we cannot enforce it.
+    //   memoryLimitBytes requested                 → always reject (no
+    //     enforcement exists in this kernel).
+    // Constructor capabilities and per-call capabilities merge restrictively
+    // (resolveEffectiveCapabilities); the acknowledgment flags are NOT part
+    // of the manifest and cannot be widened per-call.
+    const merged = this.#resolveAndAssertExecutionPolicy(capabilities);
 
     const sandbox = await this.#getSandbox();
     // "Lower value wins": per-call limits may narrow, never widen, the
@@ -175,14 +189,26 @@ export class RemoteSandboxKernel implements WasmKernel {
    * Run a shell command inside the sandbox and return structured output.
    *
    * SECURITY: this method executes a real shell command inside the microVM.
-   * It shares the same sandbox lifecycle as run() and is gated by the same
-   * allowUnrestrictedNetwork / allowUnrestrictedSandboxFs acknowledgments —
-   * without those, the sandbox itself is not created and this call fails.
+   * It is gated by the SAME authority gate as run() — the shared policy check
+   * (constructor ceiling + per-call narrowing + unenforceable-restriction
+   * rejection + the allowUnrestrictedNetwork / allowUnrestrictedSandboxFs
+   * acknowledgments) runs BEFORE the sandbox is created, so a rejected policy
+   * never allocates anything remote.
    */
-  async runCommand(cmd: string): Promise<CommandResult> {
+  async runCommand(
+    cmd: string,
+    capabilities?: Partial<CapabilityManifest>
+  ): Promise<CommandResult> {
+    const merged = this.#resolveAndAssertExecutionPolicy(capabilities);
     const sandbox = await this.#getSandbox();
-    const timeoutMs = this.#opts.timeoutMs ?? 30_000;
-    const result = await sandbox.commands.run(cmd, { timeoutMs });
+    // "Lower value wins": per-call limits may narrow, never widen, the
+    // constructor ceiling (@wasmagent/core/executor contract) — same as run().
+    const timeoutMs = Math.min(
+      merged.cpuMs ?? Number.POSITIVE_INFINITY,
+      this.#opts.timeoutMs ?? Number.POSITIVE_INFINITY
+    );
+    const effectiveTimeoutMs = timeoutMs === Number.POSITIVE_INFINITY ? 30_000 : timeoutMs;
+    const result = await sandbox.commands.run(cmd, { timeoutMs: effectiveTimeoutMs });
     return {
       stdout: result.stdout,
       stderr: result.stderr,

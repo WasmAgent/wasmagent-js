@@ -1,5 +1,5 @@
 import { createContext, Script } from "node:vm";
-import { buildCapabilityGlobals } from "./capabilities.js";
+import { buildCapabilityGlobals, resolveEffectiveCapabilities } from "./capabilities.js";
 import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from "./types.js";
 
 /**
@@ -26,6 +26,9 @@ export class VmKernel implements WasmKernel {
   #logs: string[] = [];
   #disposed = false;
   readonly #timeoutMs: number;
+  // Constructor manifest = immutable authority ceiling (K01–K12 kernel
+  // contract): per-call manifests may narrow it, never widen it.
+  readonly #baseCapabilities: Partial<CapabilityManifest> | undefined;
 
   constructor(opts?: KernelOptions) {
     // Default 5s — finite by construction. A bare `new VmKernel()`
@@ -34,6 +37,9 @@ export class VmKernel implements WasmKernel {
     // thread, so there's no isolation; cf. JsKernel). Match the
     // QuickJSKernel/WasmtimeKernel default for consistency.
     this.#timeoutMs = opts?.timeoutMs ?? 5_000;
+    this.#baseCapabilities = opts?.capabilities
+      ? Object.freeze({ ...opts.capabilities })
+      : undefined;
     this.#context = this.#createSandbox();
   }
 
@@ -80,15 +86,19 @@ export class VmKernel implements WasmKernel {
     this.#context.__fs__ = undefined;
     this.#context.__env__ = undefined;
 
-    if (capabilities) {
-      const capGlobals = buildCapabilityGlobals(capabilities);
+    // Restrictive merge of the constructor ceiling and this call's manifest —
+    // after this line only `effective` is consulted.
+    const effective = resolveEffectiveCapabilities(this.#baseCapabilities, capabilities);
+
+    if (Object.keys(effective).length > 0) {
+      const capGlobals = buildCapabilityGlobals(effective);
       for (const [key, value] of Object.entries(capGlobals)) {
         this.#context[key] = value;
       }
     }
 
-    // Per-call timeout: capability.cpuMs (if set) tightens the kernel default.
-    const cpuMs = capabilities?.cpuMs;
+    // Per-call timeout: effective.cpuMs (if set) tightens the kernel default.
+    const cpuMs = effective.cpuMs;
     const effectiveTimeout =
       cpuMs != null && cpuMs > 0 ? Math.min(this.#timeoutMs, cpuMs) : this.#timeoutMs;
 

@@ -44,7 +44,11 @@ describe("RemoteSandboxKernel", () => {
       Sandbox: { create: mock().mockResolvedValue(fakeSandbox) },
     }));
 
-    const kernel = new RemoteSandboxKernel({ apiKey: "test" });
+    const kernel = new RemoteSandboxKernel({
+      apiKey: "test",
+      allowUnrestrictedNetwork: true,
+      allowUnrestrictedSandboxFs: true,
+    });
     const result = await kernel.runCommand("npm install");
     expect(fakeCommands.run).toHaveBeenCalledWith(
       "npm install",
@@ -203,5 +207,112 @@ describe("RemoteSandboxKernel", () => {
       const err = await kernel.run("1 + 1").catch((e) => e as Error);
       expect(String(err?.message ?? err)).not.toMatch(/allowUnrestricted|cannot enforce/);
     }, 15000);
+  });
+
+  // ── runCommand() shares the SAME authority gate (RC01–RC08) ──────────────
+  // runCommand() executes a real shell in the microVM: it must pass through
+  // the identical policy gate as run(), and the gate must run BEFORE
+  // #getSandbox() so a rejected policy never allocates a remote sandbox.
+  describe("runCommand shares the run() authority gate", () => {
+    it("RC01 default options → reject; Sandbox.create is never called", async () => {
+      const createCalls: unknown[] = [];
+      mock.module("e2b", () => ({
+        Sandbox: {
+          create: mock((...args: unknown[]) => {
+            createCalls.push(args);
+            return Promise.reject(new Error("should never allocate"));
+          }),
+        },
+      }));
+      const kernel = new RemoteSandboxKernel();
+      await expect(kernel.runCommand("ls -la")).rejects.toThrow(/allowUnrestrictedNetwork/);
+      expect(createCalls).toHaveLength(0);
+    });
+
+    it("RC02 network acknowledgment only → reject", async () => {
+      const kernel = new RemoteSandboxKernel({ allowUnrestrictedNetwork: true });
+      await expect(kernel.runCommand("ls")).rejects.toThrow(/allowUnrestrictedNetwork/);
+    });
+
+    it("RC03 filesystem acknowledgment only → reject", async () => {
+      const kernel = new RemoteSandboxKernel({ allowUnrestrictedSandboxFs: true });
+      await expect(kernel.runCommand("cat /etc/passwd")).rejects.toThrow(
+        /allowUnrestrictedNetwork/
+      );
+    });
+
+    it("RC04 both acknowledgments → proceeds to execution", async () => {
+      const fakeResult = { stdout: "ok\n", stderr: "", exitCode: 0 };
+      const fakeCommands = { run: mock().mockResolvedValue(fakeResult) };
+      mock.module("e2b", () => ({
+        Sandbox: {
+          create: mock().mockResolvedValue({
+            runCode: mock().mockResolvedValue({ logs: { stdout: [], stderr: [] } }),
+            commands: fakeCommands,
+            kill: mock().mockResolvedValue(undefined),
+          }),
+        },
+      }));
+      const kernel = new RemoteSandboxKernel({
+        allowUnrestrictedNetwork: true,
+        allowUnrestrictedSandboxFs: true,
+      });
+      const result = await kernel.runCommand("ls");
+      expect(result.stdout).toBe("ok\n");
+      expect(fakeCommands.run).toHaveBeenCalled();
+    });
+
+    it("RC05 constructor allowedHosts cannot be bypassed by runCommand", async () => {
+      const kernel = new RemoteSandboxKernel({
+        allowUnrestrictedNetwork: true,
+        allowUnrestrictedSandboxFs: true,
+        capabilities: { allowedHosts: ["api.example.com"] },
+      });
+      await expect(kernel.runCommand("curl api.example.com")).rejects.toThrow(/network allow-list/);
+    });
+
+    it("RC06 constructor read/write restriction cannot be bypassed by runCommand", async () => {
+      const kernel = new RemoteSandboxKernel({
+        allowUnrestrictedNetwork: true,
+        allowUnrestrictedSandboxFs: true,
+        capabilities: { allowedReadPaths: ["/tmp/data"] },
+      });
+      await expect(kernel.runCommand("cat /tmp/data")).rejects.toThrow(/filesystem allow-lists/);
+    });
+
+    it("RC07 memory restriction cannot be bypassed by runCommand", async () => {
+      const kernel = new RemoteSandboxKernel({
+        allowUnrestrictedNetwork: true,
+        allowUnrestrictedSandboxFs: true,
+        capabilities: { memoryLimitBytes: 64 * 1024 * 1024 },
+      });
+      await expect(kernel.runCommand("ls")).rejects.toThrow(/memory cap/);
+    });
+
+    it("RC08 per-call narrowing applies to runCommand timeout (cpuMs wins when lower)", async () => {
+      const seen: Array<Record<string, unknown>> = [];
+      const fakeCommands = {
+        run: mock((_cmd: string, opts: Record<string, unknown>) => {
+          seen.push(opts);
+          return Promise.resolve({ stdout: "", stderr: "", exitCode: 0 });
+        }),
+      };
+      mock.module("e2b", () => ({
+        Sandbox: {
+          create: mock().mockResolvedValue({
+            runCode: mock().mockResolvedValue({ logs: { stdout: [], stderr: [] } }),
+            commands: fakeCommands,
+            kill: mock().mockResolvedValue(undefined),
+          }),
+        },
+      }));
+      const kernel = new RemoteSandboxKernel({
+        allowUnrestrictedNetwork: true,
+        allowUnrestrictedSandboxFs: true,
+        timeoutMs: 10_000,
+      });
+      await kernel.runCommand("ls", { cpuMs: 2_500 });
+      expect(seen[0]?.timeoutMs).toBe(2_500);
+    });
   });
 });

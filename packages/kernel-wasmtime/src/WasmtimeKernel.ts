@@ -5,11 +5,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { WASI } from "node:wasi";
-import type {
-  CapabilityManifest,
-  KernelOptions,
-  KernelResult,
-  WasmKernel,
+import {
+  type CapabilityManifest,
+  type KernelOptions,
+  type KernelResult,
+  resolveEffectiveCapabilities,
+  type WasmKernel,
 } from "@wasmagent/core/executor";
 
 const execFileAsync = promisify(execFile);
@@ -158,6 +159,7 @@ export class WasmtimeKernel implements WasmKernel {
   readonly #timeoutMs: number;
   readonly #fuelLimit: number;
   readonly #maxMemoryBytes: number | undefined;
+  readonly #baseCapabilities: Partial<CapabilityManifest> | undefined;
   readonly #epochTickMs: number;
 
   // Emulated cross-run state bag: maps variable name → JSON-serialised value.
@@ -197,19 +199,27 @@ export class WasmtimeKernel implements WasmKernel {
       }
     }
     this.#maxMemoryBytes = opts?.maxMemoryBytes;
+    // Constructor manifest = immutable authority ceiling (K01–K12 kernel
+    // contract): per-call manifests may narrow it, never widen it.
+    this.#baseCapabilities = opts?.capabilities
+      ? Object.freeze({ ...opts.capabilities })
+      : undefined;
     this.#epochTickMs = opts?.epochTickMs ?? 10;
   }
 
   async run(code: string, capabilities?: Partial<CapabilityManifest>): Promise<KernelResult> {
-    const allowedHosts = capabilities?.allowedHosts ?? [];
-    const env = capabilities?.env ?? {};
+    // Restrictive merge of the constructor ceiling and this call's manifest —
+    // after this line only `effective` is consulted (K01–K12 kernel contract).
+    const effective = resolveEffectiveCapabilities(this.#baseCapabilities, capabilities);
+    const allowedHosts = effective.allowedHosts ?? [];
+    const env = effective.env ?? {};
     // Per-call cpuMs (capability) takes precedence over the constructor
     // default (opts.timeoutMs). This matches the "capability honouring
     // matrix" in @wasmagent/core/executor/types: cpuMs is per-call.
     // "Lower value wins": per-call limits may narrow, never widen, the
     // constructor ceiling (@wasmagent/core/executor contract).
     const effectiveTimeoutMs = Math.min(
-      capabilities?.cpuMs ?? Number.POSITIVE_INFINITY,
+      effective.cpuMs ?? Number.POSITIVE_INFINITY,
       this.#timeoutMs
     );
 

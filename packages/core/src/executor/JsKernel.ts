@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { type ResourceLimits, Worker } from "node:worker_threads";
+import { resolveEffectiveCapabilities } from "./capabilities.js";
 import type { CapabilityManifest, KernelOptions, KernelResult, WasmKernel } from "./types.js";
 
 // Q10: use new URL() for robust sibling resolution — cross-platform, no string hacks.
@@ -59,6 +60,11 @@ export class JsKernel implements WasmKernel {
   #disposed = false;
   readonly #timeoutMs: number;
   readonly #maxMemoryBytes: number | undefined;
+  // Constructor capability manifest = the immutable authority ceiling: every
+  // run() merges it restrictively (resolveEffectiveCapabilities) and uses
+  // ONLY the effective manifest afterwards — a per-call manifest may narrow,
+  // never widen (K01–K12 kernel contract).
+  readonly #baseCapabilities: Partial<CapabilityManifest> | undefined;
   #serial = 0;
 
   constructor(opts?: KernelOptions) {
@@ -70,6 +76,9 @@ export class JsKernel implements WasmKernel {
     // precedence; otherwise fall back to a capability manifest pinned at
     // construction time.
     this.#maxMemoryBytes = opts?.maxMemoryBytes ?? opts?.capabilities?.memoryLimitBytes;
+    this.#baseCapabilities = opts?.capabilities
+      ? Object.freeze({ ...opts.capabilities })
+      : undefined;
     // Q9: do NOT spawn worker here — defer to first run() call.
     // Constructing JsKernel (or CodeAgent) should not fork an OS thread;
     // the cost is paid only when the kernel is actually used.
@@ -100,15 +109,20 @@ export class JsKernel implements WasmKernel {
 
     const serial = ++this.#serial;
 
+    // Restrictive merge of constructor ceiling + per-call manifest: after this
+    // line the execution path reads ONLY `effective` — a per-call manifest may
+    // narrow the constructor ceiling, never widen it.
+    const effective = resolveEffectiveCapabilities(this.#baseCapabilities, capabilities);
+
     // Pass capability manifest directly — the worker runs in full Node.js context
     // and can reconstruct fetch closures and __fs__ objects from the allow-lists.
-    const capPayload = capabilities ?? null;
+    const capPayload = Object.keys(effective).length > 0 ? effective : null;
 
-    // Per-call timeout: capability.cpuMs (if set) tightens the kernel default.
+    // Per-call timeout: effective.cpuMs (if set) tightens the kernel default.
     // We never widen — a constructor-side timeoutMs is the host's hard ceiling.
     const perCallTimeout =
-      capabilities?.cpuMs != null && capabilities.cpuMs > 0
-        ? Math.min(this.#timeoutMs, capabilities.cpuMs)
+      effective.cpuMs != null && effective.cpuMs > 0
+        ? Math.min(this.#timeoutMs, effective.cpuMs)
         : this.#timeoutMs;
 
     // Single promise that resolves/rejects when the worker responds OR dies/times out.
