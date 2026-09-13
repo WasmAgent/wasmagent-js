@@ -8,16 +8,20 @@ name: notify-protocol
 # certified four-repo closure is only ever recorded by protocol-side Gate C
 # runs on pinned SHAs.
 #
-# Cross-repo repository_dispatch needs a token with `actions:write` on
-# wasmagent-protocol: configure the org/repo secret REPO_DISPATCH_TOKEN
-# (fine-grained PAT, wasmagent-protocol only). Without it this workflow
-# exits gracefully — the hourly schedule on the protocol side remains the
-# fallback refresh path.
+# Cross-repo repository_dispatch needs a token with **Contents: write** on
+# wasmagent-protocol (fine-grained PAT scoped to that repository only, or a
+# dedicated GitHub App installation token). Configure the repo secret
+# REPO_DISPATCH_TOKEN. Absence of the token is an intentional, documented
+# state (D-R05): this workflow exits 0 and the protocol-side hourly Gate C
+# schedule remains the refresh fallback. A configured-but-bad token turns
+# this workflow red (D-R04) so misconfiguration is visible.
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+permissions: {}
 
 jobs:
   dispatch:
@@ -32,8 +36,10 @@ jobs:
             echo "The protocol-side hourly Gate C monitor remains the fallback."
             exit 0
           fi
-          curl -sS -X POST \
+          curl --fail-with-body --retry 3 --retry-all-errors \
+            --silent --show-error -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
             https://api.github.com/repos/WasmAgent/wasmagent-protocol/dispatches \
             -d '{"event_type":"aep-consumer-main-updated","client_payload":{"repo":"'"$GITHUB_REPOSITORY"'","sha":"'"$GITHUB_SHA"'"}}'
