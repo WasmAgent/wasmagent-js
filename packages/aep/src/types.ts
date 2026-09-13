@@ -274,6 +274,27 @@ export const AEPRecordSchema = z.object({
   run_side_effect_class_max: z
     .enum(["read", "mutate-local", "mutate-external", "network-egress", "unknown"])
     .optional(),
+  // v0.3 run-level retention depth (canonical wasmagent-protocol; consumers
+  // may additionally model per-action recording modes).
+  recording_mode: z.enum(["full", "delta", "validation"]).optional(),
+  // v0.3 per-record side-effect classification; shares one vocabulary with
+  // run_side_effect_class_max.
+  side_effect_class: z
+    .enum(["read", "mutate-local", "mutate-external", "network-egress", "unknown"])
+    .optional(),
+  // v0.3+: detected drift between declared and runtime arguments (run-level
+  // aggregate in the canonical schema — open object, all fields optional; the
+  // strict per-action form is a JS extension).
+  argument_drift: z
+    .object({
+      tool_name: z.string().optional(),
+      declared_digest: z.string().optional(),
+      actual_digest: z.string().optional(),
+      diff_summary: z.string().optional(),
+      drifted_args: z.array(z.string()).optional(),
+    })
+    .passthrough()
+    .optional(),
   // v0.3 external timestamp proof (optional, attached by AEPTimestamper)
   timestamp_proof: z
     .object({

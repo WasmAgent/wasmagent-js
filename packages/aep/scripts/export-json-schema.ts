@@ -35,6 +35,20 @@ const jsonSchema = zodToJsonSchema(AEPRecordSchema, {
   $refStrategy: "none",
 });
 
+// zod-to-json-schema cannot express uniqueness refinements as JSON Schema
+// keywords. The runtime model enforces no-duplicate grades via `.refine()`;
+// mirror that constraint as `uniqueItems` so non-TS validators enforce it too.
+const recordNode = (jsonSchema as Record<string, unknown>).definitions as Record<
+  string,
+  { properties?: Record<string, Record<string, unknown>> }
+>;
+for (const def of Object.values(recordNode ?? {})) {
+  const observed = def.properties?.run_attribution_backing_observed;
+  if (observed) {
+    observed.uniqueItems = true;
+  }
+}
+
 const rendered = JSON.stringify(jsonSchema, null, 2) + "\n";
 
 if (check) {
