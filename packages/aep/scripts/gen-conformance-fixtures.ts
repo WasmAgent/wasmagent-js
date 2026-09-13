@@ -10,13 +10,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { AEPRecord } from "@wasmagent/aep";
-import {
-  AEPEmitter,
-  canonicalBytes,
-  createLocalSignerFromSeed,
-  paeEncode,
-  wrapInTotoStatement,
-} from "@wasmagent/aep";
+import { AEPEmitter, canonicalBytes, createLocalSignerFromSeed, paeEncode } from "@wasmagent/aep";
 
 const outArg = process.argv[2];
 if (!outArg) throw new Error("usage: gen-conformance-fixtures.ts <out-dir>");
@@ -35,7 +29,6 @@ const SECOND_SEED = "badc0de0".repeat(8);
 const KEY_ID = "conformance-seed-key-01";
 const signer = createLocalSignerFromSeed(SEED, KEY_ID);
 const secondSigner = createLocalSignerFromSeed(SECOND_SEED, "conformance-seed-key-02");
-const jsPub = await signer.getPublicKey();
 
 for (const dir of ["valid", "invalid-semantic", "invalid-schema", "dsse", "chain", "historical"]) {
   mkdirSync(join(OUT, dir), { recursive: true });
@@ -48,19 +41,31 @@ function emitter(runId: string) {
     state_changing: false,
     recording_mode: "validation",
     side_effect_class: "read",
+    // Pinned so the corpus is byte-reproducible across regenerations.
+    timestamp_ms: 1_700_000_000_000,
   });
   return e;
 }
 
+type InTotoStatement = {
+  _type: string;
+  predicateType: string;
+  subject: Array<{ name?: string; digest: Record<string, string> }>;
+  predicate: Record<string, unknown>;
+};
+
 async function resign(
   record: AEPRecord,
-  mutate: (statement: any, envelope: any) => void
+  mutate: (statement: InTotoStatement, envelope: NonNullable<AEPRecord["dsse_envelope"]>) => void
 ): Promise<AEPRecord> {
-  const envelope = record.dsse_envelope!;
+  const envelope = record.dsse_envelope;
+  if (!envelope) throw new Error("resign() requires a DSSE-signed record");
   const statement = JSON.parse(Buffer.from(envelope.payload, "base64").toString("utf8"));
   mutate(statement, envelope);
-  const payloadB64 = Buffer.from(JSON.stringify(statement)).toString("base64");
-  const pae = paeEncode(envelope.payloadType, payloadB64);
+  const payloadJson = JSON.stringify(statement);
+  const payloadB64 = Buffer.from(payloadJson).toString("base64");
+  // PAE covers the decoded serialized body bytes (DSSE 1.0.2 §2).
+  const pae = paeEncode(envelope.payloadType, new TextEncoder().encode(payloadJson));
   const sig = await signer.sign(pae);
   return {
     ...record,
@@ -133,8 +138,12 @@ write(
   "dsse/wrong-payload-type-resigned.json",
   await (async () => {
     const record = await emitter("conf-wrong-payload-type").emit(1_700_000_000_000);
-    const envelope = record.dsse_envelope!;
-    const pae = paeEncode("application/JSON", envelope.payload);
+    const envelope = record.dsse_envelope;
+    if (!envelope) throw new Error("emitter produced no dsse envelope");
+    const pae = paeEncode(
+      "application/JSON",
+      new Uint8Array(Buffer.from(envelope.payload, "base64"))
+    );
     const sig = await signer.sign(pae);
     return {
       ...record,
@@ -174,8 +183,12 @@ write(
   "dsse/multiple-signatures.json",
   await (async () => {
     const record = await emitter("conf-multi-sig").emit(1_700_000_000_000);
-    const envelope = record.dsse_envelope!;
-    const pae = paeEncode(envelope.payloadType, envelope.payload);
+    const envelope = record.dsse_envelope;
+    if (!envelope) throw new Error("emitter produced no dsse envelope");
+    const pae = paeEncode(
+      envelope.payloadType,
+      new Uint8Array(Buffer.from(envelope.payload, "base64"))
+    );
     const secondSig = await secondSigner.sign(pae);
     return {
       ...record,
@@ -208,8 +221,13 @@ const chainEmitter = new AEPEmitter({
   schemaVersion: "aep/v0.5",
 });
 const dsseChain: AEPRecord[] = [];
-for (const tool of ["step_1", "step_2", "step_3"]) {
-  chainEmitter.addAction({ tool_name: tool, state_changing: tool === "step_2" });
+for (const [i, tool] of ["step_1", "step_2", "step_3"].entries()) {
+  chainEmitter.addAction({
+    tool_name: tool,
+    state_changing: tool === "step_2",
+    // Pinned so the corpus is byte-reproducible across regenerations.
+    timestamp_ms: 1_700_000_000_000 + i,
+  });
   dsseChain.push(await chainEmitter.emit(1_700_000_000_000));
 }
 jsonl("chain/intact-dsse-3.jsonl", dsseChain);
@@ -219,9 +237,14 @@ function unsignedLinked(): AEPRecord[] {
   const records: AEPRecord[] = [];
   for (let i = 0; i < 3; i++) {
     const e = new AEPEmitter({ run_id: "conf-chain", signer, schemaVersion: "aep/v0.5" });
-    e.addAction({ tool_name: `step_${i + 1}`, state_changing: i === 1 });
+    e.addAction({
+      tool_name: `step_${i + 1}`,
+      state_changing: i === 1,
+      // Pinned so the corpus is byte-reproducible across regenerations.
+      timestamp_ms: 1_700_000_000_000 + i,
+    });
     const r = e.build(1_700_000_000_000 + i * 1000);
-    if (i > 0) (r as any).prev_record_hash = linkHash(records[i - 1]);
+    if (i > 0) r.prev_record_hash = linkHash(records[i - 1]);
     records.push(r);
   }
   return records;
@@ -233,19 +256,19 @@ jsonl(
   intact.map(({ prev_record_hash: _p, ...r }) => r as AEPRecord)
 );
 const partialLast = intact.map((r) => ({ ...r }));
-delete (partialLast[2] as any).prev_record_hash;
+delete partialLast[2].prev_record_hash;
 jsonl("chain/partial-last.jsonl", partialLast as AEPRecord[]);
 const partialMiddle = intact.map((r) => ({ ...r }));
-delete (partialMiddle[1] as any).prev_record_hash;
-(partialMiddle[2] as any).prev_record_hash = linkHash(partialMiddle[1]);
+delete partialMiddle[1].prev_record_hash;
+partialMiddle[2].prev_record_hash = linkHash(partialMiddle[1]);
 jsonl("chain/partial-middle.jsonl", partialMiddle as AEPRecord[]);
 jsonl("chain/broken-middle.jsonl", [intact[0], intact[2]]);
 jsonl("chain/singleton-with-prev.jsonl", [
   (() => {
     const e = new AEPEmitter({ run_id: "conf-chain-singleton", signer, schemaVersion: "aep/v0.5" });
-    e.addAction({ tool_name: "noop", state_changing: false });
+    e.addAction({ tool_name: "noop", state_changing: false, timestamp_ms: 1_700_000_000_000 });
     const r = e.build(1_700_000_000_000);
-    (r as any).prev_record_hash = "f".repeat(64);
+    r.prev_record_hash = "f".repeat(64);
     return r as AEPRecord;
   })(),
 ]);

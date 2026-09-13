@@ -127,7 +127,7 @@ export async function verifyDSSEEnvelope(
   publicKey: Uint8Array
 ): Promise<boolean> {
   try {
-    if (!envelope.signatures || envelope.signatures.length !== 1) {
+    if (envelope.signatures?.length !== 1) {
       return false;
     }
     if (envelope.payloadType !== IN_TOTO_PAYLOAD_TYPE) {
@@ -135,7 +135,11 @@ export async function verifyDSSEEnvelope(
     }
     const payloadBytes = new Uint8Array(Buffer.from(envelope.payload, "base64"));
     const paeBytes = paeEncode(envelope.payloadType, payloadBytes);
-    const sigBytes = Uint8Array.from(Buffer.from(envelope.signatures[0]!.sig, "base64"));
+    const sig = envelope.signatures[0]?.sig;
+    if (!sig) {
+      return false;
+    }
+    const sigBytes = Uint8Array.from(Buffer.from(sig, "base64"));
     return await ed.verifyAsync(sigBytes, paeBytes, publicKey);
   } catch {
     return false;

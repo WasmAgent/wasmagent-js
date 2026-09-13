@@ -1600,7 +1600,10 @@ describe("Verification result surface — binding window, profiles, chain status
       const statement = JSON.parse(Buffer.from(envelope.payload, "base64").toString("utf8"));
       statement.predicateType = predicateType;
       const payloadB64 = Buffer.from(JSON.stringify(statement)).toString("base64");
-      const pae = paeEncode(envelope.payloadType, payloadB64);
+      const pae = paeEncode(
+        envelope.payloadType,
+        new TextEncoder().encode(JSON.stringify(statement))
+      );
       const sig = await signer.sign(pae);
       const forged = {
         ...record,
@@ -1703,7 +1706,10 @@ describe("Verification result surface — binding window, profiles, chain status
     const statement = JSON.parse(Buffer.from(envelope.payload, "base64").toString("utf8"));
     statement.predicate.schema_version = "aep/v0.3";
     const payloadB64 = Buffer.from(JSON.stringify(statement)).toString("base64");
-    const pae = paeEncode(envelope.payloadType, payloadB64);
+    const pae = paeEncode(
+      envelope.payloadType,
+      new TextEncoder().encode(JSON.stringify(statement))
+    );
     const sig = await signer.sign(pae);
     const uplifted = {
       ...record,
@@ -1864,7 +1870,10 @@ describe("AEPEmitter.emit() — empty actions validation (#95)", () => {
 
 describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
   it("paeEncode produces correct Pre-Authentication Encoding", () => {
-    const result = paeEncode("application/vnd.in-toto+json", "test-payload");
+    const result = paeEncode(
+      "application/vnd.in-toto+json",
+      new TextEncoder().encode("test-payload")
+    );
     const decoded = new TextDecoder().decode(result);
     // PAE = "DSSEv1" + SP + len(type) + SP + type + SP + len(body) + SP + body
     const typeLen = new TextEncoder().encode("application/vnd.in-toto+json").length;
@@ -1875,7 +1884,7 @@ describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
   });
 
   it("paeEncode handles empty strings", () => {
-    const result = paeEncode("", "");
+    const result = paeEncode("", new Uint8Array(0));
     const decoded = new TextDecoder().decode(result);
     expect(decoded).toBe("DSSEv1 0  0 ");
   });

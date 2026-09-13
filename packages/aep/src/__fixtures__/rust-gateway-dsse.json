@@ -8,7 +8,7 @@
     "signatures": [
       {
         "keyid": "ci-sample-key",
-        "sig": "UdD9M3o/Fryduy8fCrLMpNHJFHCW3/CHOgQVQEAomb0bkXjoD1NNwBpXNp07kx9zIjZlFkAqzEOa8SLJaQIOCw=="
+        "sig": "Zm4rxTy2URewymAPM5u9GlYuDaarYLPQ6RDP3+Bo1ODkeaDDPS2YsaGjbp8cKsMxMKfHPFVC298uKXtZxX3sBQ=="
       }
     ]
   },
@@ -26,6 +26,6 @@
   "signature": {
     "alg": "ed25519",
     "key_id": "ci-sample-key",
-    "sig": "UdD9M3o/Fryduy8fCrLMpNHJFHCW3/CHOgQVQEAomb0bkXjoD1NNwBpXNp07kx9zIjZlFkAqzEOa8SLJaQIOCw=="
+    "sig": "Zm4rxTy2URewymAPM5u9GlYuDaarYLPQ6RDP3+Bo1ODkeaDDPS2YsaGjbp8cKsMxMKfHPFVC298uKXtZxX3sBQ=="
   }
 }

@@ -17,68 +17,6 @@
         "run_id": {
           "type": "string"
         },
-        "user_id": {
-          "type": "string"
-        },
-        "subject_id": {
-          "type": "string"
-        },
-        "authorized_by": {
-          "type": "string"
-        },
-        "authority_origin": {
-          "type": "string",
-          "enum": [
-            "subject_consented",
-            "administrator_assigned",
-            "organization_wide",
-            "unknown"
-          ]
-        },
-        "identity_source": {
-          "type": "string",
-          "enum": [
-            "self_asserted",
-            "organization_attested",
-            "notified_eid",
-            "qualified_certificate",
-            "unknown"
-          ]
-        },
-        "attribution_backing": {
-          "type": "string",
-          "enum": [
-            "operator_asserted",
-            "principal_key_signed",
-            "qualified_signature",
-            "unknown"
-          ]
-        },
-        "run_attribution_backing_floor": {
-          "type": "string",
-          "enum": [
-            "operator_asserted",
-            "principal_key_signed",
-            "qualified_signature",
-            "unknown"
-          ]
-        },
-        "run_attribution_backing_observed": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "operator_asserted",
-              "principal_key_signed",
-              "qualified_signature",
-              "unknown"
-            ]
-          }
-        },
-        "authorization_evidence_count": {
-          "type": "integer",
-          "minimum": 0
-        },
         "trace_id": {
           "type": "string"
         },
@@ -636,12 +574,6 @@
         "created_at_ms": {
           "type": "number"
         },
-        "prev_record_hash": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "run_context": {
           "type": "object",
           "properties": {
@@ -677,6 +609,80 @@
           },
           "additionalProperties": false
         },
+        "user_id": {
+          "type": "string"
+        },
+        "subject_id": {
+          "type": "string"
+        },
+        "authorized_by": {
+          "type": "string"
+        },
+        "authority_origin": {
+          "type": "string",
+          "enum": [
+            "subject_consented",
+            "administrator_assigned",
+            "organization_wide",
+            "unknown"
+          ]
+        },
+        "identity_source": {
+          "type": "string",
+          "enum": [
+            "self_asserted",
+            "organization_attested",
+            "notified_eid",
+            "qualified_certificate",
+            "unknown"
+          ]
+        },
+        "attribution_backing": {
+          "type": "string",
+          "enum": [
+            "operator_asserted",
+            "principal_key_signed",
+            "qualified_signature",
+            "unknown"
+          ]
+        },
+        "run_attribution_backing_floor": {
+          "type": "string",
+          "enum": [
+            "operator_asserted",
+            "principal_key_signed",
+            "qualified_signature",
+            "unknown"
+          ]
+        },
+        "run_attribution_backing_observed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "operator_asserted",
+              "principal_key_signed",
+              "qualified_signature",
+              "unknown"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "authorization_evidence_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "side_effect_class": {
+          "type": "string",
+          "enum": [
+            "read",
+            "mutate-local",
+            "mutate-external",
+            "network-egress",
+            "unknown"
+          ],
+          "description": "Per-record side-effect classification (additive, aep/v0.3+). Shares one vocabulary with run_side_effect_class_max; reconciles wasmagent-js and trace-pipeline forks."
+        },
         "run_side_effect_class_max": {
           "type": "string",
           "enum": [
@@ -687,28 +693,39 @@
             "unknown"
           ]
         },
-        "timestamp_proof": {
+        "recording_mode": {
+          "type": "string",
+          "enum": [
+            "full",
+            "delta",
+            "validation"
+          ],
+          "description": "Retention depth of captured evidence for this run (additive, aep/v0.3+). Controls how much of what was observed the producer chose to keep — NOT a claim about observation scope or coverage. full = complete provenance (all observed data retained); delta = before/after state digests only; validation = action metadata only (minimum retention). A narrow-scope monitor and a wide-scope monitor produce identical recording_mode values; observation scope is a property of the producing monitor's configuration, not of this record."
+        },
+        "argument_drift": {
           "type": "object",
+          "description": "Detected drift between an action's declared arguments and the arguments used at runtime (additive, aep/v0.3+).",
           "properties": {
-            "timestamp": {
+            "tool_name": {
               "type": "string"
             },
-            "authority": {
+            "declared_digest": {
               "type": "string"
             },
-            "proof": {
+            "actual_digest": {
               "type": "string"
             },
-            "logIndex": {
-              "type": "number"
+            "diff_summary": {
+              "type": "string"
+            },
+            "drifted_args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
-          "required": [
-            "timestamp",
-            "authority",
-            "proof"
-          ],
-          "additionalProperties": false
+          "additionalProperties": true
         },
         "dsse_envelope": {
           "type": "object",
@@ -765,6 +782,35 @@
             "alg",
             "key_id",
             "sig"
+          ],
+          "additionalProperties": false
+        },
+        "prev_record_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "timestamp_proof": {
+          "type": "object",
+          "properties": {
+            "timestamp": {
+              "type": "string"
+            },
+            "authority": {
+              "type": "string"
+            },
+            "proof": {
+              "type": "string"
+            },
+            "logIndex": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "timestamp",
+            "authority",
+            "proof"
           ],
           "additionalProperties": false
         }

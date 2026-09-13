@@ -389,13 +389,14 @@ export class AEPEmitter {
     // Reject unknown grades: they must be explicitly listed in the canonical
     // vocabulary, not silently accepted with a sentinel rank.
     if (observed !== undefined) {
+      const vocabulary = backingOrder as readonly string[];
       for (const g of observed) {
-        if (!backingOrder.includes(g as any)) {
+        if (!vocabulary.includes(g)) {
           throw new Error(`attribution: observed grade "${g}" is outside the canonical vocabulary`);
         }
       }
     }
-    if (floor !== undefined && !backingOrder.includes(floor as any)) {
+    if (floor !== undefined && !(backingOrder as readonly string[]).includes(floor)) {
       throw new Error(`attribution: floor grade "${floor}" is outside the canonical vocabulary`);
     }
 
