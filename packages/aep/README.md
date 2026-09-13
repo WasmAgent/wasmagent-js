@@ -4,7 +4,7 @@
 
 Agent Evidence Protocol — runtime action evidence and run provenance types for WasmAgent.
 
-Emit verifiable `AEPRecord` evidence after every agent run. Records are schema-versioned: the emitter defaults to `aep/v0.3`, and opts into `aep/v0.4` (DSSE attestation) or `aep/v0.5` (attribution grading) via the `schemaVersion` option. `aep/v0.1`–`v0.4` records remain valid and parseable. Records are consumable by `evomerge` for audit and training data export.
+Emit verifiable `AEPRecord` evidence after every agent run. Records are schema-versioned: the emitter emits `aep/v0.4` (DSSE-attested) by default, and opts into `aep/v0.5` (attribution grading) via the `schemaVersion` option. Earlier schema versions (`aep/v0.1`–`v0.4`) remain valid and parseable. Records are consumable by `evomerge` for audit and training data export.
 
 ## Install
 
@@ -292,12 +292,19 @@ emitter.addCapabilityDecision({
 
 ## DSSE attestation (aep/v0.4)
 
-When the emitter is constructed with `useDsse: true`, `emit()` wraps the record in a DSSE/in-toto envelope, signs it via PAE, and stamps `schema_version: "aep/v0.4"` (the legacy `signature` field stays populated for backward compatibility):
+DSSE is the ONLY signing path — no opt-in required. `emit()` wraps the record
+in a DSSE/in-toto envelope, signs the PAE over the serialized statement bytes,
+and stamps `schema_version: "aep/v0.4"` (the legacy `signature` field stays
+populated as a mirror of the envelope signature for backward compatibility):
 
 ```ts
-const emitter = new AEPEmitter({ run_id: "run-001", signer, useDsse: true });
+const emitter = new AEPEmitter({ run_id: "run-001", signer });
 const record = await emitter.emit();
 ```
+
+The retired inline construction (Ed25519 over canonical-JSON bytes) is not
+emitted and NOT verifiable — records carrying a `signature` block without a
+`dsse_envelope` are rejected as `unsupported-legacy` by all three verifiers.
 
 ## Attribution grading (aep/v0.5)
 
@@ -321,21 +328,25 @@ Vocabulary shared with the OWASP MCP Top 10 "Verifiable Authorization Lineage" r
 
 ## Signature contract
 
-Every `AEPRecord` emitted via `AEPEmitter.emit()` carries a mandatory `signature` block:
+Every `AEPRecord` emitted via `AEPEmitter.emit()` carries a DSSE envelope and a
+mirror inline `signature` block:
 
 ```ts
 signature: {
   alg: "ed25519",   // always "ed25519"
   key_id: string,   // stable identifier for the signing key (e.g. "local-dev-key-01")
-  sig: string,      // base64-encoded 64-byte Ed25519 signature
+  sig: string,      // base64-encoded 64-byte Ed25519 signature (same bytes as the envelope)
 }
 ```
 
 ### What is signed
 
-The signature covers the **canonical serialisation** of the record minus the `signature` field itself.
-Canonical serialisation sorts JSON object keys lexicographically (recursive) and UTF-8-encodes the result.
-This means any field mutation (including `run_id`, `created_at_ms`, `actions`, etc.) invalidates the signature.
+The signature covers the **DSSE Pre-Authentication Encoding** of the in-toto
+statement: `PAE(payloadType, SERIALIZED_BODY)` per DSSE 1.0.2 §2 — the decoded
+serialized body bytes, never the base64 text. The statement's `predicate` is
+the record minus `signature`/`dsse_envelope`, and its subject digest binds the
+canonical predicate bytes. This means ANY field mutation (including `run_id`,
+`created_at_ms`, `actions`, `payloadType`, etc.) invalidates the signature.
 
 The four provenance fields described in [Compliance fields for run-provenance traceability](#compliance-fields-for-run-provenance-traceability) (`repo_commit`, `runtime_version`, `policy_bundle_digest`, `tool_manifest_digest`) are part of the signed payload when populated — tampering with them invalidates the signature exactly the same way mutating `run_id` does.
 
