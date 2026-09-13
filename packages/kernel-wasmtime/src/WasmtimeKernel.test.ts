@@ -693,6 +693,31 @@ describe("resource limits — WasmtimeKernel options (unit)", () => {
     expect(k).toBeInstanceOf(WasmtimeKernel);
   });
 
+  it("rejects sub-page maxMemoryBytes — an unenforceable limit must not be silently widened", () => {
+    // WebAssembly memory is page-granular (64 KiB): a hard ceiling below one
+    // page cannot be represented. Fail closed instead of widening to a page.
+    for (const bad of [1, 100, 65_535]) {
+      expect(() => new WasmtimeKernel({ maxMemoryBytes: bad })).toThrow(
+        /at least one WebAssembly page/
+      );
+    }
+    // Exactly one page is the minimum enforceable ceiling.
+    expect(() => new WasmtimeKernel({ maxMemoryBytes: 65_536 })).not.toThrow();
+  });
+
+  it("rejects non-finite, non-integer, and non-positive maxMemoryBytes", () => {
+    for (const bad of [
+      0,
+      -1,
+      1.5,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.MAX_SAFE_INTEGER + 1,
+    ]) {
+      expect(() => new WasmtimeKernel({ maxMemoryBytes: bad })).toThrow(RangeError);
+    }
+  });
+
   it("accepts epochTickMs option in constructor", () => {
     const k = new WasmtimeKernel({ epochTickMs: 5 });
     expect(k).toBeInstanceOf(WasmtimeKernel);

@@ -132,6 +132,35 @@ write("invalid-semantic/negative-authorization-evidence-count.json", {
   created_at_ms: 1_700_000_000_000,
   authorization_evidence_count: -1,
 });
+// Pair-presence symmetry (aep/v0.5): floor and observed ship together —
+// "reported alongside, never instead of". Every half-pair is semantically
+// invalid; each fixture is structurally valid so the semantic layer is what
+// rejects it.
+write("invalid-semantic/floor-without-observed.json", {
+  schema_version: "aep/v0.5",
+  run_id: "conf-floor-no-observed",
+  created_at_ms: 1_700_000_000_000,
+  run_attribution_backing_floor: "operator_asserted",
+});
+write("invalid-semantic/floor-with-empty-observed.json", {
+  schema_version: "aep/v0.5",
+  run_id: "conf-floor-empty-observed",
+  created_at_ms: 1_700_000_000_000,
+  run_attribution_backing_floor: "operator_asserted",
+  run_attribution_backing_observed: [],
+});
+write("invalid-semantic/observed-without-floor.json", {
+  schema_version: "aep/v0.5",
+  run_id: "conf-observed-no-floor",
+  created_at_ms: 1_700_000_000_000,
+  run_attribution_backing_observed: ["operator_asserted", "qualified_signature"],
+});
+write("invalid-semantic/empty-observed.json", {
+  schema_version: "aep/v0.5",
+  run_id: "conf-empty-observed",
+  created_at_ms: 1_700_000_000_000,
+  run_attribution_backing_observed: [],
+});
 
 // ---- DSSE profile negatives (authentic signatures, non-conformant) ---------
 write(

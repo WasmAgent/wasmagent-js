@@ -1,0 +1,65 @@
+name: aep-schema-parity
+
+# Consumer-side mirror of wasmagent-protocol's Gate B (schema-parity).
+#
+# Why this exists: the protocol repo's schema-parity workflow only triggers on
+# protocol-repo paths. If wasmagent-js changes its exported AEP schema without
+# touching the protocol repo, consumer drift could land with no Gate B
+# verdict anywhere. This workflow closes that gap: when the consumer contract
+# changes, the consumer CI checks it against the canonical protocol schema.
+#
+# Same gate, same script, same strictness as the canonical side:
+#   python wasmagent-protocol/scripts/check-aep-contract-compatibility.py --strict
+# Every baseline drift must be classified in
+# wasmagent-protocol/scripts/aep-contract-exceptions.json; UNCLASSIFIED or
+# reconcile entries fail this workflow.
+
+on:
+  pull_request:
+    paths:
+      - 'packages/aep/schemas/**'
+      - 'packages/aep/src/types.ts'
+      - 'packages/aep/scripts/export-json-schema.ts'
+      - '.github/workflows/aep-schema-parity.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/aep/schemas/**'
+      - 'packages/aep/src/types.ts'
+      - 'packages/aep/scripts/export-json-schema.ts'
+      - '.github/workflows/aep-schema-parity.yml'
+  workflow_dispatch:
+
+jobs:
+  gate-b:
+    name: Gate B — consumer schema vs canonical (strict)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout wasmagent-js
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Checkout wasmagent-protocol (canonical)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: WasmAgent/wasmagent-protocol
+          ref: main
+          path: wasmagent-protocol
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.x'
+
+      - name: Structural contract comparison (strict)
+        working-directory: wasmagent-protocol
+        run: |
+          python scripts/check-aep-contract-compatibility.py --strict \
+            --consumer wasmagent-js=../packages/aep/schemas/aep-record.schema.json
+
+      - name: Export freshness (schema:check)
+        run: |
+          cd packages/aep
+          bun run schema:check
+
+      - name: Gate B self-test (mutation detection)
+        working-directory: wasmagent-protocol
+        run: python scripts/check-aep-contract-compatibility.py --self-test

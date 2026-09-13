@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 import { canonicalBytes } from "./canonical.js";
-import { AEP_PREDICATE_TYPE, type InTotoStatement, verifyDSSEEnvelope } from "./dsse.js";
+import {
+  AEP_PREDICATE_TYPE,
+  decodeBase64Either,
+  type InTotoStatement,
+  verifyDSSEEnvelope,
+} from "./dsse.js";
 import type { AEPRecord } from "./types.js";
 
 /**
@@ -76,7 +81,7 @@ function dsseEnvelopeBinding(record: AEPRecord): BindingMode {
   if (!envelope) return "invalid";
   try {
     const statement = JSON.parse(
-      Buffer.from(envelope.payload, "base64").toString("utf8")
+      new TextDecoder().decode(decodeBase64Either(envelope.payload))
     ) as InTotoStatement;
     if (statement.predicate === undefined || !Array.isArray(statement.subject)) return "invalid";
 

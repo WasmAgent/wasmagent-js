@@ -111,6 +111,21 @@ export function wrapInTotoStatement(
 }
 
 /**
+ * Decode base64 accepting both alphabets, as DSSE 1.0.2 requires ("Either
+ * standard or URL-safe base64 encodings are allowed ... verifiers MUST accept
+ * either").
+ *
+ * Strategy: normalize the URL-safe alphabet onto the standard one ('-'→'+',
+ * '_'→'/') and decode with the standard decoder. The mapping is a bijection,
+ * so decoding is unique for standard, URL-safe, and mixed inputs alike — and
+ * it matches the Rust and Python decoders byte-for-byte.
+ */
+export function decodeBase64Either(input: string): Uint8Array {
+  const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(Buffer.from(normalized, "base64"));
+}
+
+/**
  * Verify a DSSE envelope against a public key.
  *
  * AEP signature-count policy: exactly one signature. Zero or multiple
@@ -133,13 +148,13 @@ export async function verifyDSSEEnvelope(
     if (envelope.payloadType !== IN_TOTO_PAYLOAD_TYPE) {
       return false;
     }
-    const payloadBytes = new Uint8Array(Buffer.from(envelope.payload, "base64"));
+    const payloadBytes = decodeBase64Either(envelope.payload);
     const paeBytes = paeEncode(envelope.payloadType, payloadBytes);
     const sig = envelope.signatures[0]?.sig;
     if (!sig) {
       return false;
     }
-    const sigBytes = Uint8Array.from(Buffer.from(sig, "base64"));
+    const sigBytes = decodeBase64Either(sig);
     return await ed.verifyAsync(sigBytes, paeBytes, publicKey);
   } catch {
     return false;

@@ -180,6 +180,22 @@ export class WasmtimeKernel implements WasmKernel {
       }
     }
     this.#fuelLimit = opts?.fuelLimit ?? DEFAULT_FUEL_LIMIT;
+    // maxMemoryBytes is a HARD ceiling: WebAssembly memory is page-granular
+    // (64 KiB), so a sub-page limit cannot be represented or enforced — it
+    // must be rejected, not silently widened to one page.
+    if (opts?.maxMemoryBytes !== undefined) {
+      const m = opts.maxMemoryBytes;
+      if (typeof m !== "number" || !Number.isFinite(m) || !Number.isSafeInteger(m) || m <= 0) {
+        throw new RangeError(`maxMemoryBytes must be a positive safe integer, got ${m}`);
+      }
+      if (m < 65_536) {
+        throw new RangeError(
+          `maxMemoryBytes must be at least one WebAssembly page (65536 bytes), ` +
+            `got ${m} — a sub-page limit is unenforceable and is rejected instead ` +
+            `of being silently widened`
+        );
+      }
+    }
     this.#maxMemoryBytes = opts?.maxMemoryBytes;
     this.#epochTickMs = opts?.epochTickMs ?? 10;
   }

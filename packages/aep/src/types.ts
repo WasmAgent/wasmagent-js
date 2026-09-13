@@ -336,13 +336,47 @@ export const AEPSignatureSchema = z.object({
 });
 
 /**
- * A record that MUST carry a signature — the signed refinement of the
- * protocol record. Canonical aep-record keeps `signature` optional so an
- * unsigned record is protocol-valid; use this type (or `verifyAEPRecord`)
- * wherever a signature is required. Absence of `signature` means "unsigned",
- * never "signature-shaped placeholder".
+ * Compatibility shape: a record carrying the inline signature metadata block.
+ *
+ * Historical name kept for consumers of the old `AEPSignedRecordSchema` — but
+ * note the semantics: carrying `signature` alone does NOT make this a
+ * current-profile signed record. Current signed evidence is DSSE-only; the
+ * inline `signature` is compatibility metadata derived from the envelope.
+ * For the structural current-profile shape use `AEPDSSESignedRecordSchema`,
+ * and for actual authenticity use `verifyAEPRecord` / `verifyDSSEEnvelope` —
+ * cryptographic verification is never a schema question.
  */
-export const AEPSignedRecordSchema = AEPRecordSchema.extend({
+export const AEPRecordWithSignatureMetadataSchema = AEPRecordSchema.extend({
   signature: AEPSignatureSchema,
 });
-export type AEPSignedRecord = z.infer<typeof AEPSignedRecordSchema>;
+
+/**
+ * @deprecated Use `AEPRecordWithSignatureMetadataSchema` (same shape, honest
+ * name) or `AEPDSSESignedRecordSchema` (current-profile signed record).
+ * Kept as an alias so existing imports keep working.
+ */
+export const AEPSignedRecordSchema = AEPRecordWithSignatureMetadataSchema;
+
+/**
+ * Current-profile signed record: the structural presence shape for DSSE-signed
+ * evidence — the record MUST carry a `dsse_envelope` (and the mirror inline
+ * `signature` block). Structural presence only: envelope authenticity and
+ * payload binding still require `verifyAEPRecord` / `verifyDSSEEnvelope`.
+ */
+export const AEPDSSESignedRecordSchema = AEPRecordSchema.extend({
+  signature: AEPSignatureSchema,
+  dsse_envelope: z.object({
+    payloadType: z.string(),
+    payload: z.string(),
+    signatures: z
+      .array(
+        z.object({
+          keyid: z.string(),
+          sig: z.string(),
+        })
+      )
+      .min(1, "DSSE envelope must carry at least one signature"),
+  }),
+});
+export type AEPDSSESignedRecord = z.infer<typeof AEPDSSESignedRecordSchema>;
+export type AEPSignedRecord = z.infer<typeof AEPRecordWithSignatureMetadataSchema>;

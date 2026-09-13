@@ -123,6 +123,63 @@ describe("adversarial — attribution floor consistency", () => {
     expect(() => emitter.build()).toThrow("MUST NOT round up");
   });
 
+  // Regression tests for the attribution guard paths — each guard added in
+  // review rounds must fail closed forever; a refactor that re-opens any of
+  // these bypasses must fail this suite.
+
+  it("throws when a floor is supplied with no observed set at all", () => {
+    const emitter = new AEPEmitter({
+      run_id: "r",
+      schemaVersion: "aep/v0.5",
+      run_attribution_backing_floor: "operator_asserted",
+      run_attribution_backing_observed: undefined,
+    });
+    emitter.addAction({ tool_name: "bash", state_changing: false });
+    expect(() => emitter.build()).toThrow();
+  });
+
+  it("throws when a floor is supplied with an empty observed set", () => {
+    const emitter = new AEPEmitter({
+      run_id: "r",
+      schemaVersion: "aep/v0.5",
+      run_attribution_backing_floor: "operator_asserted",
+      run_attribution_backing_observed: [],
+    });
+    emitter.addAction({ tool_name: "bash", state_changing: false });
+    expect(() => emitter.build()).toThrow();
+  });
+
+  it("throws when observed is empty with no floor (empty grading claim)", () => {
+    const emitter = new AEPEmitter({
+      run_id: "r",
+      schemaVersion: "aep/v0.5",
+      run_attribution_backing_observed: [],
+    });
+    emitter.addAction({ tool_name: "bash", state_changing: false });
+    expect(() => emitter.build()).toThrow();
+  });
+
+  it("throws when an observed grade is outside the canonical vocabulary", () => {
+    const emitter = new AEPEmitter({
+      run_id: "r",
+      schemaVersion: "aep/v0.5",
+      run_attribution_backing_observed: ["operator_asserted", "biometric_bound"],
+    });
+    emitter.addAction({ tool_name: "bash", state_changing: false });
+    expect(() => emitter.build()).toThrow("canonical vocabulary");
+  });
+
+  it("throws when the floor grade is outside the canonical vocabulary", () => {
+    const emitter = new AEPEmitter({
+      run_id: "r",
+      schemaVersion: "aep/v0.5",
+      run_attribution_backing_observed: ["operator_asserted"],
+      run_attribution_backing_floor: "wallet_attested" as never,
+    });
+    emitter.addAction({ tool_name: "bash", state_changing: false });
+    expect(() => emitter.build()).toThrow("canonical vocabulary");
+  });
+
   it("auto-computes the floor as the weakest observed grade", () => {
     const emitter = new AEPEmitter({
       run_id: "r",
@@ -173,5 +230,92 @@ describe("adversarial — cross-language fixtures", () => {
     // Any field mutation must break the payload binding.
     const tampered = { ...record, user_id: "user-attacker" } as AEPRecord;
     expect(await verifyAEPRecord(tampered, pub)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DSSE base64 alphabet interop (DSSE 1.0.2: verifiers MUST accept either)
+// ---------------------------------------------------------------------------
+
+describe("adversarial — DSSE base64 alphabet interop", () => {
+  it("accepts standard, URL-safe, and mixed encodings of the same envelope", async () => {
+    const signer = createLocalSignerFromSeed("cc".repeat(32), "key-b64");
+    const emitter = new AEPEmitter({ run_id: "run-b64", signer, schemaVersion: "aep/v0.5" });
+    emitter.addAction({ tool_name: "bash", state_changing: false });
+    const record = await emitter.emit();
+    const pub = await signer.getPublicKey();
+    const envelope = record.dsse_envelope!;
+
+    // Sanity: the payload's standard encoding must actually contain '+' and
+    // '/' so the URL-safe variants exercise the alternate alphabet. If the
+    // natural statement bytes don't produce them, keep re-emitting with a
+    // different run_id ('>'/'?' at aligned third-byte positions encode to
+    // '+'/'/' deterministically).
+    let std = envelope.payload;
+    let attempt = 0;
+    while (!(std.includes("+") && std.includes("/"))) {
+      attempt += 1;
+      if (attempt > 64) throw new Error("could not construct base64 interop vector");
+      const e2 = new AEPEmitter({
+        run_id: `run-b64-${attempt}-${">".repeat(9)}-${"?".repeat(9)}`,
+        signer,
+        schemaVersion: "aep/v0.5",
+      });
+      e2.addAction({ tool_name: "bash", state_changing: false });
+      std = (await e2.emit()).dsse_envelope!.payload;
+    }
+
+    const toUrlsafe = (s: string) => s.replaceAll("+", "-").replaceAll("/", "_");
+    expect(std.includes("+") && std.includes("/")).toBe(true);
+
+    // Standard payload + standard signature (baseline).
+    expect(await verifyDSSEEnvelope(envelope, pub)).toBe(true);
+
+    // URL-safe payload (signature unchanged).
+    const urlPayload = {
+      ...envelope,
+      payload: toUrlsafe(envelope.payload),
+    };
+    expect(await verifyDSSEEnvelope(urlPayload, pub)).toBe(true);
+
+    // URL-safe payload + URL-safe signature.
+    const urlBoth = {
+      ...envelope,
+      payload: toUrlsafe(envelope.payload),
+      signatures: [
+        { keyid: envelope.signatures[0]!.keyid, sig: toUrlsafe(envelope.signatures[0]!.sig) },
+      ],
+    };
+    expect(await verifyDSSEEnvelope(urlBoth, pub)).toBe(true);
+
+    // Mixed alphabets decode uniquely under the ('-'→'+', '_'→'/') bijection.
+    const mixed = {
+      ...envelope,
+      payload: envelope.payload.replace("+", "-"),
+      signatures: [
+        {
+          keyid: envelope.signatures[0]!.keyid,
+          sig: toUrlsafe(envelope.signatures[0]!.sig).replace("-", "+"),
+        },
+      ],
+    };
+    expect(await verifyDSSEEnvelope(mixed, pub)).toBe(true);
+  });
+
+  it("rejects a mutated payloadType (it is inside the PAE)", async () => {
+    const signer = createLocalSignerFromSeed("dd".repeat(32), "key-ptype");
+    const emitter = new AEPEmitter({
+      run_id: "run-ptype-tamper",
+      signer,
+      schemaVersion: "aep/v0.5",
+    });
+    emitter.addAction({ tool_name: "bash", state_changing: false });
+    const record = await emitter.emit();
+    const pub = await signer.getPublicKey();
+    const tampered = {
+      ...record.dsse_envelope!,
+      payloadType: "application/json",
+    };
+    expect(await verifyDSSEEnvelope(tampered, pub)).toBe(false);
   });
 });
