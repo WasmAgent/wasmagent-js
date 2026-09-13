@@ -246,6 +246,9 @@ export const AEPRecordSchema = z.object({
     .optional(),
   run_attribution_backing_observed: z
     .array(z.enum(["operator_asserted", "principal_key_signed", "qualified_signature", "unknown"]))
+    .refine((arr) => new Set(arr).size === arr.length, {
+      message: "run_attribution_backing_observed must not contain duplicate grades",
+    })
     .optional(),
   // v0.5: selective-omission defense (canonical wasmagent-protocol 0.1.10).
   authorization_evidence_count: z.number().int().min(0).optional(),
@@ -285,12 +288,14 @@ export const AEPRecordSchema = z.object({
     .object({
       payloadType: z.string(),
       payload: z.string(),
-      signatures: z.array(
-        z.object({
-          keyid: z.string(),
-          sig: z.string(),
-        })
-      ),
+      signatures: z
+        .array(
+          z.object({
+            keyid: z.string(),
+            sig: z.string(),
+          })
+        )
+        .min(1, "DSSE envelope must carry at least one signature"),
     })
     .optional(),
   signature: z

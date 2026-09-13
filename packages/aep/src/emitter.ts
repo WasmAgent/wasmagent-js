@@ -374,12 +374,36 @@ export class AEPEmitter {
 
     // FAIL CLOSED: a caller-supplied floor without a non-empty observed set
     // cannot be verified against the weakest-grade rule — reject it rather
-    // than silently accepting an unverifiable claim.
+    // than silently accepting an unverifiable claim. Also reject an empty
+    // observed set when a floor IS provided: the pair must co-exist.
     if (floor !== undefined && (!observed || observed.length === 0)) {
       throw new Error(
         `run_attribution_backing_floor "${floor}" was provided without a non-empty ` +
           `run_attribution_backing_observed set — the floor cannot be verified. ` +
           `Either provide a non-empty observed set or omit the floor.`
+      );
+    }
+
+    // Reject unknown grades: they must be explicitly listed in the canonical
+    // vocabulary, not silently accepted with a sentinel rank.
+    if (observed !== undefined) {
+      for (const g of observed) {
+        if (!backingOrder.includes(g as any)) {
+          throw new Error(`attribution: observed grade "${g}" is outside the canonical vocabulary`);
+        }
+      }
+    }
+    if (floor !== undefined && !backingOrder.includes(floor as any)) {
+      throw new Error(`attribution: floor grade "${floor}" is outside the canonical vocabulary`);
+    }
+
+    // N1: `observed: []` with no `floor` is an empty grading claim — a v0.5
+    // record that declares the vocabulary but provides zero evidence. Reject
+    // rather than silently emitting.
+    if (observed !== undefined && observed.length === 0 && floor === undefined) {
+      throw new Error(
+        "attribution: run_attribution_backing_observed is empty — a v0.5 record " +
+          "that declares the attribution vocabulary must provide at least one grade"
       );
     }
 
