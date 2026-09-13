@@ -158,16 +158,27 @@ if (touchedPkgs.size === 0) {
 // ── 5. Honour [skip changeset] bypass ─────────────────────────────────
 
 try {
-  const lastMsg = execSync("git log -1 --pretty=%B", {
-    cwd: ROOT,
-    encoding: "utf8",
-  });
-  if (/\[skip changeset\]/i.test(lastMsg)) {
+  // On pull_request events the checkout HEAD is the MERGE commit, whose
+  // message never contains the marker — inspect the PR's head commit
+  // message via the API in that case, falling back to git log locally.
+  let candidates = [];
+  if (process.env.GITHUB_EVENT_NAME === "pull_request" && process.env.GITHUB_REPOSITORY) {
+    const prNumber = process.env.GITHUB_REF_NAME?.match(/\d+/)?.[0];
+    if (prNumber) {
+      const headMsg = execSync(
+        `gh pr view ${prNumber} --json commits --jq '.commits[-1].messageBody'`,
+        { cwd: ROOT, encoding: "utf8" },
+      );
+      candidates.push(headMsg);
+    }
+  }
+  candidates.push(execSync("git log -1 --pretty=%B", { cwd: ROOT, encoding: "utf8" }));
+  if (candidates.some((m) => /\[skip changeset\]/i.test(m))) {
     console.log("✓ [skip changeset] bypass present in commit message.");
     process.exit(0);
   }
 } catch {
-  /* ignore */
+  /* ignore — fall through to the standard failure path */
 }
 
 // ── 5b. Skip for Dependabot PRs ─────────────────────────────────────
