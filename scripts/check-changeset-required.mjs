@@ -159,23 +159,17 @@ if (touchedPkgs.size === 0) {
 
 try {
   // On pull_request events the checkout HEAD is the MERGE commit, whose
-  // message never contains the marker — inspect the PR's head commit
-  // message via the API in that case, falling back to git log locally.
+  // message never contains the marker — inspect the PR HEAD commit instead
+  // (second parent of the merge). The repo is fetched with full history
+  // (fetch-depth: 0), so no token/API/gh dependency is needed.
   let candidates = [];
-  if (process.env.GITHUB_EVENT_NAME === "pull_request" && process.env.GITHUB_REPOSITORY) {
-    const prNumber = process.env.GITHUB_REF_NAME?.match(/\d+/)?.[0];
-    if (prNumber) {
-      const headMsg = execSync(
-        `gh pr view ${prNumber} --json commits --jq '.commits[-1].messageBody'`,
-        {
-          cwd: ROOT,
-          encoding: "utf8",
-          // gh requires an explicit token env in Actions; the job's
-          // GITHUB_TOKEN has contents:read, sufficient for pr view.
-          env: { ...process.env, GH_TOKEN: process.env.GITHUB_TOKEN ?? "" },
-        },
+  if (process.env.GITHUB_EVENT_NAME === "pull_request") {
+    try {
+      candidates.push(
+        execSync("git log -1 --pretty=%B HEAD^2", { cwd: ROOT, encoding: "utf8" }),
       );
-      candidates.push(headMsg);
+    } catch {
+      /* not a merge checkout — fall through to the plain HEAD message */
     }
   }
   candidates.push(execSync("git log -1 --pretty=%B", { cwd: ROOT, encoding: "utf8" }));
