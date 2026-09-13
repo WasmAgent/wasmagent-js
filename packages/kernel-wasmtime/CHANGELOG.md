@@ -1,5 +1,15 @@
 # @agentkit-js/kernel-wasmtime
 
+## 1.20.0
+
+### Minor Changes
+
+- 3abbccc: `maxMemoryBytes` is now validated as a hard ceiling: non-finite, non-safe-integer, non-positive, or sub-page (< 65536 bytes) values throw a `RangeError` at construction. WebAssembly memory is page-granular, so a sub-page limit cannot be enforced — the previous behavior silently widened it to one page, contradicting the hard-maximum contract.
+
+### Patch Changes
+
+- @wasmagent/core@3.7.0
+
 ## 1.19.13
 
 ### Patch Changes
