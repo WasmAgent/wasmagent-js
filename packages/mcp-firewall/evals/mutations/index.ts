@@ -5,8 +5,8 @@
 export type { Mutator } from "./mutators.js";
 export { ALL_MUTATORS } from "./mutators.js";
 
-import { ALL_MUTATORS } from "./mutators.js";
 import type { Mutator } from "./mutators.js";
+import { ALL_MUTATORS } from "./mutators.js";
 
 export interface MutationResult {
   mutatorName: string;
@@ -27,7 +27,11 @@ export function applyAllMutators(text: string, seed?: number): MutationResult[] 
  * Apply a specific subset of mutators (by name) to `text`.
  * Unknown names are silently skipped.
  */
-export function applyMutators(text: string, mutatorNames: string[], seed?: number): MutationResult[] {
+export function applyMutators(
+  text: string,
+  mutatorNames: string[],
+  seed?: number
+): MutationResult[] {
   const selected = ALL_MUTATORS.filter((m) => mutatorNames.includes(m.name));
   return selected.map((m) => applyMutator(m, text, seed));
 }

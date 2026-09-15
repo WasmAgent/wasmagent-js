@@ -39,8 +39,8 @@ function truncateToMaxBytes(text: string): { result: string; truncated: boolean 
 // Zero-width characters:
 //   U+200B ZWSP, U+200C ZWNJ, U+200D ZWJ,
 //   U+2060 WJ, U+00AD soft hyphen, U+FEFF BOM/ZWNBSP (anywhere).
-const ZERO_WIDTH_REPLACE_RE = /[​‌‍⁠­﻿]/g;
-const ZERO_WIDTH_TEST_RE = /[​‌‍⁠­﻿]/;
+const ZERO_WIDTH_REPLACE_RE = /(?:​|‌|‍|⁠|­|﻿)/g;
+const ZERO_WIDTH_TEST_RE = /(?:​|‌|‍|⁠|­|﻿)/;
 
 // Full-width ASCII equivalents: U+FF01 (!) through U+FF5E (~).
 const FULL_WIDTH_REPLACE_RE = /[！-～]/g;
@@ -116,9 +116,7 @@ function applyJsonUnescape(text: string): string {
 
 function applyHexEscapeDecode(text: string): string {
   if (!text.includes("\\x")) return text;
-  return text.replace(HEX_ESCAPE_RE, (_, hex) =>
-    String.fromCodePoint(Number.parseInt(hex, 16))
-  );
+  return text.replace(HEX_ESCAPE_RE, (_, hex) => String.fromCodePoint(Number.parseInt(hex, 16)));
 }
 
 function tryDecodeBase64(text: string): string | null {
@@ -185,7 +183,7 @@ export function normalizePayload(text: string, options?: NormalizeOptions): Norm
   s = record("unicode_nfc", s.normalize("NFC"), s);
 
   // Step 3: bom_removal — strip leading U+FEFF
-  if (s.codePointAt(0) === 0xFEFF) {
+  if (s.codePointAt(0) === 0xfeff) {
     s = s.slice(1);
     transforms.push("bom_removal");
     transformCount++;
@@ -198,7 +196,7 @@ export function normalizePayload(text: string, options?: NormalizeOptions): Norm
   s = record(
     "full_width_folding",
     s.replace(FULL_WIDTH_REPLACE_RE, (ch) =>
-      String.fromCodePoint((ch.codePointAt(0) ?? 0xFF01) - 0xFF01 + 0x21)
+      String.fromCodePoint((ch.codePointAt(0) ?? 0xff01) - 0xff01 + 0x21)
     ),
     s
   );

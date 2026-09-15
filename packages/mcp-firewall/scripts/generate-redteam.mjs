@@ -14,7 +14,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -66,7 +66,7 @@ const SYNONYM_MAP = {
   disregard: ["ignore", "overlook", "dismiss"],
 };
 
-function chooseSynonym(word, synonyms, charCode) {
+function chooseSynonym(_word, synonyms, charCode) {
   return synonyms[(seed + charCode) % synonyms.length];
 }
 
@@ -74,9 +74,7 @@ function synonymSub(text) {
   let result = text;
   for (const [word, synonyms] of Object.entries(SYNONYM_MAP)) {
     const re = new RegExp(`\\b${word}\\b`, "gi");
-    result = result.replace(re, (match) =>
-      chooseSynonym(word, synonyms, match.charCodeAt(0) ?? 0)
-    );
+    result = result.replace(re, (match) => chooseSynonym(word, synonyms, match.charCodeAt(0) ?? 0));
   }
   return result;
 }
@@ -122,7 +120,7 @@ const RULES = [
 const today = new Date().toISOString().slice(0, 10);
 let counter = 1;
 let generated = 0;
-let ruleHits = new Map(RULES.map((r) => [r.name, 0]));
+const ruleHits = new Map(RULES.map((r) => [r.name, 0]));
 
 for (let i = 0; i < seeds.length; i++) {
   const sample = seeds[i];
@@ -166,6 +164,7 @@ const ruleBreakdown = [...ruleHits.entries()]
 
 process.stderr.write(
   `Generated ${generated} samples from ${seeds.length} seeds using ${RULES.length} rules\n` +
-  ruleBreakdown + "\n" +
-  `Review and commit selected entries to evals/corpus/redteam.jsonl\n`
+    ruleBreakdown +
+    "\n" +
+    `Review and commit selected entries to evals/corpus/redteam.jsonl\n`
 );

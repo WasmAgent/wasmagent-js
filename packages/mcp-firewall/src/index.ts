@@ -82,6 +82,17 @@ export {
   isStateChangingTool,
   MCPGateway,
 } from "./gateway.js";
+// Observability — metrics counters and verdict-to-metrics mapping
+export type {
+  FirewallMetricEvent,
+  FirewallMetricName,
+  FirewallMetricsRecorder,
+} from "./observability.js";
+export {
+  FIREWALL_METRIC_NAMES,
+  InMemoryMetricsRecorder,
+  verdictToMetrics,
+} from "./observability.js";
 // Per-call policy
 export type {
   ConsentRecord,
@@ -106,6 +117,19 @@ export type {
 } from "./semanticDetector.js";
 export { DEFAULT_MALICIOUS_CORPUS } from "./semanticDetector.js";
 export { TfidfSemanticDetector } from "./semanticDetectorLocal.js";
+// Sink-source structural policy
+export type { DataSink, DataSource } from "./sink-policy.js";
+export {
+  CREDENTIAL_PATH_RULE,
+  classifyArgSource,
+  classifyToolSinks,
+  FULL_DEFAULT_RULES,
+  makeSinkAwarePolicyRule,
+  SECRET_NETWORK_SINK_RULE,
+  SHELL_EXEC_CAPABILITY_RULE,
+  SINK_POLICY_RULES,
+  SSRF_LOCALHOST_RULE,
+} from "./sink-policy.js";
 // Taint tracking
 export type {
   ContentType,
@@ -115,19 +139,16 @@ export type {
   TrustLevel,
 } from "./taint.js";
 export { isTainted, propagateTaint, renderTaintedObservation, taintObservation } from "./taint.js";
-// Sink-source structural policy
-export type { DataSink, DataSource } from "./sink-policy.js";
-export {
-  classifyArgSource,
-  classifyToolSinks,
-  CREDENTIAL_PATH_RULE,
-  FULL_DEFAULT_RULES,
-  makeSinkAwarePolicyRule,
-  SECRET_NETWORK_SINK_RULE,
-  SHELL_EXEC_CAPABILITY_RULE,
-  SINK_POLICY_RULES,
-  SSRF_LOCALHOST_RULE,
-} from "./sink-policy.js";
+// Layered verdict model
+export type {
+  ConsentVerdict,
+  ContainmentVerdict,
+  DetectionVerdict,
+  FirewallSecurityVerdict,
+  PolicyVerdict,
+  TaintVerdict,
+} from "./verdict.js";
+export { composeVerdict } from "./verdict.js";
 // Static vetting
 export type {
   AdversarialHit,
@@ -148,24 +169,3 @@ export {
   vetToolAsync,
   vetTools,
 } from "./vetting.js";
-// Layered verdict model
-export type {
-  ContainmentVerdict,
-  ConsentVerdict,
-  DetectionVerdict,
-  FirewallSecurityVerdict,
-  PolicyVerdict,
-  TaintVerdict,
-} from "./verdict.js";
-export { composeVerdict } from "./verdict.js";
-// Observability — metrics counters and verdict-to-metrics mapping
-export type {
-  FirewallMetricEvent,
-  FirewallMetricName,
-  FirewallMetricsRecorder,
-} from "./observability.js";
-export {
-  FIREWALL_METRIC_NAMES,
-  InMemoryMetricsRecorder,
-  verdictToMetrics,
-} from "./observability.js";

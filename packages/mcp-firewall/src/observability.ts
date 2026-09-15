@@ -20,8 +20,7 @@ export const FIREWALL_METRIC_NAMES = {
   TAINT_BLOCK_TOTAL: "firewall_taint_block_total",
 } as const;
 
-export type FirewallMetricName =
-  (typeof FIREWALL_METRIC_NAMES)[keyof typeof FIREWALL_METRIC_NAMES];
+export type FirewallMetricName = (typeof FIREWALL_METRIC_NAMES)[keyof typeof FIREWALL_METRIC_NAMES];
 
 export interface FirewallMetricEvent {
   metric: FirewallMetricName;
@@ -36,10 +35,7 @@ export interface FirewallMetricEvent {
 }
 
 export interface FirewallMetricsRecorder {
-  increment(
-    metric: FirewallMetricName,
-    dimensions?: FirewallMetricEvent["dimensions"]
-  ): void;
+  increment(metric: FirewallMetricName, dimensions?: FirewallMetricEvent["dimensions"]): void;
   snapshot(): Record<FirewallMetricName, number>;
 }
 
@@ -48,10 +44,7 @@ export interface FirewallMetricsRecorder {
 export class InMemoryMetricsRecorder implements FirewallMetricsRecorder {
   readonly #counters: Map<string, number> = new Map();
 
-  increment(
-    metric: FirewallMetricName,
-    _dimensions?: FirewallMetricEvent["dimensions"]
-  ): void {
+  increment(metric: FirewallMetricName, _dimensions?: FirewallMetricEvent["dimensions"]): void {
     this.#counters.set(metric, (this.#counters.get(metric) ?? 0) + 1);
   }
 

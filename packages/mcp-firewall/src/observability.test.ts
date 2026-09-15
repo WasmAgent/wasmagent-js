@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
   FIREWALL_METRIC_NAMES,
   InMemoryMetricsRecorder,
@@ -35,7 +35,9 @@ describe("observability", () => {
   });
 
   test("OBS-03: verdictToMetrics — detection=blocked → DETECTION_BLOCK_TOTAL", () => {
-    const metrics = verdictToMetrics(makeVerdict({ detection: "blocked", policy: "deny", final: "deny" }));
+    const metrics = verdictToMetrics(
+      makeVerdict({ detection: "blocked", policy: "deny", final: "deny" })
+    );
     expect(metrics).toContain(FIREWALL_METRIC_NAMES.DETECTION_BLOCK_TOTAL);
     expect(metrics).toContain(FIREWALL_METRIC_NAMES.POLICY_DENY_TOTAL);
   });

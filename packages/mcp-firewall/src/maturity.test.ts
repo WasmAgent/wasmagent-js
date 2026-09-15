@@ -28,18 +28,12 @@ describe("maturity consistency", () => {
     expect(pattern.test(source)).toBe(true);
   });
 
-  test.todo(
-    "FW-MAT-03: docs/packages.md maturity matches package-metadata.json — skip: external doc path fragile across forks",
-    () => {
-      const docs = readFileSync(docsPackagesPath, "utf8");
-      const maturityLabel = metadata.maturity;
-      const pattern = new RegExp(
-        `@wasmagent/mcp-firewall.*\\*\\*${maturityLabel}\\*\\*`,
-        "i",
-      );
-      expect(pattern.test(docs)).toBe(true);
-    },
-  );
+  test.todo("FW-MAT-03: docs/packages.md maturity matches package-metadata.json — skip: external doc path fragile across forks", () => {
+    const docs = readFileSync(docsPackagesPath, "utf8");
+    const maturityLabel = metadata.maturity;
+    const pattern = new RegExp(`@wasmagent/mcp-firewall.*\\*\\*${maturityLabel}\\*\\*`, "i");
+    expect(pattern.test(docs)).toBe(true);
+  });
 
   test("FW-MAT-04: README does not claim 'stable' when metadata maturity is not stable", () => {
     if (metadata.maturity === "stable") return;

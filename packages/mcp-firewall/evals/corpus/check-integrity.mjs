@@ -1,10 +1,16 @@
 import { readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const SPLIT_FILES = ["train.jsonl", "dev.jsonl", "holdout.jsonl", "redteam.jsonl", "external.jsonl"];
+const SPLIT_FILES = [
+  "train.jsonl",
+  "dev.jsonl",
+  "holdout.jsonl",
+  "redteam.jsonl",
+  "external.jsonl",
+];
 
 function readJsonl(filename) {
   const raw = readFileSync(join(__dirname, filename), "utf-8");
@@ -42,9 +48,7 @@ for (const [id, count] of idCounts) {
 }
 
 // Check no exact text overlap between train and holdout
-const trainTexts = new Set(
-  allRecords.filter((r) => r.split === "train").map((r) => r.text)
-);
+const trainTexts = new Set(allRecords.filter((r) => r.split === "train").map((r) => r.text));
 const holdoutRecords = allRecords.filter((r) => r.split === "holdout");
 for (const record of holdoutRecords) {
   if (trainTexts.has(record.text)) {

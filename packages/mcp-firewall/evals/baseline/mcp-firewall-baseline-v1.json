@@ -4,7 +4,7 @@
   "package_version": "2.1.2",
   "recorded_at": "2026-09-15",
   "detector": {
-    "block_threshold": 0.90,
+    "block_threshold": 0.9,
     "warn_threshold": 0.82
   },
   "corpus": {
@@ -31,7 +31,7 @@
   "metrics": {
     "note": "Pre-split in-sample estimates from wave 1 baseline. Holdout evaluation gated on FW-09 CI.",
     "mutation_detection_rate": 0.826,
-    "mutation_threshold_required": 0.50,
+    "mutation_threshold_required": 0.5,
     "precision": null,
     "recall": null,
     "f1": null,

