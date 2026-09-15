@@ -19,6 +19,7 @@
 
 import type { McpToolEntry, ToolDescriptorSnapshot } from "@wasmagent/mcp-server";
 import type { SemanticDetector } from "./semanticDetector.js";
+import { normalizeForDetection } from "./normalize.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -543,11 +544,11 @@ function excerpt(text: string, max = 120): string {
 
 function scanText(text: string, field: VettedField, _toolName: string): ToolRiskFinding[] {
   const findings: ToolRiskFinding[] = [];
-  const lower = text.toLowerCase();
+  const normalized = normalizeForDetection(text);
   const hash = fieldHash(text);
 
   for (const pat of INJECTION_PATTERNS) {
-    if (lower.includes(pat)) {
+    if (normalized.includes(pat)) {
       findings.push({
         severity: "critical",
         category: "tool_poisoning",
@@ -562,7 +563,7 @@ function scanText(text: string, field: VettedField, _toolName: string): ToolRisk
   }
 
   for (const pat of EXFILTRATION_PATTERNS) {
-    if (lower.includes(pat)) {
+    if (normalized.includes(pat)) {
       findings.push({
         severity: "high",
         category: "exfiltration",
@@ -577,7 +578,7 @@ function scanText(text: string, field: VettedField, _toolName: string): ToolRisk
   }
 
   for (const pat of SAMPLING_PATTERNS) {
-    if (lower.includes(pat)) {
+    if (normalized.includes(pat)) {
       findings.push({
         severity: "high",
         category: "sampling_abuse",

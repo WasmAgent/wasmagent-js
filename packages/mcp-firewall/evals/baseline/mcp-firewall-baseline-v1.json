@@ -1,0 +1,38 @@
+{
+  "format": "wasmagent-mcp-firewall-baseline/v1",
+  "source_sha": "9b2e6ec652db73e7612001b083d319b92dca05e5",
+  "package_version": "2.1.2",
+  "recorded_at": "2026-09-15",
+  "detector": {
+    "block_threshold": 0.90,
+    "warn_threshold": 0.82
+  },
+  "corpus": {
+    "file": "src/vetting-corpus.ts",
+    "sha256": "a1e0b018b8afce73bd7cfbea589bd842d0019763811b22a977616a7ea758b562",
+    "sample_count": 60,
+    "categories": [
+      { "name": "injection_en", "count": 10 },
+      { "name": "injection_zh", "count": 8 },
+      { "name": "injection_ru", "count": 6 },
+      { "name": "exfil_zh", "count": 6 },
+      { "name": "base64_payload", "count": 6 },
+      { "name": "homoglyph", "count": 6 },
+      { "name": "zero_width", "count": 5 },
+      { "name": "obfuscation", "count": 6 },
+      { "name": "jailbreak", "count": 7 }
+    ]
+  },
+  "metrics": {
+    "note": "Baseline pending proper train/holdout split (FW-02). Metrics below are pre-split in-sample estimates.",
+    "precision": null,
+    "recall": null,
+    "f1": null,
+    "false_positive_rate": null
+  },
+  "known_limitations": [
+    "Corpus currently used for both training and evaluation — no train/holdout split yet",
+    "First-line keyword+ngram filter only; determined attackers can bypass semantic detection",
+    "No adaptive adversarial red-team evaluation yet"
+  ]
+}

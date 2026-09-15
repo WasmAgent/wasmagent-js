@@ -1,0 +1,7 @@
+{
+  "package": "@wasmagent/mcp-firewall",
+  "maturity": "beta",
+  "security_posture": "first-line-defence-in-depth",
+  "adversarial_evaluation": "partial",
+  "public_api": "stable-with-minor-change-risk"
+}

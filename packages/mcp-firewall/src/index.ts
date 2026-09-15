@@ -1,5 +1,5 @@
 /**
- * @wasmagent/mcp-firewall — alpha
+ * @wasmagent/mcp-firewall — beta
  *
  * Runtime firewall for MCP and tool-augmented agents.
  * Deterministic enforcement — no ML required.
