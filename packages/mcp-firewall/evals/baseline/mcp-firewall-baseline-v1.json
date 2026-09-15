@@ -12,15 +12,42 @@
     "sha256": "a1e0b018b8afce73bd7cfbea589bd842d0019763811b22a977616a7ea758b562",
     "sample_count": 60,
     "categories": [
-      { "name": "injection_en", "count": 10 },
-      { "name": "injection_zh", "count": 8 },
-      { "name": "injection_ru", "count": 6 },
-      { "name": "exfil_zh", "count": 6 },
-      { "name": "base64_payload", "count": 6 },
-      { "name": "homoglyph", "count": 6 },
-      { "name": "zero_width", "count": 5 },
-      { "name": "obfuscation", "count": 6 },
-      { "name": "jailbreak", "count": 7 }
+      {
+        "name": "injection_en",
+        "count": 10
+      },
+      {
+        "name": "injection_zh",
+        "count": 8
+      },
+      {
+        "name": "injection_ru",
+        "count": 6
+      },
+      {
+        "name": "exfil_zh",
+        "count": 6
+      },
+      {
+        "name": "base64_payload",
+        "count": 6
+      },
+      {
+        "name": "homoglyph",
+        "count": 6
+      },
+      {
+        "name": "zero_width",
+        "count": 5
+      },
+      {
+        "name": "obfuscation",
+        "count": 6
+      },
+      {
+        "name": "jailbreak",
+        "count": 7
+      }
     ]
   },
   "splits": {
@@ -38,15 +65,15 @@
     "false_positive_rate": null
   },
   "f2_metrics": {
-    "phase": "F2",
-    "gate_status": "closed — normal CI PASS and adversarial F0–F6 PASS on the exact tested SHA (promotion commit 2026-09-15)",
+    "phase": "F2_candidate",
+    "gate_status": "reopened \u2014 final closure repair (FR-01..FR-05) in progress; metrics below are the last green gate run",
     "text_mutation_escape_rate": 0,
     "structural_mutation_escape_rate": 0,
     "combined_escape_rate": 0,
     "text_scenarios": 242,
     "structural_scenarios": 102,
     "combined_scenarios": 24684,
-    "note": "Rates produced by structural-mutation-escape.test.ts through the DEFAULT hardened MCPGateway path (not an injected rule stack). Structural scenarios = 6 dangerous fixtures × 16 structural mutators + identity; combined = structural × text cross product over the holdout."
+    "note": "Rates produced by structural-mutation-escape.test.ts through the DEFAULT hardened MCPGateway path (not an injected rule stack). Structural scenarios = 6 dangerous fixtures \u00d7 16 structural mutators + identity; combined = structural \u00d7 text cross product over the holdout."
   },
   "known_limitations": [
     "Semantic detection is first-line only; determined attackers with novel obfuscation may bypass keyword+ngram detection",
