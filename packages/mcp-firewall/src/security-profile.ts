@@ -21,7 +21,12 @@ import type { McpToolEntry } from "@wasmagent/mcp-server";
 import { classifyEffect, type EffectClass } from "./capability.js";
 import type { PolicyRule } from "./policy.js";
 import { classifyResourcePath, deepStringValues } from "./resource-path.js";
-import { classifyArgSource, type DataSink, FULL_DEFAULT_RULES } from "./sink-policy.js";
+import {
+  classifyArgSource,
+  classifyToolSinks,
+  type DataSink,
+  FULL_DEFAULT_RULES,
+} from "./sink-policy.js";
 import { classifyUrlTarget } from "./url-policy.js";
 
 // ── Profile model ────────────────────────────────────────────────────────────
@@ -103,6 +108,118 @@ export interface ClassifyToolEffectOptions {
 }
 
 /**
+ * Policy for tools with NO trusted ToolSecurityProfile (final-audit C3).
+ *
+ * The threat model includes malicious/compromised MCP servers that control
+ * their own tool names — a benign read-like name (`query_orders`) proves
+ * nothing about hidden server-side effects. How the gateway treats such a
+ * tool is therefore an explicit trust decision:
+ * - "ask_user"   — hardened default for unverified servers: unprofiled
+ *                  read-shaped tools still get human confirmation
+ * - "deny"       — strict mode
+ * - "allow_read_heuristic" — legacy behavior; only appropriate when the
+ *                  operator accepts name-heuristic trust (e.g. operator-
+ *                  verified servers via the per-server check, or legacy
+ *                  profile deployments)
+ */
+export type UnprofiledToolPolicy = "allow_read_heuristic" | "ask_user" | "deny";
+
+/** How the resolved effect was determined — provenance of the trust decision. */
+export type EffectProvenance = "trusted_profile" | "structural_signal" | "heuristic" | "unknown";
+
+/**
+ * The single security context resolved once per request (final-audit C4).
+ * Every per-request rule consumes THIS object — heuristic re-classification
+ * inside individual rules cannot diverge from the trusted profile.
+ */
+export interface ResolvedToolSecurityContext {
+  snapshotHash: string | undefined;
+  profile: ToolSecurityProfile | undefined;
+  effect: EffectClass;
+  sinks: DataSink[];
+  capabilitiesRequired: string[];
+  provenance: EffectProvenance;
+}
+
+/**
+ * Resolve the security context for one tool invocation:
+ *   1. trusted profile (operator-registered) → authoritative
+ *   2. structural value signals → provenance "structural_signal"
+ *   3. name heuristics → provenance "heuristic"
+ *   4. fallback unknown_effect → provenance "unknown"
+ */
+export function resolveToolSecurityContext(opts: {
+  registry?: ToolSecurityProfileRegistry;
+  snapshotHash?: string;
+  toolName: string;
+  args: Record<string, unknown>;
+}): ResolvedToolSecurityContext {
+  const profile = opts.snapshotHash ? opts.registry?.lookup(opts.snapshotHash) : undefined;
+
+  if (profile) {
+    return {
+      snapshotHash: opts.snapshotHash,
+      profile,
+      effect:
+        profile.effects.length === 0 ? "read_only" : (profile.effects.at(0) ?? "unknown_effect"),
+      sinks: profile.sinks,
+      capabilitiesRequired: profile.capabilitiesRequired,
+      provenance: "trusted_profile",
+    };
+  }
+
+  const nameSinks = classifyToolSinks({ name: opts.toolName });
+
+  // Value-driven structural signals.
+  for (const v of deepStringValues(opts.args)) {
+    if (classifyResourcePath(v).isSensitive) {
+      return {
+        snapshotHash: opts.snapshotHash,
+        profile: undefined,
+        effect: "read_secret",
+        sinks: nameSinks,
+        capabilitiesRequired: [],
+        provenance: "structural_signal",
+      };
+    }
+  }
+  for (const v of deepStringValues(opts.args)) {
+    if (classifyUrlTarget(v).host !== undefined) {
+      return {
+        snapshotHash: opts.snapshotHash,
+        profile: undefined,
+        effect: "network",
+        sinks: nameSinks,
+        capabilitiesRequired: [],
+        provenance: "structural_signal",
+      };
+    }
+  }
+  for (const v of deepStringValues(opts.args)) {
+    if (SECRET_VALUE_RE.test(v)) {
+      return {
+        snapshotHash: opts.snapshotHash,
+        profile: undefined,
+        effect: "read_secret",
+        sinks: nameSinks,
+        capabilitiesRequired: [],
+        provenance: "structural_signal",
+      };
+    }
+  }
+
+  const heuristic = classifyEffect(opts.toolName, opts.args);
+  return {
+    snapshotHash: opts.snapshotHash,
+    profile: undefined,
+    effect: heuristic,
+    sinks: nameSinks,
+    capabilitiesRequired: [],
+    provenance: heuristic === "unknown_effect" ? "unknown" : "heuristic",
+  };
+}
+
+/**
  * Layered effect classification:
  *   1. registered profile → declared effects (authoritative)
  *   2. registered profile with empty effects → read_only (operator-declared safe)
@@ -112,26 +229,7 @@ export interface ClassifyToolEffectOptions {
  *   5. fallback `unknown_effect` — never silently read_only
  */
 export function classifyToolEffect(opts: ClassifyToolEffectOptions): EffectClass {
-  const profile = opts.toolSnapshotHash ? opts.registry?.lookup(opts.toolSnapshotHash) : undefined;
-
-  if (profile) {
-    if (profile.effects.length === 0) return "read_only";
-    return profile.effects.at(0) ?? "unknown_effect";
-  }
-
-  // Value-driven structural signals.
-  for (const v of deepStringValues(opts.args)) {
-    if (classifyResourcePath(v).isSensitive) return "read_secret";
-  }
-  for (const v of deepStringValues(opts.args)) {
-    const url = classifyUrlTarget(v);
-    if (url.host !== undefined) return "network";
-  }
-  for (const v of deepStringValues(opts.args)) {
-    if (SECRET_VALUE_RE.test(v)) return "read_secret";
-  }
-
-  return classifyEffect(opts.toolName, opts.args);
+  return resolveToolSecurityContext(opts).effect;
 }
 
 // ── Policy rules ─────────────────────────────────────────────────────────────
@@ -194,6 +292,12 @@ export function makeProfileAuthoritativeRule(
 export interface UnknownProfileFailSafeOptions {
   /** Decision for unrecognised tools. Default "ask_user". */
   unknownEffectDecision?: "ask_user" | "deny";
+  /** Registry used to detect a TRUSTED profile for the current descriptor —
+   * when one exists, the profile rules own the decision and the fail-safe
+   * stands down (it must not second-guess operator-declared effects). */
+  profileRegistry?: ToolSecurityProfileRegistry;
+  /** Supplies the current request's descriptor snapshot hash. */
+  getSnapshotHash?: () => string | undefined;
 }
 
 /**
@@ -201,6 +305,9 @@ export interface UnknownProfileFailSafeOptions {
  * be confidently classified (P1-04). Also denies the secret→network flow
  * detected purely from VALUES (URL target + secret-shaped value), which no
  * naming assumption can hide.
+ *
+ * Stands down entirely when a TRUSTED profile exists for the current
+ * descriptor — the profile-authoritative rule owns that decision.
  */
 export function makeUnknownProfileFailSafeRule(
   opts: UnknownProfileFailSafeOptions = {}
@@ -208,6 +315,16 @@ export function makeUnknownProfileFailSafeRule(
   return {
     policyId: "unknown-profile-fail-safe",
     evaluate(toolName, args, _vetting) {
+      // A trusted operator profile is authoritative — do not second-guess it.
+      const snapshotHash = opts.getSnapshotHash?.();
+      if (
+        opts.profileRegistry !== undefined &&
+        snapshotHash !== undefined &&
+        opts.profileRegistry.lookup(snapshotHash) !== undefined
+      ) {
+        return undefined;
+      }
+
       // Value-driven exfil: a URL-shaped destination plus a secret-shaped
       // value is the exfiltration pattern regardless of tool/arg names.
       let sawUrlTarget = false;
@@ -239,6 +356,22 @@ export function makeUnknownProfileFailSafeRule(
   };
 }
 
+/**
+ * Per-request decision for an UNPROFILED tool on an UNVERIFIED server
+ * (final-audit C3). A benign read-like name is not evidence of safety; how
+ * much trust it earns is the operator's explicit `UnprofiledToolPolicy`.
+ * Returns undefined when the policy allows the heuristic read or when the
+ * tool is not read-only (other rules already own those).
+ */
+export function evaluateUnprofiledToolPolicy(
+  ctx: ResolvedToolSecurityContext,
+  policy: UnprofiledToolPolicy
+): "ask_user" | "deny" | undefined {
+  if (policy === "allow_read_heuristic") return undefined;
+  if (ctx.effect === "read_only") return policy;
+  return undefined;
+}
+
 export interface HardenedRuleStackOptions {
   /** Registry of operator-reviewed profiles (recommended). */
   profileRegistry?: ToolSecurityProfileRegistry;
@@ -256,17 +389,18 @@ export interface HardenedRuleStackOptions {
  */
 export function makeHardenedRuleStack(opts: HardenedRuleStackOptions = {}): PolicyRule[] {
   const rules = [...FULL_DEFAULT_RULES];
+  const getSnapshotHash = opts.getSnapshotHash ?? (() => undefined);
   if (opts.profileRegistry !== undefined) {
-    rules.push(
-      makeProfileAuthoritativeRule(opts.profileRegistry, opts.getSnapshotHash ?? (() => undefined))
-    );
+    rules.push(makeProfileAuthoritativeRule(opts.profileRegistry, getSnapshotHash));
   }
   rules.push(
-    makeUnknownProfileFailSafeRule(
-      opts.unknownEffectDecision !== undefined
+    makeUnknownProfileFailSafeRule({
+      ...(opts.unknownEffectDecision !== undefined
         ? { unknownEffectDecision: opts.unknownEffectDecision }
-        : {}
-    )
+        : {}),
+      ...(opts.profileRegistry !== undefined ? { profileRegistry: opts.profileRegistry } : {}),
+      getSnapshotHash,
+    })
   );
   return rules;
 }

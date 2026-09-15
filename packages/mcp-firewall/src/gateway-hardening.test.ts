@@ -12,13 +12,17 @@
 
 import { describe, expect, it } from "bun:test";
 import type { McpToolEntry } from "@wasmagent/mcp-server";
+import { CapabilityRegistry } from "./capability.js";
 import { buildServerCard, createRequestIdentity, MCPGateway } from "./gateway.js";
 import { DEFAULT_RULES } from "./policy.js";
 import {
   computeToolSnapshotHash,
   InMemoryToolSecurityProfileRegistry,
+  type ToolSecurityProfile,
 } from "./security-profile.js";
 import { buildVettingCacheKey } from "./vetting.js";
+
+type ToolSecurityProfileEffect = ToolSecurityProfile["effects"][number];
 
 const identity = createRequestIdentity({ principal: "redteam", sessionId: "adv-session" });
 
@@ -104,6 +108,9 @@ describe("FW-WIRE: default MCPGateway enforces structural containment (P0-01)", 
     // silently claim containment either. Pinned here so custom stacks are a
     // documented, deliberate downgrade.
     const gw = new MCPGateway({ rules: DEFAULT_RULES });
+    // C5: a custom stack must never report "hardened".
+    expect(gw.securityProfile).toBe("custom");
+    expect(gw.requestedSecurityProfile).toBe("hardened");
     const d = gw.evaluate({
       identity,
       serverId: "srv",
@@ -111,6 +118,25 @@ describe("FW-WIRE: default MCPGateway enforces structural containment (P0-01)", 
       args: { path: "~/.ssh/id_rsa" },
     });
     expect(d.invocation.decision).toBe("allow");
+    expect(d.evidenceRef.securityProfile).toBe("custom");
+  });
+
+  it("WIRE-06B: default construction → effective profile hardened (evidence field)", () => {
+    const gw = new MCPGateway();
+    const d = gw.evaluate({
+      identity,
+      serverId: "srv",
+      tool: tool("read_file", "Reads a file"),
+      args: { path: "/tmp/x" },
+    });
+    expect(gw.securityProfile).toBe("hardened");
+    expect(d.evidenceRef.securityProfile).toBe("hardened");
+  });
+
+  it("WIRE-06C: legacy construction → effective profile legacy", () => {
+    const gw = new MCPGateway({ securityProfile: "legacy" });
+    expect(gw.securityProfile).toBe("legacy");
+    expect(gw.requestedSecurityProfile).toBe("legacy");
   });
 
   it("WIRE-07: benign read tool still allowed on the default path", () => {
@@ -185,8 +211,11 @@ describe("TENANT-ADV: authoritative tenant enforcement (P0-04)", () => {
     expect(d.invocation.decision).toBe("deny");
   });
 
-  it("TENANT-ADV-05: same-tenant access remains allowed", () => {
+  it("TENANT-ADV-05: same-tenant access remains allowed (verified server)", () => {
+    // Verified server: the read heuristic is trusted, so the ONLY gate in
+    // play is tenant isolation — same-tenant access flows.
     const gw = new MCPGateway({ tenantEnforcement: true });
+    gw.registerServerCard(buildServerCard({ serverId: "srv", tools: [], operatorVerified: true }));
     const d = gw.evaluate({
       identity,
       serverId: "srv",
@@ -195,6 +224,18 @@ describe("TENANT-ADV: authoritative tenant enforcement (P0-04)", () => {
       args: { resource: "/tenants/org-a/records/42" },
     });
     expect(d.invocation.decision).toBe("allow");
+  });
+
+  it("TENANT-ADV-05b: same-tenant access on an unverified server is asked, not silently allowed (C3)", () => {
+    const gw = new MCPGateway({ tenantEnforcement: true });
+    const d = gw.evaluate({
+      identity,
+      serverId: "srv",
+      tenant: "org-a",
+      tool: tool("read_file", "Reads a file"),
+      args: { resource: "/tenants/org-a/records/42" },
+    });
+    expect(d.invocation.decision).toBe("ask_user");
   });
 
   it("TENANT-ADV-06: without enforcement, legacy capability-tenant fallback is unchanged", () => {
@@ -322,16 +363,43 @@ describe("STRUCT-ADV: structural renaming cannot bypass the default gateway", ()
     expect(d2.invocation.decision).toBe("deny");
   });
 
-  it("STRUCT-ADV-06b: unknown-named tool that names a read verb stays allow", () => {
-    // Explicitly-safe read-only tools remain usable on the default path.
+  it("PROFILE-ADV-01/02: unverified + unprofiled read-named tools → ask_user (C3)", () => {
+    // A malicious server can name a side-effecting tool `query_orders`;
+    // on an unverified server a benign read-like name earns confirmation,
+    // not silent allow.
     const gw = new MCPGateway();
+    for (const name of ["query_orders", "read_file"]) {
+      const d = gw.evaluate({
+        identity,
+        serverId: "srv",
+        tool: tool(name, "Reads things"),
+        args: { filter: "open" },
+      });
+      expect(d.invocation.decision).toBe("ask_user");
+    }
+  });
+
+  it("PROFILE-ADV-02b: verified server keeps the read heuristic (operator trust anchor)", () => {
+    const gw = new MCPGateway();
+    gw.registerServerCard(buildServerCard({ serverId: "srv", tools: [], operatorVerified: true }));
     const d = gw.evaluate({
       identity,
       serverId: "srv",
-      tool: tool("query_orders", "Queries orders"),
-      args: { filter: "open" },
+      tool: tool("read_file", "Reads a file"),
+      args: { path: "/tmp/x" },
     });
     expect(d.invocation.decision).toBe("allow");
+  });
+
+  it("PROFILE-ADV-02c: strict mode denies unprofiled read-named tools", () => {
+    const gw = new MCPGateway({ unprofiledToolPolicy: "deny" });
+    const d = gw.evaluate({
+      identity,
+      serverId: "srv",
+      tool: tool("read_file", "Reads a file"),
+      args: { path: "/tmp/x" },
+    });
+    expect(d.invocation.decision).toBe("deny");
   });
 
   it("STRUCT-ADV-07: benign-named tool with URL value but no secret → ask_user (network suspicion)", () => {
@@ -364,5 +432,181 @@ describe("STRUCT-ADV: structural renaming cannot bypass the default gateway", ()
     // only to her; Bob is still asked.
     expect(alice.invocation.decision).toBe("allow");
     expect(bob.invocation.decision).toBe("ask_user");
+  });
+});
+
+// ── PROFILE-ADV-03..06: trusted profile is the only naming-independent anchor ─
+
+describe("PROFILE-ADV: trusted profile trust boundary (C3)", () => {
+  it("PROFILE-ADV-03: trusted read_only profile → allow even on an unverified server", () => {
+    const registry = new InMemoryToolSecurityProfileRegistry();
+    const t = tool("weird_name", "Does something");
+    registry.register({
+      toolSnapshotHash: computeToolSnapshotHash(t, "srv"),
+      effects: ["read_only"],
+      sinks: [],
+      capabilitiesRequired: [],
+    });
+    const gw = new MCPGateway({ profileRegistry: registry });
+    const d = gw.evaluate({ identity, serverId: "srv", tool: t, args: { q: "x" } });
+    expect(d.invocation.decision).toBe("allow");
+    expect(d.evidenceRef.securityProfile).toBe("hardened");
+  });
+
+  it("PROFILE-ADV-04: trusted network profile → network policy applies (secret arg → deny)", () => {
+    const registry = new InMemoryToolSecurityProfileRegistry();
+    const t = tool("weather_sync", "Syncs weather data");
+    registry.register({
+      toolSnapshotHash: computeToolSnapshotHash(t, "srv"),
+      effects: ["network"],
+      sinks: ["network_send"],
+      capabilitiesRequired: ["network.send"],
+      sensitiveArgPaths: ["auth_token"],
+    });
+    const gw = new MCPGateway({ profileRegistry: registry });
+    const d = gw.evaluate({
+      identity,
+      serverId: "srv",
+      tool: t,
+      args: { payload: "x", auth_token: "anything" },
+    });
+    expect(d.invocation.decision).toBe("deny");
+    expect(d.capabilityEffect).toBe("network");
+  });
+
+  it("PROFILE-ADV-05: descriptor drift invalidates the profile → fail safe", () => {
+    const registry = new InMemoryToolSecurityProfileRegistry();
+    const t = tool("read_thing", "Reads a thing");
+    registry.register({
+      toolSnapshotHash: computeToolSnapshotHash(t, "srv"),
+      effects: ["read_only"],
+      sinks: [],
+      capabilitiesRequired: [],
+    });
+    const gw = new MCPGateway({ profileRegistry: registry });
+    // Same tool with a CHANGED description → different snapshot hash →
+    // profile miss → unverified unprofiled policy applies (ask_user).
+    const drifted = { ...t, description: `${t.description} (v2)` };
+    const d = gw.evaluate({ identity, serverId: "srv", tool: drifted, args: { q: "x" } });
+    expect(d.invocation.decision).toBe("ask_user");
+  });
+
+  it("PROFILE-ADV-06: a profile bound to the WRONG descriptor hash is not authoritative", () => {
+    // The registry key is computed BY THE GATEWAY from the live descriptor —
+    // a server cannot self-declare a profile; one registered against a
+    // different snapshot never matches and the fail-safe applies.
+    const registry = new InMemoryToolSecurityProfileRegistry();
+    const t = tool("mystery", "Does mystery work");
+    registry.register({
+      toolSnapshotHash: computeToolSnapshotHash(tool("OTHER_TOOL", "Other"), "srv"),
+      effects: ["read_only"],
+      sinks: [],
+      capabilitiesRequired: [],
+    });
+    const gw = new MCPGateway({ profileRegistry: registry });
+    const d = gw.evaluate({ identity, serverId: "srv", tool: t, args: { q: "x" } });
+    expect(d.invocation.decision).toBe("ask_user");
+  });
+});
+
+// ── PROFILE-CAP-01..05: capabilitiesRequired is ENFORCED (C4) ────────────────
+
+describe("PROFILE-CAP: profile capability requirements are enforced (C4)", () => {
+  function gwWithProfile(
+    profile: { effects: ToolSecurityProfileEffect[]; capabilitiesRequired: string[] },
+    registry: CapabilityRegistry
+  ): MCPGateway {
+    const profiles = new InMemoryToolSecurityProfileRegistry();
+    const t = tool("weather_sync", "Syncs weather data");
+    profiles.register({
+      toolSnapshotHash: computeToolSnapshotHash(t, "srv"),
+      effects: profile.effects,
+      sinks: profile.effects.includes("exec") ? ["shell_exec"] : ["network_send"],
+      capabilitiesRequired: profile.capabilitiesRequired,
+    });
+    return new MCPGateway({ profileRegistry: profiles, capabilityRegistry: registry });
+  }
+
+  it("PROFILE-CAP-01: required network.send, no grant → ask_user", () => {
+    const gw = gwWithProfile(
+      { effects: ["network"], capabilitiesRequired: ["network.send"] },
+      new CapabilityRegistry()
+    );
+    const d = gw.evaluate({
+      identity,
+      serverId: "srv",
+      tool: tool("weather_sync", "Syncs weather data"),
+      args: { payload: "x" },
+    });
+    expect(d.invocation.decision).toBe("ask_user");
+    expect(d.invocation.matchedPolicyIds).toContain("profile-capability-required");
+  });
+
+  it("PROFILE-CAP-02: correct grant → capability gate satisfied (allow)", () => {
+    const registry = new CapabilityRegistry();
+    registry.grant({
+      principal: identity.principalHash,
+      tenant: "srv",
+      capability: "network.send",
+    });
+    const gw = gwWithProfile(
+      { effects: ["network"], capabilitiesRequired: ["network.send"] },
+      registry
+    );
+    const d = gw.evaluate({
+      identity,
+      serverId: "srv",
+      tool: tool("weather_sync", "Syncs weather data"),
+      args: { payload: "x" },
+    });
+    expect(d.invocation.decision).toBe("allow");
+  });
+
+  it("PROFILE-CAP-03: wrong-tenant grant → denied (exec profile)", () => {
+    const registry = new CapabilityRegistry();
+    registry.grant({
+      principal: identity.principalHash,
+      tenant: "OTHER-TENANT",
+      capability: "exec.shell",
+    });
+    const gw = gwWithProfile({ effects: ["exec"], capabilitiesRequired: ["exec.shell"] }, registry);
+    const d = gw.evaluate({
+      identity,
+      serverId: "srv",
+      tool: tool("weather_sync", "Syncs weather data"),
+      args: {},
+    });
+    expect(d.invocation.decision).toBe("deny");
+  });
+
+  it("PROFILE-CAP-04: expired grant → denied (exec profile)", () => {
+    const registry = new CapabilityRegistry();
+    registry.grant({
+      principal: identity.principalHash,
+      tenant: "srv",
+      capability: "exec.shell",
+      expiresAt: new Date(Date.now() - 5000).toISOString(),
+    });
+    const gw = gwWithProfile({ effects: ["exec"], capabilitiesRequired: ["exec.shell"] }, registry);
+    const d = gw.evaluate({
+      identity,
+      serverId: "srv",
+      tool: tool("weather_sync", "Syncs weather data"),
+      args: {},
+    });
+    expect(d.invocation.decision).toBe("deny");
+  });
+
+  it("PROFILE-CAP-05: benign tool name + exec capability requirement → exec gate enforced", () => {
+    const registry = new CapabilityRegistry();
+    const gw = gwWithProfile({ effects: ["exec"], capabilitiesRequired: ["exec.shell"] }, registry);
+    const d = gw.evaluate({
+      identity,
+      serverId: "srv",
+      tool: tool("weather_sync", "Syncs weather data"),
+      args: {},
+    });
+    // The name says nothing; the profile says exec → denied without a grant.
+    expect(d.invocation.decision).toBe("deny");
   });
 });
