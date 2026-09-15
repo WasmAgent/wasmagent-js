@@ -542,6 +542,20 @@ export class MCPGateway {
     // never a heuristic re-classification. Without a CapabilityRegistry the
     // grants cannot be checked, so enforcement is left to the profile and
     // fail-safe rules (documented in the README security model).
+    if (
+      hasTrustedProfile &&
+      resolved.capabilitiesRequired.length > 0 &&
+      !this.#capabilityRegistry
+    ) {
+      // Fail closed (final-audit round 3, PROFILE-CAP-00): a declared
+      // capability requirement with no registry to evidence it is NOT a
+      // satisfied requirement — "missing capability evidence" must never
+      // collapse into "capability satisfied".
+      requestRules.push({
+        policyId: "profile-capability-registry-unavailable",
+        evaluate: () => "ask_user",
+      });
+    }
     if (hasTrustedProfile && resolved.capabilitiesRequired.length > 0 && this.#capabilityRegistry) {
       const registry = this.#capabilityRegistry;
       const principal = req.identity.principalHash;

@@ -2,8 +2,9 @@
   "package": "@wasmagent/mcp-firewall",
   "maturity": "beta",
   "security_posture": "defence-in-depth",
-  "adversarial_evaluation": "f2_gates_passed",
+  "adversarial_evaluation": "f2_candidate",
   "public_api": "stable-with-minor-change-risk",
-  "phase": "F2",
-  "phase_note": "Adversarially Hardened Beta \u2014 F2 gate closed after the final closure repair. Gates green on the exact tested SHA: normal CI PASS, adversarial F0-F6 PASS (no skipped jobs), gateway consent binding (GW-CONSENT), unprofiled-tool trust boundary (PROFILE-ADV), profile capability enforcement (PROFILE-CAP), critical-action + structural mutation escape gates PASS (text 0/242, structural 0/102, combined 0/24,684 through the default hardened MCPGateway). Unprofiled tools on unverified servers fail safe (ask_user); custom rule stacks report effective profile 'custom'; the F6 artifact refuses contradictory F2 evidence and records PR head SHA separately from the tested merge SHA. External/adaptive red-team evaluation remains pending and is defined as later work. Promotion commit is metadata-only \u2014 no security logic."
+  "phase": "F1",
+  "phase_note": "F2 candidate \u2014 one-code-fix closure round in progress (PROFILE-CAP-00 fail-closed branch: declared capability requirements without a CapabilityRegistry now ask instead of silently passing; threat-model determinism/red-team wording aligned with evidence). Re-promotes to F2 after gates rerun green on the exact tested SHA via a metadata-only commit.",
+  "candidate_phase": "F2"
 }

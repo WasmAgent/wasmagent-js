@@ -527,6 +527,30 @@ describe("PROFILE-CAP: profile capability requirements are enforced (C4)", () =>
     return new MCPGateway({ profileRegistry: profiles, capabilityRegistry: registry });
   }
 
+  it("PROFILE-CAP-00: required capability + NO CapabilityRegistry → fail closed, never allow", () => {
+    // Load-bearing: a declared capability requirement without a registry to
+    // evidence grants is unanswered, not satisfied. (No helper here — the
+    // gateway is deliberately constructed WITHOUT a capabilityRegistry.)
+    const profiles = new InMemoryToolSecurityProfileRegistry();
+    const t = tool("weather_sync", "Syncs weather data");
+    profiles.register({
+      toolSnapshotHash: computeToolSnapshotHash(t, "srv"),
+      effects: ["network"],
+      sinks: ["network_send"],
+      capabilitiesRequired: ["network.send"],
+    });
+    const gw = new MCPGateway({ profileRegistry: profiles });
+    const d = gw.evaluate({
+      identity,
+      serverId: "srv",
+      tool: t,
+      args: { payload: "hello" }, // benign: no secret, no SSRF
+    });
+    expect(d.invocation.decision).not.toBe("allow");
+    expect(["ask_user", "deny"]).toContain(d.invocation.decision);
+    expect(d.invocation.matchedPolicyIds).toContain("profile-capability-registry-unavailable");
+  });
+
   it("PROFILE-CAP-01: required network.send, no grant → ask_user", () => {
     const gw = gwWithProfile(
       { effects: ["network"], capabilitiesRequired: ["network.send"] },

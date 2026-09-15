@@ -66,7 +66,7 @@ The following are explicitly outside the threat model for `@wasmagent/mcp-firewa
 | Signal type | Meaning |
 |-------------|---------|
 | `best_effort` | Keyword bag (stage 1) or n-gram classifier (stage 2); adaptive adversary can bypass with novel phrasing |
-| `deterministic` | Hash comparison, path regex, tenant-segment regex; not bypassable by payload content alone |
+| `deterministic` | Same input produces the same decision and the rule does not depend on probabilistic or ML inference (hash comparison, path classification, tenant-segment regex). Deterministic does NOT imply complete coverage of all semantically equivalent encodings, resource forms, or hidden server-side effects |
 | `not_applicable` | No semantic signal involved; enforcement is purely structural |
 
 ---
@@ -102,9 +102,11 @@ downstream layers. The key interactions are:
 > (policy rule, sink guard, capability check, taint label, or consent record)
 > constrains the unsafe effect even when all semantic detection signals are `missed`.
 
-This is the formalisation of the flagship invariant. It is tested in the mutation
-and adaptive red-team suites (FW-09 CI gate). A report demonstrating a category
-where no deterministic boundary fires (A4 bypass) is treated as P0.
+This is the formalisation of the flagship invariant. It is tested in the frozen
+holdout, deterministic text-mutation, and structural-mutation suites (FW-09 CI
+gate). Adaptive and external red-team evaluation remain pending. A report
+demonstrating a category where no deterministic boundary fires (A4 bypass) is
+treated as P0.
 
 ---
 
