@@ -21,6 +21,8 @@
 
 import type { InvocationDecision, PolicyRule } from "./policy.js";
 import { DEFAULT_RULES } from "./policy.js";
+import { classifyResourcePath, deepStringValues } from "./resource-path.js";
+import { classifyUrlTarget } from "./url-policy.js";
 import type { VettingResult } from "./vetting.js";
 
 // ── Labels ────────────────────────────────────────────────────────────────────
@@ -110,8 +112,7 @@ export function classifyArgSource(argName: string, _argValue: unknown): DataSour
   const n = argName.replace(/_/g, " ");
   if (/\bpath\b|\bfile\b|\bdir\b|\bdirectory\b/i.test(n)) return "filesystem";
   if (/\burl\b|\bendpoint\b|\bhost\b|\buri\b/i.test(n)) return "network_response";
-  if (/\btoken\b|\bkey\b|\bsecret\b|\bpassword\b|\bcredential\b|\bauth\b/i.test(n))
-    return "secret";
+  if (/\btoken\b|\bkey\b|\bsecret\b|\bpassword\b|\bcredential\b|\bauth\b/i.test(n)) return "secret";
   if (/\benv\b|\benviron\b|\bvar\b/i.test(n)) return "environment";
   return "user_input";
 }
@@ -126,7 +127,11 @@ export function classifyArgSource(argName: string, _argValue: unknown): DataSour
  */
 export const SHELL_EXEC_CAPABILITY_RULE: PolicyRule = {
   policyId: "sink-shell-exec-requires-capability",
-  evaluate(toolName: string, _args: Record<string, unknown>, _vetting: VettingResult | null): InvocationDecision | undefined {
+  evaluate(
+    toolName: string,
+    _args: Record<string, unknown>,
+    _vetting: VettingResult | null
+  ): InvocationDecision | undefined {
     if (classifyToolSinksByName(toolName).includes("shell_exec")) return "ask_user";
     return undefined;
   },
@@ -141,50 +146,115 @@ export const SHELL_EXEC_CAPABILITY_RULE: PolicyRule = {
  */
 export const SECRET_NETWORK_SINK_RULE: PolicyRule = {
   policyId: "sink-secret-to-network-deny",
-  evaluate(toolName: string, args: Record<string, unknown>, _vetting: VettingResult | null): InvocationDecision | undefined {
+  evaluate(
+    toolName: string,
+    args: Record<string, unknown>,
+    _vetting: VettingResult | null
+  ): InvocationDecision | undefined {
     if (!classifyToolSinksByName(toolName).includes("network_send")) return undefined;
-    for (const [k, v] of Object.entries(args)) {
-      if (classifyArgSource(k, v) === "secret") return "deny";
+    for (const key of deepArgKeys(args)) {
+      if (classifyArgSource(key, undefined) === "secret") return "deny";
     }
     return undefined;
   },
 };
+
+/**
+ * Collect argument key names from an arbitrary argument tree (deep, bounded).
+ * An attacker controls nesting, so secret-arg detection must see
+ * `wrapper: { api_token: "..." }` as well as top-level `api_token`.
+ * Returns the key names at every object level; array elements are traversed
+ * without introducing synthetic key names.
+ */
+function deepArgKeys(value: unknown, opts?: { maxDepth?: number; maxNodes?: number }): string[] {
+  const maxDepth = opts?.maxDepth ?? 8;
+  const maxNodes = opts?.maxNodes ?? 512;
+  const out: string[] = [];
+  const queue: Array<{ v: unknown; d: number }> = [{ v: value, d: 0 }];
+  let visited = 0;
+
+  while (queue.length > 0) {
+    const next = queue.shift();
+    if (next === undefined) break;
+    const { v, d } = next;
+    visited++;
+    if (visited > maxNodes) break;
+    if (v === null || typeof v !== "object") continue;
+    if (d >= maxDepth) continue;
+    if (Array.isArray(v)) {
+      for (const item of v) queue.push({ v: item, d: d + 1 });
+    } else {
+      for (const [k, item] of Object.entries(v as Record<string, unknown>)) {
+        out.push(k);
+        queue.push({ v: item, d: d + 1 });
+      }
+    }
+  }
+
+  return out;
+}
 
 const _SSRF_RE = /\blocalhost\b|127\.0\.0\.1|169\.254\.|::1|metadata\.google|169\.254\.169\.254/i;
 
 /**
- * Rule: deny SSRF targets — localhost, link-local, and cloud metadata endpoints.
+ * Structural SSRF check for one argument value: normalized URL/host/IP
+ * classification (P1-02) plus the legacy textual patterns for values that
+ * mention a forbidden host inside longer prose.
+ */
+function isSsrfTarget(v: string): boolean {
+  if (_SSRF_RE.test(v)) return true;
+  return classifyUrlTarget(v).blocked;
+}
+
+/**
+ * Rule: deny SSRF targets — localhost, loopback, private/link-local ranges,
+ * and cloud metadata endpoints, across textual and alternate IP encodings
+ * (decimal/hex/octal IPv4, IPv6, IPv4-mapped IPv6).
  *
  * These addresses are never reachable from the internet and are the canonical
  * targets of Server-Side Request Forgery. An agent autonomously sending requests
  * to them is almost always either confused or actively exploited.
+ *
+ * Boundary: this is a PRE-flight check on argument strings. DNS rebinding
+ * (a public name resolving to a private IP) must be enforced post-resolution
+ * in the runtime network layer — see the README security model.
  */
 export const SSRF_LOCALHOST_RULE: PolicyRule = {
   policyId: "sink-ssrf-localhost-deny",
-  evaluate(toolName: string, args: Record<string, unknown>, _vetting: VettingResult | null): InvocationDecision | undefined {
+  evaluate(
+    toolName: string,
+    args: Record<string, unknown>,
+    _vetting: VettingResult | null
+  ): InvocationDecision | undefined {
     if (!classifyToolSinksByName(toolName).includes("network_send")) return undefined;
-    for (const v of Object.values(args)) {
-      if (typeof v === "string" && _SSRF_RE.test(v)) return "deny";
+    for (const v of deepStringValues(args)) {
+      if (isSsrfTarget(v)) return "deny";
     }
     return undefined;
   },
 };
 
-const _CRED_PATH_RE =
-  /(~\/\.ssh|~\/\.aws|~\/\.gnupg|\/etc\/passwd|\/etc\/shadow|~\/\.config\/gcloud)/i;
-
 /**
  * Rule: deny access to well-known credential and secret-store paths.
  *
- * SSH keys, AWS credentials, GnuPG keyrings, /etc/passwd and /etc/shadow are
- * the highest-value targets on any Unix system. Block any tool invocation whose
+ * Values are lexically normalized first (P1-01) so the same real path is
+ * caught regardless of representation: `~/.ssh/id_rsa`,
+ * `${HOME}/.ssh/id_rsa`, `file:///home/u/.ssh/id_rsa`,
+ * `~/.ssh/../.ssh/id_rsa`, `C:\Users\u\.ssh\id_rsa`, and percent-encoded
+ * file URIs all classify as sensitive. SSH keys, AWS/GCP/Azure credentials,
+ * GnuPG keyrings, kubeconfig, /etc/passwd and /etc/shadow are the
+ * highest-value targets on any system. Block any tool invocation whose
  * arguments reference these paths — regardless of what the tool claims to do.
  */
 export const CREDENTIAL_PATH_RULE: PolicyRule = {
   policyId: "sink-credential-path-deny",
-  evaluate(_toolName: string, args: Record<string, unknown>, _vetting: VettingResult | null): InvocationDecision | undefined {
-    for (const v of Object.values(args)) {
-      if (typeof v === "string" && _CRED_PATH_RE.test(v)) return "deny";
+  evaluate(
+    _toolName: string,
+    args: Record<string, unknown>,
+    _vetting: VettingResult | null
+  ): InvocationDecision | undefined {
+    for (const v of deepStringValues(args)) {
+      if (classifyResourcePath(v).isSensitive) return "deny";
     }
     return undefined;
   },
@@ -219,27 +289,27 @@ export function makeSinkAwarePolicyRule(tool: { name: string; description?: stri
   const sinks = classifyToolSinks(tool);
   return {
     policyId: `sink-aware:${tool.name}`,
-    evaluate(_toolName: string, args: Record<string, unknown>, _vetting: VettingResult | null): InvocationDecision | undefined {
+    evaluate(
+      _toolName: string,
+      args: Record<string, unknown>,
+      _vetting: VettingResult | null
+    ): InvocationDecision | undefined {
       // shell exec: always ask
       if (sinks.includes("shell_exec")) return "ask_user";
 
-      // secret arg → network: deny
+      // secret arg → network: deny (deep — nested arg names count too)
       if (sinks.includes("network_send")) {
-        for (const [k, v] of Object.entries(args)) {
-          if (classifyArgSource(k, v) === "secret") return "deny";
+        for (const key of deepArgKeys(args)) {
+          if (classifyArgSource(key, undefined) === "secret") return "deny";
         }
-      }
-
-      // SSRF
-      if (sinks.includes("network_send")) {
-        for (const v of Object.values(args)) {
-          if (typeof v === "string" && _SSRF_RE.test(v)) return "deny";
+        for (const v of deepStringValues(args)) {
+          if (isSsrfTarget(v)) return "deny";
         }
       }
 
       // credential paths
-      for (const v of Object.values(args)) {
-        if (typeof v === "string" && _CRED_PATH_RE.test(v)) return "deny";
+      for (const v of deepStringValues(args)) {
+        if (classifyResourcePath(v).isSensitive) return "deny";
       }
 
       return undefined;

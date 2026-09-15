@@ -166,10 +166,15 @@ export function evaluatePolicy(
   // Consent is only honoured when the tool's snapshot hash matches, preventing
   // rug-pull attacks where the MCP server changes tool behavior post-consent,
   // and (when a principal hash is supplied) only for the same principal.
+  // ALL ask_user decisions are downgraded: consent on file for this exact
+  // descriptor means the human already approved the tool, so escalation
+  // rules that exist to obtain that approval stay silent. Deny decisions
+  // are never downgraded.
   const validConsent = lookupConsent(consentRecords, toolName, currentSnapshotHash, userIdHash);
   if (validConsent) {
-    const idx = decisions.indexOf("ask_user");
-    if (idx !== -1) decisions.splice(idx, 1);
+    for (let i = decisions.length - 1; i >= 0; i--) {
+      if (decisions[i] === "ask_user") decisions.splice(i, 1);
+    }
     reasons.push(`User consent on file: ${validConsent.toolSnapshotHash}`);
   }
 

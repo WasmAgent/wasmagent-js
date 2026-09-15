@@ -68,6 +68,7 @@ export type {
   ApprovalReceipt,
   GatewayDecision,
   GatewayRequest,
+  GatewaySecurityProfile,
   MCPGatewayOptions,
   RequestIdentity,
   ScopeLease,
@@ -109,6 +110,25 @@ export {
   InMemoryConsentStore,
   lookupConsent,
 } from "./policy.js";
+// Resource path normalization + sensitive-path classification (P1-01)
+export type { SensitivePathClass } from "./resource-path.js";
+export { classifyResourcePath, deepStringValues, normalizeResourcePath } from "./resource-path.js";
+// Security profiles — explicit structured security metadata (P0-03) + fail-safe (P1-04)
+export type {
+  ClassifyToolEffectOptions,
+  HardenedRuleStackOptions,
+  ToolSecurityProfile,
+  ToolSecurityProfileRegistry,
+  UnknownProfileFailSafeOptions,
+} from "./security-profile.js";
+export {
+  classifyToolEffect,
+  computeToolSnapshotHash,
+  InMemoryToolSecurityProfileRegistry,
+  makeHardenedRuleStack,
+  makeProfileAuthoritativeRule,
+  makeUnknownProfileFailSafeRule,
+} from "./security-profile.js";
 // Semantic detection (phase 3)
 export type {
   SemanticDetectionResult,
@@ -139,6 +159,9 @@ export type {
   TrustLevel,
 } from "./taint.js";
 export { isTainted, propagateTaint, renderTaintedObservation, taintObservation } from "./taint.js";
+// URL target normalization + SSRF classification (P1-02)
+export type { SsrfReason, UrlTargetClassification } from "./url-policy.js";
+export { classifyHost, classifyUrlTarget } from "./url-policy.js";
 // Layered verdict model
 export type {
   ConsentVerdict,

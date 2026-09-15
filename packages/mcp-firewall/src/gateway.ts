@@ -12,9 +12,17 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { McpToolEntry } from "@wasmagent/mcp-server";
 import type { CapabilityRegistry, EffectClass } from "./capability.js";
-import { classifyEffect, makeCapabilityPolicyRule } from "./capability.js";
+import { makeCapabilityPolicyRule, makeTenantIsolationRule } from "./capability.js";
 import type { ConsentRecord, PolicyRule, ToolInvocationDecision } from "./policy.js";
 import { DEFAULT_RULES, evaluatePolicy } from "./policy.js";
+import {
+  classifyToolEffect,
+  computeToolSnapshotHash,
+  type HardenedRuleStackOptions,
+  makeHardenedRuleStack,
+  type ToolSecurityProfile,
+  type ToolSecurityProfileRegistry,
+} from "./security-profile.js";
 import type { TaintedObservation } from "./taint.js";
 import { taintObservation } from "./taint.js";
 import type { FirewallSecurityVerdict } from "./verdict.js";
@@ -265,7 +273,11 @@ export interface GatewayRequest {
   serverId: string;
   tool: McpToolEntry;
   args: Record<string, unknown>;
-  /** Optional tenant identifier for cross-tenant guard (defaults to serverId if absent). */
+  /**
+   * Authoritative tenant identifier. Under tenant enforcement this is
+   * REQUIRED — the gateway never infers tenant identity from serverId,
+   * tool names, or resource strings (P0-04: a server is not a tenant).
+   */
   tenant?: string;
 }
 
@@ -274,7 +286,11 @@ export interface GatewayDecision {
   stateChanging: boolean;
   serverCard?: ServerCard;
   resultTrustLevel: "untrusted" | "verified" | "system";
-  /** Effect class for the tool invocation, derived from name + args heuristics. */
+  /**
+   * Effect class for the tool invocation, from the layered classifier:
+   * registered security profile → structural value signals → name
+   * heuristics → unknown_effect (fail-safe).
+   */
   capabilityEffect: EffectClass;
   /** AEP evidence fields for this decision. */
   evidenceRef: {
@@ -289,13 +305,44 @@ export interface GatewayDecision {
 
 // ── MCPGateway ────────────────────────────────────────────────────────────────
 
+/**
+ * Gateway security profile:
+ * - "hardened" (default) — full structural rule stack (FULL_DEFAULT_RULES +
+ *   security-profile rules), unknown tools fail safe, tenant enforcement
+ *   available via `tenantEnforcement`.
+ * - "legacy" — the pre-hardening DEFAULT_RULES stack. Opt in only for
+ *   backward compatibility; not eligible for F2 containment claims.
+ */
+export type GatewaySecurityProfile = "legacy" | "hardened";
+
 export interface MCPGatewayOptions {
-  /** Policy rules (defaults to DEFAULT_RULES). */
+  /**
+   * Explicit policy rules. When set, takes full responsibility for the
+   * rule stack — custom rules do NOT imply F2 structural protection
+   * (documented caller responsibility).
+   */
   rules?: PolicyRule[];
+  /** Security profile. Default "hardened" (Beta package: secure by default). */
+  securityProfile?: GatewaySecurityProfile;
   /** Server cards registered at startup. */
   serverCards?: ServerCard[];
   /** Optional capability registry for explicit grants. */
   capabilityRegistry?: CapabilityRegistry;
+  /**
+   * Registry of operator-reviewed ToolSecurityProfiles. Recommended in
+   * hardened mode — profiles make classification authoritative instead of
+   * name-heuristic (P0-03).
+   */
+  profileRegistry?: ToolSecurityProfileRegistry;
+  /** Passed through to the hardened rule stack. */
+  hardenedRuleOptions?: Omit<HardenedRuleStackOptions, "profileRegistry">;
+  /**
+   * Tenant isolation enforcement (P0-04). When true, every request MUST
+   * carry an explicit authoritative `tenant`; requests without one are
+   * denied (fail-closed), and cross-tenant resource references are denied
+   * via the tenant isolation rule. Default false.
+   */
+  tenantEnforcement?: boolean;
 }
 
 /**
@@ -311,23 +358,70 @@ export interface MCPGatewayOptions {
  */
 export class MCPGateway {
   readonly #rules: PolicyRule[];
+  readonly #securityProfile: GatewaySecurityProfile;
   readonly #serverCards: Map<string, ServerCard>;
   /** LRU-capped: keys are full descriptor hashes, so a hostile server rotating
    * its tool description on every tools/list mints a fresh key per cycle. */
   readonly #vettingCache: Map<string, VettingResult>;
   readonly #consentRecords: ConsentRecord[];
   readonly #capabilityRegistry: CapabilityRegistry | undefined;
+  readonly #profileRegistry: ToolSecurityProfileRegistry | undefined;
+  readonly #tenantEnforcement: boolean;
+  /** Snapshot hash of the request currently being evaluated — read by the
+   * profile rule closure during rule evaluation (single-threaded, per-call). */
+  #currentSnapshotHash: string | undefined;
+  readonly #getSnapshotHash = (): string | undefined => this.#currentSnapshotHash;
 
   constructor(opts: MCPGatewayOptions = {}) {
-    this.#rules = opts.rules ?? DEFAULT_RULES;
+    this.#securityProfile = opts.securityProfile ?? "hardened";
+    if (opts.rules !== undefined) {
+      // Explicit caller-supplied stack — full caller responsibility.
+      this.#rules = opts.rules;
+    } else if (this.#securityProfile === "hardened") {
+      const stackOpts: HardenedRuleStackOptions = {
+        ...(opts.profileRegistry !== undefined ? { profileRegistry: opts.profileRegistry } : {}),
+        ...(opts.hardenedRuleOptions ?? {}),
+        getSnapshotHash: this.#getSnapshotHash,
+      };
+      this.#rules = makeHardenedRuleStack(stackOpts);
+    } else {
+      this.#rules = DEFAULT_RULES;
+    }
     this.#serverCards = new Map((opts.serverCards ?? []).map((c) => [c.serverId, c]));
     this.#vettingCache = new Map();
     this.#consentRecords = [];
     this.#capabilityRegistry = opts.capabilityRegistry;
+    this.#profileRegistry = opts.profileRegistry;
+    this.#tenantEnforcement = opts.tenantEnforcement ?? false;
+  }
+
+  /** The active security profile ("hardened" by default). */
+  get securityProfile(): GatewaySecurityProfile {
+    return this.#securityProfile;
+  }
+
+  get tenantEnforcementEnabled(): boolean {
+    return this.#tenantEnforcement;
   }
 
   registerServerCard(card: ServerCard): void {
     this.#serverCards.set(card.serverId, card);
+  }
+
+  registerToolSecurityProfile(
+    entry: McpToolEntry,
+    serverId: string,
+    profile: Omit<ToolSecurityProfile, "toolSnapshotHash">
+  ): void {
+    if (!this.#profileRegistry) {
+      throw new Error(
+        "registerToolSecurityProfile requires a profileRegistry in MCPGatewayOptions"
+      );
+    }
+    this.#profileRegistry.register({
+      ...profile,
+      toolSnapshotHash: computeToolSnapshotHash(entry, serverId),
+    });
   }
 
   addConsentRecord(record: ConsentRecord): void {
@@ -358,18 +452,44 @@ export class MCPGateway {
       }
     }
 
-    // Capability effect — classify once, reuse for both the decision field and
-    // any per-request capability rule injected below.
-    const capabilityEffect = classifyEffect(req.tool.name, req.args);
+    // Layered effect classification — profile-authoritative when a profile is
+    // registered for this exact descriptor, otherwise structural + heuristic.
+    let snapshotHash: string | undefined;
+    if (this.#profileRegistry) {
+      snapshotHash = computeToolSnapshotHash(req.tool, req.serverId);
+      this.#currentSnapshotHash = snapshotHash;
+    }
+    const capabilityEffect = classifyToolEffect({
+      toolName: req.tool.name,
+      args: req.args,
+      ...(snapshotHash !== undefined ? { toolSnapshotHash: snapshotHash } : {}),
+      ...(this.#profileRegistry !== undefined ? { registry: this.#profileRegistry } : {}),
+    });
 
     // Build per-request rules: start with the gateway-level rules, then
-    // optionally append a capability guard derived from the registry.
+    // append capability / tenant guards derived from the registries.
     const requestRules: PolicyRule[] = [...this.#rules];
     if (this.#capabilityRegistry !== undefined) {
-      const tenant = req.tenant ?? req.serverId;
+      // P0-04: under tenant enforcement the tenant is authoritative and
+      // mandatory; outside enforcement, req.tenant ?? req.serverId remains
+      // the DOCUMENTED COMPATIBILITY fallback for capability-scope matching
+      // only — it never substitutes for tenant isolation.
+      const tenant =
+        req.tenant ?? (this.#tenantEnforcement ? "__tenant_unspecified__" : req.serverId);
       requestRules.push(
         makeCapabilityPolicyRule(this.#capabilityRegistry, req.identity.principalHash, tenant)
       );
+    }
+    if (this.#tenantEnforcement) {
+      if (req.tenant === undefined || req.tenant === "") {
+        // Fail closed: no authoritative tenant, no execution.
+        requestRules.push({
+          policyId: "tenant-enforcement-missing-tenant",
+          evaluate: () => "deny",
+        });
+      } else {
+        requestRules.push(makeTenantIsolationRule(req.identity.principalHash, req.tenant));
+      }
     }
 
     // Consent is principal-scoped: without the userIdHash, one principal's
@@ -384,6 +504,8 @@ export class MCPGateway {
       cacheKey,
       req.identity.principalHash
     );
+
+    this.#currentSnapshotHash = undefined;
 
     const stateChanging = isStateChangingTool(req.tool);
     const serverCard = this.#serverCards.get(req.serverId);

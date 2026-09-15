@@ -18,8 +18,8 @@
  */
 
 import type { McpToolEntry, ToolDescriptorSnapshot } from "@wasmagent/mcp-server";
+import { normalizePayload } from "./normalize.js";
 import type { SemanticDetector } from "./semanticDetector.js";
-import { normalizeForDetection } from "./normalize.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,6 +44,7 @@ export type FindingType =
   | "sampling_abuse"
   | "semantic_paraphrase"
   | "rug_pull"
+  | "normalization_truncated"
   | "unknown";
 
 export type VettedField = "name" | "description" | "inputSchema";
@@ -544,7 +545,25 @@ function excerpt(text: string, max = 120): string {
 
 function scanText(text: string, field: VettedField, _toolName: string): ToolRiskFinding[] {
   const findings: ToolRiskFinding[] = [];
-  const normalized = normalizeForDetection(text);
+  // P0-06: keep the payload metadata — truncation is a security signal, not
+  // a silent detail. An attacker can place benign content in the first
+  // MAX_EXPANDED_BYTES and malicious content after it; scanning a truncated
+  // prefix must never produce an "allow".
+  const payload = normalizePayload(text);
+  const normalized = payload.normalized.toLowerCase();
+  if (payload.truncated) {
+    findings.push({
+      severity: "high",
+      category: "tool_poisoning",
+      type: "normalization_truncated",
+      field,
+      evidenceExcerpt: excerpt(
+        `normalization truncated: field exceeds MAX_EXPANDED_BYTES (${payload.normalized.length} chars scanned); content beyond the limit was NOT scanned`
+      ),
+      evidenceHash: fieldHash(text),
+      recommendation: "ask",
+    });
+  }
   const hash = fieldHash(text);
 
   for (const pat of INJECTION_PATTERNS) {
