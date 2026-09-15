@@ -38,16 +38,21 @@
     "false_positive_rate": null
   },
   "f2_metrics": {
-    "phase": "F2",
-    "critical_action_escape_rate": 0,
-    "holdout_scenarios": 11,
-    "total_mutations_tested": 242,
-    "note": "escape_rate=0 proved by structural policy rules: CREDENTIAL_PATH_RULE, SECRET_NETWORK_SINK_RULE, SSRF_LOCALHOST_RULE, SHELL_EXEC_CAPABILITY_RULE block dangerous effects regardless of semantic detection outcome"
+    "phase": "F2_candidate",
+    "gate_status": "in_progress — not closed; metrics below are local test outputs pending green adversarial CI (F0–F6) on the exact tested SHA",
+    "text_mutation_escape_rate": 0,
+    "structural_mutation_escape_rate": 0,
+    "combined_escape_rate": 0,
+    "text_scenarios": 242,
+    "structural_scenarios": 102,
+    "combined_scenarios": 24684,
+    "note": "Rates produced by structural-mutation-escape.test.ts through the DEFAULT hardened MCPGateway path (not an injected rule stack). Structural scenarios = 6 dangerous fixtures × 16 structural mutators + identity; combined = structural × text cross product over the holdout."
   },
   "known_limitations": [
     "Semantic detection is first-line only; determined attackers with novel obfuscation may bypass keyword+ngram detection",
     "Policy, capability, consent, and taint boundaries enforce containment regardless of detector outcome",
-    "External red-team evaluation pending (F3 phase requirement)",
+    "Firewall is a preflight layer: DNS rebinding and post-resolution network enforcement live in the runtime network layer; canonical-path (symlink) enforcement lives in the runtime sandbox",
+    "External/adaptive red-team evaluation pending (redteam.jsonl empty; generator available offline)",
     "Precision/recall/F1 pending holdout-gated CI run"
   ]
 }
