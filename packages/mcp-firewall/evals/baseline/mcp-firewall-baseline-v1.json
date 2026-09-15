@@ -38,8 +38,8 @@
     "false_positive_rate": null
   },
   "f2_metrics": {
-    "phase": "F2_candidate",
-    "gate_status": "in_progress — not closed; metrics below are local test outputs pending green adversarial CI (F0–F6) on the exact tested SHA",
+    "phase": "F2",
+    "gate_status": "closed — normal CI PASS and adversarial F0–F6 PASS on the exact tested SHA (promotion commit 2026-09-15)",
     "text_mutation_escape_rate": 0,
     "structural_mutation_escape_rate": 0,
     "combined_escape_rate": 0,

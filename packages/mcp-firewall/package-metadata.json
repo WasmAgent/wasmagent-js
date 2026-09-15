@@ -2,9 +2,8 @@
   "package": "@wasmagent/mcp-firewall",
   "maturity": "beta",
   "security_posture": "defence-in-depth",
-  "adversarial_evaluation": "f2_candidate",
+  "adversarial_evaluation": "f2_gates_passed",
   "public_api": "stable-with-minor-change-risk",
-  "phase": "F1",
-  "candidate_phase": "F2",
-  "phase_note": "F2 candidate — gates in progress, not yet closed. Structural security is now default-wired (hardened MCPGateway), consent binding is omission-safe, tenant enforcement is authoritative when enabled, and the structural mutation escape gate reports combined_escape_rate=0 (25,028 scenarios). Phase promotes to F2 only after normal CI and adversarial F0-F6 are green on the exact tested SHA; the promotion is a separate metadata-only commit."
+  "phase": "F2",
+  "phase_note": "Adversarially Hardened Beta — F2 gate closed. Gates green on the exact tested SHA: normal CI PASS, adversarial F0–F6 PASS (no skipped jobs), critical-action escape gate PASS, structural mutation escape gate PASS (text 0/242, structural 0/102, combined 0/24,684). Structural security is default-wired (hardened MCPGateway), consent binding is omission-safe, tenant enforcement is authoritative when enabled, unknown-profile fail-safe active, artifact generated from real test outputs. External/adaptive red-team evaluation remains pending and is defined as later work. Promotion commit is metadata-only — no security logic."
 }
