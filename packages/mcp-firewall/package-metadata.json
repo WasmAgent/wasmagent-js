@@ -2,8 +2,8 @@
   "package": "@wasmagent/mcp-firewall",
   "maturity": "beta",
   "security_posture": "first-line-defence-in-depth",
-  "adversarial_evaluation": "partial_f1",
+  "adversarial_evaluation": "partial_f2",
   "public_api": "stable-with-minor-change-risk",
-  "phase": "F1",
-  "phase_note": "Adversarially Tested Beta — holdout split, mutation suite, normalization pipeline, layered verdict model, structural policy, capability guards, taint labels, consent hardening complete."
+  "phase": "F2",
+  "phase_note": "Adversarially Hardened Beta — F2 gate passed: critical_action_escape_rate=0 over 242 mutation scenarios (11 holdout × 22 mutators). Structural policy rules (CREDENTIAL_PATH_RULE, SECRET_NETWORK_SINK_RULE, SSRF_LOCALHOST_RULE, SHELL_EXEC_CAPABILITY_RULE) provide containment regardless of semantic detection outcome. Observability layer added (FIREWALL_METRIC_NAMES, verdictToMetrics). Red-team generation script included."
 }

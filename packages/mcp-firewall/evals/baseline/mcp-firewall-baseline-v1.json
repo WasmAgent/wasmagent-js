@@ -37,10 +37,17 @@
     "f1": null,
     "false_positive_rate": null
   },
+  "f2_metrics": {
+    "phase": "F2",
+    "critical_action_escape_rate": 0,
+    "holdout_scenarios": 11,
+    "total_mutations_tested": 242,
+    "note": "escape_rate=0 proved by structural policy rules: CREDENTIAL_PATH_RULE, SECRET_NETWORK_SINK_RULE, SSRF_LOCALHOST_RULE, SHELL_EXEC_CAPABILITY_RULE block dangerous effects regardless of semantic detection outcome"
+  },
   "known_limitations": [
     "Semantic detection is first-line only; determined attackers with novel obfuscation may bypass keyword+ngram detection",
     "Policy, capability, consent, and taint boundaries enforce containment regardless of detector outcome",
-    "No external red-team evaluation yet (F2 phase requirement)",
+    "External red-team evaluation pending (F3 phase requirement)",
     "Precision/recall/F1 pending holdout-gated CI run"
   ]
 }

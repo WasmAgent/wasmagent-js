@@ -158,3 +158,14 @@ export type {
   TaintVerdict,
 } from "./verdict.js";
 export { composeVerdict } from "./verdict.js";
+// Observability — metrics counters and verdict-to-metrics mapping
+export type {
+  FirewallMetricEvent,
+  FirewallMetricName,
+  FirewallMetricsRecorder,
+} from "./observability.js";
+export {
+  FIREWALL_METRIC_NAMES,
+  InMemoryMetricsRecorder,
+  verdictToMetrics,
+} from "./observability.js";
