@@ -100,10 +100,15 @@ export class InMemoryConsentLedger implements ConsentLedger {
    * All five core fields (name, descriptionHash, inputSchemaHash, serverIdentity,
    * toolSnapshotHash) must match — any single change causes a miss.
    *
-   * Optional hardening:
-   * - argScopeDigest: if BOTH the stored event and the key have it, they must match.
-   * - boundToSession / sessionId: if the stored event has boundToSession and the
-   *   key provides sessionId, they must match (anti-replay across sessions).
+   * Stored binding is authoritative (omission must never downgrade security):
+   * - argScopeDigest: when the stored event carries a digest, the caller MUST
+   *   present the same digest. Only consent recorded without a digest (legacy
+   *   broad consent) matches calls with or without one.
+   * - boundToSession: when the stored event is session-bound, the caller MUST
+   *   present the same sessionId. Only unbound consent matches across sessions.
+   *
+   * Previously, a caller could bypass both bindings by omitting the lookup
+   * fields — a fail-open anti-replay bypass (fixed in P0-02).
    */
   hasConsent(key: ConsentCacheKey): boolean {
     const now = new Date();
@@ -115,15 +120,14 @@ export class InMemoryConsentLedger implements ConsentLedger {
         e.serverIdentity === key.serverIdentity &&
         e.toolSnapshotHash === key.toolSnapshotHash &&
         (!e.expiresAt || new Date(e.expiresAt) > now) &&
-        // argScopeDigest: only enforced when both sides carry a digest
+        // Stored digest is authoritative: omission on the caller side must
+        // NOT match scoped consent.
         (e.argScopeDigest === undefined ||
-          key.argScopeDigest === undefined ||
-          e.argScopeDigest === key.argScopeDigest) &&
-        // boundToSession: enforced when stored consent is session-bound and
-        // caller provides a sessionId
+          (key.argScopeDigest !== undefined && e.argScopeDigest === key.argScopeDigest)) &&
+        // Stored session binding is authoritative: omission on the caller side
+        // must NOT match session-bound consent.
         (e.boundToSession === undefined ||
-          key.sessionId === undefined ||
-          e.boundToSession === key.sessionId)
+          (key.sessionId !== undefined && e.boundToSession === key.sessionId))
     );
   }
 

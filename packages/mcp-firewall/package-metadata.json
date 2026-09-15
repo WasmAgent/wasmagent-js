@@ -1,9 +1,10 @@
 {
   "package": "@wasmagent/mcp-firewall",
   "maturity": "beta",
-  "security_posture": "first-line-defence-in-depth",
-  "adversarial_evaluation": "partial_f2",
+  "security_posture": "defence-in-depth",
+  "adversarial_evaluation": "f2_candidate",
   "public_api": "stable-with-minor-change-risk",
-  "phase": "F2",
-  "phase_note": "Adversarially Hardened Beta — F2 gate passed: critical_action_escape_rate=0 over 242 mutation scenarios (11 holdout × 22 mutators). Structural policy rules (CREDENTIAL_PATH_RULE, SECRET_NETWORK_SINK_RULE, SSRF_LOCALHOST_RULE, SHELL_EXEC_CAPABILITY_RULE) provide containment regardless of semantic detection outcome. Observability layer added (FIREWALL_METRIC_NAMES, verdictToMetrics). Red-team generation script included."
+  "phase": "F1",
+  "candidate_phase": "F2",
+  "phase_note": "F2 candidate — gates in progress, not yet closed. Structural security is now default-wired (hardened MCPGateway), consent binding is omission-safe, tenant enforcement is authoritative when enabled, and the structural mutation escape gate reports combined_escape_rate=0 (25,028 scenarios). Phase promotes to F2 only after normal CI and adversarial F0-F6 are green on the exact tested SHA; the promotion is a separate metadata-only commit."
 }

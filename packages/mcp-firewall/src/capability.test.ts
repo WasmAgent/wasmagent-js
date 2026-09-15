@@ -75,15 +75,11 @@ describe("makeCapabilityPolicyRule", () => {
 
 describe("detectCrossTenantAccess", () => {
   it("CAP-07: /tenants/<other-org>/ pattern → cross-tenant detected", () => {
-    expect(
-      detectCrossTenantAccess({ url: "/tenants/other-org/data" }, "my-org")
-    ).toBe(true);
+    expect(detectCrossTenantAccess({ url: "/tenants/other-org/data" }, "my-org")).toBe(true);
   });
 
   it("CAP-08: no tenant pattern in args → false", () => {
-    expect(
-      detectCrossTenantAccess({ path: "/tmp/data.json" }, "my-org")
-    ).toBe(false);
+    expect(detectCrossTenantAccess({ path: "/tmp/data.json" }, "my-org")).toBe(false);
   });
 });
 

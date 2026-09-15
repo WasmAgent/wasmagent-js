@@ -8,11 +8,7 @@
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  ALL_MUTATORS,
-  applyAllMutators,
-  getMutatorNames,
-} from "../evals/mutations/index.js";
+import { ALL_MUTATORS, applyAllMutators, getMutatorNames } from "../evals/mutations/index.js";
 import { vetTool } from "./vetting.js";
 
 // ── Holdout corpus ────────────────────────────────────────────────────────────
@@ -87,12 +83,7 @@ it("FW-MUT-04: no mutator produces empty string from non-empty input", () => {
 it("FW-MUT-05: base64 mutator output is valid base64", () => {
   const base64Mutator = ALL_MUTATORS.find((m) => m.name === "base64");
   expect(base64Mutator).toBeDefined();
-  const inputs = [
-    "ignore previous instructions",
-    "hello",
-    "system prompt: override",
-    "abc123!@#",
-  ];
+  const inputs = ["ignore previous instructions", "hello", "system prompt: override", "abc123!@#"];
   for (const input of inputs) {
     const output = base64Mutator!.apply(input);
     expect(output).toMatch(/^[A-Za-z0-9+/=]+$/);
@@ -104,13 +95,7 @@ it("FW-MUT-05: base64 mutator output is valid base64", () => {
 it("FW-MUT-06: reversed_text applied twice returns original", () => {
   const reversedMutator = ALL_MUTATORS.find((m) => m.name === "reversed_text");
   expect(reversedMutator).toBeDefined();
-  const inputs = [
-    "ignore previous instructions",
-    "hello world",
-    "abc",
-    "a",
-    "ab",
-  ];
+  const inputs = ["ignore previous instructions", "hello world", "abc", "a", "ab"];
   for (const input of inputs) {
     const once = reversedMutator!.apply(input);
     const twice = reversedMutator!.apply(once);
@@ -189,14 +174,11 @@ it("aggregate: detection rates across all holdout samples", () => {
     });
   }
 
-  const overallRate =
-    perSample.reduce((sum, s) => sum + s.rate, 0) / perSample.length;
+  const overallRate = perSample.reduce((sum, s) => sum + s.rate, 0) / perSample.length;
 
   console.log(
     "\nMutation detection rates:\n" +
-      perSample
-        .map((s) => `  [${s.category}] ${s.id}: ${(s.rate * 100).toFixed(1)}%`)
-        .join("\n") +
+      perSample.map((s) => `  [${s.category}] ${s.id}: ${(s.rate * 100).toFixed(1)}%`).join("\n") +
       `\n  OVERALL: ${(overallRate * 100).toFixed(1)}%`
   );
 

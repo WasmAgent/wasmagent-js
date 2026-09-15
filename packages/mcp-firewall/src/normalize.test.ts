@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import {
-  MAX_DECODE_DEPTH,
-  MAX_EXPANDED_BYTES,
   containsFullWidth,
   containsZeroWidth,
+  MAX_DECODE_DEPTH,
+  MAX_EXPANDED_BYTES,
   normalizeForDetection,
   normalizeForPolicy,
   normalizePayload,
@@ -128,9 +128,7 @@ describe("FW-NORM-09: MAX_EXPANDED_BYTES truncation", () => {
     const result = normalizePayload(large);
     expect(result.truncated).toBe(true);
     expect(result.transforms).toContain("size_limit");
-    expect(Buffer.from(result.normalized, "utf-8").length).toBeLessThanOrEqual(
-      MAX_EXPANDED_BYTES
-    );
+    expect(Buffer.from(result.normalized, "utf-8").length).toBeLessThanOrEqual(MAX_EXPANDED_BYTES);
   });
 
   it("does not set truncated when input is exactly at the limit", () => {
@@ -193,16 +191,14 @@ describe("FW-NORM-12: containsZeroWidth", () => {
 describe("FW-NORM-13: MAX_DECODE_DEPTH respected", () => {
   it("decodes up to MAX_DECODE_DEPTH levels of nested base64", () => {
     // Build triple-encoded base64: encode "done" three times.
-    const inner = Buffer.from("done").toString("base64");      // "ZG9uZQ=="
-    const middle = Buffer.from(inner).toString("base64");     // encodes "ZG9uZQ=="
-    const outer = Buffer.from(middle).toString("base64");     // triple-encoded
+    const inner = Buffer.from("done").toString("base64"); // "ZG9uZQ=="
+    const middle = Buffer.from(inner).toString("base64"); // encodes "ZG9uZQ=="
+    const outer = Buffer.from(middle).toString("base64"); // triple-encoded
 
     const result = normalizePayload(outer);
     // Three levels decoded means we reach the actual content.
     expect(result.normalized).toBe("done");
-    expect(
-      result.transforms.filter((t) => t === "base64_candidate_decode")
-    ).toHaveLength(3);
+    expect(result.transforms.filter((t) => t === "base64_candidate_decode")).toHaveLength(3);
   });
 
   it("stops at MAX_DECODE_DEPTH — quadruple-encoded payload is not fully decoded", () => {
@@ -213,9 +209,9 @@ describe("FW-NORM-13: MAX_DECODE_DEPTH respected", () => {
 
     const result = normalizePayload(l4);
     // Should have decoded exactly MAX_DECODE_DEPTH = 3 times, leaving one shell.
-    expect(
-      result.transforms.filter((t) => t === "base64_candidate_decode")
-    ).toHaveLength(MAX_DECODE_DEPTH);
+    expect(result.transforms.filter((t) => t === "base64_candidate_decode")).toHaveLength(
+      MAX_DECODE_DEPTH
+    );
     // The result should NOT equal "done" — one base64 shell remains.
     expect(result.normalized).not.toBe("done");
   });

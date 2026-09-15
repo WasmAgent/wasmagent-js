@@ -126,7 +126,9 @@ export function propagateTaint(
  * adversarial score.
  */
 export function isTainted(obs: TaintedObservation): boolean {
-  return obs.taintLabels.length > 0 || obs.instructionLikeTextDetected || obs.adversarialScore > 0.5;
+  return (
+    obs.taintLabels.length > 0 || obs.instructionLikeTextDetected || obs.adversarialScore > 0.5
+  );
 }
 
 /**

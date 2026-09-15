@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import type { ToolRiskFinding, VettingResult } from "./vetting.js";
-import type { ToolInvocationDecision, InvocationDecision } from "./policy.js";
+import type { InvocationDecision, ToolInvocationDecision } from "./policy.js";
 import type { TaintedObservation } from "./taint.js";
 import { composeVerdict } from "./verdict.js";
+import type { ToolRiskFinding, VettingResult } from "./vetting.js";
 
 // ── Test helpers ──────────────────────────────────────────────────────────────
 
@@ -22,7 +22,12 @@ function makeVetting(blocked: boolean, severity?: "critical" | "high" | "medium"
     toolName: "test",
     blocked,
     findings: finding ? [finding] : [],
-    recommendation: blocked || severity === "critical" || severity === "high" ? "deny" : severity === "medium" ? "ask" : "allow",
+    recommendation:
+      blocked || severity === "critical" || severity === "high"
+        ? "deny"
+        : severity === "medium"
+          ? "ask"
+          : "allow",
   };
 }
 

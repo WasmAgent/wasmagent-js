@@ -12,9 +12,9 @@
 
 import { describe, expect, it } from "bun:test";
 import {
+  CREDENTIAL_PATH_RULE,
   classifyArgSource,
   classifyToolSinks,
-  CREDENTIAL_PATH_RULE,
   DEFAULT_RULES,
   FULL_DEFAULT_RULES,
   SECRET_NETWORK_SINK_RULE,
@@ -27,22 +27,14 @@ import {
 
 describe("FS-GUARD-01: ~/.ssh/id_rsa → deny", () => {
   it("denies access to SSH private key path", () => {
-    const result = CREDENTIAL_PATH_RULE.evaluate(
-      "read_file",
-      { path: "~/.ssh/id_rsa" },
-      null
-    );
+    const result = CREDENTIAL_PATH_RULE.evaluate("read_file", { path: "~/.ssh/id_rsa" }, null);
     expect(result).toBe("deny");
   });
 });
 
 describe("FS-GUARD-02: ~/.aws/credentials → deny", () => {
   it("denies access to AWS credentials file", () => {
-    const result = CREDENTIAL_PATH_RULE.evaluate(
-      "read_file",
-      { path: "~/.aws/credentials" },
-      null
-    );
+    const result = CREDENTIAL_PATH_RULE.evaluate("read_file", { path: "~/.aws/credentials" }, null);
     expect(result).toBe("deny");
   });
 });
@@ -51,11 +43,7 @@ describe("FS-GUARD-02: ~/.aws/credentials → deny", () => {
 
 describe("NET-GUARD-01: secret arg + network tool → deny", () => {
   it("denies sending a token to a network endpoint", () => {
-    const result = SECRET_NETWORK_SINK_RULE.evaluate(
-      "send_request",
-      { token: "sk-abc123" },
-      null
-    );
+    const result = SECRET_NETWORK_SINK_RULE.evaluate("send_request", { token: "sk-abc123" }, null);
     expect(result).toBe("deny");
   });
 });

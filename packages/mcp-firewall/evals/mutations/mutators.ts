@@ -35,9 +35,7 @@ const HOMOGLYPH_MAP: Record<string, string> = {
 export const homoglyphSubstitution: Mutator = {
   name: "homoglyph_substitution",
   apply(text: string): string {
-    return [...text]
-      .map((ch) => HOMOGLYPH_MAP[ch] ?? ch)
-      .join("");
+    return [...text].map((ch) => HOMOGLYPH_MAP[ch] ?? ch).join("");
   },
 };
 
@@ -86,9 +84,7 @@ export const tokenSplit: Mutator = {
 export const caseMix: Mutator = {
   name: "case_mix",
   apply(text: string): string {
-    return [...text]
-      .map((ch, i) => (i % 2 === 0 ? ch.toUpperCase() : ch.toLowerCase()))
-      .join("");
+    return [...text].map((ch, i) => (i % 2 === 0 ? ch.toUpperCase() : ch.toLowerCase())).join("");
   },
 };
 
@@ -130,9 +126,7 @@ const HTML_ENTITY_MAP: Record<string, string> = {
 export const htmlEntityEncode: Mutator = {
   name: "html_entity_encode",
   apply(text: string): string {
-    return [...text]
-      .map((ch) => HTML_ENTITY_MAP[ch] ?? ch)
-      .join("");
+    return [...text].map((ch) => HTML_ENTITY_MAP[ch] ?? ch).join("");
   },
 };
 
@@ -245,10 +239,7 @@ export const jsonWrapper: Mutator = {
 // ── 20. XML wrapper ──────────────────────────────────────────────────────────
 
 function xmlEscape(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 export const xmlWrapper: Mutator = {

@@ -7,8 +7,8 @@
  * unsafe effect; policy or taint layers caught what detection missed.
  */
 
-import type { TaintedObservation } from "./taint.js";
 import type { ToolInvocationDecision } from "./policy.js";
+import type { TaintedObservation } from "./taint.js";
 import type { VettingResult } from "./vetting.js";
 
 // ── Verdict types ─────────────────────────────────────────────────────────────
@@ -90,8 +90,7 @@ export function composeVerdict(opts: {
 
   // ── taint ─────────────────────────────────────────────────────────────────
   const taintVerdict: TaintVerdict =
-    opts.taint?.instructionLikeTextDetected === true ||
-    (opts.taint?.adversarialScore ?? 0) > 0.5
+    opts.taint?.instructionLikeTextDetected === true || (opts.taint?.adversarialScore ?? 0) > 0.5
       ? "tainted"
       : "clean";
 
