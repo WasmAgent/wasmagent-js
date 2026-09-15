@@ -1,5 +1,5 @@
 /**
- * @wasmagent/mcp-firewall — alpha
+ * @wasmagent/mcp-firewall — beta
  *
  * Runtime firewall for MCP and tool-augmented agents.
  * Deterministic enforcement — no ML required.
@@ -45,6 +45,16 @@ export type {
   TrustTier,
 } from "@wasmagent/mcp-server";
 export { detectRugPull, hashContent, snapshotTool } from "@wasmagent/mcp-server";
+// Capability and tenant enforcement
+export type { CapabilityEnvelope, CapabilityGrant, EffectClass } from "./capability.js";
+export {
+  CapabilityRegistry,
+  classifyEffect,
+  detectCrossTenantAccess,
+  makeCapabilityPolicyRule,
+  makeTenantIsolationRule,
+  requiredCapabilityForEffect,
+} from "./capability.js";
 // Consent ledger
 export type {
   ConsentAction,
@@ -52,12 +62,13 @@ export type {
   ConsentEvent,
   ConsentLedger,
 } from "./consent.js";
-export { hashField, hashUiText, InMemoryConsentLedger } from "./consent.js";
+export { hashArgScope, hashField, hashUiText, InMemoryConsentLedger } from "./consent.js";
 // Gateway layer — identity, server card, scope lease, approval receipt, state-changing action approval
 export type {
   ApprovalReceipt,
   GatewayDecision,
   GatewayRequest,
+  GatewaySecurityProfile,
   MCPGatewayOptions,
   RequestIdentity,
   ScopeLease,
@@ -72,6 +83,17 @@ export {
   isStateChangingTool,
   MCPGateway,
 } from "./gateway.js";
+// Observability — metrics counters and verdict-to-metrics mapping
+export type {
+  FirewallMetricEvent,
+  FirewallMetricName,
+  FirewallMetricsRecorder,
+} from "./observability.js";
+export {
+  FIREWALL_METRIC_NAMES,
+  InMemoryMetricsRecorder,
+  verdictToMetrics,
+} from "./observability.js";
 // Per-call policy
 export type {
   ConsentRecord,
@@ -88,6 +110,25 @@ export {
   InMemoryConsentStore,
   lookupConsent,
 } from "./policy.js";
+// Resource path normalization + sensitive-path classification (P1-01)
+export type { SensitivePathClass } from "./resource-path.js";
+export { classifyResourcePath, deepStringValues, normalizeResourcePath } from "./resource-path.js";
+// Security profiles — explicit structured security metadata (P0-03) + fail-safe (P1-04)
+export type {
+  ClassifyToolEffectOptions,
+  HardenedRuleStackOptions,
+  ToolSecurityProfile,
+  ToolSecurityProfileRegistry,
+  UnknownProfileFailSafeOptions,
+} from "./security-profile.js";
+export {
+  classifyToolEffect,
+  computeToolSnapshotHash,
+  InMemoryToolSecurityProfileRegistry,
+  makeHardenedRuleStack,
+  makeProfileAuthoritativeRule,
+  makeUnknownProfileFailSafeRule,
+} from "./security-profile.js";
 // Semantic detection (phase 3)
 export type {
   SemanticDetectionResult,
@@ -96,14 +137,41 @@ export type {
 } from "./semanticDetector.js";
 export { DEFAULT_MALICIOUS_CORPUS } from "./semanticDetector.js";
 export { TfidfSemanticDetector } from "./semanticDetectorLocal.js";
+// Sink-source structural policy
+export type { DataSink, DataSource } from "./sink-policy.js";
+export {
+  CREDENTIAL_PATH_RULE,
+  classifyArgSource,
+  classifyToolSinks,
+  FULL_DEFAULT_RULES,
+  makeSinkAwarePolicyRule,
+  SECRET_NETWORK_SINK_RULE,
+  SHELL_EXEC_CAPABILITY_RULE,
+  SINK_POLICY_RULES,
+  SSRF_LOCALHOST_RULE,
+} from "./sink-policy.js";
 // Taint tracking
 export type {
   ContentType,
   RenderedTaintedObservation,
   TaintedObservation,
+  TaintLabel,
   TrustLevel,
 } from "./taint.js";
-export { renderTaintedObservation, taintObservation } from "./taint.js";
+export { isTainted, propagateTaint, renderTaintedObservation, taintObservation } from "./taint.js";
+// URL target normalization + SSRF classification (P1-02)
+export type { SsrfReason, UrlTargetClassification } from "./url-policy.js";
+export { classifyHost, classifyUrlTarget } from "./url-policy.js";
+// Layered verdict model
+export type {
+  ConsentVerdict,
+  ContainmentVerdict,
+  DetectionVerdict,
+  FirewallSecurityVerdict,
+  PolicyVerdict,
+  TaintVerdict,
+} from "./verdict.js";
+export { composeVerdict } from "./verdict.js";
 // Static vetting
 export type {
   AdversarialHit,

@@ -1,6 +1,6 @@
 # @wasmagent/mcp-firewall
 
-> **Maturity: beta** — 5 deterministic enforcement layers plus a lightweight two-stage adversarial classifier. Shipped and production-used in bscode. **Limitation:** the keyword bag and n-gram classifier are a first-line filter, not adversarial-grade ML defense; determined attackers with novel obfuscation can bypass them. Use defence-in-depth. Public API stable; minor changes possible before v2.0.
+> **Maturity: beta — Adversarially Hardened (F2 gate closed).** Tested against versioned holdout and deterministic mutation suites: text mutation 0/242 escapes, structural mutation 0/102 escapes, combined cross-product 0/24,684 escapes — all through the default hardened `MCPGateway` path. An offline adaptive-redteam generator is available, but external/adaptive independent red-team evaluation is pending and defined as later work. Semantic detection remains defence-in-depth. Enforcement layers: snapshot + rug-pull, static vetting + normalization pipeline (truncation-aware), per-call policy + structural sink/capability guards, tool security profiles + unknown-profile fail-safe, authoritative tenant isolation (opt-in), taint tracking + label propagation, consent ledger + argument-scope/session binding (omission-safe). **Limitation:** semantic detection is not the root of trust; tool security is anchored in explicit profiles, structural value-based policy, and fail-safe escalation for unrecognised tools. The firewall is a preflight layer — DNS-rebinding and canonical-path (symlink) enforcement live in the runtime network/sandbox layers. Policy, capability, consent, and taint boundaries remain active regardless of detector outcome. Public API stable; minor changes possible before v2.0.
 
 Runtime firewall for MCP agents — protect tool calls before execution.
 
@@ -15,6 +15,16 @@ npm install @wasmagent/mcp-firewall
 `@wasmagent/mcp-firewall` wraps any MCP server and enforces five independent
 security layers before and after each tool call. Every layer is deterministic —
 no model inference, no network calls.
+
+**What "deterministic" means here (and what it does not):** the same input
+always produces the same decision, and no decision depends on probabilistic
+or ML inference. Deterministic does NOT imply complete coverage of all
+semantically equivalent encodings, resource forms, or hidden server-side
+effects that no preflight evidence can observe — that residual risk is what
+tool security profiles, fail-safe escalation, and the runtime sandbox
+boundaries are for. Unprofiled tools on unverified servers fail safe
+(ask_user by default — `unprofiledToolPolicy`); a trusted ToolSecurityProfile
+or an operator-verified server is the only path to heuristic-read trust.
 
 ## The 5 enforcement layers
 

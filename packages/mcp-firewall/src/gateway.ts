@@ -11,10 +11,25 @@
 
 import { createHash, randomUUID } from "node:crypto";
 import type { McpToolEntry } from "@wasmagent/mcp-server";
+import type { CapabilityRegistry, EffectClass } from "./capability.js";
+import { makeCapabilityPolicyRule, makeTenantIsolationRule } from "./capability.js";
 import type { ConsentRecord, PolicyRule, ToolInvocationDecision } from "./policy.js";
 import { DEFAULT_RULES, evaluatePolicy } from "./policy.js";
+import {
+  computeToolSnapshotHash,
+  evaluateUnprofiledToolPolicy,
+  type HardenedRuleStackOptions,
+  makeHardenedRuleStack,
+  type ResolvedToolSecurityContext,
+  resolveToolSecurityContext,
+  type ToolSecurityProfile,
+  type ToolSecurityProfileRegistry,
+  type UnprofiledToolPolicy,
+} from "./security-profile.js";
 import type { TaintedObservation } from "./taint.js";
 import { taintObservation } from "./taint.js";
+import type { FirewallSecurityVerdict } from "./verdict.js";
+import { composeVerdict } from "./verdict.js";
 import type { VettingResult } from "./vetting.js";
 import { buildVettingCacheKey, vetTool } from "./vetting.js";
 
@@ -261,6 +276,12 @@ export interface GatewayRequest {
   serverId: string;
   tool: McpToolEntry;
   args: Record<string, unknown>;
+  /**
+   * Authoritative tenant identifier. Under tenant enforcement this is
+   * REQUIRED — the gateway never infers tenant identity from serverId,
+   * tool names, or resource strings (P0-04: a server is not a tenant).
+   */
+  tenant?: string;
 }
 
 export interface GatewayDecision {
@@ -268,22 +289,80 @@ export interface GatewayDecision {
   stateChanging: boolean;
   serverCard?: ServerCard;
   resultTrustLevel: "untrusted" | "verified" | "system";
+  /**
+   * Effect class for the tool invocation, from the layered classifier:
+   * registered security profile → structural value signals → name
+   * heuristics → unknown_effect (fail-safe).
+   */
+  capabilityEffect: EffectClass;
   /** AEP evidence fields for this decision. */
   evidenceRef: {
     principalHash: string;
     sessionId: string;
     toolManifestDigest?: string;
     policyDecision: string;
+    /** Effective gateway security profile (final-audit C5 — a custom rule
+     * stack reports "custom", never "hardened"). */
+    securityProfile: GatewaySecurityProfile;
   };
+  /** Multi-layer security verdict for this invocation. */
+  verdict?: FirewallSecurityVerdict;
 }
 
 // ── MCPGateway ────────────────────────────────────────────────────────────────
 
+/**
+ * Gateway security profile:
+ * - "hardened" (default) — full structural rule stack (FULL_DEFAULT_RULES +
+ *   security-profile rules), unknown tools fail safe, tenant enforcement
+ *   available via `tenantEnforcement`.
+ * - "legacy" — the pre-hardening DEFAULT_RULES stack. Opt in only for
+ *   backward compatibility; not eligible for F2 containment claims.
+ * - "custom" — the caller supplied an explicit `rules` stack, which by
+ *   definition replaces the hardened default. Never report "hardened" for a
+ *   custom stack (final-audit C5): `securityProfile` returns the EFFECTIVE
+ *   profile; `requestedSecurityProfile` returns what was requested.
+ */
+export type GatewaySecurityProfile = "legacy" | "hardened" | "custom";
+
 export interface MCPGatewayOptions {
-  /** Policy rules (defaults to DEFAULT_RULES). */
+  /**
+   * Explicit policy rules. When set, takes full responsibility for the
+   * rule stack — custom rules do NOT imply F2 structural protection
+   * (documented caller responsibility; effective profile reports "custom").
+   */
   rules?: PolicyRule[];
+  /** Security profile. Default "hardened" (Beta package: secure by default). */
+  securityProfile?: GatewaySecurityProfile;
   /** Server cards registered at startup. */
   serverCards?: ServerCard[];
+  /** Optional capability registry for explicit grants. */
+  capabilityRegistry?: CapabilityRegistry;
+  /**
+   * Registry of operator-reviewed ToolSecurityProfiles. Recommended in
+   * hardened mode — profiles make classification authoritative instead of
+   * name-heuristic (P0-03).
+   */
+  profileRegistry?: ToolSecurityProfileRegistry;
+  /** Passed through to the hardened rule stack. */
+  hardenedRuleOptions?: Omit<HardenedRuleStackOptions, "profileRegistry">;
+  /**
+   * Tenant isolation enforcement (P0-04). When true, every request MUST
+   * carry an explicit authoritative `tenant`; requests without one are
+   * denied (fail-closed), and cross-tenant resource references are denied
+   * via the tenant isolation rule. Default false.
+   */
+  tenantEnforcement?: boolean;
+  /**
+   * Policy for tools with NO trusted ToolSecurityProfile on UNVERIFIED
+   * servers (final-audit C3). The threat model includes malicious servers
+   * that choose benign read-like tool names, so the hardened default is
+   * "ask_user"; "deny" is strict mode; "allow_read_heuristic" restores
+   * name-heuristic trust (legacy compatibility). Operator-VERIFIED servers
+   * keep the read heuristic regardless — verification is the trust anchor.
+   * Default: "ask_user" (hardened) / "allow_read_heuristic" (legacy).
+   */
+  unprofiledToolPolicy?: UnprofiledToolPolicy;
 }
 
 /**
@@ -299,21 +378,93 @@ export interface MCPGatewayOptions {
  */
 export class MCPGateway {
   readonly #rules: PolicyRule[];
+  readonly #requestedSecurityProfile: GatewaySecurityProfile;
+  readonly #effectiveSecurityProfile: GatewaySecurityProfile;
   readonly #serverCards: Map<string, ServerCard>;
   /** LRU-capped: keys are full descriptor hashes, so a hostile server rotating
    * its tool description on every tools/list mints a fresh key per cycle. */
   readonly #vettingCache: Map<string, VettingResult>;
   readonly #consentRecords: ConsentRecord[];
+  readonly #capabilityRegistry: CapabilityRegistry | undefined;
+  readonly #profileRegistry: ToolSecurityProfileRegistry | undefined;
+  readonly #tenantEnforcement: boolean;
+  readonly #unprofiledToolPolicy: UnprofiledToolPolicy;
+  /** Snapshot hash of the request currently being evaluated — read by the
+   * profile rule closure during rule evaluation (single-threaded, per-call). */
+  #currentSnapshotHash: string | undefined;
+  readonly #getSnapshotHash = (): string | undefined => this.#currentSnapshotHash;
 
   constructor(opts: MCPGatewayOptions = {}) {
-    this.#rules = opts.rules ?? DEFAULT_RULES;
+    this.#requestedSecurityProfile = opts.securityProfile ?? "hardened";
+    // C5: a caller-supplied rule stack REPLACES the hardened default, so the
+    // effective profile is "custom" — never report "hardened" for a custom
+    // stack.
+    this.#effectiveSecurityProfile =
+      opts.rules !== undefined && this.#requestedSecurityProfile !== "legacy"
+        ? "custom"
+        : this.#requestedSecurityProfile;
+    if (opts.rules !== undefined) {
+      // Explicit caller-supplied stack — full caller responsibility.
+      this.#rules = opts.rules;
+    } else if (this.#effectiveSecurityProfile === "hardened") {
+      const stackOpts: HardenedRuleStackOptions = {
+        ...(opts.profileRegistry !== undefined ? { profileRegistry: opts.profileRegistry } : {}),
+        ...(opts.hardenedRuleOptions ?? {}),
+        getSnapshotHash: this.#getSnapshotHash,
+      };
+      this.#rules = makeHardenedRuleStack(stackOpts);
+    } else {
+      this.#rules = DEFAULT_RULES;
+    }
     this.#serverCards = new Map((opts.serverCards ?? []).map((c) => [c.serverId, c]));
     this.#vettingCache = new Map();
     this.#consentRecords = [];
+    this.#capabilityRegistry = opts.capabilityRegistry;
+    this.#profileRegistry = opts.profileRegistry;
+    this.#tenantEnforcement = opts.tenantEnforcement ?? false;
+    this.#unprofiledToolPolicy =
+      opts.unprofiledToolPolicy ??
+      (this.#effectiveSecurityProfile === "hardened" ? "ask_user" : "allow_read_heuristic");
+  }
+
+  /** The EFFECTIVE security profile — "custom" when explicit rules replaced
+   * the hardened stack (final-audit C5). */
+  get securityProfile(): GatewaySecurityProfile {
+    return this.#effectiveSecurityProfile;
+  }
+
+  /** The profile as requested at construction, before the "custom" rewrite. */
+  get requestedSecurityProfile(): GatewaySecurityProfile {
+    return this.#requestedSecurityProfile;
+  }
+
+  get tenantEnforcementEnabled(): boolean {
+    return this.#tenantEnforcement;
+  }
+
+  /** The active unprofiled-tool policy (final-audit C3). */
+  get unprofiledToolPolicy(): UnprofiledToolPolicy {
+    return this.#unprofiledToolPolicy;
   }
 
   registerServerCard(card: ServerCard): void {
     this.#serverCards.set(card.serverId, card);
+  }
+
+  registerToolSecurityProfile(
+    entry: McpToolEntry,
+    serverId: string,
+    profile: Omit<ToolSecurityProfile, "toolSnapshotHash">
+  ): void {
+    if (!this.#profileRegistry) {
+      throw new Error(
+        "registerToolSecurityProfile requires a profileRegistry in MCPGatewayOptions"
+      );
+    }
+    this.#profileRegistry.register({
+      ...profile,
+      toolSnapshotHash: computeToolSnapshotHash(entry, serverId),
+    });
   }
 
   addConsentRecord(record: ConsentRecord): void {
@@ -344,30 +495,153 @@ export class MCPGateway {
       }
     }
 
-    // Consent is principal-scoped: without the userIdHash, one principal's
-    // approved high-risk tool would be downgraded to "allow" for every other
-    // principal sharing this gateway instance.
+    // Layered effect classification — resolved ONCE per request (final-audit
+    // C4): profile-authoritative when a profile is registered for this exact
+    // descriptor, otherwise structural + heuristic with provenance.
+    const serverCard = this.#serverCards.get(req.serverId);
+    const verified = serverCard?.operatorVerified ?? false;
+
+    let snapshotHash: string | undefined;
+    if (this.#profileRegistry) {
+      snapshotHash = computeToolSnapshotHash(req.tool, req.serverId);
+      this.#currentSnapshotHash = snapshotHash;
+    }
+    const resolved: ResolvedToolSecurityContext = resolveToolSecurityContext({
+      toolName: req.tool.name,
+      args: req.args,
+      ...(snapshotHash !== undefined ? { snapshotHash } : {}),
+      ...(this.#profileRegistry !== undefined ? { registry: this.#profileRegistry } : {}),
+    });
+    const capabilityEffect = resolved.effect;
+    const hasTrustedProfile = resolved.provenance === "trusted_profile";
+
+    // P0-04: under tenant enforcement the tenant is authoritative and
+    // mandatory; outside enforcement, req.tenant ?? req.serverId remains
+    // the DOCUMENTED COMPATIBILITY fallback for capability-scope matching
+    // only — it never substitutes for tenant isolation.
+    const capabilityTenant =
+      req.tenant ?? (this.#tenantEnforcement ? "__tenant_unspecified__" : req.serverId);
+
+    // Build per-request rules: start with the gateway-level rules, then
+    // append capability / tenant / trust-boundary guards for this request.
+    const requestRules: PolicyRule[] = [...this.#rules];
+    // Heuristic capability guard ONLY for unprofiled tools (final-audit C4):
+    // when a trusted profile exists, re-running name heuristics here would
+    // diverge from the operator's declaration — the profile's own
+    // capabilitiesRequired (below) is the single source of truth.
+    if (this.#capabilityRegistry !== undefined && !hasTrustedProfile) {
+      requestRules.push(
+        makeCapabilityPolicyRule(
+          this.#capabilityRegistry,
+          req.identity.principalHash,
+          capabilityTenant
+        )
+      );
+    }
+    // C4: enforce the TRUSTED profile's declared capability requirements —
+    // never a heuristic re-classification. Without a CapabilityRegistry the
+    // grants cannot be checked, so enforcement is left to the profile and
+    // fail-safe rules (documented in the README security model).
+    if (
+      hasTrustedProfile &&
+      resolved.capabilitiesRequired.length > 0 &&
+      !this.#capabilityRegistry
+    ) {
+      // Fail closed (final-audit round 3, PROFILE-CAP-00): a declared
+      // capability requirement with no registry to evidence it is NOT a
+      // satisfied requirement — "missing capability evidence" must never
+      // collapse into "capability satisfied".
+      requestRules.push({
+        policyId: "profile-capability-registry-unavailable",
+        evaluate: () => "ask_user",
+      });
+    }
+    if (hasTrustedProfile && resolved.capabilitiesRequired.length > 0 && this.#capabilityRegistry) {
+      const registry = this.#capabilityRegistry;
+      const principal = req.identity.principalHash;
+      const required = resolved.capabilitiesRequired;
+      const highRiskEffect =
+        resolved.effect === "exec" ||
+        resolved.effect === "read_secret" ||
+        resolved.effect === "write_external" ||
+        resolved.effect === "cross_tenant";
+      requestRules.push({
+        policyId: "profile-capability-required",
+        evaluate: () => {
+          const granted = required.every((cap) =>
+            registry.hasCapability(principal, capabilityTenant, cap)
+          );
+          if (granted) return undefined;
+          return highRiskEffect ? "deny" : "ask_user";
+        },
+      });
+    }
+    if (this.#tenantEnforcement) {
+      if (req.tenant === undefined || req.tenant === "") {
+        // Fail closed: no authoritative tenant, no execution.
+        requestRules.push({
+          policyId: "tenant-enforcement-missing-tenant",
+          evaluate: () => "deny",
+        });
+      } else {
+        requestRules.push(makeTenantIsolationRule(req.identity.principalHash, req.tenant));
+      }
+    }
+    // C3: unprofiled tool on an UNVERIFIED server — a benign read-like name
+    // is not evidence of safety. Trusted profiles and verified servers are
+    // the two trust anchors that bypass this boundary.
+    if (!hasTrustedProfile && !verified && this.#unprofiledToolPolicy !== "allow_read_heuristic") {
+      const policyDecision = evaluateUnprofiledToolPolicy(resolved, this.#unprofiledToolPolicy);
+      if (policyDecision !== undefined) {
+        requestRules.push({
+          policyId: `unprofiled-tool-${this.#unprofiledToolPolicy}`,
+          evaluate: () => policyDecision,
+        });
+      }
+    }
+
+    // Consent is principal-scoped (a principal's approval never serves another
+    // principal) AND binding-authoritative (final-audit C1): when a consent
+    // record carries an argScopeDigest or session binding, the CURRENT call
+    // must present the same digest / session — omission cannot satisfy a
+    // scoped record. Digest is computed here with the same canonicalization
+    // as `hashArgScope` (stableStringify), kept local to avoid a circular
+    // import with consent.ts.
+    const currentArgScopeDigest = createHash("sha256")
+      .update(stableStringify(req.args))
+      .digest("hex")
+      .slice(0, 16);
     const invocation = evaluatePolicy(
       req.tool.name,
       req.args,
       vetting,
       this.#consentRecords,
-      this.#rules,
+      requestRules,
       cacheKey,
-      req.identity.principalHash
+      req.identity.principalHash,
+      currentArgScopeDigest,
+      req.identity.sessionId
     );
 
+    this.#currentSnapshotHash = undefined;
+
     const stateChanging = isStateChangingTool(req.tool);
-    const serverCard = this.#serverCards.get(req.serverId);
 
     const resultTrustLevel =
       invocation.decision === "allow" && serverCard?.operatorVerified ? "verified" : "untrusted";
+
+    const verdict = composeVerdict({
+      vetting,
+      decision: invocation,
+      hasConsent: !!invocation.userConsentRef,
+    });
 
     return {
       invocation,
       stateChanging,
       ...(serverCard !== undefined ? { serverCard } : {}),
       resultTrustLevel,
+      capabilityEffect,
       evidenceRef: {
         principalHash: req.identity.principalHash,
         sessionId: req.identity.sessionId,
@@ -375,11 +649,31 @@ export class MCPGateway {
           ? { toolManifestDigest: serverCard.toolManifestDigest }
           : {}),
         policyDecision: invocation.decision,
+        // C5: machine-visible effective profile (never "hardened" for a
+        // custom rule stack).
+        securityProfile: this.#effectiveSecurityProfile,
       },
+      verdict,
     };
   }
 
   wrapResult(toolName: string, rawResult: string, decision: GatewayDecision): TaintedObservation {
     return taintObservation(toolName, rawResult, { trust: decision.resultTrustLevel });
+  }
+
+  /**
+   * Produce a post-result verdict that incorporates taint analysis of the tool
+   * output. Call after `wrapResult` once the tool has executed.
+   */
+  wrapResultVerdict(
+    taintObs: TaintedObservation,
+    priorDecision: GatewayDecision
+  ): FirewallSecurityVerdict {
+    return composeVerdict({
+      vetting: null,
+      decision: priorDecision.invocation,
+      taint: taintObs,
+      hasConsent: !!priorDecision.invocation.userConsentRef,
+    });
   }
 }

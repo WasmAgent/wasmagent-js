@@ -186,3 +186,18 @@ It also includes:
 This is not a compliance attestation; it is documentation of the
 primitives we ship. Auditors and risk officers welcome — see
 "Reporting a vulnerability" above for the disclosure channel.
+
+## @wasmagent/mcp-firewall — MCP firewall
+
+For prompt-injection bypass, policy bypass, containment bypass, consent bypass,
+and rug-pull bypass reports against `@wasmagent/mcp-firewall`, see the dedicated
+reporting guide:
+[`docs/security/mcp-firewall-reporting.md`](./docs/security/mcp-firewall-reporting.md)
+
+Reports that demonstrate an unsafe effect escaping all five enforcement layers
+(A4 bypass in the mcp-firewall security model) are treated as P0 under the SLA
+above.
+
+For reports where the semantic detector misses a payload but the policy/runtime
+boundary still blocks the unsafe effect (A1 bypass), the report is valued as a
+detector quality improvement — not a critical security boundary failure.

@@ -37,6 +37,19 @@ export interface ConsentRecord {
   expiresAt?: string;
   /** The snapshot hash the consent was given for. */
   toolSnapshotHash: string;
+  /**
+   * SHA-256 (first 16 hex, see `hashArgScope`) of the approved argument scope.
+   * Absent = legacy broad consent (matches any args — documented
+   * compatibility behavior). Present = binding: lookups MUST present the
+   * same digest (omission must not downgrade security, final-audit C1).
+   */
+  argScopeDigest?: string;
+  /**
+   * Session the consent is bound to (anti-replay across sessions).
+   * Absent = valid in any session; present = lookups MUST present the same
+   * session id.
+   */
+  boundToSession?: string;
 }
 
 /**
@@ -63,7 +76,9 @@ export interface ConsentStore {
   lookup(
     toolName: string,
     userIdHash?: string,
-    currentSnapshotHash?: string
+    currentSnapshotHash?: string,
+    currentArgScopeDigest?: string,
+    currentSessionId?: string
   ): ConsentRecord | undefined;
   /** All records recorded for a tool, including expired ones (useful for audit). */
   recordsFor(toolName: string): ConsentRecord[];
@@ -142,7 +157,9 @@ export function evaluatePolicy(
   consent: ConsentRecord[] | ConsentStore,
   rules: PolicyRule[] = DEFAULT_RULES,
   currentSnapshotHash?: string,
-  userIdHash?: string
+  userIdHash?: string,
+  currentArgScopeDigest?: string,
+  currentSessionId?: string
 ): ToolInvocationDecision {
   // Normalize to an array. When a store is passed we read its current contents;
   // the lookup below filters to the relevant, still-valid record.
@@ -166,10 +183,22 @@ export function evaluatePolicy(
   // Consent is only honoured when the tool's snapshot hash matches, preventing
   // rug-pull attacks where the MCP server changes tool behavior post-consent,
   // and (when a principal hash is supplied) only for the same principal.
-  const validConsent = lookupConsent(consentRecords, toolName, currentSnapshotHash, userIdHash);
+  // ALL ask_user decisions are downgraded: consent on file for this exact
+  // descriptor means the human already approved the tool, so escalation
+  // rules that exist to obtain that approval stay silent. Deny decisions
+  // are never downgraded.
+  const validConsent = lookupConsent(
+    consentRecords,
+    toolName,
+    currentSnapshotHash,
+    userIdHash,
+    currentArgScopeDigest,
+    currentSessionId
+  );
   if (validConsent) {
-    const idx = decisions.indexOf("ask_user");
-    if (idx !== -1) decisions.splice(idx, 1);
+    for (let i = decisions.length - 1; i >= 0; i--) {
+      if (decisions[i] === "ask_user") decisions.splice(i, 1);
+    }
     reasons.push(`User consent on file: ${validConsent.toolSnapshotHash}`);
   }
 
@@ -197,18 +226,30 @@ export function evaluatePolicy(
  * {@link ConsentStore.lookup} so "what counts as valid consent" has a single
  * definition.
  *
- * @param consent             Records to search (typically already session-scoped).
- * @param toolName            Tool the policy decision is for.
- * @param currentSnapshotHash  When provided, only records whose snapshot hash
+ * Binding semantics (omission must never downgrade security — final-audit C1):
+ * - stored argScopeDigest present → caller MUST present the same digest
+ * - stored boundToSession present → caller MUST present the same session id
+ * - records without those bindings keep documented broad behavior
+ *
+ * @param consent               Records to search (typically already session-scoped).
+ * @param toolName              Tool the policy decision is for.
+ * @param currentSnapshotHash   When provided, only records whose snapshot hash
  *   matches are returned (rug-pull guard).
- * @param userIdHash          When provided, only records for this user match.
+ * @param userIdHash            When provided, only records for this user match.
  *   Omit to match any user (e.g. when the caller has already scoped the array).
+ * @param currentArgScopeDigest  Digest of the CURRENT call's arguments (see
+ *   `hashArgScope`). Required to satisfy scoped consent; undefined means the
+ *   caller presented no digest, which cannot match a scoped record.
+ * @param currentSessionId       Session of the CURRENT call. Required to satisfy
+ *   session-bound consent; undefined cannot match a bound record.
  */
 export function lookupConsent(
   consent: ConsentRecord[],
   toolName: string,
   currentSnapshotHash?: string,
-  userIdHash?: string
+  userIdHash?: string,
+  currentArgScopeDigest?: string,
+  currentSessionId?: string
 ): ConsentRecord | undefined {
   const now = new Date();
   return consent.find(
@@ -216,7 +257,13 @@ export function lookupConsent(
       c.toolName === toolName &&
       (userIdHash === undefined || c.userIdHash === userIdHash) &&
       (!c.expiresAt || new Date(c.expiresAt) > now) &&
-      (!currentSnapshotHash || c.toolSnapshotHash === currentSnapshotHash)
+      (!currentSnapshotHash || c.toolSnapshotHash === currentSnapshotHash) &&
+      // Stored binding is authoritative: omission on the caller side must
+      // NOT match scoped / session-bound consent (fail closed).
+      (c.argScopeDigest === undefined ||
+        (currentArgScopeDigest !== undefined && c.argScopeDigest === currentArgScopeDigest)) &&
+      (c.boundToSession === undefined ||
+        (currentSessionId !== undefined && c.boundToSession === currentSessionId))
   );
 }
 
@@ -240,9 +287,18 @@ export class InMemoryConsentStore implements ConsentStore {
   lookup(
     toolName: string,
     userIdHash?: string,
-    currentSnapshotHash?: string
+    currentSnapshotHash?: string,
+    currentArgScopeDigest?: string,
+    currentSessionId?: string
   ): ConsentRecord | undefined {
-    return lookupConsent(this._records, toolName, currentSnapshotHash, userIdHash);
+    return lookupConsent(
+      this._records,
+      toolName,
+      currentSnapshotHash,
+      userIdHash,
+      currentArgScopeDigest,
+      currentSessionId
+    );
   }
 
   recordsFor(toolName: string): ConsentRecord[] {

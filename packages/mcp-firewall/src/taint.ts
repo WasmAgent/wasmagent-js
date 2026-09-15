@@ -8,6 +8,21 @@
 export type TrustLevel = "untrusted" | "verified" | "system";
 export type ContentType = "text" | "json" | "html" | "markdown" | "binary_ref";
 
+/**
+ * Semantic taint labels that describe the origin or sensitivity of data.
+ * Multiple labels may coexist on a single observation.
+ */
+export type TaintLabel =
+  | "user_supplied"
+  | "tool_supplied"
+  | "external_network"
+  | "secret"
+  | "credential"
+  | "filesystem"
+  | "untrusted_descriptor"
+  | "generated_code"
+  | "cross_tenant";
+
 export interface TaintedObservation {
   sourceTool: string;
   trust: TrustLevel;
@@ -20,6 +35,8 @@ export interface TaintedObservation {
   instructionLikeTextDetected: boolean;
   /** Adversarial classifier score from evaluateAdversarial() (0..1). */
   adversarialScore: number;
+  /** Semantic taint labels. Empty = no specific labels assigned. */
+  taintLabels: TaintLabel[];
 }
 
 /**
@@ -70,7 +87,7 @@ function detectContentType(content: string): ContentType {
 export function taintObservation(
   sourceTool: string,
   rawContent: string,
-  opts?: { trust?: TrustLevel; sanitizers?: string[] }
+  opts?: { trust?: TrustLevel; sanitizers?: string[]; taintLabels?: TaintLabel[] }
 ): TaintedObservation {
   const hash = createHash("sha256").update(rawContent, "utf8").digest("hex").slice(0, 64);
   const patternMatch = detectInstructionLike(rawContent);
@@ -83,7 +100,35 @@ export function taintObservation(
     sanitizers: opts?.sanitizers ?? [],
     instructionLikeTextDetected: patternMatch || adversarial.score > 0.5,
     adversarialScore: adversarial.score,
+    taintLabels: opts?.taintLabels ?? [],
   };
+}
+
+/**
+ * Create a new TaintedObservation that inherits taint labels from a source.
+ * Models: label applied to source → label must propagate to derived data.
+ */
+export function propagateTaint(
+  source: TaintedObservation,
+  derivedTool: string,
+  derivedContent: string,
+  opts?: { additionalLabels?: TaintLabel[]; trust?: TrustLevel }
+): TaintedObservation {
+  return taintObservation(derivedTool, derivedContent, {
+    trust: opts?.trust ?? source.trust,
+    taintLabels: [...source.taintLabels, ...(opts?.additionalLabels ?? [])],
+  });
+}
+
+/**
+ * Returns true if the observation carries any taint that warrants scrutiny:
+ * explicit semantic labels, detected instruction-like text, or a high
+ * adversarial score.
+ */
+export function isTainted(obs: TaintedObservation): boolean {
+  return (
+    obs.taintLabels.length > 0 || obs.instructionLikeTextDetected || obs.adversarialScore > 0.5
+  );
 }
 
 /**

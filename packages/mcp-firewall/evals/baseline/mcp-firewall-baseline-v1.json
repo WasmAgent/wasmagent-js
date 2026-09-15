@@ -1,0 +1,85 @@
+{
+  "format": "wasmagent-mcp-firewall-baseline/v1",
+  "source_sha": "9b2e6ec652db73e7612001b083d319b92dca05e5",
+  "package_version": "2.1.2",
+  "recorded_at": "2026-09-15",
+  "detector": {
+    "block_threshold": 0.9,
+    "warn_threshold": 0.82
+  },
+  "corpus": {
+    "file": "src/vetting-corpus.ts",
+    "sha256": "a1e0b018b8afce73bd7cfbea589bd842d0019763811b22a977616a7ea758b562",
+    "sample_count": 60,
+    "categories": [
+      {
+        "name": "injection_en",
+        "count": 10
+      },
+      {
+        "name": "injection_zh",
+        "count": 8
+      },
+      {
+        "name": "injection_ru",
+        "count": 6
+      },
+      {
+        "name": "exfil_zh",
+        "count": 6
+      },
+      {
+        "name": "base64_payload",
+        "count": 6
+      },
+      {
+        "name": "homoglyph",
+        "count": 6
+      },
+      {
+        "name": "zero_width",
+        "count": 5
+      },
+      {
+        "name": "obfuscation",
+        "count": 6
+      },
+      {
+        "name": "jailbreak",
+        "count": 7
+      }
+    ]
+  },
+  "splits": {
+    "train": 38,
+    "dev": 11,
+    "holdout": 11
+  },
+  "metrics": {
+    "note": "Pre-split in-sample estimates from wave 1 baseline. Holdout evaluation gated on FW-09 CI.",
+    "mutation_detection_rate": 0.826,
+    "mutation_threshold_required": 0.5,
+    "precision": null,
+    "recall": null,
+    "f1": null,
+    "false_positive_rate": null
+  },
+  "f2_metrics": {
+    "phase": "F2",
+    "gate_status": "closed \u2014 third closure round verified: normal CI PASS and adversarial F0-F6 PASS on the exact tested SHA (promotion commit 2026-09-15)",
+    "text_mutation_escape_rate": 0,
+    "structural_mutation_escape_rate": 0,
+    "combined_escape_rate": 0,
+    "text_scenarios": 242,
+    "structural_scenarios": 102,
+    "combined_scenarios": 24684,
+    "note": "Rates produced by structural-mutation-escape.test.ts through the DEFAULT hardened MCPGateway path (not an injected rule stack). Structural scenarios = 6 dangerous fixtures \u00d7 16 structural mutators + identity; combined = structural \u00d7 text cross product over the holdout."
+  },
+  "known_limitations": [
+    "Semantic detection is first-line only; determined attackers with novel obfuscation may bypass keyword+ngram detection",
+    "Policy, capability, consent, and taint boundaries enforce containment regardless of detector outcome",
+    "Firewall is a preflight layer: DNS rebinding and post-resolution network enforcement live in the runtime network layer; canonical-path (symlink) enforcement lives in the runtime sandbox",
+    "External/adaptive red-team evaluation pending (redteam.jsonl empty; generator available offline)",
+    "Precision/recall/F1 pending holdout-gated CI run"
+  ]
+}
