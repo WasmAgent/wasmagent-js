@@ -146,9 +146,11 @@ jobs:
         run: bun test packages/mcp-firewall/src/taint-labels.test.ts
       - name: Consent hardening tests (incl. omission-safety)
         run: bun test packages/mcp-firewall/src/consent-hardening.test.ts
+      - name: Gateway consent binding gates (GW-CONSENT, final-audit C1)
+        run: bun test packages/mcp-firewall/src/gateway-consent.test.ts
       # P0-09: F5 is the load-bearing F2 closure job — run the escape gates
       # explicitly rather than relying on incidental inclusion elsewhere.
-      - name: Default gateway hardening gates (WIRE / TENANT / STRUCT-ADV)
+      - name: Default gateway hardening gates (WIRE / TENANT / STRUCT-ADV / PROFILE)
         run: bun test packages/mcp-firewall/src/gateway-hardening.test.ts
       - name: Critical action escape gate
         run: bun test packages/mcp-firewall/src/critical-action-escape.test.ts
@@ -166,7 +168,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [holdout-evaluation, containment-e2e]
     steps:
+      # Full history so the base merge-SHA can be computed for the artifact.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
       - name: Setup Bun 1.3.14
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
@@ -181,7 +186,14 @@ jobs:
       # P0-12: report values are DERIVED from repo metadata, corpus files,
       # CI env, and the F5 test-produced metrics — no hardcoded success
       # values. Schema: wasmagent-mcp-firewall-adversarial-report/v2.
-      - name: Generate adversarial report (schema v2)
+      # Final-audit C2/§3: the generator VALIDATES promotion-state truth
+      # semantics and exits non-zero on contradiction (phase=F2 while
+      # promotion_eligible=false, null/non-zero escape metrics, missing
+      # tested SHA). Head identity and synthetic-merge identity are recorded
+      # as separate fields.
+      - name: Generate adversarial report (schema v2, validated)
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node packages/mcp-firewall/evals/report/generate-adversarial-report.mjs
       - name: Inspect artifact against exact tested SHA
         run: |
@@ -189,12 +201,18 @@ jobs:
             const r = require("./packages/mcp-firewall/evals/results/mcp-firewall-adversarial-report-latest.json");
             const { execSync } = require("node:child_process");
             const head = execSync("git rev-parse HEAD").toString().trim();
-            if (r.tested_sha !== head) {
-              console.error(`artifact tested_sha ${r.tested_sha} != HEAD ${head}`);
+            const tested = r.tested_merge_sha ?? r.tested_main_sha;
+            if (tested !== head) {
+              console.error(`artifact tested SHA ${tested} != HEAD ${head}`);
               process.exit(1);
             }
-            console.log(`artifact sha verified: ${head}`);
-            console.log(`phase=${r.declared_phase} candidate=${r.candidate_phase} promotion_eligible=${r.promotion_eligible}`);
+            if (process.env.GITHUB_EVENT_NAME === "pull_request" && !r.pr_head_sha) {
+              console.error("pull_request run must record pr_head_sha");
+              process.exit(1);
+            }
+            console.log(`pr_head_sha=${r.pr_head_sha ?? "(push run)"}`);
+            console.log(`tested_merge_sha=${r.tested_merge_sha ?? "-"} tested_main_sha=${r.tested_main_sha ?? "-"} base_sha=${r.base_sha ?? "-"}`);
+            console.log(`phase=${r.declared_phase} promotion=${r.promotion.state} promotion_eligible=${r.promotion_eligible}`);
             console.log(`external_evaluation=${r.external_evaluation} redteam_run=${r.redteam_run}`);
           '
       - name: Upload adversarial report

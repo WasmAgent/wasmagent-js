@@ -4,22 +4,22 @@
  * Every value is DERIVED — from repository files, CI environment variables,
  * or test-produced metrics. No hardcoded success values:
  *   - package.json            → package version
- *   - package-metadata.json   → declared phase / candidate phase
+ *   - package-metadata.json   → declared phase / adversarial evaluation
  *   - evals/corpus/*.jsonl    → split counts + redteam presence
  *   - evals/results/structural-escape-metrics.json → escape rates (written
  *     by structural-mutation-escape.test.ts during the F5 job)
- *   - GITHUB_* env            → exact tested SHA / PR refs (falls back to
- *     local git when run outside CI)
+ *   - CI env / git            → tested merge SHA, PR head SHA, base SHA
  *
- * `promotion_eligible` is true only when the metadata ALREADY declares the
- * candidate phase as current AND a redteam corpus is present — i.e. the
- * artifact can never be the first place a promotion is claimed.
+ * The job FAILS (exit 1) when the artifact would contradict itself — e.g.
+ * declaring phase F2 while promotion_eligible is false or any F2 escape
+ * metric is missing or non-zero (final-audit C2).
  */
 
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildReport, validatePromotionState } from "./adversarial-report.mjs";
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -34,11 +34,9 @@ function countJsonl(p) {
     .filter((l) => l.trim().length > 0).length;
 }
 
-function gitOrEnv(envVar, fallbackCmd) {
-  const v = process.env[envVar];
-  if (v) return v;
+function git(args) {
   try {
-    return execSync(fallbackCmd, { encoding: "utf8" }).trim();
+    return execSync(`git ${args}`, { encoding: "utf8" }).trim();
   } catch {
     return null;
   }
@@ -59,16 +57,15 @@ const corpus = {
 // Escape metrics are produced by the F5 test job. When the metrics file is
 // absent (e.g. running the report standalone), rates are null — never 0.
 let metrics = {
-  mutation_detection_rate: null,
   text_mutation_escape_rate: null,
   structural_mutation_escape_rate: null,
   combined_escape_rate: null,
+  scenario_counts: null,
 };
 const metricsPath = join(pkgRoot, "evals", "results", "structural-escape-metrics.json");
 if (existsSync(metricsPath)) {
   const m = readJson(metricsPath);
   metrics = {
-    mutation_detection_rate: null,
     text_mutation_escape_rate: m.text_mutation_escape_rate ?? null,
     structural_mutation_escape_rate: m.structural_mutation_escape_rate ?? null,
     combined_escape_rate: m.combined_escape_rate ?? null,
@@ -76,40 +73,43 @@ if (existsSync(metricsPath)) {
   };
 }
 
-const declaredPhase = metadata.phase ?? null;
-const candidatePhase = metadata.candidate_phase ?? null;
+const baseRef = process.env.GITHUB_BASE_REF ?? null;
+// Base SHA: merge-base against the PR base when the full history is present
+// (checkout with fetch-depth: 0); null otherwise — never a guess.
+let baseSha = null;
+if (baseRef) baseSha = git(`merge-base HEAD "origin/${baseRef}"`);
 
-// Promotion is eligible only when metadata itself has been promoted to the
-// candidate phase (a deliberate, separate metadata-only commit) — the
-// artifact never leads a truth claim.
-const promotionEligible =
-  declaredPhase !== null && declaredPhase === candidatePhase && candidatePhase !== null;
-
-const externalEvaluation = corpus.external_count > 0 ? "frozen_external_corpus" : "not_run";
-
-const report = {
-  format: "wasmagent-mcp-firewall-adversarial-report/v2",
-  generated_at: new Date().toISOString(),
-  // On pull_request events GitHub sets GITHUB_SHA to the merge-commit SHA;
-  // head_ref/base_ref identify the PR. Local runs fall back to git rev-parse.
-  tested_sha: gitOrEnv("GITHUB_SHA", "git rev-parse HEAD"),
-  base_ref: process.env.GITHUB_BASE_REF ?? null,
-  head_ref: process.env.GITHUB_HEAD_REF ?? null,
-  package: pkg.name,
-  package_version: pkg.version,
-  declared_phase: declaredPhase,
-  candidate_phase: candidatePhase,
-  adversarial_evaluation: metadata.adversarial_evaluation ?? null,
+const report = buildReport({
+  pkg,
+  metadata,
   corpus,
   metrics,
-  redteam_run: corpus.redteam_count > 0,
-  external_evaluation: externalEvaluation,
-  promotion_eligible: promotionEligible,
-};
+  identity: {
+    // On pull_request events GITHUB_SHA is the SYNTHETIC MERGE commit —
+    // recorded as tested_merge_sha, distinct from the PR head SHA.
+    github_sha: process.env.GITHUB_SHA ?? git("rev-parse HEAD"),
+    event_name: process.env.GITHUB_EVENT_NAME ?? null,
+    pr_head_sha: process.env.PR_HEAD_SHA ?? null,
+    base_ref: baseRef,
+    head_ref: process.env.GITHUB_HEAD_REF ?? null,
+    base_sha: baseSha,
+  },
+  generated_at: new Date().toISOString(),
+});
+
+const validation = validatePromotionState(report);
 
 const outDir = join(pkgRoot, "evals", "results");
 mkdirSync(outDir, { recursive: true });
 const outPath = join(outDir, "mcp-firewall-adversarial-report-latest.json");
 writeFileSync(outPath, `${JSON.stringify(report, null, 2)}\n`);
+
 console.log(`adversarial report (v2) written to ${outPath}`);
 console.log(JSON.stringify(report, null, 2));
+
+if (!validation.valid) {
+  console.error("\nadversarial report FAILED promotion-state validation:");
+  for (const e of validation.errors) console.error(`  ✗ ${e}`);
+  process.exit(1);
+}
+console.log("\npromotion-state validation: OK");
