@@ -65,8 +65,8 @@
     "false_positive_rate": null
   },
   "f2_metrics": {
-    "phase": "F2_candidate",
-    "gate_status": "reopened \u2014 final closure repair (FR-01..FR-05) in progress; metrics below are the last green gate run",
+    "phase": "F2",
+    "gate_status": "closed \u2014 final closure repair verified: normal CI PASS and adversarial F0-F6 PASS on the exact tested SHA (promotion commit 2026-09-15)",
     "text_mutation_escape_rate": 0,
     "structural_mutation_escape_rate": 0,
     "combined_escape_rate": 0,
