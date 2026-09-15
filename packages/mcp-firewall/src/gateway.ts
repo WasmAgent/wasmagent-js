@@ -11,10 +11,14 @@
 
 import { createHash, randomUUID } from "node:crypto";
 import type { McpToolEntry } from "@wasmagent/mcp-server";
+import type { CapabilityRegistry, EffectClass } from "./capability.js";
+import { classifyEffect, makeCapabilityPolicyRule } from "./capability.js";
 import type { ConsentRecord, PolicyRule, ToolInvocationDecision } from "./policy.js";
 import { DEFAULT_RULES, evaluatePolicy } from "./policy.js";
 import type { TaintedObservation } from "./taint.js";
 import { taintObservation } from "./taint.js";
+import type { FirewallSecurityVerdict } from "./verdict.js";
+import { composeVerdict } from "./verdict.js";
 import type { VettingResult } from "./vetting.js";
 import { buildVettingCacheKey, vetTool } from "./vetting.js";
 
@@ -261,6 +265,8 @@ export interface GatewayRequest {
   serverId: string;
   tool: McpToolEntry;
   args: Record<string, unknown>;
+  /** Optional tenant identifier for cross-tenant guard (defaults to serverId if absent). */
+  tenant?: string;
 }
 
 export interface GatewayDecision {
@@ -268,6 +274,8 @@ export interface GatewayDecision {
   stateChanging: boolean;
   serverCard?: ServerCard;
   resultTrustLevel: "untrusted" | "verified" | "system";
+  /** Effect class for the tool invocation, derived from name + args heuristics. */
+  capabilityEffect: EffectClass;
   /** AEP evidence fields for this decision. */
   evidenceRef: {
     principalHash: string;
@@ -275,6 +283,8 @@ export interface GatewayDecision {
     toolManifestDigest?: string;
     policyDecision: string;
   };
+  /** Multi-layer security verdict for this invocation. */
+  verdict?: FirewallSecurityVerdict;
 }
 
 // ── MCPGateway ────────────────────────────────────────────────────────────────
@@ -284,6 +294,8 @@ export interface MCPGatewayOptions {
   rules?: PolicyRule[];
   /** Server cards registered at startup. */
   serverCards?: ServerCard[];
+  /** Optional capability registry for explicit grants. */
+  capabilityRegistry?: CapabilityRegistry;
 }
 
 /**
@@ -304,12 +316,14 @@ export class MCPGateway {
    * its tool description on every tools/list mints a fresh key per cycle. */
   readonly #vettingCache: Map<string, VettingResult>;
   readonly #consentRecords: ConsentRecord[];
+  readonly #capabilityRegistry: CapabilityRegistry | undefined;
 
   constructor(opts: MCPGatewayOptions = {}) {
     this.#rules = opts.rules ?? DEFAULT_RULES;
     this.#serverCards = new Map((opts.serverCards ?? []).map((c) => [c.serverId, c]));
     this.#vettingCache = new Map();
     this.#consentRecords = [];
+    this.#capabilityRegistry = opts.capabilityRegistry;
   }
 
   registerServerCard(card: ServerCard): void {
@@ -344,6 +358,20 @@ export class MCPGateway {
       }
     }
 
+    // Capability effect — classify once, reuse for both the decision field and
+    // any per-request capability rule injected below.
+    const capabilityEffect = classifyEffect(req.tool.name, req.args);
+
+    // Build per-request rules: start with the gateway-level rules, then
+    // optionally append a capability guard derived from the registry.
+    const requestRules: PolicyRule[] = [...this.#rules];
+    if (this.#capabilityRegistry !== undefined) {
+      const tenant = req.tenant ?? req.serverId;
+      requestRules.push(
+        makeCapabilityPolicyRule(this.#capabilityRegistry, req.identity.principalHash, tenant)
+      );
+    }
+
     // Consent is principal-scoped: without the userIdHash, one principal's
     // approved high-risk tool would be downgraded to "allow" for every other
     // principal sharing this gateway instance.
@@ -352,7 +380,7 @@ export class MCPGateway {
       req.args,
       vetting,
       this.#consentRecords,
-      this.#rules,
+      requestRules,
       cacheKey,
       req.identity.principalHash
     );
@@ -363,11 +391,18 @@ export class MCPGateway {
     const resultTrustLevel =
       invocation.decision === "allow" && serverCard?.operatorVerified ? "verified" : "untrusted";
 
+    const verdict = composeVerdict({
+      vetting,
+      decision: invocation,
+      hasConsent: !!invocation.userConsentRef,
+    });
+
     return {
       invocation,
       stateChanging,
       ...(serverCard !== undefined ? { serverCard } : {}),
       resultTrustLevel,
+      capabilityEffect,
       evidenceRef: {
         principalHash: req.identity.principalHash,
         sessionId: req.identity.sessionId,
@@ -376,10 +411,27 @@ export class MCPGateway {
           : {}),
         policyDecision: invocation.decision,
       },
+      verdict,
     };
   }
 
   wrapResult(toolName: string, rawResult: string, decision: GatewayDecision): TaintedObservation {
     return taintObservation(toolName, rawResult, { trust: decision.resultTrustLevel });
+  }
+
+  /**
+   * Produce a post-result verdict that incorporates taint analysis of the tool
+   * output. Call after `wrapResult` once the tool has executed.
+   */
+  wrapResultVerdict(
+    taintObs: TaintedObservation,
+    priorDecision: GatewayDecision
+  ): FirewallSecurityVerdict {
+    return composeVerdict({
+      vetting: null,
+      decision: priorDecision.invocation,
+      taint: taintObs,
+      hasConsent: !!priorDecision.invocation.userConsentRef,
+    });
   }
 }

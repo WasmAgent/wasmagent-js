@@ -45,6 +45,16 @@ export type {
   TrustTier,
 } from "@wasmagent/mcp-server";
 export { detectRugPull, hashContent, snapshotTool } from "@wasmagent/mcp-server";
+// Capability and tenant enforcement
+export type { CapabilityEnvelope, CapabilityGrant, EffectClass } from "./capability.js";
+export {
+  CapabilityRegistry,
+  classifyEffect,
+  detectCrossTenantAccess,
+  makeCapabilityPolicyRule,
+  makeTenantIsolationRule,
+  requiredCapabilityForEffect,
+} from "./capability.js";
 // Consent ledger
 export type {
   ConsentAction,
@@ -52,7 +62,7 @@ export type {
   ConsentEvent,
   ConsentLedger,
 } from "./consent.js";
-export { hashField, hashUiText, InMemoryConsentLedger } from "./consent.js";
+export { hashArgScope, hashField, hashUiText, InMemoryConsentLedger } from "./consent.js";
 // Gateway layer — identity, server card, scope lease, approval receipt, state-changing action approval
 export type {
   ApprovalReceipt,
@@ -101,9 +111,23 @@ export type {
   ContentType,
   RenderedTaintedObservation,
   TaintedObservation,
+  TaintLabel,
   TrustLevel,
 } from "./taint.js";
-export { renderTaintedObservation, taintObservation } from "./taint.js";
+export { isTainted, propagateTaint, renderTaintedObservation, taintObservation } from "./taint.js";
+// Sink-source structural policy
+export type { DataSink, DataSource } from "./sink-policy.js";
+export {
+  classifyArgSource,
+  classifyToolSinks,
+  CREDENTIAL_PATH_RULE,
+  FULL_DEFAULT_RULES,
+  makeSinkAwarePolicyRule,
+  SECRET_NETWORK_SINK_RULE,
+  SHELL_EXEC_CAPABILITY_RULE,
+  SINK_POLICY_RULES,
+  SSRF_LOCALHOST_RULE,
+} from "./sink-policy.js";
 // Static vetting
 export type {
   AdversarialHit,
@@ -124,3 +148,13 @@ export {
   vetToolAsync,
   vetTools,
 } from "./vetting.js";
+// Layered verdict model
+export type {
+  ContainmentVerdict,
+  ConsentVerdict,
+  DetectionVerdict,
+  FirewallSecurityVerdict,
+  PolicyVerdict,
+  TaintVerdict,
+} from "./verdict.js";
+export { composeVerdict } from "./verdict.js";

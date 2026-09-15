@@ -8,6 +8,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { stableStringify } from "./gateway.js";
 
 export type ConsentAction = "approve_tool" | "approve_call" | "approve_sampling";
 
@@ -28,6 +29,10 @@ export interface ConsentEvent {
   /** Hash of the UI text shown to the user when they approved. */
   uiTextHash: string;
   recordedAt: string; // ISO-8601
+  /** SHA-256 (first 16 hex) of the approved argument scope. Absent = any args. */
+  argScopeDigest?: string;
+  /** Session identifier — when set, consent is only valid within this session (anti-replay). */
+  boundToSession?: string;
 }
 
 /**
@@ -41,6 +46,10 @@ export interface ConsentCacheKey {
   inputSchemaHash: string;
   serverIdentity: string;
   toolSnapshotHash: string;
+  /** When present, consent must have a matching argScopeDigest (both must be set). */
+  argScopeDigest?: string;
+  /** When present, consent with boundToSession must match this sessionId. */
+  sessionId?: string;
 }
 
 export interface ConsentLedger {
@@ -69,6 +78,15 @@ export function hashField(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex").slice(0, 16);
 }
 
+/**
+ * Compute a stable, order-independent digest of a tool call's argument scope.
+ * Uses deterministic JSON serialisation so `{a:1,b:2}` and `{b:2,a:1}` produce
+ * the same digest.
+ */
+export function hashArgScope(args: Record<string, unknown>): string {
+  return createHash("sha256").update(stableStringify(args)).digest("hex").slice(0, 16);
+}
+
 /** In-memory consent ledger. For production use, back with KV or a DB. */
 export class InMemoryConsentLedger implements ConsentLedger {
   private readonly _events: ConsentEvent[] = [];
@@ -79,8 +97,13 @@ export class InMemoryConsentLedger implements ConsentLedger {
 
   /**
    * Check consent using the full composite cache key.
-   * All five fields (name, descriptionHash, inputSchemaHash, serverIdentity,
+   * All five core fields (name, descriptionHash, inputSchemaHash, serverIdentity,
    * toolSnapshotHash) must match — any single change causes a miss.
+   *
+   * Optional hardening:
+   * - argScopeDigest: if BOTH the stored event and the key have it, they must match.
+   * - boundToSession / sessionId: if the stored event has boundToSession and the
+   *   key provides sessionId, they must match (anti-replay across sessions).
    */
   hasConsent(key: ConsentCacheKey): boolean {
     const now = new Date();
@@ -91,7 +114,16 @@ export class InMemoryConsentLedger implements ConsentLedger {
         e.inputSchemaHash === key.inputSchemaHash &&
         e.serverIdentity === key.serverIdentity &&
         e.toolSnapshotHash === key.toolSnapshotHash &&
-        (!e.expiresAt || new Date(e.expiresAt) > now)
+        (!e.expiresAt || new Date(e.expiresAt) > now) &&
+        // argScopeDigest: only enforced when both sides carry a digest
+        (e.argScopeDigest === undefined ||
+          key.argScopeDigest === undefined ||
+          e.argScopeDigest === key.argScopeDigest) &&
+        // boundToSession: enforced when stored consent is session-bound and
+        // caller provides a sessionId
+        (e.boundToSession === undefined ||
+          key.sessionId === undefined ||
+          e.boundToSession === key.sessionId)
     );
   }
 
