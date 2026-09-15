@@ -1,0 +1,183 @@
+name: MCP Firewall — Adversarial Evaluation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/mcp-firewall/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/mcp-firewall/**'
+  schedule:
+    # nightly at 02:00 UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      run_redteam:
+        description: 'Run adaptive red-team generation (slow, offline only)'
+        required: false
+        default: 'false'
+        type: boolean
+
+# Least privilege by default — no secrets accessed, no pushes performed.
+permissions:
+  contents: read
+
+jobs:
+  corpus-integrity:
+    name: "F0 — Corpus integrity"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Setup Bun 1.3.14
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.3.14'
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Corpus integrity check (node script)
+        run: node packages/mcp-firewall/evals/corpus/check-integrity.mjs
+      - name: Corpus integrity tests
+        run: bun test packages/mcp-firewall/src/corpus-integrity.test.ts
+
+  baseline-regression:
+    name: "F1 — Baseline regression"
+    runs-on: ubuntu-latest
+    needs: [corpus-integrity]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Setup Bun 1.3.14
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.3.14'
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Full test suite
+        run: bun test packages/mcp-firewall/src/
+      - name: Maturity tests
+        run: bun test packages/mcp-firewall/src/maturity.test.ts
+
+  mutation-suite:
+    name: "F2 — Mutation suite"
+    runs-on: ubuntu-latest
+    needs: [corpus-integrity]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Setup Bun 1.3.14
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.3.14'
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Mutation suite (22 mutators on holdout samples)
+        run: bun test packages/mcp-firewall/src/mutation-suite.test.ts
+      - name: Adaptive red-team hint (manual only)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_redteam == 'true' }}
+        run: |
+          echo "Red-team generation is a local/offline step."
+          echo "Run: node packages/mcp-firewall/scripts/generate-redteam.mjs"
+          echo "Commit generated samples to evals/corpus/redteam.jsonl before re-running this workflow."
+
+  holdout-evaluation:
+    name: "F3 — Holdout evaluation"
+    runs-on: ubuntu-latest
+    needs: [baseline-regression]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Setup Bun 1.3.14
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.3.14'
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Corpus integrity tests
+        run: bun test packages/mcp-firewall/src/corpus-integrity.test.ts
+      - name: Verify corpus split sizes
+        run: |
+          TRAIN=$(wc -l < packages/mcp-firewall/evals/corpus/train.jsonl)
+          DEV=$(wc -l < packages/mcp-firewall/evals/corpus/dev.jsonl)
+          HOLDOUT=$(wc -l < packages/mcp-firewall/evals/corpus/holdout.jsonl)
+          echo "train=$TRAIN dev=$DEV holdout=$HOLDOUT"
+          [ "$TRAIN" -eq 38 ] && [ "$DEV" -eq 11 ] && [ "$HOLDOUT" -eq 11 ] || exit 1
+
+  structural-policy:
+    name: "F4 — Structural policy"
+    runs-on: ubuntu-latest
+    needs: [baseline-regression]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Setup Bun 1.3.14
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.3.14'
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Sink policy tests
+        run: bun test packages/mcp-firewall/src/sink-policy.test.ts
+      - name: Capability tests
+        run: bun test packages/mcp-firewall/src/capability.test.ts
+
+  containment-e2e:
+    name: "F5 — Containment e2e"
+    runs-on: ubuntu-latest
+    needs: [mutation-suite, structural-policy]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Setup Bun 1.3.14
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.3.14'
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Verdict tests
+        run: bun test packages/mcp-firewall/src/verdict.test.ts
+      - name: Taint label tests
+        run: bun test packages/mcp-firewall/src/taint-labels.test.ts
+      - name: Consent hardening tests
+        run: bun test packages/mcp-firewall/src/consent-hardening.test.ts
+
+  artifact-generation:
+    name: "F6 — Adversarial report artifact"
+    runs-on: ubuntu-latest
+    needs: [holdout-evaluation, containment-e2e]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Setup Bun 1.3.14
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.3.14'
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Ensure results directory exists
+        run: mkdir -p packages/mcp-firewall/evals/results
+      - name: Generate adversarial report
+        run: |
+          SOURCE_SHA=$(git rev-parse HEAD)
+          TRAIN_COUNT=$(wc -l < packages/mcp-firewall/evals/corpus/train.jsonl)
+          DEV_COUNT=$(wc -l < packages/mcp-firewall/evals/corpus/dev.jsonl)
+          HOLDOUT_COUNT=$(wc -l < packages/mcp-firewall/evals/corpus/holdout.jsonl)
+          cat > packages/mcp-firewall/evals/results/mcp-firewall-adversarial-report-latest.json << EOF
+          {
+            "format": "wasmagent-mcp-firewall-adversarial-report/v1",
+            "source_sha": "${SOURCE_SHA}",
+            "package_version": "2.1.2",
+            "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "corpus": {
+              "train": ${TRAIN_COUNT},
+              "dev": ${DEV_COUNT},
+              "holdout": ${HOLDOUT_COUNT}
+            },
+            "ci_jobs_passed": ["F0", "F1", "F2", "F3", "F4", "F5"],
+            "redteam_run": false,
+            "phase": "F1",
+            "stable_eligible": false
+          }
+          EOF
+          cat packages/mcp-firewall/evals/results/mcp-firewall-adversarial-report-latest.json
+      - name: Upload adversarial report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: mcp-firewall-adversarial-report
+          path: packages/mcp-firewall/evals/results/mcp-firewall-adversarial-report-latest.json
+          retention-days: 90

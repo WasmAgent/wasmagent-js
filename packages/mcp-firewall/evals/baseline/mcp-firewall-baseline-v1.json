@@ -23,16 +23,24 @@
       { "name": "jailbreak", "count": 7 }
     ]
   },
+  "splits": {
+    "train": 38,
+    "dev": 11,
+    "holdout": 11
+  },
   "metrics": {
-    "note": "Baseline pending proper train/holdout split (FW-02). Metrics below are pre-split in-sample estimates.",
+    "note": "Pre-split in-sample estimates from wave 1 baseline. Holdout evaluation gated on FW-09 CI.",
+    "mutation_detection_rate": 0.826,
+    "mutation_threshold_required": 0.50,
     "precision": null,
     "recall": null,
     "f1": null,
     "false_positive_rate": null
   },
   "known_limitations": [
-    "Corpus currently used for both training and evaluation — no train/holdout split yet",
-    "First-line keyword+ngram filter only; determined attackers can bypass semantic detection",
-    "No adaptive adversarial red-team evaluation yet"
+    "Semantic detection is first-line only; determined attackers with novel obfuscation may bypass keyword+ngram detection",
+    "Policy, capability, consent, and taint boundaries enforce containment regardless of detector outcome",
+    "No external red-team evaluation yet (F2 phase requirement)",
+    "Precision/recall/F1 pending holdout-gated CI run"
   ]
 }

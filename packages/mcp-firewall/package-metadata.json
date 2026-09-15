@@ -2,6 +2,8 @@
   "package": "@wasmagent/mcp-firewall",
   "maturity": "beta",
   "security_posture": "first-line-defence-in-depth",
-  "adversarial_evaluation": "partial",
-  "public_api": "stable-with-minor-change-risk"
+  "adversarial_evaluation": "partial_f1",
+  "public_api": "stable-with-minor-change-risk",
+  "phase": "F1",
+  "phase_note": "Adversarially Tested Beta — holdout split, mutation suite, normalization pipeline, layered verdict model, structural policy, capability guards, taint labels, consent hardening complete."
 }

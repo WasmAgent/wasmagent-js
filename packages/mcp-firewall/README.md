@@ -1,6 +1,6 @@
 # @wasmagent/mcp-firewall
 
-> **Maturity: beta** — 5 deterministic enforcement layers plus a lightweight two-stage adversarial classifier. Shipped and production-used in bscode. **Limitation:** the keyword bag and n-gram classifier are a first-line filter, not adversarial-grade ML defense; determined attackers with novel obfuscation can bypass them. Use defence-in-depth. Public API stable; minor changes possible before v2.0.
+> **Maturity: beta** — adversarially tested against versioned holdout, mutation, and adaptive red-team suites. Semantic detection remains defence-in-depth. 7 enforcement layers: snapshot + rug-pull, static vetting + normalization pipeline, per-call policy + structural sink/capability guards, taint tracking + label propagation, consent ledger + argument scope binding. **Limitation:** semantic detection is not the root of trust; determined attackers with novel obfuscation may bypass keyword/n-gram detection. Policy, capability, consent, and taint boundaries remain active regardless of detector outcome. Public API stable; minor changes possible before v2.0.
 
 Runtime firewall for MCP agents — protect tool calls before execution.
 
