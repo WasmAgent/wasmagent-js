@@ -1,5 +1,12 @@
 # @wasmagent/mcp-gateway
 
+## 0.1.16
+
+### Patch Changes
+
+- Updated dependencies [934019e]
+  - @wasmagent/mcp-firewall@2.2.0
+
 ## 0.1.15
 
 ### Patch Changes
