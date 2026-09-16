@@ -95,7 +95,8 @@ describe("AEPEmitter", () => {
 
     const record = emitter.build(1_700_000_000_000);
 
-    expect(record.schema_version).toBe("aep/v0.3");
+    // AEP-CURRENT: the default is the current schema family.
+    expect(record.schema_version).toBe("aep/v0.5");
     expect(record.actions.length).toBe(1);
     expect(record.capability_decisions.length).toBe(1);
     expect(record.verifier_results.length).toBe(1);
@@ -1261,8 +1262,15 @@ describe("AEP v0.3 — approval_mode + approval_extension + deny_reason_class (#
 });
 
 describe("AEP v0.3 — schema_version", () => {
-  it("emitter writes schema_version 'aep/v0.3' by default", () => {
+  it("emitter writes schema_version 'aep/v0.5' by default (current truth; legacy is opt-in)", () => {
     const emitter = new AEPEmitter({ run_id: "run-sv-001" });
+    emitter.addAction({ tool_name: "noop", state_changing: false });
+    const record = emitter.build(1_700_000_000_000);
+    expect(record.schema_version).toBe("aep/v0.5");
+  });
+
+  it("emitter writes schema_version 'aep/v0.3' only when explicitly requested (legacy opt-in)", () => {
+    const emitter = new AEPEmitter({ run_id: "run-sv-001-legacy", schemaVersion: "aep/v0.3" });
     emitter.addAction({ tool_name: "noop", state_changing: false });
     const record = emitter.build(1_700_000_000_000);
     expect(record.schema_version).toBe("aep/v0.3");
@@ -1662,7 +1670,13 @@ describe("Verification result surface — binding window, profiles, chain status
 
   it("detailed: DSSE legacy window (predicate v0.3, record v0.4) is legacy-normalized", async () => {
     const signer = createLocalSignerFromSeed(TEST_SEED_V, TEST_KEY_ID_V);
-    const emitter = new AEPEmitter({ run_id: "run-window", signer });
+    // Backward-compat construction: the historical quirk requires an explicit
+    // v0.4 target - the default now emits v0.5 (AEP-CURRENT).
+    const emitter = new AEPEmitter({
+      run_id: "run-window",
+      signer,
+      schemaVersion: "aep/v0.4",
+    });
     emitter.addAction({ tool_name: "noop", state_changing: false });
     const record = await emitter.emit(1_700_000_000_000);
 
@@ -1853,8 +1867,8 @@ describe("AEPEmitter.emit() — empty actions validation (#95)", () => {
 
     const record = await emitter.emit(1_700_000_000_000);
     expect(record.actions).toHaveLength(0);
-    // Emission is DSSE-only: the record stamps the DSSE schema version.
-    expect(record.schema_version).toBe("aep/v0.4");
+    // Emission is DSSE-only: the record stamps the current schema version.
+    expect(record.schema_version).toBe("aep/v0.5");
     expect(record.dsse_envelope).toBeDefined();
   });
 
@@ -1900,7 +1914,7 @@ describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
     expect(statement.predicate).toEqual(record);
   });
 
-  it("AEPEmitter with useDsse: true produces record with dsse_envelope and schema_version aep/v0.4", async () => {
+  it("AEPEmitter produces a DSSE envelope and the current schema_version by default", async () => {
     const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
     const emitter = new AEPEmitter({
       run_id: "run-dsse-001",
@@ -1910,7 +1924,7 @@ describe("DSSE/in-toto attestation envelope (v0.4) (#27)", () => {
     emitter.addAction({ tool_name: "write_file", state_changing: true });
     const record = await emitter.emit(1_700_000_000_000);
 
-    expect(record.schema_version).toBe("aep/v0.4");
+    expect(record.schema_version).toBe("aep/v0.5");
     expect(record.dsse_envelope).toBeDefined();
     expect(record.dsse_envelope?.payloadType).toBe("application/vnd.in-toto+json");
     expect(record.dsse_envelope?.payload).toBeDefined();
@@ -2607,7 +2621,7 @@ describe("AEPEmitter evidenceStore streaming", () => {
     });
     const record = await emitter.emit(1_700_000_000_000);
     expect(store.size()).toBe(1);
-    expect(store.all[0]!.schema_version).toBe("aep/v0.4");
+    expect(store.all[0]!.schema_version).toBe("aep/v0.5");
     expect(store.all[0]!.dsse_envelope).toBeDefined();
     expect(store.all[0]).toBe(record);
   });
@@ -5640,11 +5654,11 @@ describe("addAction explicit-undefined defaults (review fix)", () => {
 // ---------------------------------------------------------------------------
 
 describe("AEP v0.5 — attribution grading", () => {
-  it("build() emits v0.3 by default when no schemaVersion is set (backward compat)", () => {
+  it("build() emits v0.5 by default when no schemaVersion is set (current truth)", () => {
     const emitter = new AEPEmitter({ run_id: "run-v05-default" });
     emitter.addAction({ tool_name: "bash", state_changing: false });
     const record = emitter.build();
-    expect(record.schema_version).toBe("aep/v0.3");
+    expect(record.schema_version).toBe("aep/v0.5");
   });
 
   it("build() carries the six attribution fields when schemaVersion is aep/v0.5", () => {
@@ -5692,7 +5706,7 @@ describe("AEP v0.5 — attribution grading", () => {
     expect(record.attribution_backing).toBe("qualified_signature");
   });
 
-  it("emit() with useDsse still stamps aep/v0.4 when schemaVersion is the default", async () => {
+  it("emit() stamps aep/v0.5 when schemaVersion is the default", async () => {
     const signer = createLocalSignerFromSeed(TEST_SEED, TEST_KEY_ID);
     const emitter = new AEPEmitter({
       run_id: "run-v04-default-001",
@@ -5700,7 +5714,7 @@ describe("AEP v0.5 — attribution grading", () => {
     });
     emitter.addAction({ tool_name: "bash", state_changing: false });
     const record = await emitter.emit(1_700_000_000_000);
-    expect(record.schema_version).toBe("aep/v0.4");
+    expect(record.schema_version).toBe("aep/v0.5");
   });
 
   it("verifyAEPRecord accepts a signed v0.5 record", async () => {
