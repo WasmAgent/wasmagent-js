@@ -40,7 +40,12 @@ export interface AEPEmitterOptions {
   run_id: string;
   user_id?: string;
   subject_id?: string;
-  /** Target schema version for emitted records. Default: "aep/v0.4" (DSSE); set "aep/v0.5" for the current attribution-graded vocabulary. build() stamps "aep/v0.3" on unsigned records. */
+  /**
+   * Target schema version for emitted records. Default: "aep/v0.5" — the
+   * current schema family (org truth: read legacy, emit current). Set
+   * "aep/v0.3" or "aep/v0.4" only as an EXPLICIT legacy-compatibility
+   * choice; omission never produces legacy output.
+   */
   schemaVersion?: "aep/v0.3" | "aep/v0.4" | "aep/v0.5";
   /** v0.5: principal that granted/approved the authority (may differ from user_id). */
   authorized_by?: string;
@@ -211,8 +216,8 @@ export class AEPEmitter {
    * 1. Assemble the record payload (no signature field yet).
    * 2. Wrap it in an in-toto Statement inside a DSSE envelope.
    * 3. Sign the PAE encoding with the configured AEPSigner.
-   * 4. Attach `dsse_envelope`, stamp schema_version (aep/v0.5 when targeted,
-   *    otherwise aep/v0.4), and mirror the signature into the legacy
+   * 4. Attach `dsse_envelope`, stamp schema_version (aep/v0.5 by default;
+   *    explicit legacy targets remain opt-in), and mirror the signature into the legacy
    *    `signature` field as compatibility metadata only.
    *
    * The historical legacy emission path (inline Ed25519 over raw canonical
@@ -256,7 +261,7 @@ export class AEPEmitter {
     // accept tampered records.
     const stamped = AEPRecordSchema.parse({
       ...normalisedUnsigned,
-      schema_version: this.#opts.schemaVersion === "aep/v0.5" ? "aep/v0.5" : "aep/v0.4",
+      schema_version: this.#opts.schemaVersion ?? "aep/v0.5",
     });
     const unsignedFinal = stamped;
 
@@ -420,8 +425,10 @@ export class AEPEmitter {
       if (floor === undefined) floor = weakest;
     }
 
+    // AEP-CURRENT: undefined schemaVersion means CURRENT truth (aep/v0.5).
+    // Backward compatibility is for READS, not for new emission.
     return {
-      schema_version: schemaVersion ?? "aep/v0.3",
+      schema_version: schemaVersion ?? "aep/v0.5",
       ...opts,
       ...(this.#userId !== undefined && { user_id: this.#userId }),
       ...(this.#subjectId !== undefined && { subject_id: this.#subjectId }),
