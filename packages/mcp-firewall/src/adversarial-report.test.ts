@@ -152,6 +152,19 @@ describe("ART-F2: artifact promotion-state truth semantics (C2)", () => {
     expect(report.tested_merge_sha).toBeNull();
   });
 
+  it("identity: schedule and workflow_dispatch runs also record tested_main_sha", () => {
+    for (const event_name of ["schedule", "workflow_dispatch"]) {
+      const report = buildReport(
+        baseInputs({
+          identity: { event_name, pr_head_sha: null, head_ref: null, base_ref: null },
+        })
+      );
+      expect(report.tested_main_sha).toBe("2ba6ecdc408c7a4d658870570fdec073f919a63f");
+      expect(report.tested_merge_sha).toBeNull();
+      expect(validatePromotionState(report).valid).toBe(true);
+    }
+  });
+
   it("identity: an artifact naming no tested SHA fails validation", () => {
     const report = buildReport(
       baseInputs({ identity: { event_name: "workflow_dispatch", github_sha: null } })

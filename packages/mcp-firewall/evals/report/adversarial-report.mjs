@@ -36,7 +36,10 @@ export function buildReport(inputs) {
     declaredPhase === "F2" && metadata.adversarial_evaluation === "f2_gates_passed" && metricsPass;
 
   const isPullRequest = identity.event_name === "pull_request";
-  const isPush = identity.event_name === "push";
+  // Every non-PR trigger of this workflow (push, schedule, workflow_dispatch)
+  // checks out a main-branch head, so GITHUB_SHA is the tested main commit —
+  // a schedule-triggered run must not produce a SHA-less artifact.
+  const isMainRun = !isPullRequest;
 
   return {
     format: "wasmagent-mcp-firewall-adversarial-report/v2",
@@ -46,7 +49,7 @@ export function buildReport(inputs) {
     // reported separately (final-audit §3).
     pr_head_sha: identity.pr_head_sha ?? null,
     tested_merge_sha: isPullRequest ? identity.github_sha : null,
-    tested_main_sha: isPush ? identity.github_sha : null,
+    tested_main_sha: isMainRun ? identity.github_sha : null,
     base_ref: identity.base_ref ?? null,
     base_sha: identity.base_sha ?? null,
     head_ref: identity.head_ref ?? null,
