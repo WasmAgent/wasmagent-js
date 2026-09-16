@@ -42,6 +42,9 @@ jobs:
       - name: Check branding (no old brand references)
         run: node scripts/check-branding.mjs
 
+      - name: Agent-truth gate (CLAUDE.md / AGENTS.md instruction truth)
+        run: node scripts/check-agent-truth.mjs
+
       - name: Changeset required for publishable-package source changes
         # Skip on the changeset-release branch (the auto-PR that bumps
         # versions intentionally has no changeset of its own — it consumes

@@ -32,7 +32,8 @@ another repo owns; call it instead.
 | Symbolic **verification** engine (CEL / wazero sandbox / Z3 SMT) | `symkernel` (HTTP service) |
 | Gateway-level HTTP evidence (Proxy-Wasm) | `wasmagent-proxy` |
 | Training-data pipeline | `trace-pipeline` |
-| AgentBOM / MCP Posture / Trust Passport | `agent-trust-infra` / `open-agent-audit` |
+| AgentBOM / MCP Posture runtime + specifications | `agentbom` |
+| Trust Passport product/runtime (`@openagentaudit/passport`) | `open-agent-audit` |
 
 ### Allowed cross-repo patterns
 - **Schemas:** consume `@wasmagent/protocol` — never copy or inline schema JSON
@@ -207,26 +208,6 @@ per-package, pointing to `WasmAgent/wasmagent-js` +
 and `NPM_TOKEN` env from release.yml; `permissions: id-token: write`
 is already in place. Eliminates the entire E404-token-scope class
 of failures.
-## Repository Boundaries
-
-**This repository owns:**
-- runtime (WASM kernels, KernelPool, executor)
-- MCP gateway / firewall (`@wasmagent/mcp-gateway`, `@wasmagent/mcp-firewall`)
-- AEP emitter and signature (`@wasmagent/aep`)
-- Capability manifest and attestation (`@wasmagent/mcp-attestation`)
-- Compliance verifier and repair loop (`@wasmagent/compliance`) — produces `ComplianceEvalRecord`
-- Core agent framework (`@wasmagent/core`)
-- Integrations and adapters (AI SDK, Mastra, OTel exporter)
-
-**Other repositories own — do not duplicate here:**
-
-| Capability | Owner |
-|---|---|
-| AgentBOM / MCP Posture / Trust Passport specifications | `agent-trust-infra` |
-| Enterprise audit reports, regulatory control mapping (OWASP/EU AI Act/NIST) | `open-agent-audit` |
-| Training data pipeline (SFT/DPO export) | `trace-pipeline` |
-| Dynamic evaluation protocol (FAEP) | `fresharena` |
-
 ## Key modules (2026-06-26)
 
 | Module | Location |
@@ -266,9 +247,9 @@ Five-tier scale: **stable** | **beta** | **alpha** | **demo** | **research**
 | `@wasmagent/core` | **stable** | Public API; semver guaranteed |
 | `@wasmagent/kernel-quickjs` | **stable** | |
 | `@wasmagent/kernel-remote` | **stable** | |
-| `@wasmagent/mcp-gateway` | **stable** | Published 0.1.0; composes all firewall layers |
-| `@wasmagent/mcp-firewall` | **beta** | First-line filter, not adversarial-grade — keyword bag + lightweight n-gram classifier; use defence-in-depth; ScopeLease, ApprovalReceipt, vetTool |
-| `@wasmagent/aep` | **beta** | v0.2 Ed25519 signature contract shipped; schema versioned (v0.1/v0.2) |
+| `@wasmagent/mcp-gateway` | **stable** | Published 0.1.16; composes all firewall layers |
+| `@wasmagent/mcp-firewall` | **beta — F2 (Adversarially Hardened)** | Structural sink/capability policy + tool security profiles + unknown-profile fail-safe, default-wired; text/structural/combined escape 0 (25,028 scenarios); ScopeLease, ApprovalReceipt, vetTool |
+| `@wasmagent/aep` | **beta** | Current family aep/v0.5 (attribution grading); DSSE-only signing; legacy v0.1–v0.4 read-compatible, never emitted by default |
 | `@wasmagent/otel-exporter` | **alpha** | GENAI_SEMCONV, AEP↔OTel bridge |
 | `@wasmagent/aisdk` / `@wasmagent/mastra-sandbox` | **alpha** | API stable, may add fields |
 | `@wasmagent/compliance` | **alpha** | Schema versioned; may add fields without breaking |
