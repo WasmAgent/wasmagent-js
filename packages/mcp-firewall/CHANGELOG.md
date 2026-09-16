@@ -1,5 +1,11 @@
 # @wasmagent/mcp-firewall
 
+## 2.2.1
+
+### Patch Changes
+
+- bc39531: fix(adversarial): schedule/workflow_dispatch runs now record tested_main_sha — scheduled report artifacts no longer fail identity-binding validation (F6).
+
 ## 2.2.0
 
 ### Minor Changes
