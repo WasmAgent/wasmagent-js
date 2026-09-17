@@ -69,7 +69,7 @@ function existsOnRegistry(name, version) {
 }
 
 function main(argv) {
-  let out = ".release-provenance/candidates.json";
+  let out = "release-provenance/candidates.json";
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--out") out = argv[++i];
     else {

@@ -75,7 +75,7 @@ jobs:
       # versions ARE the versions about to publish, and the registry does not
       # serve them yet. Only these candidates may be attributed to this run.
       - name: Snapshot publish candidates (pre-publish ownership)
-        run: node scripts/snapshot-release-candidates.mjs --out .release-provenance/candidates.json
+        run: node scripts/snapshot-release-candidates.mjs --out release-provenance/candidates.json
 
       - name: Create release PR or publish
         id: changesets
@@ -107,14 +107,15 @@ jobs:
       # packages this run published.
       - name: Emit runtime release provenance
         if: steps.changesets.outputs.published == 'true'
-        run: node scripts/generate-release-provenance.mjs --candidates .release-provenance/candidates.json --out .release-provenance
+        run: node scripts/generate-release-provenance.mjs --candidates release-provenance/candidates.json --out release-provenance
 
       - name: Upload release provenance artifact
         if: steps.changesets.outputs.published == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: release-provenance
-          path: .release-provenance/
+          path: release-provenance/
+          if-no-files-found: error
 
 
       - name: Deprecate legacy model-* shims
