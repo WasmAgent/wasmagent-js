@@ -38,8 +38,8 @@
  *
  * Usage:
  *   node scripts/generate-release-provenance.mjs \
- *     --candidates .release-provenance/candidates.json \
- *     --out .release-provenance
+ *     --candidates release-provenance/candidates.json \
+ *     --out release-provenance
  */
 
 import { execFileSync } from "node:child_process";
@@ -64,7 +64,7 @@ const REQUIRED_FIELDS = [
 ];
 
 function parseArgs(argv) {
-  const out = { candidates: null, out: ".release-provenance", dryRun: false };
+  const out = { candidates: null, out: "release-provenance", dryRun: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--candidates") out.candidates = argv[++i];
     else if (argv[i] === "--out") out.out = argv[++i];
