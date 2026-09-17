@@ -88,6 +88,23 @@ jobs:
         continue-on-error: true
         run: bun run publish:check
 
+      # Runtime release provenance (wasmagent-release-provenance/v1, schema
+      # owned by WasmAgent/.github org contract / Gate O4): one artifact per
+      # published package binding source_sha, workflow content SHA, lock
+      # hash, toolchain, registry integrity, run id and destination. This is
+      # the npm-provenance complement — it records what THIS workflow
+      # actually shipped, as machine-checkable evidence.
+      - name: Emit runtime release provenance
+        if: steps.changesets.outputs.published == 'true'
+        run: node scripts/generate-release-provenance.mjs --out .release-provenance
+
+      - name: Upload release provenance artifact
+        if: steps.changesets.outputs.published == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-provenance
+          path: .release-provenance/
+
 
       - name: Deprecate legacy model-* shims
         if: steps.changesets.outputs.published == 'true'
