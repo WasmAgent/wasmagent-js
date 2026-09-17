@@ -68,6 +68,15 @@ jobs:
       - name: Publish readiness — all public packages (blocking)
         run: bun run publish:check
 
+      # Pre-publish ownership snapshot for runtime provenance: records the
+      # public workspace packages whose exact name@version is NOT yet on the
+      # registry. Ordering is correct here — the Version Packages PR has
+      # already merged by the time this workflow publishes, so workspace
+      # versions ARE the versions about to publish, and the registry does not
+      # serve them yet. Only these candidates may be attributed to this run.
+      - name: Snapshot publish candidates (pre-publish ownership)
+        run: node scripts/snapshot-release-candidates.mjs --out .release-provenance/candidates.json
+
       - name: Create release PR or publish
         id: changesets
         uses: changesets/action@66d7d1ddafddf1ef45f98ee51a7496f9cdadb2f4
@@ -90,13 +99,15 @@ jobs:
 
       # Runtime release provenance (wasmagent-release-provenance/v1, schema
       # owned by WasmAgent/.github org contract / Gate O4): one artifact per
-      # published package binding source_sha, workflow content SHA, lock
-      # hash, toolchain, registry integrity, run id and destination. This is
-      # the npm-provenance complement — it records what THIS workflow
-      # actually shipped, as machine-checkable evidence.
+      # pre-publish candidate that the registry now actually serves, binding
+      # source_sha, workflow content SHA, lock hash, toolchain, registry
+      # integrity, run id and destination. The generator fails closed on
+      # empty candidate set, candidates still missing after publish, count
+      # mismatch, or duplicates — so provenance can only ever attribute
+      # packages this run published.
       - name: Emit runtime release provenance
         if: steps.changesets.outputs.published == 'true'
-        run: node scripts/generate-release-provenance.mjs --out .release-provenance
+        run: node scripts/generate-release-provenance.mjs --candidates .release-provenance/candidates.json --out .release-provenance
 
       - name: Upload release provenance artifact
         if: steps.changesets.outputs.published == 'true'

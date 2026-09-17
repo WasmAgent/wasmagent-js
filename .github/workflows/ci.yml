@@ -121,6 +121,11 @@ jobs:
       - name: Test (excluding kernel-pyodide)
         run: bun run turbo run test --filter=!@wasmagent/kernel-pyodide
 
+      # Release provenance ownership (RP-01..05): emitted artifacts must equal
+      # the pre-publish candidate set, never "everything on the registry".
+      - name: Release provenance unit tests
+        run: bun test scripts/release-provenance.test.mjs
+
       # kernel-pyodide runs directly (bypasses turbo) to avoid stale WASM cache.
       - name: Test kernel-pyodide (no cache)
         run: bun run --filter @wasmagent/kernel-pyodide test

@@ -64,8 +64,18 @@ the two, not a transfer of certification.
 
 `release.yml` now emits a runtime
 [`wasmagent-release-provenance/v1`](https://github.com/WasmAgent/.github/blob/main/scripts/org-contract/provenance.schema.json)
-artifact per published package (Actions artifact `release-provenance`),
-binding `source_sha`, `workflow_sha` (release.yml content SHA), `lock_sha256`,
-`toolchain`, registry `artifact_digest`, `test_run_ids`,
-`publish_destination` and `outcome`. Future releases can be bound the same
-way by diffing the certified surface against the provenance source commit.
+artifact per package **published by that run**, uploaded as the Actions
+artifact `release-provenance` together with the pre-publish candidate
+snapshot, binding `source_sha`, `workflow_sha` (release.yml content SHA),
+`lock_sha256`, `toolchain`, registry `artifact_digest`, `test_run_ids`,
+`publish_destination` and `outcome`.
+
+Ownership is enforced, not implied: a snapshot taken immediately before
+`changeset publish` records the workspace packages whose exact
+`name@version` the registry does **not** yet serve. Only those candidates can
+be attributed to the run. The generator fails closed on an empty candidate
+set, a candidate still missing after publish, an artifact/candidate count
+mismatch, or duplicate destinations — so a long-shipped package can never be
+re-attributed to a newer release run. Future releases can additionally be
+bound to the certified AEP surface by diffing against the provenance source
+commit.
