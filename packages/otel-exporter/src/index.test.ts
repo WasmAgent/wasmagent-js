@@ -283,12 +283,21 @@ describe("aepRecordToOtlpSpans (#276)", () => {
     for (const span of spans) {
       expect(span.traceId).toMatch(/^[0-9a-f]{32}$/);
       expect(span.spanId).toMatch(/^[0-9a-f]{16}$/);
-      expect(span.name).toBe("tool.call");
+      // Current GenAI semconv shape: "execute_tool <gen_ai.tool.name>".
+      expect(span.name).toMatch(/^execute_tool /);
       expect(span.kind).toBe(2);
       expect(attrValue(span.attributes, "aep.run_id")).toEqual({ stringValue: "run-otlp-1" });
+      expect(attrValue(span.attributes, "gen_ai.operation.name")).toEqual({
+        stringValue: "execute_tool",
+      });
     }
     // All actions share the same trace id (scoped to the run).
     expect(spans[0]!.traceId).toBe(spans[1]!.traceId);
+    expect(spans[0]!.name).toBe("execute_tool read_file");
+    expect(spans[1]!.name).toBe("execute_tool write_file");
+    expect(attrValue(spans[0]!.attributes, "gen_ai.tool.name")).toEqual({
+      stringValue: "read_file",
+    });
     expect(attrValue(spans[0]!.attributes, "aep.tool_name")).toEqual({ stringValue: "read_file" });
     expect(attrValue(spans[1]!.attributes, "aep.state_changing")).toEqual({ boolValue: true });
   });
