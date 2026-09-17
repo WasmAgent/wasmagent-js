@@ -126,6 +126,12 @@ jobs:
       - name: Release provenance unit tests
         run: bun test scripts/release-provenance.test.mjs
 
+      # Release workflow contract (post-#465/#466 invariants): snapshot before
+      # publish, --candidates enforced, non-hidden output, matching upload
+      # path, if-no-files-found: error.
+      - name: Release workflow contract regression
+        run: bun test scripts/release-workflow-contract.test.mjs
+
       # kernel-pyodide runs directly (bypasses turbo) to avoid stale WASM cache.
       - name: Test kernel-pyodide (no cache)
         run: bun run --filter @wasmagent/kernel-pyodide test
