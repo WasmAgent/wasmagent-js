@@ -71,8 +71,21 @@ export const GENAI_SEMCONV = {
   SPAN_CHAT: "gen_ai.chat",
   /** Span name for embedding calls */
   SPAN_EMBEDDINGS: "gen_ai.embeddings",
+  /**
+   * Span name base for tool execution per current OTel GenAI semconv.
+   * The recommended full span name is `execute_tool {gen_ai.tool.name}`.
+   */
+  SPAN_EXECUTE_TOOL: "execute_tool",
+  /** Attribute: gen_ai.operation.name value for tool execution */
+  OP_EXECUTE_TOOL: "execute_tool",
   /** Attribute: gen_ai.operation.name must be "chat" for chat completions */
   ATTR_OPERATION_NAME: "gen_ai.operation.name",
+  /** Attribute: name of the tool being executed (current semconv) */
+  ATTR_TOOL_NAME: "gen_ai.tool.name",
+  /** Attribute: id of the tool call, when the instrumentation provides one */
+  ATTR_TOOL_CALL_ID: "gen_ai.tool.call.id",
+  /** Attribute: tool category (e.g. "function"), when known */
+  ATTR_TOOL_TYPE: "gen_ai.tool.type",
   /** Attribute: actual model used in response */
   ATTR_RESPONSE_MODEL: "gen_ai.response.model",
   /** Attribute: input token count */
@@ -217,7 +230,12 @@ export function llmGenerateSpanAttrs(opts: {
 }
 
 /**
- * Build standard span attributes for a `tool.call` span.
+ * Build standard span attributes for a tool execution span.
+ *
+ * Emits the current GenAI semconv attribute names (`gen_ai.tool.name`,
+ * `gen_ai.tool.type`); pair with span name `execute_tool {gen_ai.tool.name}`.
+ * `state_changing` is an AEP extension (`aep.state_changing`), not a GenAI
+ * attribute, and is only emitted when provided.
  *
  * @param opts.tool_name      - Name of the tool being invoked.
  * @param opts.tool_type      - Optional category of tool (e.g. "bash", "mcp", "builtin").
@@ -228,8 +246,8 @@ export function toolCallSpanAttrs(opts: {
   tool_type?: string;
   state_changing?: boolean;
 }): Record<string, string> {
-  const attrs: Record<string, string> = { "tool.name": opts.tool_name };
-  if (opts.tool_type !== undefined) attrs["tool.type"] = opts.tool_type;
-  if (opts.state_changing !== undefined) attrs["tool.state_changing"] = String(opts.state_changing);
+  const attrs: Record<string, string> = { [GENAI_SEMCONV.ATTR_TOOL_NAME]: opts.tool_name };
+  if (opts.tool_type !== undefined) attrs[GENAI_SEMCONV.ATTR_TOOL_TYPE] = opts.tool_type;
+  if (opts.state_changing !== undefined) attrs["aep.state_changing"] = String(opts.state_changing);
   return attrs;
 }

@@ -316,11 +316,11 @@ describe("AEP span names — agent/llm/tool", () => {
     expect(attrs["llm.output_tokens"]).toBe("50");
   });
 
-  it("toolCallSpanAttrs maps tool_name and state_changing to correct keys", () => {
+  it("toolCallSpanAttrs emits current GenAI semconv keys", () => {
     const attrs = toolCallSpanAttrs({ tool_name: "bash", state_changing: true });
-    expect(attrs["tool.name"]).toBe("bash");
-    expect(attrs["tool.state_changing"]).toBe("true");
-    expect("tool.type" in attrs).toBe(false);
+    expect(attrs["gen_ai.tool.name"]).toBe("bash");
+    expect(attrs["aep.state_changing"]).toBe("true");
+    expect("gen_ai.tool.type" in attrs).toBe(false);
   });
 
   it("toolCallSpanAttrs includes optional tool_type when provided", () => {
@@ -329,7 +329,7 @@ describe("AEP span names — agent/llm/tool", () => {
       tool_type: "mcp",
       state_changing: false,
     });
-    expect(attrs["tool.type"]).toBe("mcp");
-    expect(attrs["tool.state_changing"]).toBe("false");
+    expect(attrs["gen_ai.tool.type"]).toBe("mcp");
+    expect(attrs["aep.state_changing"]).toBe("false");
   });
 });
