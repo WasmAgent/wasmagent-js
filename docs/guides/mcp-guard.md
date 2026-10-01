@@ -112,6 +112,44 @@ const record = emitter.build();
 // record.schema_version === "aep/v0.1"
 ```
 
+## Information-flow provenance gate (IF-07a)
+
+Tool results can be labeled and threaded into the **next** sink decision, so
+a secret survives transformations (base64, rename, restructure) and is denied
+by provenance — not by value shape:
+
+```ts
+import { propagateTaint } from "@wasmagent/mcp-firewall";
+
+// 1. observe the result, minting labels at the source
+const obs = gw.wrapResult("vault_read", result, read, { taintLabels: ["secret"] });
+
+// 2. transform freely — labels follow via propagateTaint (it re-hashes the
+//    derived content, anchoring its provenance identity)
+const derived = propagateTaint(obs, "encode_step", Buffer.from(result).toString("base64"));
+
+// 3. thread the provenance into the next call
+const send = gw.evaluate({
+  identity,
+  serverId: "srv",
+  tool: sender,
+  args: { destination: url, payload_b64: derivedContent }, // any name, any depth
+  inputProvenance: [derived],
+});
+// send.invocation.decision === "deny"
+// send.invocation.matchedPolicyIds contains "sink-tainted-provenance-deny"
+//   and/or "sink-tainted-identity-deny"
+// send.evidenceRef.inputTaintLabels → ["secret"] (AEP input_taint_labels)
+```
+
+Deny matrix (explicit): labels `secret` / `credential` × sinks
+`network_send` / `credential_use` / `shell_exec` / `filesystem_write`.
+Honest boundary: provenance the caller never threads stays outside the gate —
+there is no automatic process-wide taint ledger. Operator profiles
+(`sensitiveArgPaths`) remain the independent structural fallback. Pinned by
+`GATE-01..11` (`src/provenance-gate.test.ts`) and fixtures `IF-07a` /
+`IF-07a-2` (`src/information-flow.test.ts`).
+
 ## Run the demo
 
 ```bash

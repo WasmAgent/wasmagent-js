@@ -1,8 +1,8 @@
 {
   "schema": "wasmagent-mcp-firewall-information-flow/v1",
-  "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+  "tested_sha": "47ae05f3baca5a198b40b17e310e3d117228fbd8",
   "generated_by": "packages/mcp-firewall/src/information-flow.test.ts",
-  "claim_ceiling": "cross-tool effect containment via authority + structural boundaries; semantic result-text detection is defence-in-depth, not the root of trust; IF-07a is a documented limitation",
+  "claim_ceiling": "cross-tool effect containment via authority + structural boundaries; semantic result-text detection is defence-in-depth, not the root of trust; transformed secrets with threaded provenance are denied by the IF-07a gate (labels + content identity), while provenance the caller never threads stays outside the gate (no automatic process-wide taint ledger)",
   "cases": [
     {
       "id": "IF-01",
@@ -88,12 +88,33 @@
       "id": "IF-07a",
       "description": "tainted value transformed/renamed before reaching a sink (base64)",
       "detection": "missed",
-      "taint": "clean",
-      "taintLabels": [],
-      "policy": "allow",
-      "effect": "EXECUTED — documented limitation: value-transform defeats value-shape detection; automatic taint-through-transformation is NOT claimed",
-      "matchedPolicyIds": [],
-      "notes": "authority path: an operator profile declaring sensitiveArgPaths closes this (see IF-07b)"
+      "taint": "tainted (explicit propagateTaint labels)",
+      "taintLabels": [
+        "secret"
+      ],
+      "policy": "deny",
+      "effect": "denied — sink-tainted-provenance-deny,sink-tainted-identity-deny",
+      "matchedPolicyIds": [
+        "sink-tainted-provenance-deny",
+        "sink-tainted-identity-deny"
+      ],
+      "notes": "deny keys on threaded provenance labels + value identity, not value shape; explicit provenance threading via propagateTaint + inputProvenance is required (no automatic process-wide taint ledger); authority fallback: operator profile sensitiveArgPaths (IF-07b)"
+    },
+    {
+      "id": "IF-07a-2",
+      "description": "transformed secret re-placed under renamed/nested args (identity match)",
+      "detection": "missed",
+      "taint": "tainted (explicit propagateTaint labels)",
+      "taintLabels": [
+        "secret"
+      ],
+      "policy": "deny",
+      "effect": "denied — sink-tainted-provenance-deny,sink-tainted-identity-deny",
+      "matchedPolicyIds": [
+        "sink-tainted-provenance-deny",
+        "sink-tainted-identity-deny"
+      ],
+      "notes": "contentHash identity match: the derived value is recognized by provenance alone, at any argument name or nesting depth"
     },
     {
       "id": "IF-07b",

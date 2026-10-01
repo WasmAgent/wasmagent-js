@@ -15,6 +15,7 @@ import type { CapabilityRegistry, EffectClass } from "./capability.js";
 import { makeCapabilityPolicyRule, makeTenantIsolationRule } from "./capability.js";
 import type { ConsentRecord, PolicyRule, ToolInvocationDecision } from "./policy.js";
 import { DEFAULT_RULES, evaluatePolicy } from "./policy.js";
+import { collectInputTaintLabels, makeTaintProvenanceRules } from "./provenance-policy.js";
 import {
   computeToolSnapshotHash,
   evaluateUnprofiledToolPolicy,
@@ -26,6 +27,7 @@ import {
   type ToolSecurityProfileRegistry,
   type UnprofiledToolPolicy,
 } from "./security-profile.js";
+import { classifyToolSinks } from "./sink-policy.js";
 import type { TaintedObservation } from "./taint.js";
 import { taintObservation } from "./taint.js";
 import type { FirewallSecurityVerdict } from "./verdict.js";
@@ -277,6 +279,17 @@ export interface GatewayRequest {
   tool: McpToolEntry;
   args: Record<string, unknown>;
   /**
+   * Explicit taint provenance for THIS call's inputs (IF-07a): observations
+   * produced by earlier tool results (`gateway.wrapResult` / `taintObservation`)
+   * and carried across transformations with `propagateTaint`. Threading a set
+   * here is the caller's declaration that this call consumes data derived
+   * from those observations — the provenance gate then denies sensitive
+   * labels and identity-matched values headed for dangerous sinks. No
+   * process-wide taint ledger exists by design: provenance that is not
+   * threaded is invisible to the gate (see provenance-policy.ts).
+   */
+  inputProvenance?: TaintedObservation[];
+  /**
    * Authoritative tenant identifier. Under tenant enforcement this is
    * REQUIRED — the gateway never infers tenant identity from serverId,
    * tool names, or resource strings (P0-04: a server is not a tenant).
@@ -304,6 +317,12 @@ export interface GatewayDecision {
     /** Effective gateway security profile (final-audit C5 — a custom rule
      * stack reports "custom", never "hardened"). */
     securityProfile: GatewaySecurityProfile;
+    /**
+     * Union of taint labels across `GatewayRequest.inputProvenance` (IF-07a).
+     * Present only when provenance was threaded; this is the producer for
+     * AEP `input_taint_labels` on the consuming action's evidence.
+     */
+    inputTaintLabels?: string[];
   };
   /** Multi-layer security verdict for this invocation. */
   verdict?: FirewallSecurityVerdict;
@@ -600,6 +619,22 @@ export class MCPGateway {
       }
     }
 
+    // IF-07a: provenance-preserving information-flow gate. Only when the
+    // caller explicitly threads provenance — there is no process-wide taint
+    // ledger by design. Sinks are profile-authoritative when a trusted
+    // profile exists (C4); otherwise the FULL descriptor (name + description)
+    // classifies, matching makeSinkAwarePolicyRule — name-only classification
+    // misses e.g. `send_report` (\b send \b does not match across `_`).
+    if (req.inputProvenance !== undefined && req.inputProvenance.length > 0) {
+      const gateSinks = hasTrustedProfile ? resolved.sinks : classifyToolSinks(req.tool);
+      requestRules.push(
+        ...makeTaintProvenanceRules({
+          provenance: req.inputProvenance,
+          sinks: gateSinks,
+        })
+      );
+    }
+
     // Consent is principal-scoped (a principal's approval never serves another
     // principal) AND binding-authoritative (final-audit C1): when a consent
     // record carries an argScopeDigest or session binding, the CURRENT call
@@ -652,13 +687,26 @@ export class MCPGateway {
         // C5: machine-visible effective profile (never "hardened" for a
         // custom rule stack).
         securityProfile: this.#effectiveSecurityProfile,
+        // IF-07a: input provenance labels — the AEP `input_taint_labels`
+        // producer. Emitted only when provenance was threaded.
+        ...(req.inputProvenance !== undefined && req.inputProvenance.length > 0
+          ? { inputTaintLabels: collectInputTaintLabels(req.inputProvenance) }
+          : {}),
       },
       verdict,
     };
   }
 
-  wrapResult(toolName: string, rawResult: string, decision: GatewayDecision): TaintedObservation {
-    return taintObservation(toolName, rawResult, { trust: decision.resultTrustLevel });
+  wrapResult(
+    toolName: string,
+    rawResult: string,
+    decision: GatewayDecision,
+    opts?: { taintLabels?: TaintedObservation["taintLabels"] }
+  ): TaintedObservation {
+    return taintObservation(toolName, rawResult, {
+      trust: decision.resultTrustLevel,
+      ...(opts?.taintLabels !== undefined ? { taintLabels: opts.taintLabels } : {}),
+    });
   }
 
   /**

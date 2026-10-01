@@ -4,9 +4,9 @@
 
 ## 1. Identity
 
-- Repository: `WasmAgent/wasmagent-js` at `c1a573fc8f49f0f2162a17ddca199bb61fcdd94d`
+- Repository: `WasmAgent/wasmagent-js` at `47ae05f3baca5a198b40b17e310e3d117228fbd8`
 - Package: @wasmagent/mcp-firewall 2.2.1 — phase `F2`, adversarial `f2_gates_passed`, maturity `beta`
-- Generated: 2026-10-01T01:54:15.008Z
+- Generated: 2026-10-01T06:08:00.103Z
 - Evidence anchor: `docs/security/mcp-firewall-hardening-checkpoint.md`
 - Baseline: `mcp-firewall-baseline-v1.json` (sha256 `e5b63d71bdc80e0a…`, mutation detection rate 0.826)
 
@@ -26,8 +26,8 @@ Authority: `packages/mcp-firewall/evals/protocol/mcp-protocol-matrix.json` — 4
 
 | status | rows |
 | --- | --- |
-| verified | 24 |
-| partially-verified | 4 |
+| verified | 26 |
+| partially-verified | 2 |
 | implemented-not-conformance-tested | 4 |
 | not-implemented | 7 |
 | not-evaluated | 2 |
@@ -48,9 +48,7 @@ Non-verified, non-trivial rows:
 - **M-PROMPTS** (not-implemented) — prompts/* (prompts/list, prompts/get)
 - **M-SAMPLING-SERVER** (not-implemented) — sampling/createMessage (server-initiated)
 - **M-SAMPLING-CLIENT** (implemented-not-conformance-tested) — Sampling callback (client side)
-- **FI-RESULT-TO-NEXT-CALL** (partially-verified) — Result-to-next-call information flow (post-call reuse as arguments)
 - **FI-RESPONSE-DLP** (not-implemented) — Response secret/PII enforcement (DLP over returned content)
-- **FI-CROSS-TOOL-FLOW** (partially-verified) — Cross-tool information-flow enforcement
 
 - Known gap **GAP-BATCH-NOTIF**: RESOLVED: a notification inside a JSON-RPC batch used to produce an id:null error entry in the batch reply, and a lone notification over HTTP used to return 200 with an error body instead of 202/no-body. Fixed in the conformance patch; PROTO-NOTIF-01..03 pin the corrected behavior. — disposition: resolved — rows flipped to verified with pinned tests
 
@@ -85,11 +83,10 @@ Authority: `packages/mcp-firewall/evals/fail-closed/fail-closed-matrix.json`. Cr
 | IF-04 | not_applicable (result text benign) | clean | deny | denied — tenant isolation rule on the cross-tenant resource reference |
 | IF-05 | warned (instruction-like: 'system:') | tainted | ask_user | held for human confirmation — forged approval text mints no consent record |
 | IF-06 | not_applicable | clean | deny | denied — capability grant required by the profile is absent |
-| IF-07a | missed | clean | allow | EXECUTED — documented limitation: value-transform defeats value-shape detection; automatic taint-through-transformation is NOT claimed |
+| IF-07a | missed | tainted (explicit propagateTaint labels) | deny | denied — sink-tainted-provenance-deny,sink-tainted-identity-deny |
+| IF-07a-2 | missed | tainted (explicit propagateTaint labels) | deny | denied — sink-tainted-provenance-deny,sink-tainted-identity-deny |
 | IF-07b | missed | clean | deny | denied — operator-declared sensitiveArgPaths boundary |
 | IF-08 | not_applicable | clean | deny | denied — required capability for the external write was never granted |
-
-Documented limitations (reported, not rounded into passes): IF-07a.
 
 ## 6. Commit-time authority cases
 
@@ -131,7 +128,7 @@ Ceiling: informational only; no regression budget frozen; no throughput claims a
 - Unsupported MCP surfaces (resources/*, prompts/*, notifications/cancelled, server-side SSE) remain unsupported.
 - F2 zero-escape results apply ONLY to the frozen declared corpus and mutator set at the tested commit.
 - No claim of exhaustive adversarial completeness; the adaptive/external red-team evaluation has not been run.
-- The information-flow fixtures demonstrate per-call authority and structural boundaries; IF-07a is a documented limitation (value transformation defeats value-shape detection), not a containment pass.
+- The information-flow fixtures demonstrate per-call authority and structural boundaries; transformed secrets with threaded provenance are denied by the IF-07a gate (labels + content identity, not value shape), while provenance the caller never threads stays outside the gate (no automatic process-wide taint ledger).
 
 ## 9. External evaluation
 

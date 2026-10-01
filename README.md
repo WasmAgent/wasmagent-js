@@ -18,7 +18,7 @@ Pick your entry point:
 
 | Goal | Install |
 |---|---|
-| **Protect tools** — runtime firewall, policy enforcement, taint tracking | `npm add @wasmagent/mcp-firewall` |
+| **Protect tools** — runtime firewall, policy enforcement, taint tracking with a provenance-preserving information-flow gate | `npm add @wasmagent/mcp-firewall` |
 | **Record evidence** — signed AEP records after every agent run | `npm add @wasmagent/aep` |
 | **Admit from traces** — compliance scoring produces `ComplianceEvalRecord`s for downstream training | `npm add @wasmagent/aep @wasmagent/compliance` |
 | **Sync state** — reducer-backed agent↔UI shared state, agent reads projections + writes intent | `npm add @wasmagent/core` (`/shared-state` subpath) |

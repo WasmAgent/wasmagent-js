@@ -110,6 +110,16 @@ export {
   InMemoryConsentStore,
   lookupConsent,
 } from "./policy.js";
+// Provenance-preserving information-flow gate (IF-07a)
+export type { TaintProvenanceRuleOptions } from "./provenance-policy.js";
+export {
+  collectInputTaintLabels,
+  makeTaintProvenanceRules,
+  PROVENANCE_DENY_SINKS,
+  PROVENANCE_SENSITIVE_LABELS,
+  TAINT_PROVENANCE_IDENTITY_RULE_ID,
+  TAINT_PROVENANCE_LABEL_RULE_ID,
+} from "./provenance-policy.js";
 // Resource path normalization + sensitive-path classification (P1-01)
 export type { SensitivePathClass } from "./resource-path.js";
 export { classifyResourcePath, deepStringValues, normalizeResourcePath } from "./resource-path.js";

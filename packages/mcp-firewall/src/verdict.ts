@@ -9,6 +9,7 @@
 
 import type { ToolInvocationDecision } from "./policy.js";
 import type { TaintedObservation } from "./taint.js";
+import { isTainted } from "./taint.js";
 import type { VettingResult } from "./vetting.js";
 
 // ── Verdict types ─────────────────────────────────────────────────────────────
@@ -89,10 +90,12 @@ export function composeVerdict(opts: {
   }
 
   // ── taint ─────────────────────────────────────────────────────────────────
+  // IF-07a: explicit taint labels are now load-bearing — an observation
+  // carrying semantic labels (e.g. secret propagated via propagateTaint)
+  // is "tainted" even when the text heuristics miss. The decision itself is
+  // still policy-owned; the verdict records the layer's view.
   const taintVerdict: TaintVerdict =
-    opts.taint?.instructionLikeTextDetected === true || (opts.taint?.adversarialScore ?? 0) > 0.5
-      ? "tainted"
-      : "clean";
+    opts.taint !== undefined && isTainted(opts.taint) ? "tainted" : "clean";
 
   // ── containment ───────────────────────────────────────────────────────────
   // Only meaningful when detection missed; otherwise the first or second layer
