@@ -221,3 +221,10 @@ jobs:
           name: mcp-firewall-adversarial-report
           path: packages/mcp-firewall/evals/results/mcp-firewall-adversarial-report-latest.json
           retention-days: 90
+      # Hardening workstream: the frozen public conformance report
+      # (evals/report/mcp-firewall-conformance-report.json + generated MD twin)
+      # must keep passing the truth model — no inflated claims (external
+      # evaluation, capture completeness, out-of-vocabulary statuses) may land.
+      # Check mode re-derives inputs and validates without rewriting anything.
+      - name: Conformance report truth-model check
+        run: node packages/mcp-firewall/evals/report/generate-conformance-report.mjs --check
