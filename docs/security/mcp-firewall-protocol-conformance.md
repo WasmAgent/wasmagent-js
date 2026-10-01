@@ -39,7 +39,7 @@
 | TF-SSE-CLIENT | SSE fallback (client side) | implemented-not-conformance-tested | packages/core/src/tools/McpToolCollection.ts::fromSse / fromHttp fallback | @wasmagent/core | used only when Streamable HTTP is unavailable (SDK >= 1.7.0 required for Streamable) |
 | TF-SESSIONLESS | Sessionless HTTP behavior (no Mcp-Session-Id reliance) | verified | packages/mcp-server/src/fetchHandler.ts (never reads Mcp-Session-Id); packages/mcp-server/src/McpAgentServer.test.ts (fresh server instance reads task created by a prior instance) | @wasmagent/mcp-server | every request self-contained; long-task state keyed by task id in a swappable store |
 | TF-JSONRPC-SINGLE | JSON-RPC single request over HTTP | verified | packages/mcp-server/src/McpAgentServer.test.ts (POST returns the JSON-RPC body) | @wasmagent/mcp-server |  |
-| TF-JSONRPC-BATCH | JSON-RPC batch (array body) | partially-verified | packages/mcp-server/src/McpAgentServer.test.ts (handles batch requests); packages/mcp-server/src/protocol-conformance.test.ts (batch-too-large 413, duplicate ids, mixed batch) | @wasmagent/mcp-server | maxBatchSize default 20 (413 beyond); stdio framing carries no batches (one message per line) |
+| TF-JSONRPC-BATCH | JSON-RPC batch (array body) | verified | packages/mcp-server/src/McpAgentServer.test.ts (handles batch requests); packages/mcp-server/src/protocol-conformance.test.ts (PROTO-BATCH-01 batch-too-large 413, PROTO-DUPID-01 duplicate ids, PROTO-NOTIF-01/02 notification handling) | @wasmagent/mcp-server | maxBatchSize default 20 (413 beyond); stdio framing carries no batches (one message per line) |
 | TF-MALFORMED-JSON | Malformed JSON | verified | packages/mcp-server/src/stdio.test.ts (-32700 with id null); packages/mcp-server/src/McpAgentServer.test.ts (400 Invalid JSON over HTTP) | @wasmagent/mcp-server |  |
 | TF-MALFORMED-ENVELOPE | Malformed JSON-RPC envelope (wrong jsonrpc / missing method / non-object) | verified | packages/mcp-server/src/McpAgentServer.test.ts (parse-error + invalid-request cases); packages/mcp-server/src/protocol-conformance.test.ts (PROTO-ENV-01 echoes request id on -32600) | @wasmagent/mcp-server |  |
 | TF-REQUEST-ID-EDGE | Duplicate / null request-id edge cases | verified | packages/mcp-server/src/protocol-conformance.test.ts (PROTO-DUPID-01: duplicate ids in one batch each answered; PROTO-ENV-01: id echoed on envelope errors) | @wasmagent/mcp-server | the server answers each request independently; id correlation is the host's responsibility (documented) |
@@ -52,7 +52,7 @@
 
 - **TF-STDIO** notes: console.log is redirected to stderr to protect the wire format.
 - **TF-SSE-SERVER** notes: Client-side SSE fallback is a separate row (TF-SSE-CLIENT).
-- **TF-JSONRPC-BATCH** notes: CONFORMANCE GAP GAP-BATCH-NOTIF: a notification inside a batch yields an id:null error entry in the batch reply instead of being answered-with-nothing; a lone notification over HTTP returns 200+error body instead of 202/no-body. Nonconforming with JSON-RPC 2.0 notification semantics and with this file's own documented intent. Tracked; fix lands with the conformance patch, after which this row flips to verified.
+- **TF-JSONRPC-BATCH** notes: GAP-BATCH-NOTIF resolved: notifications inside a batch get no response entry; all-notification batches return 204.
 - **TF-BACKPRESSURE** notes: No measurement of behavior under sustained overload exists.
 
 ## MCP methods / surfaces
@@ -66,7 +66,7 @@
 | M-TOOLS-CALL | tools/call | verified | packages/mcp-server/src/McpAgentServer.test.ts (final_answer content blocks; -32602 missing name; -32011 unknown tool) | @wasmagent/mcp-server |  |
 | M-RESOURCES | resources/* (resources/list, resources/read, …) | not-implemented | absence in McpAgentServer.handle dispatch; initialize capabilities declare tools+tasks only | @wasmagent/mcp-server | no MCP resource server surface |
 | M-PROMPTS | prompts/* (prompts/list, prompts/get) | not-implemented | absence in McpAgentServer.handle dispatch | @wasmagent/mcp-server | no MCP prompt server surface |
-| M-NOTIFICATIONS | Notifications (no-id messages) | partially-verified | packages/mcp-server/src/stdio.test.ts (notification gets NO response); GAP-BATCH-NOTIF for the batch/HTTP paths | @wasmagent/mcp-server | notifications are handled for side effects only on stdio; server emits no notifications (listChanged false, no progress) |
+| M-NOTIFICATIONS | Notifications (no-id messages) | verified | packages/mcp-server/src/stdio.test.ts (notification gets NO response); packages/mcp-server/src/protocol-conformance.test.ts (PROTO-NOTIF-01..03 over HTTP/batch) | @wasmagent/mcp-server | notifications are handled for side effects only, never answered (stdio, single HTTP 202, batch entries dropped); server emits no notifications (listChanged false, no progress) |
 | M-TASKS | Tasks API (tasks/create, tasks/get, tasks/cancel, tasks/respond, tasks/list) | verified | packages/mcp-server/src/McpAgentServer.test.ts (create/get/cancel/respond/list; -32010 unknown id; -32012 not-awaiting; stateless store resume) | @wasmagent/mcp-server | InMemoryTaskStore default; KV-swappable via McpTaskStore; sync-timeout escalation shares the same store |
 | M-ELICITATION | Elicitation (await_human_input via tasks/respond) | verified | packages/mcp-server/src/McpAgentServer.test.ts (tasks/respond clears pendingElicitation; -32012 on non-awaiting) | @wasmagent/mcp-server | elicitation happens only inside an active task (2026-07-28-RC-compatible design constraint) |
 | M-SAMPLING-SERVER | sampling/createMessage (server-initiated) | not-implemented | absence in mcp-server; sampling callback exists client-side | @wasmagent/mcp-server | server never initiates requests (sessionless design constraint) |
@@ -76,7 +76,6 @@
 - **M-NEGOTIATION** notes: Documented stance, tested as documentation — not spec-mandated negotiation.
 - **M-TOOLS-CALL** notes: Firewall-side call gating is the MCPGateway surface, see firewall_inspection section.
 - **M-RESOURCES** notes: Truthful not-implemented; not scheduled by this matrix.
-- **M-NOTIFICATIONS** notes: See TF-JSONRPC-BATCH for the open conformance gap.
 - **M-SAMPLING-SERVER** notes: Client-side sampling callback: see M-SAMPLING-CLIENT.
 
 ## Firewall inspection direction
@@ -97,7 +96,7 @@
 
 ## Known conformance gaps (explicit, not hidden)
 
-- **GAP-BATCH-NOTIF** (TF-JSONRPC-BATCH, M-NOTIFICATIONS): A notification inside a JSON-RPC batch produces an id:null error entry in the batch reply; a lone notification over HTTP returns 200 with an error body instead of 202/no-body. Contradicts JSON-RPC 2.0 notification semantics and the documented intent in fetchHandler.ts. — disposition: fix + flip rows to verified in the conformance patch (PR2)
+- **GAP-BATCH-NOTIF** (TF-JSONRPC-BATCH, M-NOTIFICATIONS): RESOLVED: a notification inside a JSON-RPC batch used to produce an id:null error entry in the batch reply, and a lone notification over HTTP used to return 200 with an error body instead of 202/no-body. Fixed in the conformance patch; PROTO-NOTIF-01..03 pin the corrected behavior. — disposition: resolved — rows flipped to verified with pinned tests
 
 ## Claim ceiling
 

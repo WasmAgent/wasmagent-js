@@ -125,6 +125,39 @@ describe("PROTO-BATCH: JSON-RPC batch over HTTP", () => {
   });
 });
 
+// ── PROTO-NOTIF: notification semantics (GAP-BATCH-NOTIF fix) ────────────────
+
+describe("PROTO-NOTIF: JSON-RPC notification semantics", () => {
+  it("PROTO-NOTIF-01: a notification inside a batch gets NO response entry", async () => {
+    const handler = createFetchHandler(makeServer());
+    const res = await post(handler, [
+      { jsonrpc: "2.0", id: 1, method: "ping" },
+      { jsonrpc: "2.0", method: "notifications/initialized" },
+    ]);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Array<{ id?: unknown }>;
+    expect(body).toHaveLength(1);
+    expect(body[0]?.id).toBe(1);
+  });
+
+  it("PROTO-NOTIF-02: an all-notification batch → 204 with no body", async () => {
+    const handler = createFetchHandler(makeServer());
+    const res = await post(handler, [
+      { jsonrpc: "2.0", method: "notifications/initialized" },
+      { jsonrpc: "2.0", method: "notifications/cancelled", params: { requestId: 9 } },
+    ]);
+    expect(res.status).toBe(204);
+    expect(await res.text()).toBe("");
+  });
+
+  it("PROTO-NOTIF-03: a lone notification over HTTP → 202 Accepted with no body", async () => {
+    const handler = createFetchHandler(makeServer());
+    const res = await post(handler, { jsonrpc: "2.0", method: "notifications/initialized" });
+    expect(res.status).toBe(202);
+    expect(await res.text()).toBe("");
+  });
+});
+
 // ── PROTO-HTTP: HTTP surface edges ───────────────────────────────────────────
 
 describe("PROTO-HTTP: HTTP transport edges", () => {

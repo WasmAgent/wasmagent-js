@@ -15,7 +15,9 @@
       "!**/coverage",
       "!**/.next",
       "!**/examples",
-      "!**/schemas"
+      "!**/schemas",
+      "!packages/mcp-firewall/evals/evidence/*.json",
+      "!packages/mcp-firewall/evals/report/mcp-firewall-conformance-report.json"
     ]
   },
   "formatter": {

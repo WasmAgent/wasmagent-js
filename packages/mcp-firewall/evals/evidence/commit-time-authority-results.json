@@ -1,0 +1,110 @@
+{
+  "schema": "wasmagent-mcp-firewall-commit-time-authority/v1",
+  "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+  "generated_by": "packages/mcp-firewall/src/commit-time-authority.test.ts",
+  "claim_ceiling": "recompute-at-commit model: every evaluate() recomputes authority from current state; a durable plan/commit API with expected-state-transition preconditions is not implemented",
+  "cases": [
+    {
+      "id": "CT-01",
+      "dimension": "approval expiry",
+      "plan_decision": "allow",
+      "change": "approval expiresAt passes",
+      "commit_decision": "ask_user",
+      "commit_matched_policy_ids": [
+        "sink-shell-exec-requires-capability"
+      ],
+      "verdict_recomputed": true
+    },
+    {
+      "id": "CT-02",
+      "dimension": "tool descriptor snapshot",
+      "plan_decision": "allow",
+      "change": "descriptor description mutated (rug-pull)",
+      "commit_decision": "ask_user",
+      "commit_matched_policy_ids": [
+        "unknown-profile-fail-safe"
+      ],
+      "verdict_recomputed": true
+    },
+    {
+      "id": "CT-03",
+      "dimension": "capability grant expiry",
+      "plan_decision": "ask_user",
+      "change": "grant expiresAt passes",
+      "commit_decision": "deny",
+      "commit_matched_policy_ids": [
+        "profile-authoritative",
+        "profile-capability-required"
+      ],
+      "verdict_recomputed": true
+    },
+    {
+      "id": "CT-04",
+      "dimension": "capability grant revocation",
+      "plan_decision": "ask_user",
+      "change": "operator revokes the grant",
+      "commit_decision": "deny",
+      "commit_matched_policy_ids": [
+        "profile-authoritative",
+        "profile-capability-required"
+      ],
+      "verdict_recomputed": true
+    },
+    {
+      "id": "CT-05",
+      "dimension": "consent scope (bound args)",
+      "plan_decision": "allow",
+      "change": "arguments substituted after planning",
+      "commit_decision": "ask_user",
+      "commit_matched_policy_ids": [
+        "sink-shell-exec-requires-capability"
+      ],
+      "verdict_recomputed": true
+    },
+    {
+      "id": "CT-06",
+      "dimension": "identity/session binding",
+      "plan_decision": "allow",
+      "change": "commit arrives on a different session",
+      "commit_decision": "ask_user",
+      "commit_matched_policy_ids": [
+        "sink-shell-exec-requires-capability"
+      ],
+      "verdict_recomputed": true
+    },
+    {
+      "id": "CT-07",
+      "dimension": "principal/workspace binding",
+      "plan_decision": "allow",
+      "change": "different principal attempts the commit",
+      "commit_decision": "ask_user",
+      "commit_matched_policy_ids": [
+        "sink-shell-exec-requires-capability"
+      ],
+      "verdict_recomputed": true
+    },
+    {
+      "id": "CT-08",
+      "dimension": "budget/limit (scope lease)",
+      "plan_decision": "allow (lease valid)",
+      "change": "invocationCount reaches maxInvocations",
+      "commit_decision": "lease invalid — caller must re-authorize (isScopeLeaseValid=false)",
+      "commit_matched_policy_ids": [
+        "scope-lease-budget"
+      ],
+      "verdict_recomputed": true
+    },
+    {
+      "id": "CT-09",
+      "dimension": "target resource",
+      "plan_decision": "ask_user",
+      "change": "commit targets tenant-b resource under tenant-a authority",
+      "commit_decision": "deny",
+      "commit_matched_policy_ids": [
+        "tenant-isolation:d4dfb95242d73909",
+        "unprofiled-tool-ask_user"
+      ],
+      "verdict_recomputed": true
+    }
+  ]
+}
