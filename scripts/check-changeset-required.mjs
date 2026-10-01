@@ -143,6 +143,10 @@ for (const file of changedFiles) {
   // Filter out test-only and build-artifact paths.
   if (/\.(test|spec)\.[a-z]+$/.test(rest)) continue;
   if (rest.startsWith("dist/") || rest.startsWith(".turbo/")) continue;
+  // evals/ evidence never ships in the npm tarball (files: dist, LICENSE,
+  // README.md) — corpus, matrices, and report artifacts are not publishable
+  // source.
+  if (rest.startsWith("evals/")) continue;
   if (rest === "CHANGELOG.md") continue;
   if (rest === "package.json") continue; // version bumps land via changeset itself
   if (rest === "tsconfig.json") continue;

@@ -1,0 +1,212 @@
+{
+  "$schema": "wasmagent-mcp-fail-closed-matrix/v1",
+  "title": "MCP Firewall fail-closed behavior matrix",
+  "repository": "WasmAgent/wasmagent-js",
+  "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+  "recorded_at_utc": "2026-10-01T00:00:00Z",
+  "identity": {
+    "checkpoint": "docs/security/mcp-firewall-hardening-checkpoint.md",
+    "mcp_firewall_version": "2.2.1"
+  },
+  "purpose": "State exactly what happens when a security dependency or context item is unavailable. The claim is NOT 'everything fails closed'; it is that no missing dependency silently becomes ALLOW.",
+  "outcome_vocabulary": {
+    "deny": "the invocation is refused by policy",
+    "ask_user": "the invocation is held for explicit human confirmation",
+    "reject_protocol": "the request is rejected at the protocol layer (JSON-RPC error)",
+    "quarantine": "the content is boundary-rendered (taint quarantine) rather than passed through",
+    "degraded-with-evidence": "execution proceeds in a deliberately reduced mode that is named, reported, and profile-visible",
+    "not-applicable": "the dependency does not exist at this package boundary; the failure mode belongs to another layer",
+    "throw-loud": "the call raises a loud exception; it can never silently return ALLOW"
+  },
+  "critical_invariant": "For a security-sensitive call: missing authority/context required by the active policy must never silently become ALLOW.",
+  "rows": [
+    {
+      "id": "FC-01",
+      "condition": "identity absent (GatewayRequest.identity missing at runtime)",
+      "outcome": "throw-loud",
+      "behavior": "evaluate() raises TypeError on req.identity.principalHash — a programming-contract violation is loud, never a decision",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-01",
+      "notes": "RequestIdentity is a required field; absence is a caller bug surfaced as an exception."
+    },
+    {
+      "id": "FC-02",
+      "condition": "tenant context absent where tenant enforcement is enabled",
+      "outcome": "deny",
+      "behavior": "rule tenant-enforcement-missing-tenant denies; serverId never substitutes for tenant",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-02; packages/mcp-firewall/src/gateway-hardening.test.ts::TENANT-ADV-01/TENANT-ADV-02",
+      "notes": "P0-04: a server is not a tenant."
+    },
+    {
+      "id": "FC-03",
+      "condition": "policy bundle missing/unloadable",
+      "outcome": "not-applicable",
+      "behavior": "PolicyBundle is constructed programmatically (no disk/network loader); an empty custom stack is a deliberate caller decision reported as effective profile 'custom' (FC-22)",
+      "test_or_evidence": "packages/mcp-policy/src/bundle.ts; packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-03",
+      "notes": "No load path exists that can fail half-loaded; the default gateway stack is built in-code."
+    },
+    {
+      "id": "FC-04",
+      "condition": "capability registry absent while a trusted profile declares required capabilities",
+      "outcome": "ask_user",
+      "behavior": "PROFILE-CAP-00 rule fires (profile-capability-registry-unavailable): missing capability evidence never collapses into capability satisfied",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-04; packages/mcp-firewall/src/gateway-hardening.test.ts::PROFILE-CAP-00",
+      "notes": "Final-audit round 3 fail-closed branch."
+    },
+    {
+      "id": "FC-05",
+      "condition": "tool security profile unknown (no registered profile)",
+      "outcome": "ask_user",
+      "behavior": "unknown-profile fail-safe escalates unknown_effect; unprofiled read-named tools on unverified servers escalate (C3, unprofiledToolPolicy ask_user default; deny in strict mode)",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-05; packages/mcp-firewall/src/gateway-hardening.test.ts::PROFILE-ADV-01/02c",
+      "notes": "Operator-verified servers keep the read heuristic — that trust anchor is explicit and named."
+    },
+    {
+      "id": "FC-06",
+      "condition": "approval/consent missing for a state-changing call that would otherwise ask",
+      "outcome": "ask_user",
+      "behavior": "no consent on file → the ask_user decision persists; consent only ever downgrades ask_user→allow, never deny",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-06; packages/mcp-firewall/src/policy.ts (evaluatePolicy consent downgrade)",
+      "notes": ""
+    },
+    {
+      "id": "FC-07",
+      "condition": "approval expired (consent expiresAt in the past)",
+      "outcome": "ask_user",
+      "behavior": "lookupConsent filters expired records; the ask_user decision persists at the gateway",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-07; packages/mcp-firewall/src/consent-hardening.test.ts::CONSENT-ADV-13",
+      "notes": ""
+    },
+    {
+      "id": "FC-08",
+      "condition": "approval bound to stale descriptor (consent/toolSnapshotHash mismatch)",
+      "outcome": "ask_user",
+      "behavior": "consent is only honoured when the snapshot hash matches the current descriptor",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-08; packages/mcp-firewall/src/gateway-consent.test.ts::GW-CONSENT-06",
+      "notes": ""
+    },
+    {
+      "id": "FC-09",
+      "condition": "descriptor changed after snapshot (profile rug-pull)",
+      "outcome": "ask_user",
+      "behavior": "computeToolSnapshotHash changes → trusted profile no longer resolves → unknown-profile fail-safe applies",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-09; packages/mcp-firewall/src/gateway-hardening.test.ts::PROFILE-ADV-05/06",
+      "notes": "Descriptor snapshot/rug-pull detection is also implemented server-side (packages/mcp-server/src/toolDescriptorSnapshot.ts)."
+    },
+    {
+      "id": "FC-10",
+      "condition": "malformed tool args (null where an object is required)",
+      "outcome": "throw-loud",
+      "behavior": "structural classifiers raise TypeError on null args — loud, never silently classified",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-10",
+      "notes": "args: Record<string, unknown> is a required object; null is a caller contract violation."
+    },
+    {
+      "id": "FC-11",
+      "condition": "malformed tool args (non-object scalar)",
+      "outcome": "ask_user",
+      "behavior": "scalar args produce no structural signals; an unprofiled tool on an unverified server still escalates via C3 (string 'evil' → ask_user, not allow)",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-11",
+      "notes": ""
+    },
+    {
+      "id": "FC-12",
+      "condition": "malformed JSON-RPC (unparseable / invalid envelope)",
+      "outcome": "reject_protocol",
+      "behavior": "-32700 parse error (id null) for unparseable JSON; -32600 for invalid envelopes",
+      "test_or_evidence": "packages/mcp-server/src/stdio.test.ts (-32700); packages/mcp-server/src/McpAgentServer.test.ts (invalid-request); packages/mcp-server/src/protocol-conformance.test.ts::PROTO-ENV-01",
+      "notes": "Transport-layer rejection; the firewall is a pre-wire library (see FI rows in the protocol matrix)."
+    },
+    {
+      "id": "FC-13",
+      "condition": "unsupported protocol revision requested",
+      "outcome": "not-applicable",
+      "behavior": "no version gate exists: the server always declares 2025-11-25 and tolerates older strings by design; it never rejects on version mismatch",
+      "test_or_evidence": "packages/mcp-server/src/protocol-conformance.test.ts::PROTO-INIT-01; evals/protocol/mcp-protocol-matrix.json::M-NEGOTIATION",
+      "notes": "This is a documented interoperability stance, not a fail-closed claim."
+    },
+    {
+      "id": "FC-14",
+      "condition": "unknown tool",
+      "outcome": "ask_user",
+      "behavior": "gateway: unrecognized tool classifies unknown_effect → fail-safe ask_user; server: tools/call for an unregistered name → -32011",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-14; packages/mcp-server/src/McpAgentServer.test.ts (ERR_TOOL_NOT_FOUND)",
+      "notes": ""
+    },
+    {
+      "id": "FC-15",
+      "condition": "policy engine exception (a rule throws during evaluation)",
+      "outcome": "throw-loud",
+      "behavior": "evaluatePolicy does not catch rule exceptions; the throw propagates to the caller — an exception inside the policy engine can never be read as ALLOW",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-15",
+      "notes": "Verified by construction: evaluate() has no try/catch around the rule loop."
+    },
+    {
+      "id": "FC-16",
+      "condition": "evidence / AEP emission failure",
+      "outcome": "not-applicable",
+      "behavior": "the firewall does not side-effect-emit evidence; GatewayDecision.evidenceRef is a returned data structure produced deterministically from the decision. Downstream emission (mcp-gateway AuditLogger, middleware, AEP records) is consumer-owned.",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-16; packages/mcp-gateway/src/audit.ts",
+      "notes": "Per the evidence rule: if a deployment makes evidence policy-required, enforcement of that requirement lives in the consumer's pipeline (middleware), not in this package. No path in this package turns emission failure into a silent ALLOW."
+    },
+    {
+      "id": "FC-17",
+      "condition": "audit sink failure (logger throws)",
+      "outcome": "throw-loud",
+      "behavior": "a throwing AuditLogger/middleware propagates the exception to the caller's pipeline — audit failures are loud; composeMiddleware additionally makes double-next() a loud error to prevent double-emitted audit entries",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-17; packages/mcp-gateway/src/middleware.ts",
+      "notes": ""
+    },
+    {
+      "id": "FC-18",
+      "condition": "runtime/sandbox unavailable where a rule depends on runtime enforcement",
+      "outcome": "not-applicable",
+      "behavior": "no rule in @wasmagent/mcp-firewall depends on a runtime sandbox; physical enforcement is the kernel/sandbox boundary (see threat model out-of-scope)",
+      "test_or_evidence": "docs/security/mcp-firewall-threat-model.md; docs/security/mcp-firewall-security-model.md",
+      "notes": "Claim ceiling: the firewall governs 'should this execution be allowed', not 'can this process physically do X'."
+    },
+    {
+      "id": "FC-19",
+      "condition": "DNS / post-resolution enforcement unavailable for a network-sensitive action",
+      "outcome": "not-applicable",
+      "behavior": "SSRF_LOCALHOST_RULE is lexical value classification at decision time; it makes no DNS resolution and has no post-resolution dependency",
+      "test_or_evidence": "packages/mcp-firewall/src/sink-policy.ts::SSRF_LOCALHOST_RULE; packages/mcp-firewall/src/resource-adversarial.test.ts",
+      "notes": "Post-resolution/DNS-rebinding enforcement belongs to runtime network enforcement, outside this package."
+    },
+    {
+      "id": "FC-20",
+      "condition": "canonical-path/symlink enforcement unavailable for a path-sensitive action",
+      "outcome": "not-applicable",
+      "behavior": "classifyResourcePath is lexical; canonical-path and symlink resolution are not attempted, so they cannot silently fail",
+      "test_or_evidence": "packages/mcp-firewall/src/resource-path.ts; packages/mcp-firewall/src/resource-adversarial.test.ts::PATH-ADV",
+      "notes": "Canonical-path/symlink enforcement belongs to the runtime/sandbox layer."
+    },
+    {
+      "id": "FC-21",
+      "condition": "transport disconnect during a state-changing call",
+      "outcome": "not-applicable",
+      "behavior": "the gateway decision is synchronous and pre-effect; a disconnect does not roll back an allowed call and does not revoke a decision. Effects complete under the authority that was granted at decision time; evidenceRef retains the decision record for audit.",
+      "test_or_evidence": "packages/mcp-firewall/src/gateway.ts (evaluate is transport-free); packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-21",
+      "notes": "Honest boundary: no distributed-transaction rollback exists; do not claim 'disconnect aborts effects'."
+    },
+    {
+      "id": "FC-22",
+      "condition": "explicit custom/empty rule stack (caller replaces the hardened default)",
+      "outcome": "degraded-with-evidence",
+      "behavior": "the caller's stack has full responsibility; an empty stack allows flows the hardened stack would contain. This allow path is DELIBERATE and NAMED: evidenceRef.securityProfile reports 'custom' (never 'hardened'), WIRE-06 documents caller responsibility, and legacy/custom stacks are excluded from F2 containment claims.",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-22; packages/mcp-firewall/src/gateway-hardening.test.ts::WIRE-06/WIRE-06B",
+      "notes": "This is the matrix's 'allow under degraded conditions' case: deliberate, named, machine-visible in evidenceRef."
+    }
+  ],
+  "invariants": [
+    {
+      "id": "FC-INV-01",
+      "statement": "No row whose condition is a missing security dependency yields decision allow on the default hardened path.",
+      "test_or_evidence": "packages/mcp-firewall/src/fail-closed-matrix.test.ts::FC-INV-01"
+    },
+    {
+      "id": "FC-INV-02",
+      "statement": "Rows with outcome not-applicable state the layer that owns the failure mode; none converts a boundary failure of another layer into a firewall claim.",
+      "test_or_evidence": "docs/security/mcp-firewall-fail-closed.md"
+    }
+  ]
+}
