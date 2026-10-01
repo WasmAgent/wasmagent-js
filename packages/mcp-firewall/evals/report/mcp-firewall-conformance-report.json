@@ -1,0 +1,666 @@
+{
+  "schema": "wasmagent-mcp-firewall-conformance-report/v1",
+  "identity": {
+    "repository": "WasmAgent/wasmagent-js",
+    "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+    "package_version": "2.2.1",
+    "generated_at_utc": "2026-10-01T01:54:15.008Z",
+    "checkpoint": "docs/security/mcp-firewall-hardening-checkpoint.md",
+    "corpus": {
+      "train": {
+        "sha256": "4b352ba01768eca59c0cc438e4bf3ef3b84cdc00d15660f9c657285668afd276",
+        "samples": 38
+      },
+      "dev": {
+        "sha256": "e14c1949f6594ef077aebb49d933802e9bfdfcf5a13f0c6437b0b8f056ff1e97",
+        "samples": 11
+      },
+      "holdout": {
+        "sha256": "7078a4c89595eed3e6c36fc415440aeb3af6fbab2faca0c4eef774abc1ea4060",
+        "samples": 11
+      },
+      "redteam": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "samples": 0
+      },
+      "external": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "samples": 0
+      }
+    },
+    "baseline_identity": {
+      "file": "packages/mcp-firewall/evals/baseline/mcp-firewall-baseline-v1.json",
+      "sha256": "e5b63d71bdc80e0a3e3ef33b10b272c859e483ff6567edd630f71c00d80dd138",
+      "mutation_detection_rate": 0.826,
+      "splits": {
+        "train": 38,
+        "dev": 11,
+        "holdout": 11
+      },
+      "source_sha": "9b2e6ec652db73e7612001b083d319b92dca05e5"
+    },
+    "metadata": {
+      "phase": "F2",
+      "adversarial_evaluation": "f2_gates_passed",
+      "maturity": "beta",
+      "redteam_run": false,
+      "external_evaluation": "not_run"
+    }
+  },
+  "protocol_matrix": {
+    "authority": "packages/mcp-firewall/evals/protocol/mcp-protocol-matrix.json",
+    "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+    "status_counts": {
+      "implemented-not-conformance-tested": 4,
+      "partially-verified": 4,
+      "not-evaluated": 2,
+      "verified": 24,
+      "not-implemented": 7
+    },
+    "rows": [
+      {
+        "section": "protocol_revisions",
+        "id": "REV-2025-03-26",
+        "name": "MCP 2025-03-26 (Streamable HTTP introduced)",
+        "status": "implemented-not-conformance-tested"
+      },
+      {
+        "section": "protocol_revisions",
+        "id": "REV-2025-06-18",
+        "name": "MCP 2025-06-18 (structured tool output)",
+        "status": "implemented-not-conformance-tested"
+      },
+      {
+        "section": "protocol_revisions",
+        "id": "REV-2025-11-25",
+        "name": "MCP 2025-11-25 stable (over-the-wire target)",
+        "status": "partially-verified"
+      },
+      {
+        "section": "protocol_revisions",
+        "id": "REV-2026-07-28-RC",
+        "name": "MCP 2026-07-28 Release Candidate",
+        "status": "not-evaluated"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-STDIO",
+        "name": "stdio transport (newline-delimited JSON-RPC)",
+        "status": "verified"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-STREAMABLE-HTTP",
+        "name": "Streamable HTTP transport",
+        "status": "verified"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-SSE-SERVER",
+        "name": "Legacy HTTP+SSE server transport",
+        "status": "not-implemented"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-SSE-CLIENT",
+        "name": "SSE fallback (client side)",
+        "status": "implemented-not-conformance-tested"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-SESSIONLESS",
+        "name": "Sessionless HTTP behavior (no Mcp-Session-Id reliance)",
+        "status": "verified"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-JSONRPC-SINGLE",
+        "name": "JSON-RPC single request over HTTP",
+        "status": "verified"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-JSONRPC-BATCH",
+        "name": "JSON-RPC batch (array body)",
+        "status": "verified"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-MALFORMED-JSON",
+        "name": "Malformed JSON",
+        "status": "verified"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-MALFORMED-ENVELOPE",
+        "name": "Malformed JSON-RPC envelope (wrong jsonrpc / missing method / non-object)",
+        "status": "verified"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-REQUEST-ID-EDGE",
+        "name": "Duplicate / null request-id edge cases",
+        "status": "verified"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-DISCONNECT",
+        "name": "Disconnect / reconnect",
+        "status": "partially-verified"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-TIMEOUT",
+        "name": "Sync-call timeout escalation",
+        "status": "verified"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-CANCEL-TASK",
+        "name": "Task cancellation (tasks/cancel)",
+        "status": "verified"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-CANCEL-REQUEST",
+        "name": "Request cancellation (notifications/cancelled)",
+        "status": "not-implemented"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-CONCURRENCY",
+        "name": "Concurrent requests on one server instance",
+        "status": "verified"
+      },
+      {
+        "section": "transport_framing",
+        "id": "TF-BACKPRESSURE",
+        "name": "Backpressure / flow control",
+        "status": "not-evaluated"
+      },
+      {
+        "section": "methods",
+        "id": "M-INITIALIZE",
+        "name": "initialize",
+        "status": "verified"
+      },
+      {
+        "section": "methods",
+        "id": "M-NEGOTIATION",
+        "name": "Protocol-version negotiation (echo/agree with client preference)",
+        "status": "not-implemented"
+      },
+      {
+        "section": "methods",
+        "id": "M-PING",
+        "name": "ping",
+        "status": "verified"
+      },
+      {
+        "section": "methods",
+        "id": "M-TOOLS-LIST",
+        "name": "tools/list",
+        "status": "verified"
+      },
+      {
+        "section": "methods",
+        "id": "M-TOOLS-CALL",
+        "name": "tools/call",
+        "status": "verified"
+      },
+      {
+        "section": "methods",
+        "id": "M-RESOURCES",
+        "name": "resources/* (resources/list, resources/read, …)",
+        "status": "not-implemented"
+      },
+      {
+        "section": "methods",
+        "id": "M-PROMPTS",
+        "name": "prompts/* (prompts/list, prompts/get)",
+        "status": "not-implemented"
+      },
+      {
+        "section": "methods",
+        "id": "M-NOTIFICATIONS",
+        "name": "Notifications (no-id messages)",
+        "status": "verified"
+      },
+      {
+        "section": "methods",
+        "id": "M-TASKS",
+        "name": "Tasks API (tasks/create, tasks/get, tasks/cancel, tasks/respond, tasks/list)",
+        "status": "verified"
+      },
+      {
+        "section": "methods",
+        "id": "M-ELICITATION",
+        "name": "Elicitation (await_human_input via tasks/respond)",
+        "status": "verified"
+      },
+      {
+        "section": "methods",
+        "id": "M-SAMPLING-SERVER",
+        "name": "sampling/createMessage (server-initiated)",
+        "status": "not-implemented"
+      },
+      {
+        "section": "methods",
+        "id": "M-SAMPLING-CLIENT",
+        "name": "Sampling callback (client side)",
+        "status": "implemented-not-conformance-tested"
+      },
+      {
+        "section": "methods",
+        "id": "M-EXTENSIONS",
+        "name": "Extension methods / unknown method handling",
+        "status": "verified"
+      },
+      {
+        "section": "firewall_inspection",
+        "id": "FI-DESCRIPTOR",
+        "name": "Registration / descriptor inspection (vetting at list time)",
+        "status": "verified"
+      },
+      {
+        "section": "firewall_inspection",
+        "id": "FI-REQUEST-INSPECTION",
+        "name": "Client → server request inspection (per-invocation gateway)",
+        "status": "verified"
+      },
+      {
+        "section": "firewall_inspection",
+        "id": "FI-CALL-ARGS-POLICY",
+        "name": "Call-argument policy (structural value signals, tenant, sinks)",
+        "status": "verified"
+      },
+      {
+        "section": "firewall_inspection",
+        "id": "FI-RESULT-HANDLING",
+        "name": "Server → client result handling (taint observation, quarantine rendering)",
+        "status": "verified"
+      },
+      {
+        "section": "firewall_inspection",
+        "id": "FI-TAINT-PROPAGATION",
+        "name": "Taint label propagation across derived observations",
+        "status": "verified"
+      },
+      {
+        "section": "firewall_inspection",
+        "id": "FI-RESULT-TO-NEXT-CALL",
+        "name": "Result-to-next-call information flow (post-call reuse as arguments)",
+        "status": "partially-verified"
+      },
+      {
+        "section": "firewall_inspection",
+        "id": "FI-RESPONSE-DLP",
+        "name": "Response secret/PII enforcement (DLP over returned content)",
+        "status": "not-implemented"
+      },
+      {
+        "section": "firewall_inspection",
+        "id": "FI-CROSS-TOOL-FLOW",
+        "name": "Cross-tool information-flow enforcement",
+        "status": "partially-verified"
+      }
+    ],
+    "conformance_gaps": [
+      {
+        "id": "GAP-BATCH-NOTIF",
+        "section": "transport_framing",
+        "rows": [
+          "TF-JSONRPC-BATCH",
+          "M-NOTIFICATIONS"
+        ],
+        "description": "RESOLVED: a notification inside a JSON-RPC batch used to produce an id:null error entry in the batch reply, and a lone notification over HTTP used to return 200 with an error body instead of 202/no-body. Fixed in the conformance patch; PROTO-NOTIF-01..03 pin the corrected behavior.",
+        "disposition": "resolved — rows flipped to verified with pinned tests"
+      }
+    ]
+  },
+  "adversarial_evidence": {
+    "authority": "packages/mcp-firewall/evals/results/structural-escape-metrics.json",
+    "provenance": "live-run (regenerated by the structural escape gate test)",
+    "text_mutation": {
+      "scenarios": 242,
+      "escapes": 0,
+      "escape_rate": 0
+    },
+    "structural_mutation": {
+      "scenarios": 102,
+      "escapes": 0,
+      "escape_rate": 0
+    },
+    "combined_cross_product": {
+      "scenarios": 24684,
+      "escape_rate": 0
+    },
+    "holdout_samples": 11,
+    "redteam_corpus_samples": 0,
+    "external_corpus_samples": 0,
+    "adaptive_redteam_run": "not_run",
+    "external_evaluation": "not_run"
+  },
+  "fail_closed_matrix": {
+    "authority": "packages/mcp-firewall/evals/fail-closed/fail-closed-matrix.json",
+    "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+    "outcome_counts": {
+      "throw-loud": 4,
+      "deny": 1,
+      "not-applicable": 7,
+      "ask_user": 8,
+      "reject_protocol": 1,
+      "degraded-with-evidence": 1
+    },
+    "rows": [
+      {
+        "id": "FC-01",
+        "condition": "identity absent (GatewayRequest.identity missing at runtime)",
+        "outcome": "throw-loud"
+      },
+      {
+        "id": "FC-02",
+        "condition": "tenant context absent where tenant enforcement is enabled",
+        "outcome": "deny"
+      },
+      {
+        "id": "FC-03",
+        "condition": "policy bundle missing/unloadable",
+        "outcome": "not-applicable"
+      },
+      {
+        "id": "FC-04",
+        "condition": "capability registry absent while a trusted profile declares required capabilities",
+        "outcome": "ask_user"
+      },
+      {
+        "id": "FC-05",
+        "condition": "tool security profile unknown (no registered profile)",
+        "outcome": "ask_user"
+      },
+      {
+        "id": "FC-06",
+        "condition": "approval/consent missing for a state-changing call that would otherwise ask",
+        "outcome": "ask_user"
+      },
+      {
+        "id": "FC-07",
+        "condition": "approval expired (consent expiresAt in the past)",
+        "outcome": "ask_user"
+      },
+      {
+        "id": "FC-08",
+        "condition": "approval bound to stale descriptor (consent/toolSnapshotHash mismatch)",
+        "outcome": "ask_user"
+      },
+      {
+        "id": "FC-09",
+        "condition": "descriptor changed after snapshot (profile rug-pull)",
+        "outcome": "ask_user"
+      },
+      {
+        "id": "FC-10",
+        "condition": "malformed tool args (null where an object is required)",
+        "outcome": "throw-loud"
+      },
+      {
+        "id": "FC-11",
+        "condition": "malformed tool args (non-object scalar)",
+        "outcome": "ask_user"
+      },
+      {
+        "id": "FC-12",
+        "condition": "malformed JSON-RPC (unparseable / invalid envelope)",
+        "outcome": "reject_protocol"
+      },
+      {
+        "id": "FC-13",
+        "condition": "unsupported protocol revision requested",
+        "outcome": "not-applicable"
+      },
+      {
+        "id": "FC-14",
+        "condition": "unknown tool",
+        "outcome": "ask_user"
+      },
+      {
+        "id": "FC-15",
+        "condition": "policy engine exception (a rule throws during evaluation)",
+        "outcome": "throw-loud"
+      },
+      {
+        "id": "FC-16",
+        "condition": "evidence / AEP emission failure",
+        "outcome": "not-applicable"
+      },
+      {
+        "id": "FC-17",
+        "condition": "audit sink failure (logger throws)",
+        "outcome": "throw-loud"
+      },
+      {
+        "id": "FC-18",
+        "condition": "runtime/sandbox unavailable where a rule depends on runtime enforcement",
+        "outcome": "not-applicable"
+      },
+      {
+        "id": "FC-19",
+        "condition": "DNS / post-resolution enforcement unavailable for a network-sensitive action",
+        "outcome": "not-applicable"
+      },
+      {
+        "id": "FC-20",
+        "condition": "canonical-path/symlink enforcement unavailable for a path-sensitive action",
+        "outcome": "not-applicable"
+      },
+      {
+        "id": "FC-21",
+        "condition": "transport disconnect during a state-changing call",
+        "outcome": "not-applicable"
+      },
+      {
+        "id": "FC-22",
+        "condition": "explicit custom/empty rule stack (caller replaces the hardened default)",
+        "outcome": "degraded-with-evidence"
+      }
+    ],
+    "critical_invariant": "For a security-sensitive call: missing authority/context required by the active policy must never silently become ALLOW."
+  },
+  "information_flow_cases": {
+    "authority": "packages/mcp-firewall/evals/evidence/information-flow-results.json",
+    "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+    "cases": [
+      {
+        "id": "IF-01",
+        "description": "tool result contains instruction-like text",
+        "detection": "warned (instruction-like text detected in observation)",
+        "taint": "tainted",
+        "policy": "ask_user",
+        "effect": "quarantine-rendered (base64 boundary) before prompt assembly; next call evaluated on its own merits"
+      },
+      {
+        "id": "IF-02",
+        "description": "tool result contains a secret-like value reused as network-sink argument",
+        "detection": "missed (result text not semantically flagged)",
+        "taint": "clean (no labels attached — honest)",
+        "policy": "deny",
+        "effect": "denied — value-shape boundary (URL destination + secret-shaped value) held without semantic detection"
+      },
+      {
+        "id": "IF-03",
+        "description": "read-capability result reused as argument to a declared external-network sink",
+        "detection": "missed",
+        "taint": "clean",
+        "policy": "deny",
+        "effect": "denied — profile-authoritative rule (declared sink + sensitive arg path)"
+      },
+      {
+        "id": "IF-04",
+        "description": "result from tenant A reused in a tenant B action",
+        "detection": "not_applicable (result text benign)",
+        "taint": "clean",
+        "policy": "deny",
+        "effect": "denied — tenant isolation rule on the cross-tenant resource reference"
+      },
+      {
+        "id": "IF-05",
+        "description": "result attempts to alter tool selection / approval state",
+        "detection": "warned (instruction-like: 'system:')",
+        "taint": "tainted",
+        "policy": "ask_user",
+        "effect": "held for human confirmation — forged approval text mints no consent record"
+      },
+      {
+        "id": "IF-06",
+        "description": "benign response; the next action crosses an authority boundary",
+        "detection": "not_applicable",
+        "taint": "clean",
+        "policy": "deny",
+        "effect": "denied — capability grant required by the profile is absent"
+      },
+      {
+        "id": "IF-07a",
+        "description": "tainted value transformed/renamed before reaching a sink (base64)",
+        "detection": "missed",
+        "taint": "clean",
+        "policy": "allow",
+        "effect": "EXECUTED — documented limitation: value-transform defeats value-shape detection; automatic taint-through-transformation is NOT claimed"
+      },
+      {
+        "id": "IF-07b",
+        "description": "transformed secret where the profile declares the arg path sensitive",
+        "detection": "missed",
+        "taint": "clean",
+        "policy": "deny",
+        "effect": "denied — operator-declared sensitiveArgPaths boundary"
+      },
+      {
+        "id": "IF-08",
+        "description": "allowed read followed by a disallowed write/send",
+        "detection": "not_applicable",
+        "taint": "clean",
+        "policy": "deny",
+        "effect": "denied — required capability for the external write was never granted"
+      }
+    ],
+    "documented_limitations": [
+      "IF-07a"
+    ]
+  },
+  "commit_time_authority_cases": {
+    "authority": "packages/mcp-firewall/evals/evidence/commit-time-authority-results.json",
+    "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+    "cases": [
+      {
+        "id": "CT-01",
+        "dimension": "approval expiry",
+        "plan_decision": "allow",
+        "change": "approval expiresAt passes",
+        "commit_decision": "ask_user"
+      },
+      {
+        "id": "CT-02",
+        "dimension": "tool descriptor snapshot",
+        "plan_decision": "allow",
+        "change": "descriptor description mutated (rug-pull)",
+        "commit_decision": "ask_user"
+      },
+      {
+        "id": "CT-03",
+        "dimension": "capability grant expiry",
+        "plan_decision": "ask_user",
+        "change": "grant expiresAt passes",
+        "commit_decision": "deny"
+      },
+      {
+        "id": "CT-04",
+        "dimension": "capability grant revocation",
+        "plan_decision": "ask_user",
+        "change": "operator revokes the grant",
+        "commit_decision": "deny"
+      },
+      {
+        "id": "CT-05",
+        "dimension": "consent scope (bound args)",
+        "plan_decision": "allow",
+        "change": "arguments substituted after planning",
+        "commit_decision": "ask_user"
+      },
+      {
+        "id": "CT-06",
+        "dimension": "identity/session binding",
+        "plan_decision": "allow",
+        "change": "commit arrives on a different session",
+        "commit_decision": "ask_user"
+      },
+      {
+        "id": "CT-07",
+        "dimension": "principal/workspace binding",
+        "plan_decision": "allow",
+        "change": "different principal attempts the commit",
+        "commit_decision": "ask_user"
+      },
+      {
+        "id": "CT-08",
+        "dimension": "budget/limit (scope lease)",
+        "plan_decision": "allow (lease valid)",
+        "change": "invocationCount reaches maxInvocations",
+        "commit_decision": "lease invalid — caller must re-authorize (isScopeLeaseValid=false)"
+      },
+      {
+        "id": "CT-09",
+        "dimension": "target resource",
+        "plan_decision": "ask_user",
+        "change": "commit targets tenant-b resource under tenant-a authority",
+        "commit_decision": "deny"
+      }
+    ],
+    "model": "recompute-at-commit; no durable plan object with expected-state-transition preconditions is implemented"
+  },
+  "performance": {
+    "authority": "packages/mcp-firewall/evals/results/perf-measurements.json",
+    "note": "Informational measurements (P1-08). No regression budget frozen yet — observe clean CI runners first.",
+    "environment": {
+      "runtime": "bun",
+      "version": "1.3.14",
+      "cpus": 15
+    },
+    "measurements_us": {
+      "normalizePayload": {
+        "p50": 1,
+        "p95": 2.2
+      },
+      "vetTool": {
+        "p50": 23.3,
+        "p95": 36.8
+      },
+      "evaluatePolicy_hardened_stack": {
+        "p50": 26.5,
+        "p95": 34.1
+      },
+      "MCPGateway_evaluate": {
+        "p50": 6.7,
+        "p95": 11.7
+      },
+      "profile_register_and_evaluate": {
+        "p50": 5.8,
+        "p95": 9.3
+      }
+    },
+    "claim_ceiling": "informational only; no regression budget frozen; no throughput claims at any scale"
+  },
+  "claim_ceiling": [
+    "Project-owned evaluation at a single tested commit — NOT independent certification.",
+    "Semantic detection is defence-in-depth, not the root of trust; detector bypass does not imply an unsafe effect, and detection completeness is not claimed.",
+    "The firewall is not an OS/kernel sandbox: physical capability enforcement belongs to the runtime/sandbox layer.",
+    "DNS rebinding / post-resolution enforcement belongs to runtime network enforcement, not to this package.",
+    "Canonical-path/symlink enforcement belongs to the runtime/sandbox layer; firewall path classification is lexical.",
+    "Unsupported MCP surfaces (resources/*, prompts/*, notifications/cancelled, server-side SSE) remain unsupported.",
+    "F2 zero-escape results apply ONLY to the frozen declared corpus and mutator set at the tested commit.",
+    "No claim of exhaustive adversarial completeness; the adaptive/external red-team evaluation has not been run.",
+    "The information-flow fixtures demonstrate per-call authority and structural boundaries; IF-07a is a documented limitation (value transformation defeats value-shape detection), not a containment pass."
+  ],
+  "external_evaluation": "not_run",
+  "independent_verification": "not_established",
+  "capture_completeness": "NOT_ESTABLISHED — capture completeness is never provable from signed records alone"
+}
