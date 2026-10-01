@@ -132,12 +132,12 @@
       {
         "id": "TF-JSONRPC-BATCH",
         "name": "JSON-RPC batch (array body)",
-        "status": "partially-verified",
-        "test_or_evidence": "packages/mcp-server/src/McpAgentServer.test.ts (handles batch requests); packages/mcp-server/src/protocol-conformance.test.ts (batch-too-large 413, duplicate ids, mixed batch)",
+        "status": "verified",
+        "test_or_evidence": "packages/mcp-server/src/McpAgentServer.test.ts (handles batch requests); packages/mcp-server/src/protocol-conformance.test.ts (PROTO-BATCH-01 batch-too-large 413, PROTO-DUPID-01 duplicate ids, PROTO-NOTIF-01/02 notification handling)",
         "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
         "owner_package": "@wasmagent/mcp-server",
         "claim_ceiling": "maxBatchSize default 20 (413 beyond); stdio framing carries no batches (one message per line)",
-        "notes": "CONFORMANCE GAP GAP-BATCH-NOTIF: a notification inside a batch yields an id:null error entry in the batch reply instead of being answered-with-nothing; a lone notification over HTTP returns 200+error body instead of 202/no-body. Nonconforming with JSON-RPC 2.0 notification semantics and with this file's own documented intent. Tracked; fix lands with the conformance patch, after which this row flips to verified."
+        "notes": "GAP-BATCH-NOTIF resolved: notifications inside a batch get no response entry; all-notification batches return 204."
       },
       {
         "id": "TF-MALFORMED-JSON",
@@ -304,12 +304,12 @@
       {
         "id": "M-NOTIFICATIONS",
         "name": "Notifications (no-id messages)",
-        "status": "partially-verified",
-        "test_or_evidence": "packages/mcp-server/src/stdio.test.ts (notification gets NO response); GAP-BATCH-NOTIF for the batch/HTTP paths",
+        "status": "verified",
+        "test_or_evidence": "packages/mcp-server/src/stdio.test.ts (notification gets NO response); packages/mcp-server/src/protocol-conformance.test.ts (PROTO-NOTIF-01..03 over HTTP/batch)",
         "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
         "owner_package": "@wasmagent/mcp-server",
-        "claim_ceiling": "notifications are handled for side effects only on stdio; server emits no notifications (listChanged false, no progress)",
-        "notes": "See TF-JSONRPC-BATCH for the open conformance gap."
+        "claim_ceiling": "notifications are handled for side effects only, never answered (stdio, single HTTP 202, batch entries dropped); server emits no notifications (listChanged false, no progress)",
+        "notes": ""
       },
       {
         "id": "M-TASKS",
@@ -450,8 +450,8 @@
       "id": "GAP-BATCH-NOTIF",
       "section": "transport_framing",
       "rows": ["TF-JSONRPC-BATCH", "M-NOTIFICATIONS"],
-      "description": "A notification inside a JSON-RPC batch produces an id:null error entry in the batch reply; a lone notification over HTTP returns 200 with an error body instead of 202/no-body. Contradicts JSON-RPC 2.0 notification semantics and the documented intent in fetchHandler.ts.",
-      "disposition": "fix + flip rows to verified in the conformance patch (PR2)"
+      "description": "RESOLVED: a notification inside a JSON-RPC batch used to produce an id:null error entry in the batch reply, and a lone notification over HTTP used to return 200 with an error body instead of 202/no-body. Fixed in the conformance patch; PROTO-NOTIF-01..03 pin the corrected behavior.",
+      "disposition": "resolved — rows flipped to verified with pinned tests"
     }
   ],
   "claim_ceiling_global": [

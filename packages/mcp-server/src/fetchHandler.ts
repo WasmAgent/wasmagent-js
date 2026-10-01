@@ -86,7 +86,11 @@ export function createFetchHandler(
     }
 
     // Batch support: spec allows an array of requests, each handled
-    // independently. Notifications (no id) get no response and are filtered.
+    // independently. Notifications (JSON-RPC object with a method but no id)
+    // are handled for side effects and get NO response entry — responding to
+    // them would violate JSON-RPC 2.0 batch semantics (and this handler's own
+    // documented intent; surfaced as GAP-BATCH-NOTIF in the protocol matrix).
+    // Non-object batch items keep their parse-error responses (id null).
     if (Array.isArray(body)) {
       if (body.length > maxBatchSize) {
         return jsonResp(
@@ -95,17 +99,34 @@ export function createFetchHandler(
           allowOrigin
         );
       }
-      const handled = await Promise.all(body.map((b) => server.handle(b)));
-      const responses = handled.map((h) => h.response).filter((r) => r.id !== undefined);
+      const handled = await Promise.all(
+        body.map(async (b) => {
+          const isNotification =
+            typeof b === "object" &&
+            b !== null &&
+            "method" in (b as Record<string, unknown>) &&
+            !("id" in (b as Record<string, unknown>));
+          const h = await server.handle(b);
+          return isNotification ? undefined : h.response;
+        })
+      );
+      const responses = handled.filter((r) => r !== undefined);
       if (responses.length === 0) {
         return new Response(null, { status: 204, headers: corsHeaders(allowOrigin) });
       }
       return jsonResp(responses, 200, allowOrigin);
     }
+    // Single notification over Streamable HTTP: accepted, no response body
+    // (202 Accepted), per the MCP transport spec.
+    const isNotification =
+      typeof body === "object" &&
+      body !== null &&
+      "method" in (body as Record<string, unknown>) &&
+      !("id" in (body as Record<string, unknown>));
     const result = await server.handle(body);
-    // For notifications (id absent) the spec wants no body — but JSON-RPC
-    // 2.0 also tolerates an empty 200; we choose 200 with an empty array to
-    // avoid clients hanging waiting for a response.
+    if (isNotification) {
+      return new Response(null, { status: 202, headers: corsHeaders(allowOrigin) });
+    }
     return jsonResp(result.response, 200, allowOrigin);
   };
 }
