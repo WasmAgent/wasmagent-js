@@ -36,7 +36,7 @@ jobs:
       # only makes the runner OIDC-ready so the eventual token->OIDC switch is a
       # config change, not a toolchain upgrade. Requires per-package trusted
       # publishers configured on npmjs.com before dropping NPM_TOKEN.
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "24"
           package-manager-cache: false
