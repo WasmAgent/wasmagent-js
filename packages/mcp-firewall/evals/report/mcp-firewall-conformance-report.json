@@ -2,9 +2,9 @@
   "schema": "wasmagent-mcp-firewall-conformance-report/v1",
   "identity": {
     "repository": "WasmAgent/wasmagent-js",
-    "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+    "tested_sha": "47ae05f3baca5a198b40b17e310e3d117228fbd8",
     "package_version": "2.2.1",
-    "generated_at_utc": "2026-10-01T01:54:15.008Z",
+    "generated_at_utc": "2026-10-01T06:08:00.103Z",
     "checkpoint": "docs/security/mcp-firewall-hardening-checkpoint.md",
     "corpus": {
       "train": {
@@ -49,12 +49,12 @@
   },
   "protocol_matrix": {
     "authority": "packages/mcp-firewall/evals/protocol/mcp-protocol-matrix.json",
-    "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+    "tested_sha": "47ae05f3baca5a198b40b17e310e3d117228fbd8",
     "status_counts": {
       "implemented-not-conformance-tested": 4,
-      "partially-verified": 4,
+      "partially-verified": 2,
       "not-evaluated": 2,
-      "verified": 24,
+      "verified": 26,
       "not-implemented": 7
     },
     "rows": [
@@ -290,7 +290,7 @@
         "section": "firewall_inspection",
         "id": "FI-RESULT-TO-NEXT-CALL",
         "name": "Result-to-next-call information flow (post-call reuse as arguments)",
-        "status": "partially-verified"
+        "status": "verified"
       },
       {
         "section": "firewall_inspection",
@@ -302,7 +302,7 @@
         "section": "firewall_inspection",
         "id": "FI-CROSS-TOOL-FLOW",
         "name": "Cross-tool information-flow enforcement",
-        "status": "partially-verified"
+        "status": "verified"
       }
     ],
     "conformance_gaps": [
@@ -343,7 +343,7 @@
   },
   "fail_closed_matrix": {
     "authority": "packages/mcp-firewall/evals/fail-closed/fail-closed-matrix.json",
-    "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+    "tested_sha": "47ae05f3baca5a198b40b17e310e3d117228fbd8",
     "outcome_counts": {
       "throw-loud": 4,
       "deny": 1,
@@ -468,7 +468,7 @@
   },
   "information_flow_cases": {
     "authority": "packages/mcp-firewall/evals/evidence/information-flow-results.json",
-    "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+    "tested_sha": "47ae05f3baca5a198b40b17e310e3d117228fbd8",
     "cases": [
       {
         "id": "IF-01",
@@ -522,9 +522,17 @@
         "id": "IF-07a",
         "description": "tainted value transformed/renamed before reaching a sink (base64)",
         "detection": "missed",
-        "taint": "clean",
-        "policy": "allow",
-        "effect": "EXECUTED — documented limitation: value-transform defeats value-shape detection; automatic taint-through-transformation is NOT claimed"
+        "taint": "tainted (explicit propagateTaint labels)",
+        "policy": "deny",
+        "effect": "denied — sink-tainted-provenance-deny,sink-tainted-identity-deny"
+      },
+      {
+        "id": "IF-07a-2",
+        "description": "transformed secret re-placed under renamed/nested args (identity match)",
+        "detection": "missed",
+        "taint": "tainted (explicit propagateTaint labels)",
+        "policy": "deny",
+        "effect": "denied — sink-tainted-provenance-deny,sink-tainted-identity-deny"
       },
       {
         "id": "IF-07b",
@@ -543,13 +551,11 @@
         "effect": "denied — required capability for the external write was never granted"
       }
     ],
-    "documented_limitations": [
-      "IF-07a"
-    ]
+    "documented_limitations": []
   },
   "commit_time_authority_cases": {
     "authority": "packages/mcp-firewall/evals/evidence/commit-time-authority-results.json",
-    "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+    "tested_sha": "47ae05f3baca5a198b40b17e310e3d117228fbd8",
     "cases": [
       {
         "id": "CT-01",
@@ -658,7 +664,7 @@
     "Unsupported MCP surfaces (resources/*, prompts/*, notifications/cancelled, server-side SSE) remain unsupported.",
     "F2 zero-escape results apply ONLY to the frozen declared corpus and mutator set at the tested commit.",
     "No claim of exhaustive adversarial completeness; the adaptive/external red-team evaluation has not been run.",
-    "The information-flow fixtures demonstrate per-call authority and structural boundaries; IF-07a is a documented limitation (value transformation defeats value-shape detection), not a containment pass."
+    "The information-flow fixtures demonstrate per-call authority and structural boundaries; transformed secrets with threaded provenance are denied by the IF-07a gate (labels + content identity, not value shape), while provenance the caller never threads stays outside the gate (no automatic process-wide taint ledger)."
   ],
   "external_evaluation": "not_run",
   "independent_verification": "not_established",

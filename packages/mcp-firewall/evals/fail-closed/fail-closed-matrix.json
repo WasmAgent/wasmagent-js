@@ -2,7 +2,7 @@
   "$schema": "wasmagent-mcp-fail-closed-matrix/v1",
   "title": "MCP Firewall fail-closed behavior matrix",
   "repository": "WasmAgent/wasmagent-js",
-  "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+  "tested_sha": "47ae05f3baca5a198b40b17e310e3d117228fbd8",
   "recorded_at_utc": "2026-10-01T00:00:00Z",
   "identity": {
     "checkpoint": "docs/security/mcp-firewall-hardening-checkpoint.md",

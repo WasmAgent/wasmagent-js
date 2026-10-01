@@ -42,11 +42,20 @@ export interface TaintedObservation {
 /**
  * Structured JSON output of renderTaintedObservation.
  * The raw content is base64-encoded to prevent any re-interpretation as instructions.
+ *
+ * `taintLabels` and `contentHash` are carried through the render boundary so
+ * provenance survives prompt assembly (IF-07a): a caller that re-observes the
+ * rendered content can `propagateTaint` from an observation carrying the same
+ * labels instead of silently dropping them here.
  */
 export interface RenderedTaintedObservation {
   trust: TrustLevel;
   tool: string;
   content_b64: string;
+  /** Semantic taint labels carried by the observation (empty = unlabeled). */
+  taintLabels: TaintLabel[];
+  /** Content hash of the observation — the provenance identity anchor. */
+  contentHash: string;
 }
 
 import { createHash } from "node:crypto";
@@ -154,5 +163,7 @@ export function renderTaintedObservation(
     trust: obs.trust,
     tool: safeTool,
     content_b64,
+    taintLabels: [...obs.taintLabels],
+    contentHash: obs.contentHash,
   };
 }

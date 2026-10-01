@@ -64,7 +64,9 @@ capability + tenant + consent checks
                 ↓
           taint boundary
           (taintObservation, label propagation,
-           renderTaintedObservation)
+           renderTaintedObservation,
+           IF-07a provenance gate: threaded labels + content
+           identity enter the next sink decision)
                 ↓
        sandbox/runtime effect
        (tool call, network, filesystem, shell)

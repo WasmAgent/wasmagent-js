@@ -52,7 +52,7 @@ const committed = readJson(
 function freshInputs() {
   return {
     repository: "WasmAgent/wasmagent-js",
-    testedSha: "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+    testedSha: "47ae05f3baca5a198b40b17e310e3d117228fbd8",
     generatedAtUtc: "2026-10-01T00:00:00Z",
     packageVersion: "2.2.1",
     metadata: readJson("packages/mcp-firewall/package-metadata.json"),
@@ -152,7 +152,16 @@ describe("CR: conformance report truth model", () => {
     expect(committed.external_evaluation).toBe("not_run");
     expect(committed.independent_verification).toBe("not_established");
     expect(committed.capture_completeness).toContain("NOT_ESTABLISHED");
-    expect(committed.information_flow_cases.documented_limitations).toContain("IF-07a");
+    // IF-07a is now DENIED by the provenance gate (labels + content identity);
+    // the honest boundary moved into the claim ceiling: provenance the caller
+    // never threads stays outside the gate (no automatic process-wide taint
+    // ledger), so the documented-limitations list no longer names IF-07a.
+    expect(committed.information_flow_cases.documented_limitations).not.toContain("IF-07a");
+    const if07a = committed.information_flow_cases.cases.find((c) => c.id === "IF-07a");
+    expect(if07a?.policy).toBe("deny");
+    expect(JSON.stringify(committed.claim_ceiling)).toContain(
+      "no automatic process-wide taint ledger"
+    );
     expect(committed.protocol_matrix.conformance_gaps.length).toBeGreaterThan(0);
   });
 });

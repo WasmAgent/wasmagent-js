@@ -2,7 +2,7 @@
 
 > GENERATED from `packages/mcp-firewall/evals/fail-closed/fail-closed-matrix.json` — that JSON file is the authority. Regenerate with `node packages/mcp-firewall/evals/fail-closed/render-fail-closed-matrix.mjs`.
 
-- Repository: `WasmAgent/wasmagent-js` at `c1a573fc8f49f0f2162a17ddca199bb61fcdd94d`
+- Repository: `WasmAgent/wasmagent-js` at `47ae05f3baca5a198b40b17e310e3d117228fbd8`
 - Evidence anchor: `docs/security/mcp-firewall-hardening-checkpoint.md`
 
 **Purpose.** State exactly what happens when a security dependency or context item is unavailable. The claim is NOT 'everything fails closed'; it is that no missing dependency silently becomes ALLOW.

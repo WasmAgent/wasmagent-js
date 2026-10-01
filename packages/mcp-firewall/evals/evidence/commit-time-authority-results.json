@@ -1,6 +1,6 @@
 {
   "schema": "wasmagent-mcp-firewall-commit-time-authority/v1",
-  "tested_sha": "c1a573fc8f49f0f2162a17ddca199bb61fcdd94d",
+  "tested_sha": "47ae05f3baca5a198b40b17e310e3d117228fbd8",
   "generated_by": "packages/mcp-firewall/src/commit-time-authority.test.ts",
   "claim_ceiling": "recompute-at-commit model: every evaluate() recomputes authority from current state; a durable plan/commit API with expected-state-transition preconditions is not implemented",
   "cases": [

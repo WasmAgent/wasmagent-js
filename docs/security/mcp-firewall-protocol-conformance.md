@@ -3,7 +3,7 @@
 > GENERATED from `packages/mcp-firewall/evals/protocol/mcp-protocol-matrix.json` — that JSON file is the authority. Do not edit this view by hand; run `node packages/mcp-firewall/evals/protocol/render-protocol-matrix.mjs` after editing the matrix.
 
 - Repository: `WasmAgent/wasmagent-js`
-- Tested commit: `c1a573fc8f49f0f2162a17ddca199bb61fcdd94d`
+- Tested commit: `47ae05f3baca5a198b40b17e310e3d117228fbd8`
 - @wasmagent/mcp-firewall: `2.2.1`, @wasmagent/mcp-server: `1.1.16`
 - Evidence anchor: `docs/security/mcp-firewall-hardening-checkpoint.md`
 
@@ -86,13 +86,13 @@
 | FI-REQUEST-INSPECTION | Client → server request inspection (per-invocation gateway) | verified | packages/mcp-firewall/src/gateway-hardening.test.ts (WIRE-01..07) | @wasmagent/mcp-firewall |  |
 | FI-CALL-ARGS-POLICY | Call-argument policy (structural value signals, tenant, sinks) | verified | packages/mcp-firewall/src/gateway-hardening.test.ts (TENANT-ADV-01..06, STRUCT-ADV-01..08); packages/mcp-firewall/src/resource-adversarial.test.ts (PATH-ADV, SSRF) | @wasmagent/mcp-firewall | name heuristics are supplementary; profiles/structural signals are authoritative |
 | FI-RESULT-HANDLING | Server → client result handling (taint observation, quarantine rendering) | verified | packages/mcp-firewall/src/taint-labels.test.ts; gateway.wrapResult / renderTaintedObservation (base64 boundary) | @wasmagent/mcp-firewall | rendering-level boundary for prompt assembly; NOT a response-content DLP product |
-| FI-TAINT-PROPAGATION | Taint label propagation across derived observations | verified | packages/mcp-firewall/src/taint-labels.test.ts (propagateTaint) | @wasmagent/mcp-firewall | explicit propagation via API calls; no automatic process-wide taint ledger |
-| FI-RESULT-TO-NEXT-CALL | Result-to-next-call information flow (post-call reuse as arguments) | partially-verified | packages/mcp-firewall/src/gateway-hardening.test.ts (value-driven secret→network deny); bounded cross-tool fixtures land with the information-flow workstream | @wasmagent/mcp-firewall | cross-tool effect containment via policy + capability boundaries; semantic result-text detection is not the root of trust |
+| FI-TAINT-PROPAGATION | Taint label propagation across derived observations | verified | packages/mcp-firewall/src/taint-labels.test.ts (propagateTaint); packages/mcp-firewall/src/provenance-gate.test.ts (labels enter sink decisions via GatewayRequest.inputProvenance) | @wasmagent/mcp-firewall | explicit propagation via API calls; propagated labels are decision-load-bearing (IF-07a gate); no automatic process-wide taint ledger |
+| FI-RESULT-TO-NEXT-CALL | Result-to-next-call information flow (post-call reuse as arguments) | verified | packages/mcp-firewall/src/provenance-gate.test.ts (GATE-01..11); packages/mcp-firewall/src/information-flow.test.ts (IF-07a denied via provenance threading, IF-07a-2 identity match at renamed/nested args) | @wasmagent/mcp-firewall | threaded-provenance reuse of sensitive data at dangerous sinks is denied by labels + content identity, not value shape; provenance the caller never threads stays outside the gate (no automatic process-wide taint ledger); semantic result-text detection is not the root of trust |
 | FI-RESPONSE-DLP | Response secret/PII enforcement (DLP over returned content) | not-implemented | taint tagging marks observations; no content-scanning DLP over tool results | @wasmagent/mcp-firewall | taint tagging must NOT be presented as response DLP |
-| FI-CROSS-TOOL-FLOW | Cross-tool information-flow enforcement | partially-verified | sink-policy rules (SECRET_NETWORK_SINK_RULE, capability registry) constrain cross-boundary effects per call; cross-tool chaining is caller-integrated via propagateTaint | @wasmagent/mcp-firewall | per-call structural boundaries are enforced; automatic cross-tool taint ledger does not exist |
+| FI-CROSS-TOOL-FLOW | Cross-tool information-flow enforcement | verified | sink-policy rules (SECRET_NETWORK_SINK_RULE, capability registry) constrain cross-boundary effects per call; packages/mcp-firewall/src/provenance-policy.ts enforces threaded cross-tool flows at the next sink decision; fixtures IF-07a/IF-07a-2 | @wasmagent/mcp-firewall | enforced for caller-threaded provenance (labels + content identity); automatic cross-tool taint ledger does not exist — unthreaded flows remain caller responsibility |
 
-- **FI-RESULT-TO-NEXT-CALL** notes: Dedicated adversarial fixtures tracked in the hardening workstream (PR2).
-- **FI-CROSS-TOOL-FLOW** notes: Information-flow fixture family (PR2) documents exactly where boundaries hold.
+- **FI-RESULT-TO-NEXT-CALL** notes: IF-07a flipped from documented limitation to enforced deny by the provenance gate.
+- **FI-CROSS-TOOL-FLOW** notes: Information-flow fixture family documents exactly where boundaries hold.
 
 ## Known conformance gaps (explicit, not hidden)
 
