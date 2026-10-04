@@ -21,7 +21,7 @@
         "@changesets/cli": "^3.0.2",
         "@cyclonedx/cyclonedx-npm": "^6.0.0",
         "@types/node": "^26.1.2",
-        "@wasmagent/protocol": "^0.1.7",
+        "@wasmagent/protocol": "^0.1.11",
         "happy-dom": "^20.11.1",
         "node-llama-cpp": "^3.19.1",
         "turbo": "^2.10.7",
@@ -295,7 +295,7 @@
     },
     "packages/a2a": {
       "name": "@wasmagent/a2a",
-      "version": "1.0.17",
+      "version": "1.0.18",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -320,7 +320,7 @@
     },
     "packages/ag-ui": {
       "name": "@wasmagent/ag-ui",
-      "version": "1.0.17",
+      "version": "1.0.18",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -339,7 +339,7 @@
     },
     "packages/aisdk": {
       "name": "@wasmagent/aisdk",
-      "version": "1.0.18",
+      "version": "1.0.19",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -356,7 +356,7 @@
     },
     "packages/capability-compiler": {
       "name": "@wasmagent/capability-compiler",
-      "version": "1.7.14",
+      "version": "1.7.15",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -368,7 +368,7 @@
     },
     "packages/claude-agent-sdk": {
       "name": "@wasmagent/claude-agent-sdk",
-      "version": "1.0.17",
+      "version": "1.0.18",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -387,7 +387,7 @@
     },
     "packages/cli": {
       "name": "@wasmagent/cli",
-      "version": "1.3.19",
+      "version": "1.3.20",
       "bin": {
         "wasmagent": "./dist/index.js",
         "wasmagent-cli": "./dist/index.js",
@@ -413,7 +413,7 @@
     },
     "packages/cloudflare-worker": {
       "name": "@wasmagent/cloudflare-worker",
-      "version": "0.4.2",
+      "version": "0.4.3",
       "dependencies": {
         "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
         "@wasmagent/ag-ui": "workspace:*",
@@ -433,10 +433,10 @@
     },
     "packages/compliance": {
       "name": "@wasmagent/compliance",
-      "version": "3.1.7",
+      "version": "3.1.8",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
-        "@wasmagent/protocol": "^0.1.7",
+        "@wasmagent/protocol": "^0.1.11",
         "zod": "^3.23.0",
       },
       "devDependencies": {
@@ -446,10 +446,10 @@
     },
     "packages/core": {
       "name": "@wasmagent/core",
-      "version": "3.8.0",
+      "version": "3.9.0",
       "dependencies": {
         "@wasmagent/agent-prompts": "workspace:*",
-        "@wasmagent/protocol": "^0.1.7",
+        "@wasmagent/protocol": "^0.1.11",
         "zod": "^3.23.0",
         "zod-to-json-schema": "^3.25.2",
       },
@@ -469,7 +469,7 @@
     },
     "packages/devtools": {
       "name": "@wasmagent/devtools",
-      "version": "1.7.14",
+      "version": "1.7.15",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -492,7 +492,7 @@
     },
     "packages/eliza-rollout-plugin": {
       "name": "@wasmagent/eliza-rollout-plugin",
-      "version": "1.0.18",
+      "version": "1.0.19",
       "dependencies": {
         "@wasmagent/core": "^1.0.3",
       },
@@ -509,7 +509,7 @@
     },
     "packages/evals-runner": {
       "name": "@wasmagent/evals-runner",
-      "version": "1.10.15",
+      "version": "1.10.16",
       "bin": {
         "wasmagent-evals": "./dist/cli.js",
       },
@@ -527,7 +527,7 @@
     },
     "packages/kernel-pyodide": {
       "name": "@wasmagent/kernel-pyodide",
-      "version": "1.0.17",
+      "version": "1.0.18",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -541,7 +541,7 @@
     },
     "packages/kernel-quickjs": {
       "name": "@wasmagent/kernel-quickjs",
-      "version": "1.2.14",
+      "version": "1.2.15",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -563,7 +563,7 @@
     },
     "packages/kernel-remote": {
       "name": "@wasmagent/kernel-remote",
-      "version": "1.3.18",
+      "version": "1.3.19",
       "dependencies": {
         "@wasmagent/core": "^1.3.4",
       },
@@ -581,7 +581,7 @@
     },
     "packages/kernel-wasmtime": {
       "name": "@wasmagent/kernel-wasmtime",
-      "version": "1.20.1",
+      "version": "1.20.2",
       "dependencies": {
         "@seda-protocol/wasm-metering-ts": "^2.0.1",
         "@wasmagent/core": "workspace:*",
@@ -594,7 +594,7 @@
     },
     "packages/mastra-sandbox": {
       "name": "@wasmagent/mastra-sandbox",
-      "version": "1.0.17",
+      "version": "1.0.18",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -616,7 +616,7 @@
     },
     "packages/mcp-firewall": {
       "name": "@wasmagent/mcp-firewall",
-      "version": "2.2.1",
+      "version": "2.3.0",
       "dependencies": {
         "@wasmagent/mcp-server": "workspace:*",
       },
@@ -629,7 +629,7 @@
     },
     "packages/mcp-gateway": {
       "name": "@wasmagent/mcp-gateway",
-      "version": "0.1.17",
+      "version": "0.2.0",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/mcp-firewall": "workspace:*",
@@ -655,7 +655,7 @@
       "name": "@wasmagent/mcp-posture",
       "version": "0.2.4",
       "dependencies": {
-        "@wasmagent/protocol": "^0.1.9",
+        "@wasmagent/protocol": "^0.1.11",
       },
       "devDependencies": {
         "@types/node": "^26.1.1",
@@ -664,7 +664,7 @@
     },
     "packages/mcp-server": {
       "name": "@wasmagent/mcp-server",
-      "version": "1.1.16",
+      "version": "1.1.17",
       "bin": {
         "wasmagent-mcp-server": "./dist/stdio.js",
       },
@@ -679,7 +679,7 @@
     },
     "packages/model-anthropic": {
       "name": "@wasmagent/model-anthropic",
-      "version": "2.0.10",
+      "version": "2.0.11",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -693,7 +693,7 @@
     },
     "packages/model-deepseek": {
       "name": "@wasmagent/model-deepseek",
-      "version": "2.0.10",
+      "version": "2.0.11",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -707,7 +707,7 @@
     },
     "packages/model-doubao": {
       "name": "@wasmagent/model-doubao",
-      "version": "2.0.10",
+      "version": "2.0.11",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -721,7 +721,7 @@
     },
     "packages/model-local": {
       "name": "@wasmagent/model-local",
-      "version": "1.0.18",
+      "version": "1.0.19",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "@wasmagent/models": "workspace:*",
@@ -739,7 +739,7 @@
     },
     "packages/model-minimax": {
       "name": "@wasmagent/model-minimax",
-      "version": "2.0.10",
+      "version": "2.0.11",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -754,7 +754,7 @@
     },
     "packages/model-moonshot": {
       "name": "@wasmagent/model-moonshot",
-      "version": "2.0.10",
+      "version": "2.0.11",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -768,7 +768,7 @@
     },
     "packages/model-openai": {
       "name": "@wasmagent/model-openai",
-      "version": "2.0.10",
+      "version": "2.0.11",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -783,7 +783,7 @@
     },
     "packages/model-qwen": {
       "name": "@wasmagent/model-qwen",
-      "version": "2.0.10",
+      "version": "2.0.11",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -797,7 +797,7 @@
     },
     "packages/model-zhipu": {
       "name": "@wasmagent/model-zhipu",
-      "version": "2.0.10",
+      "version": "2.0.11",
       "dependencies": {
         "@wasmagent/models": "workspace:*",
       },
@@ -811,7 +811,7 @@
     },
     "packages/models": {
       "name": "@wasmagent/models",
-      "version": "2.0.10",
+      "version": "2.0.11",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -831,7 +831,7 @@
     },
     "packages/openai-agents": {
       "name": "@wasmagent/openai-agents",
-      "version": "1.0.17",
+      "version": "1.0.18",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -850,7 +850,7 @@
     },
     "packages/otel-exporter": {
       "name": "@wasmagent/otel-exporter",
-      "version": "7.1.0",
+      "version": "7.1.1",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -865,7 +865,7 @@
     },
     "packages/react": {
       "name": "@wasmagent/react",
-      "version": "1.5.4",
+      "version": "1.5.5",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
       },
@@ -880,7 +880,7 @@
     },
     "packages/tools-browser": {
       "name": "@wasmagent/tools-browser",
-      "version": "1.0.17",
+      "version": "1.0.18",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "zod": "^3.23.0",
@@ -899,7 +899,7 @@
     },
     "packages/tools-rag": {
       "name": "@wasmagent/tools-rag",
-      "version": "1.0.17",
+      "version": "1.0.18",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "zod": "^3.23.0",
@@ -911,7 +911,7 @@
     },
     "packages/tools-web": {
       "name": "@wasmagent/tools-web",
-      "version": "1.0.17",
+      "version": "1.0.18",
       "dependencies": {
         "@wasmagent/core": "workspace:*",
         "zod": "^3.23.0",
@@ -964,7 +964,7 @@
         "@wasmagent/core": "workspace:*",
         "@wasmagent/kernel-quickjs": "workspace:*",
         "@wasmagent/models": "workspace:*",
-        "@wasmagent/protocol": "^0.1.5",
+        "@wasmagent/protocol": "^0.1.11",
         "@wasmagent/ui-cards": "workspace:*",
         "zod": "^3.0.0",
       },
@@ -1705,7 +1705,7 @@
 
     "@wasmagent/otel-exporter": ["@wasmagent/otel-exporter@workspace:packages/otel-exporter"],
 
-    "@wasmagent/protocol": ["@wasmagent/protocol@0.1.7", "https://registry.npmmirror.com/@wasmagent/protocol/-/protocol-0.1.7.tgz", { "bin": { "wasmagent-protocol": "bin/cli.js" } }, "sha512-XOVNiky/7yGswggSr9h3IorHZal0eytCrirmV8tEJxs9pZbasKmCHdUwaZp5veGVxf7qLapsfmrq3x6nRxqA2Q=="],
+    "@wasmagent/protocol": ["@wasmagent/protocol@0.1.11", "https://registry.npmmirror.com/@wasmagent/protocol/-/protocol-0.1.11.tgz", { "bin": { "wasmagent-protocol": "bin/cli.js" } }, "sha512-6DZosrZOyeqOUCME/XZuWoQOuK839/Labcdu2HazfUTBWeGh6HymQpsP90Y3QlmVKDFti/uxOhfRaT55Z9ui6g=="],
 
     "@wasmagent/react": ["@wasmagent/react@workspace:packages/react"],
 
@@ -3129,13 +3129,9 @@
 
     "@wasmagent/cloudflare-worker/wrangler": ["wrangler@3.114.17", "https://registry.npmmirror.com/wrangler/-/wrangler-3.114.17.tgz", { "dependencies": { "@cloudflare/kv-asset-handler": "0.3.4", "@cloudflare/unenv-preset": "2.0.2", "@esbuild-plugins/node-globals-polyfill": "0.2.3", "@esbuild-plugins/node-modules-polyfill": "0.2.2", "blake3-wasm": "2.1.5", "esbuild": "0.17.19", "miniflare": "3.20250718.3", "path-to-regexp": "6.3.0", "unenv": "2.0.0-rc.14", "workerd": "1.20250718.0" }, "optionalDependencies": { "@cloudflare/workers-types": "4.20260604.1", "fsevents": "2.3.3", "sharp": "0.33.5" }, "bin": { "wrangler": "bin/wrangler.js", "wrangler2": "bin/wrangler.js" } }, "sha512-tAvf7ly+tB+zwwrmjsCyJ2pJnnc7SZhbnNwXbH+OIdVas3zTSmjcZOjmLKcGGptssAA3RyTKhcF9BvKZzMUycA=="],
 
-    "@wasmagent/compliance/@wasmagent/protocol": ["@wasmagent/protocol@0.1.9", "https://registry.npmmirror.com/@wasmagent/protocol/-/protocol-0.1.9.tgz", { "bin": { "wasmagent-protocol": "bin/cli.js" } }, "sha512-yYrogBQaqlFZXieHoOjufU6vLogjSQQy+rf+Xe5mxW5wXpNkXBBvTt0uUp9ap00hR1mmGI6u9NKtLTo4EMTwnw=="],
-
     "@wasmagent/compliance/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
     "@wasmagent/core/@anthropic-ai/sdk": ["@anthropic-ai/sdk@0.124.0", "https://registry.npmmirror.com/@anthropic-ai/sdk/-/sdk-0.124.0.tgz", { "dependencies": { "json-schema-to-ts": "^3.1.1", "standardwebhooks": "^1.0.0" }, "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" }, "optionalPeers": ["zod"], "bin": { "anthropic-ai-sdk": "bin/cli" } }, "sha512-cN5O8i9UVxHeOQAzj/XjshWXG8KiibJDw9OGpH2Z/eR3n/RBxdoLxDJOcfqAJWvjaMDFfHTBADU04hWRJVkDyA=="],
-
-    "@wasmagent/core/@wasmagent/protocol": ["@wasmagent/protocol@0.1.9", "https://registry.npmmirror.com/@wasmagent/protocol/-/protocol-0.1.9.tgz", { "bin": { "wasmagent-protocol": "bin/cli.js" } }, "sha512-yYrogBQaqlFZXieHoOjufU6vLogjSQQy+rf+Xe5mxW5wXpNkXBBvTt0uUp9ap00hR1mmGI6u9NKtLTo4EMTwnw=="],
 
     "@wasmagent/core/openai": ["openai@4.104.0", "https://registry.npmmirror.com/openai/-/openai-4.104.0.tgz", { "dependencies": { "@types/node": "18.19.130", "@types/node-fetch": "2.6.13", "abort-controller": "3.0.0", "agentkeepalive": "4.6.0", "form-data-encoder": "1.7.2", "formdata-node": "4.4.1", "node-fetch": "2.7.0" }, "optionalDependencies": { "ws": "8.21.0", "zod": "3.25.76" }, "bin": { "openai": "bin/cli" } }, "sha512-p99EFNsA/yX6UhVO93f5kJsDRLAg+CTA2RBqdHK4RtK8u5IJw32Hyb2dTGKbnnFmnuoBv5r7Z2CURI9sGZpSuA=="],
 
@@ -3144,8 +3140,6 @@
     "@wasmagent/eliza-rollout-plugin/@types/node": ["@types/node@26.1.1", "https://registry.npmmirror.com/@types/node/-/node-26.1.1.tgz", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-nxAkRSVkN1Y0JC1W8ky/fTfkGsMmcrRsbx+3XoZE+rMOX71kLYTV7fLXpqud1GpbpP5TuffXFqfX7fH2GgZREw=="],
 
     "@wasmagent/evals-runner/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
-
-    "@wasmagent/integration-tests/@wasmagent/protocol": ["@wasmagent/protocol@0.1.9", "https://registry.npmmirror.com/@wasmagent/protocol/-/protocol-0.1.9.tgz", { "bin": { "wasmagent-protocol": "bin/cli.js" } }, "sha512-yYrogBQaqlFZXieHoOjufU6vLogjSQQy+rf+Xe5mxW5wXpNkXBBvTt0uUp9ap00hR1mmGI6u9NKtLTo4EMTwnw=="],
 
     "@wasmagent/integration-tests/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
@@ -3158,8 +3152,6 @@
     "@wasmagent/mcp-firewall/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
     "@wasmagent/mcp-policy/@types/node": ["@types/node@26.1.1", "https://registry.npmmirror.com/@types/node/-/node-26.1.1.tgz", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-nxAkRSVkN1Y0JC1W8ky/fTfkGsMmcrRsbx+3XoZE+rMOX71kLYTV7fLXpqud1GpbpP5TuffXFqfX7fH2GgZREw=="],
-
-    "@wasmagent/mcp-posture/@wasmagent/protocol": ["@wasmagent/protocol@0.1.9", "https://registry.npmmirror.com/@wasmagent/protocol/-/protocol-0.1.9.tgz", { "bin": { "wasmagent-protocol": "bin/cli.js" } }, "sha512-yYrogBQaqlFZXieHoOjufU6vLogjSQQy+rf+Xe5mxW5wXpNkXBBvTt0uUp9ap00hR1mmGI6u9NKtLTo4EMTwnw=="],
 
     "@wasmagent/mcp-server/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
