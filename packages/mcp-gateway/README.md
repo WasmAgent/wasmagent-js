@@ -4,7 +4,7 @@
 
 MCP Gateway — identity propagation, server card validation, policy enforcement, and AEP evidence emission for MCP tool invocations.
 
-Extends `@wasmagent/mcp-firewall` with per-request identity (`RequestIdentity`), server card snapshots (`ServerCard`), and state-changing action approval via `MCPGateway`.
+Extends `@wasmagent/mcp-firewall` with per-request identity (`RequestIdentity`), server card snapshots (`ServerCard`), state-changing action approval via `MCPGateway`, and agent-loop provenance wiring: `createAgentPolicyGateway` implements `@wasmagent/core`'s `RunPolicyGateway` port so the provenance gate fires automatically inside a wired `ToolCallingAgent` run (run-scoped ledger, opt-in; no process-wide taint tracking).
 
 ## Install
 

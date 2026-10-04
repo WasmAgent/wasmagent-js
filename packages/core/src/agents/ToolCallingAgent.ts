@@ -12,6 +12,8 @@ import { MessageAssembler } from "../memory/MessageAssembler.js";
 import type { EnhancementPolicy, Model, ModelMessage } from "../models/types.js";
 import { TokenBudget } from "../models/types.js";
 import { HealthMetrics } from "../observability/HealthMetrics.js";
+import type { PolicyCallDecision, PolicyGatewayFactory } from "../policies/policyGateway.js";
+import { PolicyGatedRegistry, resolvePolicyGateway } from "../policies/policyGateway.js";
 import { deriveDependencies } from "../scheduler/deriveDeps.js";
 import type { IRNode } from "../scheduler/ir.js";
 import { SimpleIR } from "../scheduler/ir.js";
@@ -172,6 +174,15 @@ export interface ToolCallingAgentOptions {
     score: number;
     claim_ids: string[];
   }) => void;
+  /**
+   * IF-07c: per-run policy port (structural — see policies/policyGateway.ts).
+   * Before each tool call is dispatched, evaluateBeforeCall judges it
+   * (allow / deny / confirm); after each result, observeResult receives the
+   * exact string about to enter message history. A factory form receives the
+   * run's traceId so run-scoped state (e.g. a provenance ledger) dies with
+   * the run. Unset = zero behavior change.
+   */
+  policyGateway?: PolicyGatewayFactory;
 }
 
 /**
@@ -215,6 +226,8 @@ export class ToolCallingAgent {
   readonly #signal: AbortSignal | undefined;
   /** Optional callback for AEP verifier result emission from guardrail checks. */
   readonly #onVerifierResult: ToolCallingAgentOptions["onVerifierResult"];
+  /** IF-07c — per-run policy port option (instance or factory). */
+  readonly #policyGatewayOption: PolicyGatewayFactory | undefined;
   /** SI-6+8 — active config snapshot, built at construction and emitted at run_start. */
   readonly #runConfig: Omit<AgentRunConfig, "signal">;
   /** Cumulative token budget tracking across all runs. */
@@ -257,6 +270,7 @@ export class ToolCallingAgent {
       });
     this.#signal = opts.signal;
     this.#onVerifierResult = opts.onVerifierResult;
+    this.#policyGatewayOption = opts.policyGateway;
     // SI-6+8: build config snapshot once; reused at run_start and each checkpoint.
     this.#runConfig = {
       model: this.#model.providerId,
@@ -264,6 +278,7 @@ export class ToolCallingAgent {
       maxSteps: this.#maxSteps,
       ...(opts.stopPolicies?.length ? { stopPolicies: opts.stopPolicies } : {}),
       toolSynthesis: this.#synthesisCodeTool,
+      ...(opts.policyGateway ? { policyGateway: true } : {}),
     };
   }
 
@@ -290,6 +305,9 @@ export class ToolCallingAgent {
     // SI-7: run() opts take precedence over the constructor-bound signal.
     const signal = opts.signal ?? this.#signal;
     const traceId = `agent-${randomUUID()}`;
+    // IF-07c: per-run policy port — a factory form gets a fresh port (and
+    // fresh run-scoped state) for every run() invocation.
+    const policyGateway = resolvePolicyGateway(this.#policyGatewayOption, traceId);
     // SI-6: full config snapshot (signal flag resolved per-run).
     const agentConfig: AgentRunConfig = { ...this.#runConfig, signal: !!signal };
 
@@ -902,20 +920,71 @@ export class ToolCallingAgent {
         }
       }
 
+      // IF-07c: per-call policy evaluation before dispatch. Decisions are
+      // stashed by callId; the dispatch-time PolicyGatedRegistry enforces
+      // denies for both scheduler modes, and confirm decisions join the
+      // human-approval flow below. Denied calls never reach the approver.
+      const policyDecisions = new Map<string, PolicyCallDecision>();
+      if (policyGateway) {
+        for (const call of pendingCalls) {
+          const decision = policyGateway.evaluateBeforeCall({
+            callId: call.id,
+            toolName: call.name,
+            args: call.input,
+          });
+          // No checkpointer means there is no one to ask: a confirm degrades
+          // to deny rather than silently executing (fail-closed consent).
+          const effective: PolicyCallDecision =
+            decision.action === "confirm" && !this.#checkpointer
+              ? {
+                  action: "deny",
+                  ruleIds: ["consent-unavailable"],
+                  reason: `${decision.reason} (consent required but no checkpointer is wired — refusing fail-closed)`,
+                }
+              : decision;
+          policyDecisions.set(call.id, effective);
+          if (effective.action === "deny") {
+            HealthMetrics.getInstance().recordPolicyDenial();
+            yield {
+              traceId,
+              parentTraceId,
+              channel: "status" as const,
+              event: "status" as const,
+              data: {
+                phase: "policy_denied" as const,
+                toolName: call.name,
+                callId: call.id,
+                step,
+                ruleIds: effective.ruleIds,
+                reason: effective.reason,
+              },
+              timestampMs: Date.now(),
+            };
+          }
+        }
+      }
+
       // C1: per-tool human approval (needsApproval).
       // Check each pending call; if any tool requires approval, pause and wait.
       if (this.#checkpointer) {
         for (const call of pendingCalls) {
+          // IF-07c: policy-denied calls never reach the human.
+          if (policyDecisions.get(call.id)?.action === "deny") continue;
           const toolDef = this.#tools.get(call.name);
-          if (!toolDef?.needsApproval) continue;
+          const confirmDecision = policyDecisions.get(call.id);
+          const needsConfirm = confirmDecision?.action === "confirm";
           const needs =
-            typeof toolDef.needsApproval === "function"
+            needsConfirm ||
+            (typeof toolDef?.needsApproval === "function"
               ? await toolDef.needsApproval(call.input as never)
-              : toolDef.needsApproval;
+              : toolDef?.needsApproval) === true;
           if (!needs) continue;
 
           const promptId = `approval-${call.id}`;
-          const prompt = `Approve execution of tool "${call.name}" with args: ${JSON.stringify(call.input)}?`;
+          const prompt =
+            needsConfirm && confirmDecision?.action === "confirm"
+              ? confirmDecision.prompt
+              : `Approve execution of tool "${call.name}" with args: ${JSON.stringify(call.input)}?`;
 
           // Save checkpoint so caller can resume after providing response.
           await this.#checkpointer.save(traceId, {
@@ -970,8 +1039,20 @@ export class ToolCallingAgent {
             };
             return;
           }
+          // IF-07c: approved confirm decision — the call may now dispatch.
+          if (needsConfirm) {
+            policyDecisions.set(call.id, { action: "allow" });
+          }
         }
       }
+
+      // IF-07c: dispatch through the policy-gated registry when any call was
+      // judged; denied calls are answered with a blocked ToolResult without
+      // executing. Both scheduler modes share this single enforcement seam.
+      const effectiveRegistry =
+        policyGateway && policyDecisions.size > 0
+          ? new PolicyGatedRegistry(this.#tools, policyDecisions)
+          : this.#tools;
 
       // A1: build DAG IR and execute via Scheduler when scheduler="dag" (default).
       // Falls back to Promise.all when scheduler="parallel".
@@ -1002,7 +1083,7 @@ export class ToolCallingAgent {
           };
         });
         const ir = new SimpleIR(nodes);
-        const scheduler = new Scheduler(this.#tools);
+        const scheduler = new Scheduler(effectiveRegistry);
 
         // Collect results from scheduler events, mapping node_done/node_error back
         // to resolvedCalls in the same order as pendingCalls.
@@ -1125,13 +1206,22 @@ export class ToolCallingAgent {
             },
             timestampMs: Date.now(),
           };
+          // IF-07c: the port sees the exact string entering history (hash
+          // identity discipline — augmentError included for error results).
+          const finalOutput = res.isError
+            ? this.#augmentErrorWithFallbacks(call.name, res.output)
+            : res.output;
+          policyGateway?.observeResult({
+            callId: call.id,
+            toolName: call.name,
+            output: finalOutput,
+            isError: res.isError,
+          });
           resolvedCalls.push({
             toolCallId: call.id,
             toolName: call.name,
             toolInput: call.input,
-            toolOutput: res.isError
-              ? this.#augmentErrorWithFallbacks(call.name, res.output)
-              : res.output,
+            toolOutput: finalOutput,
             isError: res.isError,
             ...(res.isUntrusted ? { isUntrusted: true } : {}),
           });
@@ -1143,7 +1233,7 @@ export class ToolCallingAgent {
           let callIsUntrusted = false;
           const signal = this.#toolTimeoutMs ? AbortSignal.timeout(this.#toolTimeoutMs) : undefined;
           const _toolCallStart = Date.now();
-          const settled = this.#tools
+          const settled = effectiveRegistry
             .call({
               toolName: call.name,
               args: call.input,
@@ -1228,6 +1318,13 @@ export class ToolCallingAgent {
           if (isError) {
             yield* this.#emitFallbacksIfAny(call.name, toolOutput, traceId, parentTraceId, step);
           }
+          // IF-07c: the port sees the exact string entering history.
+          policyGateway?.observeResult({
+            callId: call.id,
+            toolName: call.name,
+            output: isError ? this.#augmentErrorWithFallbacks(call.name, toolOutput) : toolOutput,
+            isError,
+          });
           resolvedCalls.push({
             toolCallId: call.id,
             toolName: call.name,

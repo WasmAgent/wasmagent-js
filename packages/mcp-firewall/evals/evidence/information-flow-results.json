@@ -1,8 +1,8 @@
 {
   "schema": "wasmagent-mcp-firewall-information-flow/v1",
-  "tested_sha": "47ae05f3baca5a198b40b17e310e3d117228fbd8",
+  "tested_sha": "0dc88812f1c52d8c66797fc89094951475f244b8",
   "generated_by": "packages/mcp-firewall/src/information-flow.test.ts",
-  "claim_ceiling": "cross-tool effect containment via authority + structural boundaries; semantic result-text detection is defence-in-depth, not the root of trust; transformed secrets with threaded provenance are denied by the IF-07a gate (labels + content identity), while provenance the caller never threads stays outside the gate (no automatic process-wide taint ledger)",
+  "claim_ceiling": "cross-tool effect containment via authority + structural boundaries; semantic result-text detection is defence-in-depth, not the root of trust; transformed secrets with threaded provenance are denied by the IF-07a gate (labels + content identity), while provenance the caller never threads stays outside the gate (no automatic process-wide taint ledger); within a wired @wasmagent/core run (IF-07c) the runtime threads the run-scoped ledger automatically",
   "cases": [
     {
       "id": "IF-01",
@@ -98,7 +98,7 @@
         "sink-tainted-provenance-deny",
         "sink-tainted-identity-deny"
       ],
-      "notes": "deny keys on threaded provenance labels + value identity, not value shape; explicit provenance threading via propagateTaint + inputProvenance is required (no automatic process-wide taint ledger); authority fallback: operator profile sensitiveArgPaths (IF-07b)"
+      "notes": "deny keys on threaded provenance labels + value identity, not value shape; explicit provenance threading via propagateTaint + inputProvenance is what the gate consumes (no automatic process-wide taint ledger); within a wired agent run (IF-07c) the runtime threads the run-scoped ledger automatically; authority fallback: operator profile sensitiveArgPaths (IF-07b)"
     },
     {
       "id": "IF-07a-2",

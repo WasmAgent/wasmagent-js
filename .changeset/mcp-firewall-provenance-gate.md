@@ -6,7 +6,8 @@ feat(mcp-firewall): IF-07a provenance-preserving information-flow gate
 
 - `GatewayRequest.inputProvenance` threads explicit taint provenance
   (`TaintedObservation[]`) from earlier tool results into the next sink
-  decision; threading is the only channel — no process-wide taint ledger.
+  decision; threading is caller-side or run-scoped by a wired agent runtime
+  (IF-07c) — no process-wide taint ledger.
 - New gate rules (`src/provenance-policy.ts`): `sink-tainted-provenance-deny`
   (sensitive label `secret`/`credential` headed for a dangerous sink
   `network_send`/`credential_use`/`shell_exec`/`filesystem_write`) and

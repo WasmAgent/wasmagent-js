@@ -52,8 +52,8 @@ const committed = readJson(
 function freshInputs() {
   return {
     repository: "WasmAgent/wasmagent-js",
-    testedSha: "47ae05f3baca5a198b40b17e310e3d117228fbd8",
-    generatedAtUtc: "2026-10-01T00:00:00Z",
+    testedSha: "0dc88812f1c52d8c66797fc89094951475f244b8",
+    generatedAtUtc: "2026-10-04T00:00:00Z",
     packageVersion: "2.2.1",
     metadata: readJson("packages/mcp-firewall/package-metadata.json"),
     baseline: readJson("packages/mcp-firewall/evals/baseline/mcp-firewall-baseline-v1.json"),

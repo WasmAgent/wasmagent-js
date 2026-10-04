@@ -370,7 +370,7 @@ describe("CT: commit-time authorization regression", () => {
   it("CT-RESULTS: persist the commit-time matrix", () => {
     const out = {
       schema: "wasmagent-mcp-firewall-commit-time-authority/v1",
-      tested_sha: "47ae05f3baca5a198b40b17e310e3d117228fbd8",
+      tested_sha: "0dc88812f1c52d8c66797fc89094951475f244b8",
       generated_by: "packages/mcp-firewall/src/commit-time-authority.test.ts",
       claim_ceiling:
         "recompute-at-commit model: every evaluate() recomputes authority from current state; a durable plan/commit API with expected-state-transition preconditions is not implemented",

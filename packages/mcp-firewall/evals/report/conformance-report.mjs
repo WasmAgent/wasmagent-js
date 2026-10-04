@@ -35,7 +35,7 @@ const CLAIM_CEILING = [
   "Unsupported MCP surfaces (resources/*, prompts/*, notifications/cancelled, server-side SSE) remain unsupported.",
   "F2 zero-escape results apply ONLY to the frozen declared corpus and mutator set at the tested commit.",
   "No claim of exhaustive adversarial completeness; the adaptive/external red-team evaluation has not been run.",
-  "The information-flow fixtures demonstrate per-call authority and structural boundaries; transformed secrets with threaded provenance are denied by the IF-07a gate (labels + content identity, not value shape), while provenance the caller never threads stays outside the gate (no automatic process-wide taint ledger).",
+  "The information-flow fixtures demonstrate per-call authority and structural boundaries; transformed secrets with threaded provenance are denied by the IF-07a gate (labels + content identity, not value shape), while provenance the caller never threads stays outside the gate (no automatic process-wide taint ledger); within a wired agent run (IF-07c) the runtime threads the run-scoped ledger automatically.",
 ];
 
 export function buildConformanceReport(inputs) {

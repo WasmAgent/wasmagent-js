@@ -268,6 +268,11 @@ export type {
   ApprovalRequest,
   ApprovalRule,
   ApprovalStore,
+  PolicyCallDecision,
+  PolicyCallRequest,
+  PolicyGatewayFactory,
+  PolicyResultObservation,
+  RunPolicyGateway,
   WriteOpKind,
 } from "./policies/index.js";
 export {
@@ -275,7 +280,9 @@ export {
   applyApprovalPolicy,
   CloudflareKvApprovalStore,
   InMemoryApprovalStore,
+  PolicyGatedRegistry,
   PolicyPresets,
+  resolvePolicyGateway,
 } from "./policies/index.js";
 // State recovery — reconstruct runtime state from AEP evidence chains [beta]
 export type {

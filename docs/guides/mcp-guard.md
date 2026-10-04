@@ -144,11 +144,49 @@ const send = gw.evaluate({
 
 Deny matrix (explicit): labels `secret` / `credential` × sinks
 `network_send` / `credential_use` / `shell_exec` / `filesystem_write`.
-Honest boundary: provenance the caller never threads stays outside the gate —
+Honest boundary: provenance that is never threaded stays outside the gate —
 there is no automatic process-wide taint ledger. Operator profiles
 (`sensitiveArgPaths`) remain the independent structural fallback. Pinned by
 `GATE-01..11` (`src/provenance-gate.test.ts`) and fixtures `IF-07a` /
 `IF-07a-2` (`src/information-flow.test.ts`).
+
+### Automatic threading in the agent runtime (IF-07c)
+
+Hosts do not have to hand-thread provenance. `@wasmagent/core`'s
+`ToolCallingAgent` accepts a per-run `policyGateway` port;
+`@wasmagent/mcp-gateway` ships the reference adapter over `MCPGateway`:
+
+```ts
+import { ToolCallingAgent } from "@wasmagent/core";
+import { MCPGateway } from "@wasmagent/mcp-firewall";
+import { createAgentPolicyGateway } from "@wasmagent/mcp-gateway";
+
+const agent = new ToolCallingAgent({
+  tools,
+  model,
+  policyGateway: createAgentPolicyGateway({
+    gateway: new MCPGateway({ profileRegistry }),
+    toolDescriptors, // McpToolEntry for every registry tool
+    serverId: "srv",
+  }),
+});
+```
+
+With the port wired, every call is evaluated before dispatch with the run's
+provenance threaded automatically, and results of tools whose trusted profile
+declares `resultTaintLabels: ["secret"]` are minted into the run ledger at
+observe time — the vault→send flow above is denied with no caller code.
+
+Honest boundaries (same posture, sharper scope): the ledger is **run-scoped**
+— created per `run()` by the factory, discarded with the run; there is still
+no automatic process-wide taint ledger. Wiring is opt-in (unwired agents
+behave exactly as before). Whole-run threading means the per-call declaration
+is run-wide: after a labeled read, later deny-sink calls are gated by the
+label rule even with benign args — legitimate flows go through the
+operator-profile path. Identity matching is byte-exact over the strings the
+runtime observed (serialized result + JSON string leaves). Pinned by
+`packages/core/src/agents/ToolCallingAgent.provenance.test.ts` (fake port)
+and `packages/mcp-gateway/src/agent-loop.test.ts` (real gateway end-to-end).
 
 ## Run the demo
 

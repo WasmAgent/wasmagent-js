@@ -2,7 +2,8 @@
  * Provenance-preserving information-flow gate (IF-07a).
  *
  * Denies a tool invocation when EXPLICIT taint provenance from earlier tool
- * results — threaded by the caller through `GatewayRequest.inputProvenance` —
+ * results — threaded through `GatewayRequest.inputProvenance`, either by the
+ * caller or per run by a wired agent runtime (`RunPolicyGateway`, IF-07c) —
  * reaches a dangerous sink. The deny keys on propagated LABELS and value
  * IDENTITY, never on the value's shape, so encodings that defeat shape
  * detection (base64, rename, restructure) no longer bypass the gate.
@@ -22,10 +23,12 @@
  *    name, any nesting depth.
  *
  * Design boundary (honest claim ceiling): provenance enters the decision ONLY
- * when the caller threads it. There is NO automatic process-wide taint ledger
- * (the FI-TAINT-PROPAGATION posture is unchanged), and a transform the caller
- * never runs through `propagateTaint` is outside this gate. Operator profiles
- * (`sensitiveArgPaths`, IF-07b) remain the independent structural fallback.
+ * when it is threaded — by the caller, or per run by a wired agent runtime.
+ * Threading is run-scoped; there is NO automatic process-wide taint ledger
+ * (the FI-TAINT-PROPAGATION posture is unchanged), and a transform nobody
+ * runs through `propagateTaint` (or a labeled result nobody observes) is
+ * outside this gate. Operator profiles (`sensitiveArgPaths`, IF-07b) remain
+ * the independent structural fallback.
  *
  * Deny decisions are never downgraded by consent (evaluatePolicy contract).
  * A legitimate flow that must act on tainted data does so through the

@@ -247,7 +247,7 @@ Five-tier scale: **stable** | **beta** | **alpha** | **demo** | **research**
 | `@wasmagent/core` | **stable** | Public API; semver guaranteed |
 | `@wasmagent/kernel-quickjs` | **stable** | |
 | `@wasmagent/kernel-remote` | **stable** | |
-| `@wasmagent/mcp-gateway` | **stable** | Published 0.1.16; composes all firewall layers |
+| `@wasmagent/mcp-gateway` | **stable** | Published 0.1.16; composes all firewall layers; agent-loop provenance wiring (`createAgentPolicyGateway`, IF-07c) |
 | `@wasmagent/mcp-firewall` | **beta — F2 (Adversarially Hardened)** | Structural sink/capability policy + tool security profiles + unknown-profile fail-safe, default-wired; text/structural/combined escape 0 (25,028 scenarios); ScopeLease, ApprovalReceipt, vetTool |
 | `@wasmagent/aep` | **beta** | Current family aep/v0.5 (attribution grading); DSSE-only signing; legacy v0.1–v0.4 read-compatible, never emitted by default |
 | `@wasmagent/otel-exporter` | **alpha** | GENAI_SEMCONV, AEP↔OTel bridge |
