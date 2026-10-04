@@ -4,9 +4,9 @@
 
 ## 1. Identity
 
-- Repository: `WasmAgent/wasmagent-js` at `47ae05f3baca5a198b40b17e310e3d117228fbd8`
+- Repository: `WasmAgent/wasmagent-js` at `0dc88812f1c52d8c66797fc89094951475f244b8`
 - Package: @wasmagent/mcp-firewall 2.2.1 — phase `F2`, adversarial `f2_gates_passed`, maturity `beta`
-- Generated: 2026-10-01T06:08:00.103Z
+- Generated: 2026-10-04T14:57:34.230Z
 - Evidence anchor: `docs/security/mcp-firewall-hardening-checkpoint.md`
 - Baseline: `mcp-firewall-baseline-v1.json` (sha256 `e5b63d71bdc80e0a…`, mutation detection rate 0.826)
 
@@ -128,7 +128,7 @@ Ceiling: informational only; no regression budget frozen; no throughput claims a
 - Unsupported MCP surfaces (resources/*, prompts/*, notifications/cancelled, server-side SSE) remain unsupported.
 - F2 zero-escape results apply ONLY to the frozen declared corpus and mutator set at the tested commit.
 - No claim of exhaustive adversarial completeness; the adaptive/external red-team evaluation has not been run.
-- The information-flow fixtures demonstrate per-call authority and structural boundaries; transformed secrets with threaded provenance are denied by the IF-07a gate (labels + content identity, not value shape), while provenance the caller never threads stays outside the gate (no automatic process-wide taint ledger).
+- The information-flow fixtures demonstrate per-call authority and structural boundaries; transformed secrets with threaded provenance are denied by the IF-07a gate (labels + content identity, not value shape), while provenance the caller never threads stays outside the gate (no automatic process-wide taint ledger); within a wired agent run (IF-07c) the runtime threads the run-scoped ledger automatically.
 
 ## 9. External evaluation
 

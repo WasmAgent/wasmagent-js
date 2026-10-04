@@ -38,6 +38,8 @@ export interface AgentRunConfig {
   toolSynthesis?: string | null;
   /** True when an AbortSignal is bound at construction time. */
   signal?: boolean;
+  /** IF-07c: true when a policy gateway (per-run policy port) is wired. */
+  policyGateway?: boolean;
 }
 
 export type AgentEvent =
@@ -138,7 +140,15 @@ export type AgentEvent =
   | (AgentEventBase & {
       channel: "status";
       event: "status";
-      data: { phase: "tool_executing"; toolName?: string; callId?: string; step: number };
+      /** "policy_denied" (IF-07c): the wired policy gateway blocked this call. */
+      data: {
+        phase: "tool_executing" | "policy_denied";
+        toolName?: string;
+        callId?: string;
+        step: number;
+        ruleIds?: string[];
+        reason?: string;
+      };
     })
   /** B4: human-in-the-loop pause point. Agent is suspended until humanResponse is provided. */
   | (AgentEventBase & {

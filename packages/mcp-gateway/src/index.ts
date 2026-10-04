@@ -57,7 +57,9 @@ export {
   vetTool,
   vetTools,
 } from "@wasmagent/mcp-firewall";
-
+// IF-07c — agent-loop composition: RunPolicyGateway port over MCPGateway.
+export type { AgentPolicyGatewayOptions } from "./agent-loop.js";
+export { createAgentPolicyGateway } from "./agent-loop.js";
 // New mcp-gateway modules
 export type { AuditEvent, AuditLogger } from "./audit.js";
 export { buildAuditEvent, InMemoryAuditLogger } from "./audit.js";

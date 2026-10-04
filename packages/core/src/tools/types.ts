@@ -203,7 +203,11 @@ export interface ToolResult {
    */
   trust?: "trusted" | "untrusted";
   error?: {
-    code: "validation_error" | "capability_denied" | "execution_error";
+    /**
+     * "policy_denied" (IF-07c): the call was blocked by the wired policy
+     * gateway before execution — it never reached tool.forward().
+     */
+    code: "validation_error" | "capability_denied" | "execution_error" | "policy_denied";
     message: string;
     /** Structured partial to retry only the failing part. */
     retryHint?: string;

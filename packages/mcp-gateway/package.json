@@ -18,7 +18,9 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@wasmagent/mcp-firewall": "workspace:*"
+    "@wasmagent/core": "workspace:*",
+    "@wasmagent/mcp-firewall": "workspace:*",
+    "@wasmagent/mcp-server": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",

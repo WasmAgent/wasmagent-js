@@ -18,7 +18,7 @@ Pick your entry point:
 
 | Goal | Install |
 |---|---|
-| **Protect tools** — runtime firewall, policy enforcement, taint tracking with a provenance-preserving information-flow gate | `npm add @wasmagent/mcp-firewall` |
+| **Protect tools** — runtime firewall, policy enforcement, taint tracking with a provenance-preserving information-flow gate wired through the agent runtime | `npm add @wasmagent/mcp-firewall` |
 | **Record evidence** — signed AEP records after every agent run | `npm add @wasmagent/aep` |
 | **Admit from traces** — compliance scoring produces `ComplianceEvalRecord`s for downstream training | `npm add @wasmagent/aep @wasmagent/compliance` |
 | **Sync state** — reducer-backed agent↔UI shared state, agent reads projections + writes intent | `npm add @wasmagent/core` (`/shared-state` subpath) |
@@ -223,7 +223,7 @@ Three wedges where wasmagent stands apart from generic agent frameworks:
 | 7 | **Devtools + OTel** — local Studio, `gen_ai.*` semantic conventions (Datadog / Honeycomb / Grafana) | shipped |
 | 8 | **Goal-directed loop** — agent synthesises success criteria, verifies, retries with hints | shipped 2026-06-18 |
 | 9 | **Adaptive execution** — registered fallbacks (L1) → synthesised tool (L2) → relaxed goal (L3) | shipped 2026-06-18 |
-| 10 | **MCP runtime firewall** — `@wasmagent/mcp-firewall`: descriptor snapshot, static vetting (injection / exfiltration / rug-pull / taint), per-call policy, consent ledger | shipped 2026-06-25 |
+| 10 | **MCP runtime firewall** — `@wasmagent/mcp-firewall`: descriptor snapshot, static vetting (injection / exfiltration / rug-pull / taint), per-call policy, consent ledger, provenance gate auto-threaded through the agent runtime | shipped 2026-06-25 · provenance wiring 2026-10-04 |
 
 </details>
 

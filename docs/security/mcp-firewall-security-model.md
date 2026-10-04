@@ -66,7 +66,9 @@ capability + tenant + consent checks
           (taintObservation, label propagation,
            renderTaintedObservation,
            IF-07a provenance gate: threaded labels + content
-           identity enter the next sink decision)
+           identity enter the next sink decision;
+           IF-07c: threaded automatically per run by a
+           wired agent runtime — run-scoped, opt-in)
                 ↓
        sandbox/runtime effect
        (tool call, network, filesystem, shell)
@@ -89,7 +91,7 @@ layers below it.
 | 2 | **Static vetting + normalization pipeline** | `vetting.ts` (`vetTool`, `evaluateAdversarial`) | Injection strings, exfiltration keywords, invisible chars, sampling-abuse patterns; normalization decodes homoglyphs, URL-encoding, hex-escape, base64 fragments before detection |
 | 3 | **Per-call policy** | `policy.ts` (`evaluatePolicy`, `DEFAULT_RULES`, `DENY_BLOCKED_RULE`, `ASK_HIGH_RISK_RULE`) | Blocks or escalates calls based on vetting outcome and call-level context |
 | 4 | **Structural sink/capability guards** | `sink-policy.ts` (`SINK_POLICY_RULES`, `FULL_DEFAULT_RULES`, `makeSinkAwarePolicyRule`), `capability.ts` (`makeCapabilityPolicyRule`, `makeTenantIsolationRule`) | Deterministic sink classification (shell exec, network send, filesystem write, credential use); capability registry; cross-tenant isolation — all without semantic detection |
-| 5 | **Taint tracking + label propagation** | `taint.ts` (`taintObservation`, `renderTaintedObservation`) | Tags tool outputs with trust level; propagates taint labels to prevent raw external content from re-entering the prompt as trusted instructions |
+| 5 | **Taint tracking + label propagation** | `taint.ts` (`taintObservation`, `renderTaintedObservation`), `provenance-policy.ts` (IF-07a gate) | Tags tool outputs with trust level; propagates taint labels to prevent raw external content from re-entering the prompt as trusted instructions; profile-declared `resultTaintLabels` are minted by the wired agent runtime and the run-scoped ledger is threaded automatically (IF-07c, opt-in) |
 | 6 | **Consent ledger + argument scope binding** | `consent.ts` (`InMemoryConsentLedger`, `hashUiText`) | Ensures prior consent is invalidated on descriptor change (rug-pull); binds approval to the exact argument scope the user saw |
 | 7 | **Layered verdict** | `verdict.ts` (`composeVerdict`, `FirewallSecurityVerdict`) | Aggregates outputs of all layers into a machine-readable verdict; produces the `containment` field that proves bypass did not imply unsafe effect |
 

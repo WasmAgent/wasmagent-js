@@ -27,6 +27,7 @@ import {
   type DataSink,
   FULL_DEFAULT_RULES,
 } from "./sink-policy.js";
+import type { TaintLabel } from "./taint.js";
 import { classifyUrlTarget } from "./url-policy.js";
 
 // ── Profile model ────────────────────────────────────────────────────────────
@@ -50,6 +51,14 @@ export interface ToolSecurityProfile {
    * secret sources regardless of what the argument is called.
    */
   sensitiveArgPaths?: string[];
+  /**
+   * Taint labels carried by this tool's RESULTS (IF-07c). The wired agent
+   * runtime mints these onto result observations (`taintObservation`) when
+   * the output enters message history — the operator-authoritative way to
+   * mark outputs as `secret`/`credential` sources without content scanning
+   * (no DLP). Default: no labels.
+   */
+  resultTaintLabels?: TaintLabel[];
   /** Whether the tool may act across tenants. Default: same_tenant. */
   tenantScope?: "same_tenant" | "cross_tenant_allowed";
 }
@@ -139,6 +148,12 @@ export interface ResolvedToolSecurityContext {
   sinks: DataSink[];
   capabilitiesRequired: string[];
   provenance: EffectProvenance;
+  /**
+   * Result taint labels declared by the trusted profile (IF-07c); empty when
+   * no profile declares them. Surfaced on `GatewayDecision.resultTaintLabels`
+   * for the wired agent runtime to mint at result time.
+   */
+  resultTaintLabels: TaintLabel[];
 }
 
 /**
@@ -165,6 +180,7 @@ export function resolveToolSecurityContext(opts: {
       sinks: profile.sinks,
       capabilitiesRequired: profile.capabilitiesRequired,
       provenance: "trusted_profile",
+      resultTaintLabels: profile.resultTaintLabels ?? [],
     };
   }
 
@@ -180,6 +196,7 @@ export function resolveToolSecurityContext(opts: {
         sinks: nameSinks,
         capabilitiesRequired: [],
         provenance: "structural_signal",
+        resultTaintLabels: [],
       };
     }
   }
@@ -192,6 +209,7 @@ export function resolveToolSecurityContext(opts: {
         sinks: nameSinks,
         capabilitiesRequired: [],
         provenance: "structural_signal",
+        resultTaintLabels: [],
       };
     }
   }
@@ -204,6 +222,7 @@ export function resolveToolSecurityContext(opts: {
         sinks: nameSinks,
         capabilitiesRequired: [],
         provenance: "structural_signal",
+        resultTaintLabels: [],
       };
     }
   }
@@ -216,6 +235,7 @@ export function resolveToolSecurityContext(opts: {
     sinks: nameSinks,
     capabilitiesRequired: [],
     provenance: heuristic === "unknown_effect" ? "unknown" : "heuristic",
+    resultTaintLabels: [],
   };
 }
 

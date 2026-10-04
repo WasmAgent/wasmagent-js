@@ -285,8 +285,10 @@ export interface GatewayRequest {
    * here is the caller's declaration that this call consumes data derived
    * from those observations — the provenance gate then denies sensitive
    * labels and identity-matched values headed for dangerous sinks. No
-   * process-wide taint ledger exists by design: provenance that is not
-   * threaded is invisible to the gate (see provenance-policy.ts).
+   * process-wide taint ledger exists by design: provenance is visible to the
+   * gate only when threaded — by the caller, or per run by a wired agent
+   * runtime (`RunPolicyGateway`, IF-07c) — and threading is run-scoped (see
+   * provenance-policy.ts).
    */
   inputProvenance?: TaintedObservation[];
   /**
@@ -308,6 +310,14 @@ export interface GatewayDecision {
    * heuristics → unknown_effect (fail-safe).
    */
   capabilityEffect: EffectClass;
+  /**
+   * Taint labels the trusted profile declares for this tool's RESULTS
+   * (IF-07c). The wired agent runtime reads this from the decision it
+   * already receives per call and mints labeled observations when the result
+   * enters message history. Present only when a trusted profile declares
+   * non-empty `resultTaintLabels` — absent otherwise (no profile, no mint).
+   */
+  resultTaintLabels?: TaintedObservation["taintLabels"];
   /** AEP evidence fields for this decision. */
   evidenceRef: {
     principalHash: string;
@@ -619,9 +629,10 @@ export class MCPGateway {
       }
     }
 
-    // IF-07a: provenance-preserving information-flow gate. Only when the
-    // caller explicitly threads provenance — there is no process-wide taint
-    // ledger by design. Sinks are profile-authoritative when a trusted
+    // IF-07a: provenance-preserving information-flow gate. Only when
+    // provenance is threaded — by the caller, or per run by a wired agent
+    // runtime. There is no process-wide taint ledger by design; threading is
+    // run-scoped. Sinks are profile-authoritative when a trusted
     // profile exists (C4); otherwise the FULL descriptor (name + description)
     // classifies, matching makeSinkAwarePolicyRule — name-only classification
     // misses e.g. `send_report` (\b send \b does not match across `_`).
@@ -677,6 +688,11 @@ export class MCPGateway {
       ...(serverCard !== undefined ? { serverCard } : {}),
       resultTrustLevel,
       capabilityEffect,
+      // IF-07c: profile-declared result labels — the wired agent runtime
+      // mints these onto the result observation at observe time.
+      ...(resolved.profile?.resultTaintLabels?.length
+        ? { resultTaintLabels: resolved.profile.resultTaintLabels }
+        : {}),
       evidenceRef: {
         principalHash: req.identity.principalHash,
         sessionId: req.identity.sessionId,
