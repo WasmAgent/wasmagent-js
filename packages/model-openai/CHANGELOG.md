@@ -1,5 +1,11 @@
 # @agentkit-js/model-openai
 
+## 2.0.11
+
+### Patch Changes
+
+- @wasmagent/models@2.0.11
+
 ## 2.0.10
 
 ### Patch Changes

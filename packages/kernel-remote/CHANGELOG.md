@@ -1,5 +1,12 @@
 # @agentkit-js/kernel-remote
 
+## 1.3.19
+
+### Patch Changes
+
+- Updated dependencies [0691d43]
+  - @wasmagent/core@3.9.0
+
 ## 1.3.18
 
 ### Patch Changes
