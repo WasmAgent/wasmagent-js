@@ -1,5 +1,68 @@
 # @wasmagent/mcp-firewall
 
+## 2.3.0
+
+### Minor Changes
+
+- 0691d43: feat(core): IF-07c agent-loop provenance wiring
+  
+  - `ToolCallingAgent` accepts a per-run `policyGateway` port
+    (`RunPolicyGateway`, structural — see `src/policies/policyGateway.ts`):
+    `evaluateBeforeCall` judges each call before dispatch (after tool
+    guardrails, before human approval), `observeResult` receives the exact
+    string entering message history.
+  - Denied calls are blocked before execution and fed back to the model as a
+    `policy_denied` error result (additive `ToolResult.error.code` member);
+    the run survives and dependents are unaffected. `confirm` decisions route
+    through the existing checkpointer approval flow and degrade fail-closed to
+    deny without one. Unwired agents behave exactly as before.
+  - Pinned by `src/agents/ToolCallingAgent.provenance.test.ts` (fake port,
+    DAG + parallel modes, byte-identity, lifecycle).
+  
+  feat(mcp-gateway): `createAgentPolicyGateway` implements the port over
+  `MCPGateway` — the IF-07a provenance gate fires automatically inside a wired
+  run: run-scoped bounded ledger threaded on every evaluate, profile-declared
+  `resultTaintLabels` minted at result time (serialized form + JSON string
+  leaves), gateway `ask_user` mapped to the human-approval flow, unknown
+  descriptors denied fail-closed. End-to-end pinned by
+  `src/agent-loop.test.ts` (labeled read → automatic deny at the next sink;
+  identity rule fires under renames/encodings).
+  
+  feat(mcp-firewall): trusted profiles gain additive `resultTaintLabels`
+  (operator-authoritative mint, no DLP); `GatewayDecision.resultTaintLabels`
+  surfaces them to the runtime. FI matrix ceilings upgraded honestly:
+  threading is caller-side or run-scoped by a wired agent runtime (IF-07c);
+  there is still no automatic process-wide taint ledger.
+- c0a8be8: feat(mcp-firewall): IF-07a provenance-preserving information-flow gate
+  
+  - `GatewayRequest.inputProvenance` threads explicit taint provenance
+    (`TaintedObservation[]`) from earlier tool results into the next sink
+    decision; threading is caller-side or run-scoped by a wired agent runtime
+    (IF-07c) — no process-wide taint ledger.
+  - New gate rules (`src/provenance-policy.ts`): `sink-tainted-provenance-deny`
+    (sensitive label `secret`/`credential` headed for a dangerous sink
+    `network_send`/`credential_use`/`shell_exec`/`filesystem_write`) and
+    `sink-tainted-identity-deny` (argument value SHA-256 matches a
+    sensitive-labeled observation's `contentHash` — renamed/moved/nested
+    placements still hit). Deny keys on labels + identity, not value shape;
+    consent never downgrades them.
+  - `composeVerdict` treats explicitly labeled observations as `tainted`
+    (labels are now load-bearing via `isTainted`).
+  - `RenderedTaintedObservation` carries `taintLabels` + `contentHash` through
+    the prompt-assembly boundary instead of stripping them;
+    `gateway.wrapResult` accepts optional `taintLabels` for source minting.
+  - `GatewayDecision.evidenceRef.inputTaintLabels` is the producer for AEP
+    `input_taint_labels` (schema field already existed; no schema change).
+  - Fixtures: IF-07a flipped from documented limitation to enforced deny
+    (threaded base64 secret); IF-07a-2 pins the identity match under
+    renamed/nested args; GATE-01..11 pin gate semantics in
+    `src/provenance-gate.test.ts`.
+
+### Patch Changes
+
+- Updated dependencies [3c60a12]
+  - @wasmagent/mcp-server@1.1.17
+
 ## 2.2.1
 
 ### Patch Changes

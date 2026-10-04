@@ -1,5 +1,12 @@
 # @wasmagent/mastra-sandbox
 
+## 1.0.18
+
+### Patch Changes
+
+- Updated dependencies [0691d43]
+  - @wasmagent/core@3.9.0
+
 ## 1.0.17
 
 ### Patch Changes
