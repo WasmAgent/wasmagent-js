@@ -90,3 +90,109 @@ describe("release provenance ownership (RP-01..05)", () => {
     expect(() => loadCandidates({ candidates: [NEW, { ...NEW }] })).toThrow(/Rule 4/);
   });
 });
+
+// ── Registry retry classification matrix (post-release race fix) ────────────
+// The security-critical distinction: ONLY replication lag (E404) is retried.
+// Every other failure class fails without retry, so a real breakage cannot
+// be masked. Pinned row-by-row.
+
+import { classifyRegistryError, registryIntegrityWithRetry } from "./generate-release-provenance.mjs";
+
+const RETRY_FAIL = (kind) => ({ ok: false, kind, message: kind });
+
+describe("provenance registry retry — classification matrix", () => {
+  it("classifies each failure mode into its own class", () => {
+    expect(classifyRegistryError("npm error 404 No match found for version 1.0.0")).toBe("not-found");
+    expect(classifyRegistryError("npm error code E404")).toBe("not-found");
+    expect(classifyRegistryError("npm error code E401")).toBe("auth");
+    expect(classifyRegistryError("npm error Incorrect or missing password. ENEEDAUTH")).toBe("auth");
+    expect(classifyRegistryError("npm error code E403")).toBe("forbidden");
+    expect(classifyRegistryError("npm error network ETIMEDOUT at socket")).toBe("network");
+    expect(classifyRegistryError("npm error request to registry failed ECONNRESET")).toBe("network");
+    expect(classifyRegistryError("npm error Unexpected token < in JSON")).toBe("other");
+  });
+
+  it("404 (replication lag) → retries up to the schedule, then gives up", async () => {
+    let calls = 0;
+    const result = await registryIntegrityWithRetry("p", "1.0.0", {
+      delays: [1, 1, 1],
+      sleepFn: async () => {},
+      query: () => {
+        calls++;
+        return RETRY_FAIL("not-found");
+      },
+    });
+    expect(result).toBeNull();
+    expect(calls).toBe(4); // initial + 3 retries
+  });
+
+  it("401 auth → NO retry (single query)", async () => {
+    let calls = 0;
+    const result = await registryIntegrityWithRetry("p", "1.0.0", {
+      delays: [1, 1, 1],
+      sleepFn: async () => {},
+      query: () => {
+        calls++;
+        return RETRY_FAIL("auth");
+      },
+    });
+    expect(result).toBeNull();
+    expect(calls).toBe(1);
+  });
+
+  it("403 forbidden → NO retry (single query)", async () => {
+    let calls = 0;
+    const result = await registryIntegrityWithRetry("p", "1.0.0", {
+      delays: [1, 1, 1],
+      sleepFn: async () => {},
+      query: () => {
+        calls++;
+        return RETRY_FAIL("forbidden");
+      },
+    });
+    expect(result).toBeNull();
+    expect(calls).toBe(1);
+  });
+
+  it("network timeout → NO retry (single query)", async () => {
+    let calls = 0;
+    const result = await registryIntegrityWithRetry("p", "1.0.0", {
+      delays: [1, 1, 1],
+      sleepFn: async () => {},
+      query: () => {
+        calls++;
+        return RETRY_FAIL("network");
+      },
+    });
+    expect(result).toBeNull();
+    expect(calls).toBe(1);
+  });
+
+  it("malformed integrity payload → NO retry (fail-closed on garbage)", async () => {
+    let calls = 0;
+    const result = await registryIntegrityWithRetry("p", "1.0.0", {
+      delays: [1, 1, 1],
+      sleepFn: async () => {},
+      query: () => {
+        calls++;
+        return { ok: false, kind: "malformed", message: "unexpected integrity format: <html>" };
+      },
+    });
+    expect(result).toBeNull();
+    expect(calls).toBe(1);
+  });
+
+  it("a well-formed integrity resolves on the first query (no retries)", async () => {
+    let calls = 0;
+    const result = await registryIntegrityWithRetry("p", "1.0.0", {
+      delays: [1, 1, 1],
+      sleepFn: async () => {},
+      query: () => {
+        calls++;
+        return { ok: true, integrity: "sha512-3VW9+aZjyFurftarIjesQfUa3bpHZC+rUvTV5oCnNu/6yiPq/wJlSsagnf+EskFRbiuU44HFtsDFQJf8ORJqFw==" };
+      },
+    });
+    expect(result).toBe("sha512-3VW9+aZjyFurftarIjesQfUa3bpHZC+rUvTV5oCnNu/6yiPq/wJlSsagnf+EskFRbiuU44HFtsDFQJf8ORJqFw==");
+    expect(calls).toBe(1);
+  });
+});

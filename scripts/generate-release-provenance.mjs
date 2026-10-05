@@ -220,21 +220,43 @@ function sh(cmd, args) {
  * completes, every later package resolves immediately).
  */
 const REGISTRY_RETRY_DELAYS_MS = [2000, 4000, 8000, 16000, 30000, 30000];
-const NOT_FOUND_RE = /E404\b|No match found for version/;
+const SHA512_INTEGRITY_RE = /^sha512-[A-Za-z0-9+/]+={0,2}$/;
+
+/**
+ * Classify an `npm view` failure. ONLY "not-found" (E404 — the signature of
+ * replication lag) is retryable; every other class fails without retry so a
+ * real breakage cannot be masked by retries. Security-critical distinction —
+ * pinned by scripts/release-provenance.test.mjs (retry-classification matrix).
+ */
+export function classifyRegistryError(text) {
+  if (/E404\b|No match found for version/.test(text)) return "not-found";
+  if (/E401\b|ENEEDAUTH/.test(text)) return "auth";
+  if (/E403\b/.test(text)) return "forbidden";
+  if (/ETIMEDOUT|ECONNRESET|EAI_AGAIN|ENOTFOUND|network|socket hang up/i.test(text)) return "network";
+  return "other";
+}
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** One registry integrity query, classified: { ok } | { kind: "not-found"|"other" }. */
+/** One registry integrity query, classified: { ok } | { kind, message }. */
 function registryIntegrityOnce(name, version) {
   try {
-    return { ok: true, integrity: sh("npm", ["view", `${name}@${version}`, "dist.integrity"]) };
+    const integrity = sh("npm", ["view", `${name}@${version}`, "dist.integrity"]);
+    if (!SHA512_INTEGRITY_RE.test(integrity)) {
+      return {
+        ok: false,
+        kind: "malformed",
+        message: `unexpected integrity format: ${integrity.slice(0, 60)}`,
+      };
+    }
+    return { ok: true, integrity };
   } catch (err) {
     const text = String(err?.stderr ?? err?.message ?? "");
     return {
       ok: false,
-      kind: NOT_FOUND_RE.test(text) ? "not-found" : "other",
+      kind: classifyRegistryError(text),
       message: text.split("\n", 1)[0] ?? "",
     };
   }
@@ -243,15 +265,15 @@ function registryIntegrityOnce(name, version) {
 /**
  * Resolve the registry integrity for one candidate with bounded exponential
  * retry on replication lag only. Returns the integrity string or null (the
- * caller applies Rule 2 fail-closed).
+ * caller applies Rule 2 fail-closed). `query` is injectable for tests.
  */
 export async function registryIntegrityWithRetry(
   name,
   version,
-  { delays = REGISTRY_RETRY_DELAYS_MS, sleepFn = sleep } = {}
+  { delays = REGISTRY_RETRY_DELAYS_MS, sleepFn = sleep, query = registryIntegrityOnce } = {}
 ) {
   for (let attempt = 0; ; attempt++) {
-    const res = registryIntegrityOnce(name, version);
+    const res = query(name, version);
     if (res.ok) {
       if (attempt > 0) {
         console.error(`  ${name}@${version}: visible on registry after ${attempt} retry attempt(s)`);
