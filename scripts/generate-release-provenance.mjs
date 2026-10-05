@@ -207,16 +207,99 @@ function sh(cmd, args) {
   return execFileSync(cmd, args, { encoding: "utf8" }).trim();
 }
 
-/** Registry integrity for <name>@<version>, or null if absent. */
-function registryIntegrity(name, version) {
+/**
+ * Registry propagation retry policy. npm's CDN can lag a few seconds behind
+ * a publish, so a JUST-published version may 404 on `npm view` for a short
+ * window (observed 2026-10-04: the first post-release provenance run failed
+ * on `evals-runner@1.10.16`, which was fully visible moments later).
+ *
+ * Retry ONLY "not found yet" (E404 / "No match found for version"). Never
+ * retry auth failures (E401/E403/ENEEDAUTH), network/malformed responses, or
+ * anything else — a retry there would mask real breakage. Delays are bounded
+ * exponential: 2/4/8/16/30/30s (worst case 90s per package; once replication
+ * completes, every later package resolves immediately).
+ */
+const REGISTRY_RETRY_DELAYS_MS = [2000, 4000, 8000, 16000, 30000, 30000];
+const NOT_FOUND_RE = /E404\b|No match found for version/;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** One registry integrity query, classified: { ok } | { kind: "not-found"|"other" }. */
+function registryIntegrityOnce(name, version) {
   try {
-    return sh("npm", ["view", `${name}@${version}`, "dist.integrity"]);
-  } catch {
-    return null;
+    return { ok: true, integrity: sh("npm", ["view", `${name}@${version}`, "dist.integrity"]) };
+  } catch (err) {
+    const text = String(err?.stderr ?? err?.message ?? "");
+    return {
+      ok: false,
+      kind: NOT_FOUND_RE.test(text) ? "not-found" : "other",
+      message: text.split("\n", 1)[0] ?? "",
+    };
   }
 }
 
+/**
+ * Resolve the registry integrity for one candidate with bounded exponential
+ * retry on replication lag only. Returns the integrity string or null (the
+ * caller applies Rule 2 fail-closed).
+ */
+export async function registryIntegrityWithRetry(
+  name,
+  version,
+  { delays = REGISTRY_RETRY_DELAYS_MS, sleepFn = sleep } = {}
+) {
+  for (let attempt = 0; ; attempt++) {
+    const res = registryIntegrityOnce(name, version);
+    if (res.ok) {
+      if (attempt > 0) {
+        console.error(`  ${name}@${version}: visible on registry after ${attempt} retry attempt(s)`);
+      }
+      return res.integrity;
+    }
+    if (res.kind !== "not-found") {
+      console.error(
+        `  ${name}@${version}: registry query failed without retry (${res.kind}): ${res.message}`
+      );
+      return null;
+    }
+    if (attempt >= delays.length) {
+      console.error(
+        `  ${name}@${version}: still not visible after ${delays.length} retries across ${delays.reduce((a, b) => a + b, 0) / 1000}s — treating as missing`
+      );
+      return null;
+    }
+    const delay = delays[attempt];
+    console.error(
+      `  ${name}@${version}: not yet visible on registry (replication lag), retry ${attempt + 1}/${delays.length} in ${delay}ms`
+    );
+    await sleepFn(delay);
+  }
+}
+
+/**
+ * Pre-resolve every candidate's integrity (with retry) into a sync lookup
+ * for `buildArtifacts`, whose pure contract is unchanged.
+ */
+async function resolveIntegritiesWithRetry(candidates) {
+  const map = new Map();
+  for (const { name, version } of candidates) {
+    map.set(`${name}@${version}`, await registryIntegrityWithRetry(name, version));
+  }
+  return (name, version) => map.get(`${name}@${version}`) ?? null;
+}
+
 function main() {
+  runMain()
+    .then((code) => process.exit(code))
+    .catch((err) => {
+      console.error(`FAIL unexpected error: ${err?.message ?? err}`);
+      process.exit(1);
+    });
+}
+
+async function runMain() {
   const args = parseArgs(process.argv.slice(2));
   const root = new URL("..", import.meta.url).pathname;
 
@@ -249,8 +332,9 @@ function main() {
   const runId = process.env.GITHUB_RUN_ID;
   const testRunIds = runId ? [String(runId)] : ["local"];
 
+  const resolveIntegrity = await resolveIntegritiesWithRetry(candidates);
   const { artifacts, missing } = buildArtifacts(candidates, {
-    resolveIntegrity: registryIntegrity,
+    resolveIntegrity,
     sourceSha,
     workflowSha,
     lockSha256,
@@ -306,5 +390,8 @@ function main() {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  process.exit(main());
+  // main() resolves the async work itself and exits with the right code —
+  // a synchronous process.exit(main()) would kill the process before the
+  // registry-retry passes finish.
+  main();
 }
