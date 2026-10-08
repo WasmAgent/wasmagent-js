@@ -24,6 +24,23 @@ const mockFinalAnswerEvent: AgentEvent = {
 
 let mockAgentEvents: AgentEvent[] = [mockFinalAnswerEvent];
 
+// Diagnosis instrumentation for the resume-only flake (#504): counts agent
+// construction and generator-body entry (first pull) so tests can assert the
+// replay path NEVER executes the live agent. Generator body entry happens on
+// the first next() call, so iterated > 0 means the live run actually started.
+const agentStats = { constructed: 0, byTask: {} as Record<string, number> };
+
+function instrumentedRun(task: string) {
+  return (async function* () {
+    // Count per task name: background closures from earlier tests keep
+    // pulling their own generators after this test's beforeEach reset, so a
+    // global counter cross-pollutes (#504). Task-keyed counts make the
+    // resume-path assertions immune to that pollution.
+    agentStats.byTask[task] = (agentStats.byTask[task] ?? 0) + 1;
+    for (const e of mockAgentEvents) yield e;
+  })();
+}
+
 mock.module("@wasmagent/core", () => {
   return {
     // /health surfaces the live HealthMetrics snapshot; the mock must expose
@@ -42,17 +59,19 @@ mock.module("@wasmagent/core", () => {
       },
     },
     CodeAgent: class {
-      run(_task: string) {
-        return (async function* () {
-          for (const e of mockAgentEvents) yield e;
-        })();
+      constructor() {
+        agentStats.constructed++;
+      }
+      run(task: string) {
+        return instrumentedRun(task);
       }
     },
     ToolCallingAgent: class {
-      run(_task: string) {
-        return (async function* () {
-          for (const e of mockAgentEvents) yield e;
-        })();
+      constructor() {
+        agentStats.constructed++;
+      }
+      run(task: string) {
+        return instrumentedRun(task);
       }
     },
     AnthropicModel: class {},
@@ -149,10 +168,11 @@ mock.module("@wasmagent/core", () => {
     KvWorkflowStateStore,
     MemoryKvBackend,
     GoalDirectedAgent: class {
-      run(_task: string) {
-        return (async function* () {
-          for (const e of mockAgentEvents) yield e;
-        })();
+      constructor() {
+        agentStats.constructed++;
+      }
+      run(task: string) {
+        return instrumentedRun(task);
       }
     },
   };
@@ -220,6 +240,8 @@ function runPost(
 describe("Cloudflare Worker routing", () => {
   beforeEach(() => {
     mockAgentEvents = [mockFinalAnswerEvent];
+    agentStats.constructed = 0;
+    agentStats.byTask = {};
   });
 
   it("OPTIONS → 204 CORS preflight", async () => {
@@ -705,7 +727,7 @@ describe("POST /run — resume-only mode (review fix)", () => {
     await kv.put("evlog:tr-abc:000000000000", JSON.stringify(persisted));
 
     const res = await runPost(
-      { task: "fresh task", resumeTraceId: "tr-abc" },
+      { task: "resume-only-replay-task", resumeTraceId: "tr-abc" },
       makeEnv({ WASMAGENT_EVENT_LOG: kv })
     );
     expect(res.status).toBe(200);
@@ -717,6 +739,11 @@ describe("POST /run — resume-only mode (review fix)", () => {
     expect(joined).toContain("[DONE]");
     // …and NOT a second execution (the mocked agent answers "42").
     expect(joined).not.toContain("42");
+    // The live generator must never be pulled on the replay path (#504):
+    // zero generator-body entries FOR THIS TASK (task-keyed counts are
+    // immune to background pulls from earlier tests), zero live-run
+    // artifacts in the stream.
+    expect(agentStats.byTask["resume-only-replay-task"] ?? 0).toBe(0);
   });
 
   it("falls through to a live run when the log is empty (KV eventual consistency)", async () => {
@@ -739,12 +766,13 @@ describe("POST /run — resume-only mode (review fix)", () => {
       },
     };
     const res = await runPost(
-      { task: "fresh task", resumeTraceId: "tr-nothing" },
+      { task: "resume-only-fallthrough-task", resumeTraceId: "tr-nothing" },
       makeEnv({ WASMAGENT_EVENT_LOG: kv })
     );
     expect(res.status).toBe(200);
     const lines = await readSSELines(res);
     // Nothing persisted → execute normally and stream the answer.
     expect(lines.join("\n")).toContain("42");
+    expect(agentStats.byTask["resume-only-fallthrough-task"] ?? 0).toBeGreaterThanOrEqual(1);
   });
 });
