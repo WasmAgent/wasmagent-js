@@ -1,5 +1,11 @@
 # @agentkit-js/model-zhipu
 
+## 2.0.12
+
+### Patch Changes
+
+- @wasmagent/models@2.0.12
+
 ## 2.0.11
 
 ### Patch Changes

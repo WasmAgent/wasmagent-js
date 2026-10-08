@@ -1,5 +1,13 @@
 # @agentkit-js/model-local
 
+## 1.0.20
+
+### Patch Changes
+
+- Updated dependencies [0c92587]
+  - @wasmagent/core@3.10.0
+  - @wasmagent/models@2.0.12
+
 ## 1.0.19
 
 ### Patch Changes
