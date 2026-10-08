@@ -15,6 +15,22 @@ import { HealthMetrics } from "../observability/HealthMetrics.js";
 import type { PolicyCallDecision, PolicyGatewayFactory } from "../policies/policyGateway.js";
 import { PolicyGatedRegistry, resolvePolicyGateway } from "../policies/policyGateway.js";
 import { deriveDependencies } from "../scheduler/deriveDeps.js";
+
+/**
+ * #505: detect $ref placeholders in tool-call inputs. Mirrors the reference
+ * syntax accepted by the DAG scheduler (a string value of exactly
+ * `$<callId>`); used to reject placeholders in modes that cannot resolve
+ * them, instead of dispatching them as literal strings.
+ */
+function inputContainsRef(value: unknown): boolean {
+  if (typeof value === "string") return /^\$.+$/.test(value);
+  if (Array.isArray(value)) return value.some((v) => inputContainsRef(v));
+  if (value !== null && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).some((v) => inputContainsRef(v));
+  }
+  return false;
+}
+
 import type { IRNode } from "../scheduler/ir.js";
 import { SimpleIR } from "../scheduler/ir.js";
 import { Scheduler } from "../scheduler/Scheduler.js";
@@ -1083,7 +1099,52 @@ export class ToolCallingAgent {
           };
         });
         const ir = new SimpleIR(nodes);
-        const scheduler = new Scheduler(effectiveRegistry);
+        // #505: nodes whose inputs carried $ref placeholders are RE-AUTHORIZED
+        // at dispatch time — after resolution, with the ledger current (earlier
+        // nodes' observations were minted at their node_done) — so a dependent
+        // sink cannot be authorized on a pre-batch empty ledger. Nodes without
+        // $refs keep their pre-batch decision (batch-internal concurrency
+        // carries no happens-before and must not gain one nondeterministically).
+        const refIds = new Set(
+          [...depMap.entries()].filter(([, deps]) => deps.length > 0).map(([id]) => id)
+        );
+        const deniedAtDispatch = new Map<string, Extract<PolicyCallDecision, { action: "deny" }>>();
+        const scheduler = new Scheduler(effectiveRegistry, {
+          ...(policyGateway
+            ? {
+                authorize: (node, resolvedArgs) => {
+                  if (!refIds.has(node.id)) return null;
+                  const decision = policyGateway.evaluateBeforeCall({
+                    callId: node.id,
+                    toolName: node.toolName,
+                    args: resolvedArgs,
+                  });
+                  const effective: PolicyCallDecision =
+                    decision.action === "confirm"
+                      ? {
+                          action: "deny",
+                          ruleIds: ["consent-unavailable"],
+                          reason: `${decision.reason} (consent cannot be granted mid-batch — resubmit the call in a later step)`,
+                        }
+                      : decision;
+                  if (effective.action !== "deny") return null;
+                  HealthMetrics.getInstance().recordPolicyDenial();
+                  deniedAtDispatch.set(node.id, effective);
+                  return {
+                    callId: node.id,
+                    toolName: node.toolName,
+                    output: null,
+                    error: {
+                      code: "policy_denied",
+                      message: `Blocked by policy [${effective.ruleIds.join(", ")}]: ${effective.reason}`,
+                      retryHint:
+                        "Do not retry the same call verbatim — remove or replace the flagged input.",
+                    },
+                  };
+                },
+              }
+            : {}),
+        });
 
         // Collect results from scheduler events, mapping node_done/node_error back
         // to resolvedCalls in the same order as pendingCalls.
@@ -1123,6 +1184,38 @@ export class ToolCallingAgent {
               nodeStarts.delete(evt.nodeId);
             }
             resultMap.set(evt.nodeId, { output, isError, isUntrusted });
+            // IF-07c #505: observe the result immediately so LATER nodes in
+            // the same batch are gated on this observation at their
+            // dispatch-time re-evaluation. (Replaces the post-dispatch
+            // observe; error results are never minted, so nothing changes
+            // for them.)
+            const observedToolName = nodes.find((n) => n.id === evt.nodeId)?.toolName;
+            if (observedToolName !== undefined) {
+              policyGateway?.observeResult({
+                callId: evt.nodeId,
+                toolName: observedToolName,
+                output,
+                isError,
+              });
+              const dispatchDenial = deniedAtDispatch.get(evt.nodeId);
+              if (dispatchDenial) {
+                yield {
+                  traceId,
+                  parentTraceId,
+                  channel: "status" as const,
+                  event: "status" as const,
+                  data: {
+                    phase: "policy_denied" as const,
+                    toolName: observedToolName,
+                    callId: evt.nodeId,
+                    step,
+                    ruleIds: dispatchDenial.ruleIds,
+                    reason: dispatchDenial.reason,
+                  },
+                  timestampMs: Date.now(),
+                };
+              }
+            }
           } else if (evt.type === "node_error") {
             const reason = evt.error;
             // Classify aborts/timeouts like the parallel path does; run-level
@@ -1208,15 +1301,12 @@ export class ToolCallingAgent {
           };
           // IF-07c: the port sees the exact string entering history (hash
           // identity discipline — augmentError included for error results).
+          // IF-07c #505: the observation already happened at node_done (see
+          // the scheduler event loop above) so later nodes in this batch are
+          // gated on it; do not observe again here (double mint).
           const finalOutput = res.isError
             ? this.#augmentErrorWithFallbacks(call.name, res.output)
             : res.output;
-          policyGateway?.observeResult({
-            callId: call.id,
-            toolName: call.name,
-            output: finalOutput,
-            isError: res.isError,
-          });
           resolvedCalls.push({
             toolCallId: call.id,
             toolName: call.name,
@@ -1228,7 +1318,42 @@ export class ToolCallingAgent {
         }
       } else {
         // "parallel" mode: original Promise.all path.
-        const handles = pendingCalls.map((call) => {
+        // #505: $ref placeholders are a DAG-scheduler feature — in parallel
+        // mode they would silently dispatch as literal strings. Fail those
+        // calls explicitly instead of guessing.
+        const refErroneous = pendingCalls.filter((call) => inputContainsRef(call.input));
+        const runnableCalls = pendingCalls.filter((call) => !inputContainsRef(call.input));
+        for (const call of refErroneous) {
+          yield {
+            traceId,
+            parentTraceId,
+            channel: "tool",
+            event: "tool_result",
+            data: {
+              callId: call.id,
+              toolName: call.name,
+              output: null,
+              error: {
+                code: "execution_error",
+                message:
+                  'Call input contains a "$ref" placeholder, which requires scheduler="dag". This call was NOT executed — resubmit it in a later step or switch the scheduler to "dag".',
+              },
+              batchId,
+              batchSize,
+              stepIndex: step,
+            },
+            timestampMs: Date.now(),
+          };
+          resolvedCalls.push({
+            toolCallId: call.id,
+            toolName: call.name,
+            toolInput: call.input,
+            toolOutput:
+              'Call input contains a "$ref" placeholder, which requires scheduler="dag". Not executed.',
+            isError: true,
+          });
+        }
+        const handles = runnableCalls.map((call) => {
           let callIsError = false;
           let callIsUntrusted = false;
           const signal = this.#toolTimeoutMs ? AbortSignal.timeout(this.#toolTimeoutMs) : undefined;

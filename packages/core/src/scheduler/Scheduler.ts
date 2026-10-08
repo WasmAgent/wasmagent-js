@@ -1,6 +1,24 @@
 import type { ToolRegistry } from "../tools/ToolRegistry.js";
+import type { ToolResult } from "../tools/types.js";
 import { resolveRefs } from "./deriveDeps.js";
 import type { ActionIR, IRNode } from "./ir.js";
+
+export interface SchedulerOptions {
+  /**
+   * #505 — dispatch-time authorization. Invoked after $ref resolution,
+   * immediately before a flagged node dispatches. Return a ToolResult to
+   * substitute for the tool call (e.g. a policy denial — the node completes
+   * with that error result and its dependents still run), or null/undefined
+   * to dispatch normally. Call this ONLY for nodes the caller flagged as
+   * needing dispatch-time authorization (e.g. ones whose inputs carried
+   * $ref placeholders), so unrelated nodes keep their deterministic
+   * pre-batch decision.
+   */
+  authorize?: (
+    node: IRNode,
+    resolvedArgs: Record<string, unknown>
+  ) => ToolResult | null | undefined;
+}
 
 /**
  * Scheduler (C2/C3).
@@ -29,7 +47,10 @@ import type { ActionIR, IRNode } from "./ir.js";
  * be connected with a dependsOn edge to guarantee serial execution.
  */
 export class Scheduler {
-  constructor(private readonly tools: ToolRegistry) {}
+  constructor(
+    private readonly tools: ToolRegistry,
+    private readonly options?: SchedulerOptions
+  ) {}
 
   async *execute(ir: ActionIR): AsyncGenerator<SchedulerEvent> {
     // Q8: AbortController to cancel in-flight speculative Promises when the
@@ -106,6 +127,14 @@ export class Scheduler {
         yield { type: "node_speculative", nodeId: node.id };
         // C1: substitute $ref placeholders with completed node results before dispatch.
         const resolvedArgs = resolveRefs(node.args, completedResults) as Record<string, unknown>;
+        // #505: dispatch-time authorization for flagged nodes.
+        const specOverride = this.options?.authorize?.(node, resolvedArgs);
+        if (specOverride) {
+          completedResults.set(node.id, specOverride);
+          yield { type: "node_done", nodeId: node.id, result: specOverride };
+          this.#unblockDependents(node.id, remaining);
+          continue;
+        }
         speculative.set(
           node.id,
           this.tools
@@ -156,23 +185,40 @@ export class Scheduler {
 
       // Run non-readOnly ready nodes in parallel (they're not speculative).
       if (readyWriting.length > 0) {
-        for (const node of readyWriting) yield { type: "node_start", nodeId: node.id };
-        for (const [i, settled] of (
-          await Promise.allSettled(
-            readyWriting.map(async (node) => {
-              const resolvedArgs = resolveRefs(node.args, completedResults) as Record<
-                string,
-                unknown
-              >;
-              return {
-                node,
-                result: await this.tools.call(
+        const overridden: Array<{ node: IRNode; result: ToolResult }> = [];
+        const dispatching: Array<{
+          node: IRNode;
+          promise: Promise<{ node: IRNode; result: ToolResult }>;
+        }> = [];
+        for (const node of readyWriting) {
+          yield { type: "node_start", nodeId: node.id };
+          // C1/#505: substitute $ref placeholders, then authorize at dispatch
+          // time — the ledger is current here (earlier nodes' observations
+          // were minted at their node_done), so a dependent sink cannot be
+          // authorized on a pre-batch empty ledger.
+          const resolvedArgs = resolveRefs(node.args, completedResults) as Record<string, unknown>;
+          const override = this.options?.authorize?.(node, resolvedArgs);
+          if (override) {
+            overridden.push({ node, result: override });
+          } else {
+            dispatching.push({
+              node,
+              promise: this.tools
+                .call(
                   { toolName: node.toolName, args: resolvedArgs, callId: node.id, signal },
                   node.extraCapabilities
-                ),
-              };
-            })
-          )
+                )
+                .then((result) => ({ node, result })),
+            });
+          }
+        }
+        for (const { node, result } of overridden) {
+          completedResults.set(node.id, result);
+          yield { type: "node_done", nodeId: node.id, result };
+          this.#unblockDependents(node.id, remaining);
+        }
+        for (const [i, settled] of (
+          await Promise.allSettled(dispatching.map((d) => d.promise))
         ).entries()) {
           if (settled.status === "fulfilled") {
             const { node, result } = settled.value;
@@ -180,7 +226,7 @@ export class Scheduler {
             yield { type: "node_done", nodeId: node.id, result };
             this.#unblockDependents(node.id, remaining);
           } else {
-            const failedNode = readyWriting[i] as IRNode;
+            const failedNode = dispatching[i]?.node as IRNode;
             const reason = settled.reason;
             const isAbort = reason instanceof Error && reason.name === "AbortError";
             if (!isAbort) {

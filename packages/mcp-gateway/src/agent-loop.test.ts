@@ -347,6 +347,122 @@ describe("agent-loop provenance wiring (IF-07c) — end to end", () => {
   });
 });
 
+describe("agent-loop provenance wiring (IF-07c) — dispatch-time re-authorization (#505)", () => {
+  const SECRET = "sk-live-integration-secret-000123";
+  const objectSinkEntry = entry("send_payload", "ingest structured payload", {
+    type: "object",
+    properties: { body: { type: "object" } },
+    required: ["body"],
+  });
+
+  function registryWithObjectSink() {
+    const registry = profileRegistryWithLabeledVault();
+    registry.register({
+      toolSnapshotHash: computeToolSnapshotHash(objectSinkEntry, SERVER),
+      effects: ["network"],
+      sinks: ["network_send"],
+      capabilitiesRequired: [],
+    });
+    return registry;
+  }
+
+  it("re-authorizes a $ref-dependent object sink at dispatch: denied with a provenance rule, zero executions (#505)", async () => {
+    const sinkCalls: unknown[] = [];
+    const sinkTool = {
+      name: "send_payload",
+      description: "ingest structured payload",
+      inputSchema: z.object({ body: z.any() }),
+      outputSchema: z.string(),
+      readOnly: false,
+      idempotent: false,
+      forward: async (args: unknown) => {
+        sinkCalls.push(args);
+        return "ingested";
+      },
+    };
+    const searchTool = {
+      name: "search_docs",
+      description: "search documents",
+      inputSchema: z.object({ key: z.string() }),
+      outputSchema: z.string(),
+      readOnly: true,
+      idempotent: true,
+      forward: async () => SECRET,
+    };
+    const gateway = new MCPGateway({ profileRegistry: registryWithObjectSink() });
+    const policyGateway = createAgentPolicyGateway({
+      gateway,
+      toolDescriptors: [searchEntry, objectSinkEntry],
+      serverId: SERVER,
+      principal: "reauth-probe",
+    });
+    const agent = new ToolCallingAgent({
+      model: scriptedModel([
+        {
+          calls: [
+            { id: "c1", name: "search_docs", input: { key: "k" } },
+            { id: "c2", name: "send_payload", input: { body: "$c1" } },
+          ],
+        },
+        { text: "done" },
+      ]) as any,
+      tools: [searchTool, sinkTool],
+      maxSteps: 8,
+      policyGateway: policyGateway as unknown as RunPolicyGateway,
+    });
+    const events: any[] = [];
+    for await (const e of agent.run("probe same-batch ref")) events.push(e);
+
+    // The sink must NOT execute — the secret must not reach it.
+    expect(sinkCalls.length).toBe(0);
+    // A provenance rule must fire at the dispatch-time re-evaluation.
+    const statuses = events.filter(
+      (e) =>
+        e.event === "status" &&
+        e.data?.phase === "policy_denied" &&
+        e.data?.toolName === "send_payload"
+    );
+    expect(statuses.length).toBe(1);
+    expect(statuses[0].data.ruleIds).toContain("sink-tainted-provenance-deny");
+    // The denial lands as a blocked tool_result and the run still completes.
+    const result = events.find((e) => e.event === "tool_result" && e.data?.callId === "c2");
+    expect(JSON.stringify(result?.data)).toContain("sink-tainted-provenance-deny");
+    expect(events.some((e) => e.event === "final_answer")).toBe(true);
+  });
+
+  it("parallel mode rejects $ref placeholders explicitly instead of dispatching literals", async () => {
+    const gateway = new MCPGateway({ profileRegistry: profileRegistryWithLabeledVault() });
+    const build = createAgentPolicyGateway({
+      gateway,
+      toolDescriptors: [searchEntry, sendEntry],
+      serverId: SERVER,
+    });
+    const agent = new ToolCallingAgent({
+      model: scriptedModel([
+        {
+          calls: [
+            { id: "c1", name: "search_docs", input: { key: "k" } },
+            { id: "c2", name: "send_report", input: { body: "$c1" } },
+          ],
+        },
+        { text: "done" },
+      ]) as any,
+      tools: coreTools(),
+      maxSteps: 8,
+      scheduler: "parallel",
+      policyGateway: build({ traceId: "trace-parallel-ref" }) as unknown as RunPolicyGateway,
+    });
+    const events: any[] = [];
+    for await (const e of agent.run("probe parallel ref")) events.push(e);
+
+    // c1 executed; c2 refused with an explicit error (not a literal body).
+    expect(sendCalls).toBe(0);
+    const result = events.find((e) => e.event === "tool_result" && e.data?.callId === "c2");
+    expect(JSON.stringify(result?.data?.error)).toContain("$ref");
+    expect(events.some((e) => e.event === "final_answer")).toBe(true);
+  });
+});
+
 describe("agent-loop provenance wiring (IF-07c) — ledger bound", () => {
   it("caps the run ledger: the oldest entry is evicted on overflow", async () => {
     const gateway = new MCPGateway({ profileRegistry: profileRegistryWithLabeledVault() });
