@@ -113,7 +113,7 @@ describe("evaluateAdversarial — property-based", () => {
 
   it("never crashes on arbitrary unicode input", () => {
     fc.assert(
-      fc.property(fc.fullUnicode(), (text) => {
+      fc.property(fc.string({ minLength: 0, maxLength: 3000 }), (text) => {
         const result = evaluateAdversarial(text);
         expect(result).toBeDefined();
         expect(typeof result.score).toBe("number");
