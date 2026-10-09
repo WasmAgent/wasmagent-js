@@ -11,7 +11,7 @@
         "@vitejs/plugin-react": "^6.1.1",
         "ai": "^7.0.97",
         "openai": "^7.28.0",
-        "pyodide": "^314.0.6",
+        "pyodide": "^314.0.7",
         "wrangler": "^4.130.0",
         "zod": "^4.6.2",
       },
@@ -532,7 +532,7 @@
         "@wasmagent/core": "workspace:*",
       },
       "devDependencies": {
-        "pyodide": "0.29.4",
+        "pyodide": "314.0.7",
         "typescript": "^5.7.0",
       },
       "peerDependencies": {
@@ -2557,7 +2557,7 @@
 
     "pure-rand": ["pure-rand@8.4.2", "https://registry.npmmirror.com/pure-rand/-/pure-rand-8.4.2.tgz", {}, "sha512-vvuOGgcuPJAirlHvuQw1TrOiw7ptaIXXmIbNuiNOY6lNGJJH49PQ1Kj4nd783nPdQhQdicgOjVI2yI/9BD6/Ng=="],
 
-    "pyodide": ["pyodide@314.0.6", "https://registry.npmmirror.com/pyodide/-/pyodide-314.0.6.tgz", { "dependencies": { "@types/emscripten": "^1.41.4", "ws": "^8.5.0" } }, "sha512-BKDTJyIqFxC4BExLqeRS3f5xvXZIjOt8C3zGLN/Cc7tFxSwvKVhVkchQQ2AGLOtR4YrVOIFxbV8poyDOOmWwxQ=="],
+    "pyodide": ["pyodide@314.0.7", "https://registry.npmmirror.com/pyodide/-/pyodide-314.0.7.tgz", { "dependencies": { "@types/emscripten": "^1.41.4", "ws": "^8.5.0" } }, "sha512-0YvXxEhfEdpLfb/XkM2BFAeMROq0iMUX2bzzH9pOttyMcWkwq+HbE5uyuGD82LN7y2q+SNvi/6V5JEsOlD2R1A=="],
 
     "qs": ["qs@6.15.2", "https://registry.npmmirror.com/qs/-/qs-6.15.2.tgz", { "dependencies": { "side-channel": "1.1.0" } }, "sha512-Rzq0KEyX/w/tEybncDgdkZrJgVUsUMk3xjh3t5bv3S1HTAtg+uOYt72+ZfwiQwKdysThkTBdL/rTi6HDmX9Ddw=="],
 
@@ -3014,8 +3014,6 @@
     "@wasmagent/evals-runner/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
     "@wasmagent/integration-tests/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
-
-    "@wasmagent/kernel-pyodide/pyodide": ["pyodide@0.29.4", "https://registry.npmmirror.com/pyodide/-/pyodide-0.29.4.tgz", { "dependencies": { "@types/emscripten": "1.41.5", "ws": "8.21.0" } }, "sha512-tCseTsqU3kSxZIjkue5zXxTMNEwrKZwOIIEQRBA/VzHxFN1hoCxe4w41phfCdHd9it9RcCNQb5K/Re0InqMgvA=="],
 
     "@wasmagent/mcp-firewall/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
