@@ -14,13 +14,13 @@
     "@wasmagent/ui-cards": "workspace:*",
     "@terrastruct/d2": "^0.1.33",
     "docx": "^9.7.1",
-    "react": "^18.3.0",
+    "react": "^19.3.0",
     "react-dom": "^18.3.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.0"
   },
   "devDependencies": {
-    "@types/react": "^18.0.0",
+    "@types/react": "^19.3.0",
     "@types/react-dom": "^18.0.0",
     "@vitejs/plugin-react": "^4.3.0",
     "typescript": "^5.7.0",
