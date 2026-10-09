@@ -20,7 +20,7 @@
   "dependencies": {
     "@wasmagent/core": "workspace:*",
     "@wasmagent/protocol": "^0.1.11",
-    "zod": "^3.23.0"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@wasmagent/model-local": "workspace:*",
