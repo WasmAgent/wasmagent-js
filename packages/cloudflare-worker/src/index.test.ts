@@ -6,7 +6,7 @@
  * handler directly with synthetic Request / Env / ExecutionContext values.
  */
 
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import type { AgentEvent } from "@wasmagent/core";
 import { KvWorkflowStateStore, MemoryKvBackend } from "../../core/src/workflow/store.js";
 
@@ -202,11 +202,23 @@ function makeEnv(overrides: Partial<Record<string, unknown>> = {}): Record<strin
   };
 }
 
+// Track waitUntil closures so each test DRAINS its handler's background
+// work before the next test starts. Without this, live-run loops from
+// earlier tests keep consuming mock generators across test boundaries —
+// the measured root cause of the resume-only intermittent failure (#504).
+const waitUntilPromises: Promise<unknown>[] = [];
+
 const mockCtx = {
   waitUntil: (p: Promise<unknown>) => {
     p.catch(() => {});
+    waitUntilPromises.push(p);
   },
 };
+
+async function drainWaitUntil() {
+  const pending = waitUntilPromises.splice(0);
+  await Promise.allSettled(pending);
+}
 
 async function readSSELines(response: Response): Promise<string[]> {
   const text = await response.text();
@@ -238,10 +250,16 @@ function runPost(
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe("Cloudflare Worker routing", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mockAgentEvents = [mockFinalAnswerEvent];
     agentStats.constructed = 0;
     agentStats.byTask = {};
+  });
+
+  afterEach(async () => {
+    // Drain THIS test's handler background work before the next test runs —
+    // prevents cross-test generator pulls (#504 root cause).
+    await drainWaitUntil();
   });
 
   it("OPTIONS → 204 CORS preflight", async () => {
