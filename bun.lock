@@ -9,7 +9,7 @@
         "@anthropic-ai/sdk": "^0.125.0",
         "@cloudflare/workers-types": "^5.20260911.1",
         "@vitejs/plugin-react": "^6.1.1",
-        "ai": "^7.0.97",
+        "ai": "^7.0.128",
         "openai": "^7.28.0",
         "pyodide": "^314.0.7",
         "wrangler": "^4.147.0",
@@ -45,7 +45,7 @@
         "@jitl/quickjs-wasmfile-release-sync": "^0.31.0",
         "@wasmagent/aisdk": "workspace:*",
         "@wasmagent/kernel-quickjs": "workspace:*",
-        "ai": "^7.0.0",
+        "ai": "^7.0.128",
         "quickjs-emscripten": "^0.31.0",
         "zod": "^3.23.0",
       },
@@ -57,7 +57,7 @@
         "@jitl/quickjs-wasmfile-release-sync": "^0.32.0",
         "@wasmagent/aisdk": "workspace:*",
         "@wasmagent/kernel-quickjs": "workspace:*",
-        "ai": "^7.0.0",
+        "ai": "^7.0.128",
         "quickjs-emscripten": "^0.32.0",
         "zod": "^4.0.0",
       },
@@ -345,7 +345,7 @@
       },
       "devDependencies": {
         "@types/node": "^26.1.1",
-        "ai": "^7.0.0",
+        "ai": "^7.0.128",
         "typescript": "^5.7.0",
         "zod": "^3.22.0",
       },
@@ -971,7 +971,7 @@
     },
   },
   "packages": {
-    "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.78", "https://registry.npmmirror.com/@ai-sdk/gateway/-/gateway-4.0.78.tgz", { "dependencies": { "@ai-sdk/provider": "4.0.13", "@ai-sdk/provider-utils": "5.0.39", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-fcamzmFlcy+c/tIc7QcATLe/kArgSVGQ1QxaddMjhOSX8zypc2hmD5sHB2bp1DSFcSxDD32d6usF9a7xLCTULg=="],
+    "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.104", "https://registry.npmmirror.com/@ai-sdk/gateway/-/gateway-4.0.104.tgz", { "dependencies": { "@ai-sdk/provider": "4.0.22", "@ai-sdk/provider-utils": "5.0.54", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-4lTyt8a4BMfVz4QGo+VO5odakmYMX5kq+xiRgdQGGY7o/jP2WSasp6LvIvYvt/lHzz1MfE+xKTOJhz7mMwjynA=="],
 
     "@ai-sdk/openai": ["@ai-sdk/openai@4.0.65", "https://registry.npmmirror.com/@ai-sdk/openai/-/openai-4.0.65.tgz", { "dependencies": { "@ai-sdk/provider": "4.0.13", "@ai-sdk/provider-utils": "5.0.39" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-rpk1Tv7TR0H338zTKmSVMxv4yo++HDOxioiuvBySb8cWkx2fS10tWl/5cEwL0diJbcV/+p3+9gpIOre52UoQJA=="],
 
@@ -1747,7 +1747,7 @@
 
     "aggregate-error": ["aggregate-error@3.1.0", "https://registry.npmmirror.com/aggregate-error/-/aggregate-error-3.1.0.tgz", { "dependencies": { "clean-stack": "^2.0.0", "indent-string": "^4.0.0" } }, "sha512-4I7Td01quW/RpocfNayFdFVk1qSuoh0E7JrbRJ16nH01HhKFQ88INq9Sd+nd72zqRySlr9BmDA8xlEJ6vJMrYA=="],
 
-    "ai": ["ai@7.0.97", "https://registry.npmmirror.com/ai/-/ai-7.0.97.tgz", { "dependencies": { "@ai-sdk/gateway": "4.0.78", "@ai-sdk/provider": "4.0.13", "@ai-sdk/provider-utils": "5.0.39" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-tQGZ234p/bk5X/LNQdB43a5/z1Bve7wK0EOR1AwN6xrosZih4MIC/3pXhcnytcpBJHMbhLISW6J1dFTd/tnwPA=="],
+    "ai": ["ai@7.0.128", "https://registry.npmmirror.com/ai/-/ai-7.0.128.tgz", { "dependencies": { "@ai-sdk/gateway": "4.0.104", "@ai-sdk/provider": "4.0.22", "@ai-sdk/provider-utils": "5.0.54" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-WMKN83DodYtH52ETPHq0jrSwj3wU0aHkhLHXMrwMRabC/aMpIqeWsXJgjkUwrOqkaKHWONdupk/2ttPRvAyFcg=="],
 
     "aisdk-quickjs": ["aisdk-quickjs@workspace:examples/aisdk-quickjs"],
 
@@ -2925,6 +2925,10 @@
 
     "zwitch": ["zwitch@2.0.4", "https://registry.npmmirror.com/zwitch/-/zwitch-2.0.4.tgz", {}, "sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A=="],
 
+    "@ai-sdk/gateway/@ai-sdk/provider": ["@ai-sdk/provider@4.0.22", "https://registry.npmmirror.com/@ai-sdk/provider/-/provider-4.0.22.tgz", { "dependencies": { "json-schema": "^0.4.0" } }, "sha512-1Jtmn36VNMOBo9CMUQrPqsR744qtqRloEiXpWCYS8ffPlhS2CrSNmoho5lPjp3R7EnkzBsGI6p51TA7fQJQZdA=="],
+
+    "@ai-sdk/gateway/@ai-sdk/provider-utils": ["@ai-sdk/provider-utils@5.0.54", "https://registry.npmmirror.com/@ai-sdk/provider-utils/-/provider-utils-5.0.54.tgz", { "dependencies": { "@ai-sdk/provider": "4.0.22", "@standard-schema/spec": "^1.1.0", "@workflow/serde": "4.1.0", "eventsource-parser": "^3.0.8", "undici": "^7.29.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-amqDxFnw9+dpVrDACRDGmExUUNOH9C1D2bhg/DqWJnamEOieDTXBBXLHujSby/0MqHdAFksnpE8Pzfqx6ABMBw=="],
+
     "@ai-sdk/provider-utils/undici": ["undici@7.29.1", "https://registry.npmmirror.com/undici/-/undici-7.29.1.tgz", {}, "sha512-RYONW2MeafgYlkVOKYKkA/Ag7BmXqgIWCa8t1m0JcxrQg9pI9lEqRhAOruOBCbAohOa/gkCF+iPi9hrgvTzu6Q=="],
 
     "@babel/core/semver": ["semver@6.3.1", "https://registry.npmmirror.com/semver/-/semver-6.3.1.tgz", { "bin": { "semver": "bin/semver.js" } }, "sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA=="],
@@ -3026,6 +3030,10 @@
     "@wasmagent/tools-rag/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
     "@wasmagent/tools-web/zod": ["zod@3.25.76", "https://registry.npmmirror.com/zod/-/zod-3.25.76.tgz", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
+
+    "ai/@ai-sdk/provider": ["@ai-sdk/provider@4.0.22", "https://registry.npmmirror.com/@ai-sdk/provider/-/provider-4.0.22.tgz", { "dependencies": { "json-schema": "^0.4.0" } }, "sha512-1Jtmn36VNMOBo9CMUQrPqsR744qtqRloEiXpWCYS8ffPlhS2CrSNmoho5lPjp3R7EnkzBsGI6p51TA7fQJQZdA=="],
+
+    "ai/@ai-sdk/provider-utils": ["@ai-sdk/provider-utils@5.0.54", "https://registry.npmmirror.com/@ai-sdk/provider-utils/-/provider-utils-5.0.54.tgz", { "dependencies": { "@ai-sdk/provider": "4.0.22", "@standard-schema/spec": "^1.1.0", "@workflow/serde": "4.1.0", "eventsource-parser": "^3.0.8", "undici": "^7.29.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-amqDxFnw9+dpVrDACRDGmExUUNOH9C1D2bhg/DqWJnamEOieDTXBBXLHujSby/0MqHdAFksnpE8Pzfqx6ABMBw=="],
 
     "aisdk-quickjs/@ai-sdk/openai": ["@ai-sdk/openai@4.0.91", "https://registry.npmmirror.com/@ai-sdk/openai/-/openai-4.0.91.tgz", { "dependencies": { "@ai-sdk/provider": "4.0.26", "@ai-sdk/provider-utils": "5.0.58" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-Nk382R6us0GNxI1cGJUXMryz1XHpyrmC3K/Rmqdx9tIsqAlc7UtuO/hC9dd31F41w8uzoS362HJSDXgAI7zKbA=="],
 

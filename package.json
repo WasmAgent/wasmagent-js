@@ -81,7 +81,7 @@
     "@anthropic-ai/sdk": "^0.125.0",
     "@cloudflare/workers-types": "^5.20260911.1",
     "@vitejs/plugin-react": "^6.1.1",
-    "ai": "^7.0.97",
+    "ai": "^7.0.128",
     "openai": "^7.28.0",
     "pyodide": "^314.0.7",
     "wrangler": "^4.147.0",
