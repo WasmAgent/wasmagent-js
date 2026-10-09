@@ -41,7 +41,7 @@
     "docx": "^9.7.1",
     "jsdom": "^29.1.1",
     "react": "^18.0.0",
-    "react-markdown": "^9.0.0",
+    "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.0",
     "typescript": "^5.7.0"
   },
