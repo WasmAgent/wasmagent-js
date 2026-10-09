@@ -14,6 +14,6 @@
     "@ai-sdk/openai": "^4.0.91",
     "quickjs-emscripten": "^0.31.0",
     "@jitl/quickjs-wasmfile-release-sync": "^0.31.0",
-    "zod": "^3.23.0"
+    "zod": "^4.6.5"
   }
 }
