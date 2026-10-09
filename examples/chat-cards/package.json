@@ -13,7 +13,7 @@
     "@wasmagent/react": "workspace:*",
     "@wasmagent/ui-cards": "workspace:*",
     "@terrastruct/d2": "^0.1.33",
-    "docx": "^9.7.1",
+    "docx": "^9.8.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
