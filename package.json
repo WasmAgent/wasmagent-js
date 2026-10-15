@@ -82,7 +82,7 @@
     "@cloudflare/workers-types": "^5.20260911.1",
     "@vitejs/plugin-react": "^6.1.1",
     "ai": "^7.0.97",
-    "openai": "^7.28.0",
+    "openai": "^7.32.0",
     "pyodide": "^314.0.7",
     "wrangler": "^4.147.0",
     "zod": "^4.6.2"
