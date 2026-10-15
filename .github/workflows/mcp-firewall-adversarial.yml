@@ -157,7 +157,7 @@ jobs:
       - name: Structural mutation escape gate
         run: bun test packages/mcp-firewall/src/structural-mutation-escape.test.ts
       - name: Upload escape metrics for the F6 report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: structural-escape-metrics
           path: packages/mcp-firewall/evals/results/structural-escape-metrics.json
@@ -216,7 +216,7 @@ jobs:
             console.log(`external_evaluation=${r.external_evaluation} redteam_run=${r.redteam_run}`);
           '
       - name: Upload adversarial report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: mcp-firewall-adversarial-report
           path: packages/mcp-firewall/evals/results/mcp-firewall-adversarial-report-latest.json
