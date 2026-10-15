@@ -37,7 +37,7 @@
     "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
     "quickjs-emscripten": "0.32.0",
     "quickjs-emscripten-core": "0.32.0",
-    "typescript": "^5.7.0"
+    "typescript": "^7.0.2"
   },
   "license": "Apache-2.0",
   "repository": {
