@@ -14,7 +14,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "bun test",
+    "test": "bun test --preload ./src/setup-performance.ts",
     "clean": "rm -rf dist .turbo",
     "postinstall": "node scripts/postinstall.mjs"
   },
