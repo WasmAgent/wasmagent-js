@@ -3,13 +3,9 @@
  *
  * Canonicalization Algorithm: RFC 8785 JSON Canonicalization Scheme (JCS).
  *
- * Object keys are sorted lexicographically by UTF-16 code unit (as required
- * by RFC 8785 §3.2.3). This matches the ordering used by the `rfc8785`
- * Python package and other standard JCS implementations.
- *
- * Note on JS Array.prototype.sort: the default string comparison in JS uses
- * UTF-16 code-unit order, which is exactly what RFC 8785 requires. We rely
- * on this directly without a custom comparator.
+ * Object keys are sorted by UTF-16 code unit (RFC 8785 §3.2.3), matching the
+ * ordering used by the `rfc8785` Python package and the Rust JCS implementation
+ * in wasmagent-proxy.
  *
  * Limitations vs full RFC 8785:
  * - Floating-point numbers are serialised using V8/engine-default
@@ -23,32 +19,43 @@
  * That is the responsibility of the caller (AEPEmitter / verifyAEPRecord).
  */
 
-function sortedReplacer(_key: string, value: unknown): unknown {
-  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-    // defineProperty (not assignment) so a literal `"__proto__"` key is
-    // preserved as an own property: plain assignment would trigger the
-    // prototype setter and silently DROP the key.
-    const sorted: Record<string, unknown> = {};
-    for (const k of Object.keys(value as Record<string, unknown>).sort()) {
-      Object.defineProperty(sorted, k, {
-        value: (value as Record<string, unknown>)[k],
-        writable: true,
-        enumerable: true,
-        configurable: true,
-      });
-    }
-    return sorted;
+function compareUtf16(a: string, b: string): number {
+  const len = Math.min(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    const diff = a.charCodeAt(i) - b.charCodeAt(i);
+    if (diff !== 0) return diff;
   }
-  return value;
+  return a.length - b.length;
+}
+
+function serializeValue(value: unknown): string {
+  if (value === null || typeof value !== "object" && typeof value !== "function") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return "[" + (value as unknown[]).map(serializeValue).join(",") + "]";
+  }
+  // Plain object: sort keys by UTF-16 code unit order.
+  // We must NOT rely on JSON.stringify's object key ordering because V8 always
+  // outputs integer-index properties first (numeric ascending), regardless of
+  // insertion order or sort(). Manually building the JSON string avoids this.
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj);
+  // defineProperty-based __proto__ key already lands in Object.keys() when set
+  // via defineProperty (not assignment), so we get it here naturally.
+  keys.sort(compareUtf16);
+  const pairs = keys.map((k) => JSON.stringify(k) + ":" + serializeValue(obj[k]));
+  return "{" + pairs.join(",") + "}";
 }
 
 /**
  * Serialize an object to canonical UTF-8 bytes for signing (RFC 8785 JCS).
  *
- * Object keys are sorted by UTF-16 code unit (JS default sort order, which
- * is what RFC 8785 §3.2.3 requires). Arrays preserve their order.
+ * Object keys are sorted by UTF-16 code unit (RFC 8785 §3.2.3). Arrays
+ * preserve their order. Integer-index keys are sorted as strings, not
+ * numerically (required by RFC 8785).
  */
 export function canonicalBytes(obj: unknown): Uint8Array {
-  const json = JSON.stringify(obj, sortedReplacer);
+  const json = serializeValue(obj);
   return new TextEncoder().encode(json);
 }
