@@ -34,7 +34,7 @@
     "@cloudflare/workers-types": "^5.20260914.1",
     "@size-limit/preset-big-lib": "^14.1.0",
     "size-limit": "^14.1.0",
-    "typescript": "^5.7.0",
+    "typescript": "^7.0.2",
     "wrangler": "^4.147.0"
   },
   "license": "Apache-2.0",
