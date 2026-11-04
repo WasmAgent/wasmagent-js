@@ -38,10 +38,24 @@ interface FakeAgentSpec {
   answer?: string;
   /** Emit an `error` event mid-run (vs. `final_answer`). */
   error?: string;
-  /** ms to sleep before yielding final_answer (simulates work). */
-  delayMs?: number;
+  /** Hold the member at a controlled point so tests can observe overlap. */
+  gate?: Promise<void>;
+  onStart?: () => void;
+  onFinish?: () => void;
   /** Side-effect: write a file through the supplied workspace. */
   writeFile?: { path: string; content: string };
+}
+
+function deferred(): { promise: Promise<void>; resolve: () => void } {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+function nextEventLoopTurn(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
 }
 
 /**
@@ -55,6 +69,7 @@ function makeFakeMember(spec: FakeAgentSpec, capture?: AgentGroupSpawnContext[])
       capture?.push(ctx);
       return {
         async *run(_taskArg, parentTraceId): AsyncGenerator<AgentEvent> {
+          spec.onStart?.();
           const base = { traceId: ctx.memberId, parentTraceId, timestampMs: 0 };
           yield {
             ...base,
@@ -66,7 +81,8 @@ function makeFakeMember(spec: FakeAgentSpec, capture?: AgentGroupSpawnContext[])
           if (spec.writeFile) {
             await ctx.workspace.write(spec.writeFile.path, spec.writeFile.content);
           }
-          if (spec.delayMs) await new Promise((r) => setTimeout(r, spec.delayMs));
+          if (spec.gate) await spec.gate;
+          spec.onFinish?.();
 
           if (spec.error) {
             yield {
@@ -122,50 +138,85 @@ describe("AgentGroup — construction", () => {
 });
 
 describe("AgentGroup — parallelism", () => {
-  it("3 cooperating members finish in ≪ 60% of the serial baseline", async () => {
+  it("starts multiple members before any member is released", async () => {
     const kv = new MapKvBackend();
     const root = await openOrCreateRoot(kv);
+    const gate = deferred();
+    let active = 0;
+    let peakActive = 0;
+    const member = (label: string) =>
+      makeFakeMember({
+        label,
+        gate: gate.promise,
+        onStart: () => {
+          active++;
+          peakActive = Math.max(peakActive, active);
+        },
+        onFinish: () => {
+          active--;
+        },
+      });
     const group = new AgentGroup({
       task: "shared task",
       model: {} as never,
-      members: [
-        makeFakeMember({ label: "a", delayMs: 80 }),
-        makeFakeMember({ label: "b", delayMs: 80 }),
-        makeFakeMember({ label: "c", delayMs: 80 }),
-      ],
+      members: [member("a"), member("b"), member("c")],
       baseWorkspace: root,
     });
-    const t0 = performance.now();
-    const out = await group.run();
-    const elapsed = performance.now() - t0;
+    const run = group.run();
+    await nextEventLoopTurn();
+    const overlapped = peakActive > 1;
+    gate.resolve();
+    const out = await run;
+
     expect(out.results).toHaveLength(3);
     expect(out.results.every((r) => !r.error)).toBe(true);
-    // Serial baseline = 240ms; 60% = 144ms. Parallel is bounded by the slowest
-    // member (~80ms) + overhead — generous 130ms keeps the test stable on CI.
-    expect(elapsed).toBeLessThan(130);
+    expect(overlapped).toBe(true);
   });
 
   it("respects maxConcurrency by running in waves", async () => {
     const kv = new MapKvBackend();
     const root = await openOrCreateRoot(kv);
+    const labels = ["a", "b", "c", "d"];
+    const gates = labels.map(() => deferred());
+    const started: string[] = [];
+    let active = 0;
+    let peakActive = 0;
     const group = new AgentGroup({
       task: "shared",
       model: {} as never,
-      members: [
-        makeFakeMember({ label: "a", delayMs: 50 }),
-        makeFakeMember({ label: "b", delayMs: 50 }),
-        makeFakeMember({ label: "c", delayMs: 50 }),
-        makeFakeMember({ label: "d", delayMs: 50 }),
-      ],
+      members: labels.map((label, index) =>
+        makeFakeMember({
+          label,
+          gate: gates[index]!.promise,
+          onStart: () => {
+            started.push(label);
+            active++;
+            peakActive = Math.max(peakActive, active);
+          },
+          onFinish: () => {
+            active--;
+          },
+        })
+      ),
       baseWorkspace: root,
       maxConcurrency: 2,
     });
-    const t0 = performance.now();
-    await group.run();
-    const elapsed = performance.now() - t0;
-    // Two waves of two ⇒ ≥ 2 * 50ms; well under 4 * 50ms (serial).
-    expect(elapsed).toBeGreaterThanOrEqual(95);
-    expect(elapsed).toBeLessThan(190);
+    const run = group.run();
+    await nextEventLoopTurn();
+    const firstWave = [...started];
+    gates[0]!.resolve();
+    gates[1]!.resolve();
+    await nextEventLoopTurn();
+    const afterFirstWave = [...started];
+    gates[2]!.resolve();
+    gates[3]!.resolve();
+    const out = await run;
+
+    expect(out.results).toHaveLength(4);
+    expect(out.results.every((r) => !r.error)).toBe(true);
+    expect(firstWave.sort()).toEqual(["a", "b"]);
+    expect(afterFirstWave.sort()).toEqual(["a", "b", "c", "d"]);
+    expect(peakActive).toBe(2);
   });
 });
 
