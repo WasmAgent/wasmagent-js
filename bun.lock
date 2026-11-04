@@ -23,7 +23,7 @@
         "@types/node": "^26.1.2",
         "@wasmagent/protocol": "^0.1.11",
         "happy-dom": "^20.11.1",
-        "node-llama-cpp": "^3.19.1",
+        "node-llama-cpp": "^3.22.1",
         "turbo": "^2.10.7",
         "typescript": "^5.7.0",
         "vitepress": "^1.6.4",
@@ -1227,7 +1227,7 @@
 
     "@hono/node-server": ["@hono/node-server@1.19.14", "https://registry.npmmirror.com/@hono/node-server/-/node-server-1.19.14.tgz", { "peerDependencies": { "hono": "4.12.23" } }, "sha512-GwtvgtXxnWsucXvbQXkRgqksiH2Qed37H9xHZocE5sA3N8O8O8/8FA3uclQXxXVzc9XBZuEOMK7+r02FmSpHtw=="],
 
-    "@huggingface/jinja": ["@huggingface/jinja@0.5.9", "https://registry.npmmirror.com/@huggingface/jinja/-/jinja-0.5.9.tgz", {}, "sha512-uWTG+l3VJRsl7EXxYizuL3P+cCPoc3cRqbWWRcQN0FhejRfbdq0RNhCmbY/YDtnTcz9icdLYuLDjsnz4d8JMuw=="],
+    "@huggingface/jinja": ["@huggingface/jinja@0.5.10", "https://registry.npmmirror.com/@huggingface/jinja/-/jinja-0.5.10.tgz", {}, "sha512-SgS1D1bglQ94ceD4ZCL6eayUDy9uV1xuyk61OjgSxU5GJh7upqZCKII0JoTYMc6wWsg3JUgaPRX0ElQzXPk3Cw=="],
 
     "@iconify-json/simple-icons": ["@iconify-json/simple-icons@1.2.86", "https://registry.npmmirror.com/@iconify-json/simple-icons/-/simple-icons-1.2.86.tgz", { "dependencies": { "@iconify/types": "*" } }, "sha512-t3jck5qPQuK1qy+bRn9eCoDQhIB7XSazKz1Fjp8hcan3XOAsTI5Mq/s3F0ekOKSvMQqkVORYK6ns6o6T9f5EMA=="],
 
@@ -1327,33 +1327,33 @@
 
     "@noble/ed25519": ["@noble/ed25519@3.1.0", "https://registry.npmmirror.com/@noble/ed25519/-/ed25519-3.1.0.tgz", {}, "sha512-pfcObRY3CtvwfaG9Mt5XqZdKmAQppl37tHUeuBhDUbiwJBCVY4/A4lbMvb1xKhMDx96AqAqZpMWuBX1HulhX4g=="],
 
-    "@node-llama-cpp/linux-arm64": ["@node-llama-cpp/linux-arm64@3.19.1", "https://registry.npmmirror.com/@node-llama-cpp/linux-arm64/-/linux-arm64-3.19.1.tgz", { "os": "linux", "cpu": [ "x64", "arm64", ] }, "sha512-lDfmsN2ChkfM9vcglYoJ8jiaQACTF/bMgdO/owkzhNLdFkIFI6eAqSFaBsCsYq53BspN/JTssle7QOOI+nDx3A=="],
+    "@node-llama-cpp/linux-arm64": ["@node-llama-cpp/linux-arm64@3.22.1", "https://registry.npmmirror.com/@node-llama-cpp/linux-arm64/-/linux-arm64-3.22.1.tgz", { "os": "linux", "cpu": [ "x64", "arm64", ] }, "sha512-W+7naKCXX9/eEjjFmRS8vvx91QyLXDbeFxexZc3bh/PtQABZgmRL3C0AtYYXn4YGTj/3Qor4lWZn2tpjZFPLdQ=="],
 
-    "@node-llama-cpp/linux-armv7l": ["@node-llama-cpp/linux-armv7l@3.19.1", "https://registry.npmmirror.com/@node-llama-cpp/linux-armv7l/-/linux-armv7l-3.19.1.tgz", { "os": "linux", "cpu": [ "arm", "x64", ] }, "sha512-7z15VVqb9vjnidUxVDlkOlSmBCsVsH+5cAYzOCXJm97XiQE9julGeAtWh/H/3D2Mkt/ABy2V8rMsGA5FwP3y0A=="],
+    "@node-llama-cpp/linux-armv7l": ["@node-llama-cpp/linux-armv7l@3.22.1", "https://registry.npmmirror.com/@node-llama-cpp/linux-armv7l/-/linux-armv7l-3.22.1.tgz", { "os": "linux", "cpu": [ "arm", "x64", ] }, "sha512-v/pHg4BcQHRDna+YYq4vWp44HCFluar4hAiB732Pa5PF89flMXhHSku68tQn+25RJjuc3TtoeY/i57WnX9GrdQ=="],
 
-    "@node-llama-cpp/linux-riscv64": ["@node-llama-cpp/linux-riscv64@3.19.1", "https://registry.npmmirror.com/@node-llama-cpp/linux-riscv64/-/linux-riscv64-3.19.1.tgz", { "os": "linux", "cpu": "none" }, "sha512-FUQe5ur6k9d2/2TLoz42+66wHVZed4kUNBUZVqqv6jq2pmFClMHOtgkTZOKGMaUvr+XAQwQkS8y2oTjpbJJ6fg=="],
+    "@node-llama-cpp/linux-riscv64": ["@node-llama-cpp/linux-riscv64@3.22.1", "https://registry.npmmirror.com/@node-llama-cpp/linux-riscv64/-/linux-riscv64-3.22.1.tgz", { "os": "linux", "cpu": "none" }, "sha512-AUnyUgcIUiGbWce/jWqM13Hs3wPyIZG3mxnR/GXm3/F8g8vNlqCldeVdRS6lyZ0xWQkCowdMQkbdoQuuu7YWOw=="],
 
-    "@node-llama-cpp/linux-x64": ["@node-llama-cpp/linux-x64@3.19.1", "https://registry.npmmirror.com/@node-llama-cpp/linux-x64/-/linux-x64-3.19.1.tgz", { "os": "linux", "cpu": "x64" }, "sha512-ntnV8GLeuuGwp5eS5aCxmF0oo4OjjDo6LTWJGJhuieLF6SwMlfbqxCYh3yo1lcepeNf2uCHnXMydyCVnqLWJcQ=="],
+    "@node-llama-cpp/linux-x64": ["@node-llama-cpp/linux-x64@3.22.1", "https://registry.npmmirror.com/@node-llama-cpp/linux-x64/-/linux-x64-3.22.1.tgz", { "os": "linux", "cpu": "x64" }, "sha512-5uCCDNqWCNfaAm8aR/Uzxbo4HBpKgNF91kCHPepKhgMgV2OAmatoefbOlMihsqCiH2Od35E/eUHQCFbfRBJuOg=="],
 
-    "@node-llama-cpp/linux-x64-cuda": ["@node-llama-cpp/linux-x64-cuda@3.19.1", "https://registry.npmmirror.com/@node-llama-cpp/linux-x64-cuda/-/linux-x64-cuda-3.19.1.tgz", { "os": "linux", "cpu": "x64" }, "sha512-jm6+tBVvIbNLaajVAAzoUWvoMOoKa/P0rUpwX9UAJJJthM3gigy+UshG7fVMtt+ExFapy5MPSWDNKvjwWIt67Q=="],
+    "@node-llama-cpp/linux-x64-cuda": ["@node-llama-cpp/linux-x64-cuda@3.22.1", "https://registry.npmmirror.com/@node-llama-cpp/linux-x64-cuda/-/linux-x64-cuda-3.22.1.tgz", { "os": "linux", "cpu": "x64" }, "sha512-8rQCjyNNLZJUFit+YpjwlC4hwkKgOMIkB2wuycKBf8NU2O3ySKbiWZQ8aw9ku2nUTXjSnUIrE6KB88itduTBuA=="],
 
-    "@node-llama-cpp/linux-x64-cuda-ext": ["@node-llama-cpp/linux-x64-cuda-ext@3.19.1", "https://registry.npmmirror.com/@node-llama-cpp/linux-x64-cuda-ext/-/linux-x64-cuda-ext-3.19.1.tgz", { "os": "linux", "cpu": "x64" }, "sha512-7xi2XMB0HBvFRYjfMMLjv6Su2roA3EZl9siJpxim716Oume017Lk1hF/72Mn0XnKfQWd2Z9vfstFTvEYTfZ0WQ=="],
+    "@node-llama-cpp/linux-x64-cuda-ext": ["@node-llama-cpp/linux-x64-cuda-ext@3.22.1", "https://registry.npmmirror.com/@node-llama-cpp/linux-x64-cuda-ext/-/linux-x64-cuda-ext-3.22.1.tgz", { "os": "linux", "cpu": "x64" }, "sha512-4e5ajkiM2aR2WAdB/N/ACk4weEhHvOAIrzxZPsIX0xDFW5+6hhShuy1/vs88SK9NGdgAco9IyE28eYS0H1efpA=="],
 
-    "@node-llama-cpp/linux-x64-vulkan": ["@node-llama-cpp/linux-x64-vulkan@3.19.1", "https://registry.npmmirror.com/@node-llama-cpp/linux-x64-vulkan/-/linux-x64-vulkan-3.19.1.tgz", { "os": "linux", "cpu": "x64" }, "sha512-VcNq3bKEbOkUernV6HFSmD4WrxL37rTdumPlMcVnQFvzC9q+P3gLKxRCLeqpJ26wU/iMHqzlz1/fOMwn9FWjDw=="],
+    "@node-llama-cpp/linux-x64-vulkan": ["@node-llama-cpp/linux-x64-vulkan@3.22.1", "https://registry.npmmirror.com/@node-llama-cpp/linux-x64-vulkan/-/linux-x64-vulkan-3.22.1.tgz", { "os": "linux", "cpu": "x64" }, "sha512-bBxqU+JOcBu1nb5Qj2zcMci+JByT1E8EajHvYodyNfVIPkEhXh+/HMwR1/BT7xP08YK0hks+kM8fglER0P8JEg=="],
 
-    "@node-llama-cpp/mac-arm64-metal": ["@node-llama-cpp/mac-arm64-metal@3.19.1", "https://registry.npmmirror.com/@node-llama-cpp/mac-arm64-metal/-/mac-arm64-metal-3.19.1.tgz", { "os": "darwin", "cpu": [ "x64", "arm64", ] }, "sha512-M4ignq2Hhru35/zPrTAxUsuHOK96Hk7xeY1Oj9+Gty6XQ4dEmVUPwEYpB9ra3D0vTxQaMgFt4pj8L+gTR5u9fg=="],
+    "@node-llama-cpp/mac-arm64-metal": ["@node-llama-cpp/mac-arm64-metal@3.22.1", "https://registry.npmmirror.com/@node-llama-cpp/mac-arm64-metal/-/mac-arm64-metal-3.22.1.tgz", { "os": "darwin", "cpu": [ "x64", "arm64", ] }, "sha512-ZnKeJSCcT7ueulMEktdWxjf4AcgbvaLvWdNYzBuysgMEypD9VjGQmMGAU0O4sybVmiaz3o+rdiYV4AUD4P3M4g=="],
 
-    "@node-llama-cpp/mac-x64": ["@node-llama-cpp/mac-x64@3.19.1", "https://registry.npmmirror.com/@node-llama-cpp/mac-x64/-/mac-x64-3.19.1.tgz", { "os": "darwin", "cpu": "x64" }, "sha512-wDv1cuxDopj3ZF3fCCJtcn++ypb8h6QIH8yFevijxeMCaFqSzWm1o/uLkiXiEE2pbb9tq5uCD1x4Ss+iJvCs9w=="],
+    "@node-llama-cpp/mac-x64": ["@node-llama-cpp/mac-x64@3.22.1", "https://registry.npmmirror.com/@node-llama-cpp/mac-x64/-/mac-x64-3.22.1.tgz", { "os": "darwin", "cpu": "x64" }, "sha512-z28s8otqJDPGvLrEOK1/8yuvN1bZQIftetvlEaZn9Sbi8nMZlsw4q1Of3oScxhk0V+T20lgzYNGTXPN1tV/bpQ=="],
 
-    "@node-llama-cpp/win-arm64": ["@node-llama-cpp/win-arm64@3.19.1", "https://registry.npmmirror.com/@node-llama-cpp/win-arm64/-/win-arm64-3.19.1.tgz", { "os": "win32", "cpu": [ "x64", "arm64", ] }, "sha512-mmzC7bydEn/D0IJXMJ1GT/WSu48u/oIkwMPvo1G51JI/QoG1mRsdx0dBFvPVfraIveSvLCvV09ZbGpm2SdgMMg=="],
+    "@node-llama-cpp/win-arm64": ["@node-llama-cpp/win-arm64@3.22.1", "https://registry.npmmirror.com/@node-llama-cpp/win-arm64/-/win-arm64-3.22.1.tgz", { "os": "win32", "cpu": [ "x64", "arm64", ] }, "sha512-//HLMt4nf9KqUPlmvYbLSZXdtSUQgBBsp9D3NuMcJfJSHGRtZ26enh92gE2AqJq5EB/m43mDSdjSpQYq/oa1Pw=="],
 
-    "@node-llama-cpp/win-x64": ["@node-llama-cpp/win-x64@3.19.1", "https://registry.npmmirror.com/@node-llama-cpp/win-x64/-/win-x64-3.19.1.tgz", { "os": "win32", "cpu": "x64" }, "sha512-BpWFyyj0om2fFLoA3JpANepw0vdQiaalvc4pooH5NN2N7i9yutTEgXpn2s+qVpryM+NCT6WrfV/kN/oRfCowNw=="],
+    "@node-llama-cpp/win-x64": ["@node-llama-cpp/win-x64@3.22.1", "https://registry.npmmirror.com/@node-llama-cpp/win-x64/-/win-x64-3.22.1.tgz", { "os": "win32", "cpu": "x64" }, "sha512-qffeWJTnQOBNtTFikWl+Vtly4fSORn/OAd6AJCAq8u93IUI0NTKeF7nwKRqA8KCtIOL9KzF+yIQ7plkV+Fm8aQ=="],
 
-    "@node-llama-cpp/win-x64-cuda": ["@node-llama-cpp/win-x64-cuda@3.19.1", "https://registry.npmmirror.com/@node-llama-cpp/win-x64-cuda/-/win-x64-cuda-3.19.1.tgz", { "os": "win32", "cpu": "x64" }, "sha512-uDeiuXvj871az+QfxjRNb2/frUiH3KnW6J2f73AL5mQoZuunyt4i/Bq25RjfE6kS8aZopBwCjRfzN/P+KxPC/g=="],
+    "@node-llama-cpp/win-x64-cuda": ["@node-llama-cpp/win-x64-cuda@3.22.1", "https://registry.npmmirror.com/@node-llama-cpp/win-x64-cuda/-/win-x64-cuda-3.22.1.tgz", { "os": "win32", "cpu": "x64" }, "sha512-2oC1qcnm+ierlkwFp8FdMvl0/9HC0wq3OZXlw1CkrIIwRA/B4vD1fNYEOIwqS500qePGsDQEuzoFB+DKsPBTgw=="],
 
-    "@node-llama-cpp/win-x64-cuda-ext": ["@node-llama-cpp/win-x64-cuda-ext@3.19.1", "https://registry.npmmirror.com/@node-llama-cpp/win-x64-cuda-ext/-/win-x64-cuda-ext-3.19.1.tgz", { "os": "win32", "cpu": "x64" }, "sha512-6WDpsUkkLbYbfipAgb3UiFqze21DYLefkU/hpnXcMXK6SwkfmMl5VTbbi4giXBWWD+Rxw/7lu8bUQoCRO2XuvQ=="],
+    "@node-llama-cpp/win-x64-cuda-ext": ["@node-llama-cpp/win-x64-cuda-ext@3.22.1", "https://registry.npmmirror.com/@node-llama-cpp/win-x64-cuda-ext/-/win-x64-cuda-ext-3.22.1.tgz", { "os": "win32", "cpu": "x64" }, "sha512-TybtWp/gNXZ7Bjzty8pqNonltffzOw6GlIdal02VLwEzyIzqxosVgBkksjM3E5xm2+L0RUxsGLmBFPsNUTHQsQ=="],
 
-    "@node-llama-cpp/win-x64-vulkan": ["@node-llama-cpp/win-x64-vulkan@3.19.1", "https://registry.npmmirror.com/@node-llama-cpp/win-x64-vulkan/-/win-x64-vulkan-3.19.1.tgz", { "os": "win32", "cpu": "x64" }, "sha512-yFk9sk6Eph8Kmxsp/r7lzerpAX0j3xPKHOfetjIWxSQr81fvs8RHpOqAfc+YjbTI9iQe989LDV0A1kNuq8MnDw=="],
+    "@node-llama-cpp/win-x64-vulkan": ["@node-llama-cpp/win-x64-vulkan@3.22.1", "https://registry.npmmirror.com/@node-llama-cpp/win-x64-vulkan/-/win-x64-vulkan-3.22.1.tgz", { "os": "win32", "cpu": "x64" }, "sha512-Y7S2K9T7kBhnbgTIAoEnn1hrD5QQZT939I8ywd2CqXTMJwst7qPW5H7vCt0nvMQtec96Wd9yf4JoHSNPwberpQ=="],
 
     "@npmcli/agent": ["@npmcli/agent@2.2.2", "https://registry.npmmirror.com/@npmcli/agent/-/agent-2.2.2.tgz", { "dependencies": { "agent-base": "^7.1.0", "http-proxy-agent": "^7.0.0", "https-proxy-agent": "^7.0.1", "lru-cache": "^10.0.1", "socks-proxy-agent": "^8.0.3" } }, "sha512-OrcNPXdpSl9UX7qPVRWbmWMCSXrcDa2M9DvrbOTj7ao1S4PlqVFYv9/yLKMkrJKZ/V5A/kDBC690or307i26Og=="],
 
@@ -2081,7 +2081,7 @@
 
     "fs-constants": ["fs-constants@1.0.0", "https://registry.npmmirror.com/fs-constants/-/fs-constants-1.0.0.tgz", {}, "sha512-y6OAwoSIf7FyjMIv94u+b5rdheZEjzR63GTyZJm5qh4Bi+2YgwLCcI/fPFZkL5PSixOt6ZNKm+w+Hfp/Bciwow=="],
 
-    "fs-extra": ["fs-extra@11.3.5", "https://registry.npmmirror.com/fs-extra/-/fs-extra-11.3.5.tgz", { "dependencies": { "graceful-fs": "^4.2.0", "jsonfile": "^6.0.1", "universalify": "^2.0.0" } }, "sha512-eKpRKAovdpZtR1WopLHxlBWvAgPny3c4gX1G5Jhwmmw4XJj0ifSD5qB5TOo8hmA0wlRKDAOAhEE1yVPgs6Fgcg=="],
+    "fs-extra": ["fs-extra@11.4.1", "https://registry.npmmirror.com/fs-extra/-/fs-extra-11.4.1.tgz", { "dependencies": { "graceful-fs": "^4.2.0", "jsonfile": "^6.0.1", "universalify": "^2.0.0" } }, "sha512-KYAb4c9BJQI6QqGKthV68OHe0badztdXJWKo0WtBA9IuCFPTKvE5ZdUBglP833aMjhaSPNO4A5j/EkzZtGlKjA=="],
 
     "fs-minipass": ["fs-minipass@2.1.0", "https://registry.npmmirror.com/fs-minipass/-/fs-minipass-2.1.0.tgz", { "dependencies": { "minipass": "^3.0.0" } }, "sha512-V/JgOLFCS+R6Vcq0slCuaeWEdNC3ouDlJMNIsacH2VtALiu9mV4LPrHc5cDl8k5aw6J8jwgWWpiTo5RYhmIzvg=="],
 
@@ -2245,7 +2245,7 @@
 
     "lie": ["lie@3.3.0", "https://registry.npmmirror.com/lie/-/lie-3.3.0.tgz", { "dependencies": { "immediate": "~3.0.5" } }, "sha512-UaiMJzeWRlEujzAuw5LokY1L5ecNQYZKfmyZ9L7wDHb/p5etKaxXhohBcrw0EYby+G/NA52vRSN4N39dxHAIwQ=="],
 
-    "lifecycle-utils": ["lifecycle-utils@3.1.1", "https://registry.npmmirror.com/lifecycle-utils/-/lifecycle-utils-3.1.1.tgz", {}, "sha512-gNd3OvhFNjHykJE3uGntz7UuPzWlK9phrIdXxU9Adis0+ExkwnZibfxCJWiWWZ+a6VbKiZrb+9D9hCQWd4vjTg=="],
+    "lifecycle-utils": ["lifecycle-utils@4.5.2", "https://registry.npmmirror.com/lifecycle-utils/-/lifecycle-utils-4.5.2.tgz", {}, "sha512-3C1g98pNKGmtakPeIfRqvOiiBJflKAvNjo/WsDI/70vsOy/DJDoutsLM+wGuAdfcOitlbUQfl6UcfvyeIimh7g=="],
 
     "lilconfig": ["lilconfig@3.1.3", "https://registry.npmmirror.com/lilconfig/-/lilconfig-3.1.3.tgz", {}, "sha512-/vlFKAoH5Cgt3Ie+JLhRbwOsCQePABiU3tJ1egGvyQ+33R/vcwM2Zl2QR/LzjsBeItPt3oSVXapn+m4nQDvpzw=="],
 
@@ -2431,7 +2431,7 @@
 
     "node-abi": ["node-abi@3.94.0", "https://registry.npmmirror.com/node-abi/-/node-abi-3.94.0.tgz", { "dependencies": { "semver": "^7.3.5" } }, "sha512-W5ZNO5KRPB5TkYmGVD9F6YqhsglXJzE6etpbmT+f6EQElhiX/UTG551cnsRGvLG3fyZEg9HwaDmNmj5nwJ4z9g=="],
 
-    "node-addon-api": ["node-addon-api@8.8.0", "https://registry.npmmirror.com/node-addon-api/-/node-addon-api-8.8.0.tgz", {}, "sha512-c5Ko1fZJIJmzhFIkhRN76WTq+fC6tWnGy9CXA0fA+XygsWZmEwG8vmbkNqxMyoaa0Tin4djul49NzdVcJJcjeA=="],
+    "node-addon-api": ["node-addon-api@8.9.2", "https://registry.npmmirror.com/node-addon-api/-/node-addon-api-8.9.2.tgz", {}, "sha512-VijLXbi3UACN69I0JVXJsX4tjACjNoQDgv2gTF6sx2wWEi8tkSg2eX8p5gSIFi8z2+DL3oHmY6OyKce38SDolg=="],
 
     "node-api-headers": ["node-api-headers@1.9.0", "https://registry.npmmirror.com/node-api-headers/-/node-api-headers-1.9.0.tgz", {}, "sha512-2oNILP4jXwRB4ywnYKjVk1YyJ96n2D4EOVJO6S3oYZ5PtbJrw3Yt9TpAuX3nBLMuzn74rnfGQrv13pS9vC+YiA=="],
 
@@ -2439,7 +2439,7 @@
 
     "node-gyp": ["node-gyp@10.3.1", "https://registry.npmmirror.com/node-gyp/-/node-gyp-10.3.1.tgz", { "dependencies": { "env-paths": "^2.2.0", "exponential-backoff": "^3.1.1", "glob": "^10.3.10", "graceful-fs": "^4.2.6", "make-fetch-happen": "^13.0.0", "nopt": "^7.0.0", "proc-log": "^4.1.0", "semver": "^7.3.5", "tar": "^6.2.1", "which": "^4.0.0" }, "bin": { "node-gyp": "bin/node-gyp.js" } }, "sha512-Pp3nFHBThHzVtNY7U6JfPjvT/DTE8+o/4xKsLQtBoU+j2HLsGlhcfzflAoUreaJbNmYnX+LlLi0qjV8kpyO6xQ=="],
 
-    "node-llama-cpp": ["node-llama-cpp@3.19.1", "https://registry.npmmirror.com/node-llama-cpp/-/node-llama-cpp-3.19.1.tgz", { "dependencies": { "@huggingface/jinja": "^0.5.6", "async-retry": "^1.3.3", "bytes": "^3.1.2", "chalk": "^5.6.2", "chmodrp": "^1.0.2", "cmake-js": "^8.0.0", "cross-spawn": "^7.0.6", "env-var": "^7.5.0", "filenamify": "^6.0.0", "fs-extra": "^11.3.4", "ignore": "^7.0.4", "ipull": "^3.9.5", "is-unicode-supported": "^2.1.0", "lifecycle-utils": "^3.1.1", "log-symbols": "^7.0.1", "nanoid": "^5.1.6", "node-addon-api": "^8.6.0", "ora": "^9.3.0", "pretty-ms": "^9.3.0", "proper-lockfile": "^4.1.2", "semver": "^7.7.1", "simple-git": "^3.33.0", "slice-ansi": "^8.0.0", "stdout-update": "^4.0.1", "strip-ansi": "^7.2.0", "validate-npm-package-name": "^7.0.2", "which": "^6.0.1", "yargs": "^17.7.2" }, "optionalDependencies": { "@node-llama-cpp/linux-arm64": "3.19.1", "@node-llama-cpp/linux-armv7l": "3.19.1", "@node-llama-cpp/linux-riscv64": "3.19.1", "@node-llama-cpp/linux-x64": "3.19.1", "@node-llama-cpp/linux-x64-cuda": "3.19.1", "@node-llama-cpp/linux-x64-cuda-ext": "3.19.1", "@node-llama-cpp/linux-x64-vulkan": "3.19.1", "@node-llama-cpp/mac-arm64-metal": "3.19.1", "@node-llama-cpp/mac-x64": "3.19.1", "@node-llama-cpp/win-arm64": "3.19.1", "@node-llama-cpp/win-x64": "3.19.1", "@node-llama-cpp/win-x64-cuda": "3.19.1", "@node-llama-cpp/win-x64-cuda-ext": "3.19.1", "@node-llama-cpp/win-x64-vulkan": "3.19.1" }, "peerDependencies": { "typescript": ">=5.0.0" }, "optionalPeers": ["typescript"], "bin": { "node-llama-cpp": "dist/cli/cli.js", "nlc": "dist/cli/cli.js" } }, "sha512-i3yq1IHSg+ugdl78/noPeYvtMFIMBaW10nWl0KIXoES9P7HCnrKT3yhpO4p08bib7YJ1boFdnibg8znOILzpCA=="],
+    "node-llama-cpp": ["node-llama-cpp@3.22.1", "https://registry.npmmirror.com/node-llama-cpp/-/node-llama-cpp-3.22.1.tgz", { "dependencies": { "@huggingface/jinja": "^0.5.10", "async-retry": "^1.3.3", "bytes": "^3.1.2", "chalk": "^5.6.2", "chmodrp": "^1.0.2", "cmake-js": "^8.0.0", "cross-spawn": "^7.0.6", "env-var": "^7.5.0", "filenamify": "^6.0.0", "fs-extra": "^11.4.0", "ignore": "^7.0.4", "ipull": "^3.9.5", "is-unicode-supported": "^2.1.0", "lifecycle-utils": "^4.5.2", "log-symbols": "^7.0.1", "nanoid": "^5.1.6", "node-addon-api": "^8.9.2", "ora": "^9.3.0", "pretty-ms": "^9.3.0", "proper-lockfile": "^4.1.2", "semver": "^7.7.1", "simple-git": "^3.36.0", "slice-ansi": "^8.0.0", "stdout-update": "^4.0.1", "strip-ansi": "^7.2.0", "validate-npm-package-name": "^7.0.2", "which": "^6.0.1", "yargs": "^17.7.2" }, "optionalDependencies": { "@node-llama-cpp/linux-arm64": "3.22.1", "@node-llama-cpp/linux-armv7l": "3.22.1", "@node-llama-cpp/linux-riscv64": "3.22.1", "@node-llama-cpp/linux-x64": "3.22.1", "@node-llama-cpp/linux-x64-cuda": "3.22.1", "@node-llama-cpp/linux-x64-cuda-ext": "3.22.1", "@node-llama-cpp/linux-x64-vulkan": "3.22.1", "@node-llama-cpp/mac-arm64-metal": "3.22.1", "@node-llama-cpp/mac-x64": "3.22.1", "@node-llama-cpp/win-arm64": "3.22.1", "@node-llama-cpp/win-x64": "3.22.1", "@node-llama-cpp/win-x64-cuda": "3.22.1", "@node-llama-cpp/win-x64-cuda-ext": "3.22.1", "@node-llama-cpp/win-x64-vulkan": "3.22.1" }, "peerDependencies": { "typescript": ">=5.0.0" }, "optionalPeers": ["typescript"], "bin": { "nlc": "dist/cli/cli.js", "node-llama-cpp": "dist/cli/cli.js" } }, "sha512-bltIipuWmc123H7tMIgDGKSsSrhmhlQYeVUC48XTjVW7XGJJiJJyCdlTMzQ/LiWoPkGDpcL4FviDpgw7qfTiDw=="],
 
     "node-releases": ["node-releases@2.0.47", "https://registry.npmmirror.com/node-releases/-/node-releases-2.0.47.tgz", {}, "sha512-Uzmd6LXpouKo8EUK68IjH4+E01w/hXyV3R3g/geCJo+rXLNfh1xucB+LOzYEOQPSiUK3h/xZf0cQGcSsmyL2Og=="],
 
@@ -3061,6 +3061,8 @@
 
     "cliui/strip-ansi": ["strip-ansi@6.0.1", "https://registry.npmmirror.com/strip-ansi/-/strip-ansi-6.0.1.tgz", { "dependencies": { "ansi-regex": "5.0.1" } }, "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A=="],
 
+    "cmake-js/fs-extra": ["fs-extra@11.3.5", "https://registry.npmmirror.com/fs-extra/-/fs-extra-11.3.5.tgz", { "dependencies": { "graceful-fs": "^4.2.0", "jsonfile": "^6.0.1", "universalify": "^2.0.0" } }, "sha512-eKpRKAovdpZtR1WopLHxlBWvAgPny3c4gX1G5Jhwmmw4XJj0ifSD5qB5TOo8hmA0wlRKDAOAhEE1yVPgs6Fgcg=="],
+
     "cmake-js/tar": ["tar@7.5.16", "https://registry.npmmirror.com/tar/-/tar-7.5.16.tgz", { "dependencies": { "@isaacs/fs-minipass": "^4.0.0", "chownr": "^3.0.0", "minipass": "^7.1.2", "minizlib": "^3.1.0", "yallist": "^5.0.0" } }, "sha512-56adEpPMouktRlBLXiaYFFzZ/3+JXa8P9n7WbR+ibIjtviN55mEaOkiysCnPnWm+7kkui1Dn8J9l+g6zV8731w=="],
 
     "cross-spawn/which": ["which@2.0.2", "https://registry.npmmirror.com/which/-/which-2.0.2.tgz", { "dependencies": { "isexe": "2.0.0" }, "bin": { "node-which": "./bin/node-which" } }, "sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA=="],
@@ -3080,6 +3082,8 @@
     "fs-minipass/minipass": ["minipass@3.3.6", "https://registry.npmmirror.com/minipass/-/minipass-3.3.6.tgz", { "dependencies": { "yallist": "^4.0.0" } }, "sha512-DxiNidxSEK+tHG6zOIklvNOwm3hvCrbUrdtzY74U6HKTJxvIDfOUL5W5P2Ghd3DTkhhKPYGqeNUIh5qcM4YBfw=="],
 
     "ipull/commander": ["commander@10.0.1", "https://registry.npmmirror.com/commander/-/commander-10.0.1.tgz", {}, "sha512-y4Mg2tXshplEbSGzx7amzPwKKOCGuoSRP/CjEdwwk0FOGlUbq6lKuoyDZTNZkmxHdJtp54hdfY/JUrdL7Xfdug=="],
+
+    "ipull/fs-extra": ["fs-extra@11.3.5", "https://registry.npmmirror.com/fs-extra/-/fs-extra-11.3.5.tgz", { "dependencies": { "graceful-fs": "^4.2.0", "jsonfile": "^6.0.1", "universalify": "^2.0.0" } }, "sha512-eKpRKAovdpZtR1WopLHxlBWvAgPny3c4gX1G5Jhwmmw4XJj0ifSD5qB5TOo8hmA0wlRKDAOAhEE1yVPgs6Fgcg=="],
 
     "ipull/lifecycle-utils": ["lifecycle-utils@2.1.0", "https://registry.npmmirror.com/lifecycle-utils/-/lifecycle-utils-2.1.0.tgz", {}, "sha512-AnrXnE2/OF9PHCyFg0RSqsnQTzV991XaZA/buhFDoc58xU7rhSCDgCz/09Lqpsn4MpoPHt7TRAXV1kWZypFVsA=="],
 
@@ -3126,6 +3130,8 @@
     "node-gyp/tar": ["tar@6.2.1", "https://registry.npmmirror.com/tar/-/tar-6.2.1.tgz", { "dependencies": { "chownr": "^2.0.0", "fs-minipass": "^2.0.0", "minipass": "^5.0.0", "minizlib": "^2.1.1", "mkdirp": "^1.0.3", "yallist": "^4.0.0" } }, "sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A=="],
 
     "node-gyp/which": ["which@4.0.0", "https://registry.npmmirror.com/which/-/which-4.0.0.tgz", { "dependencies": { "isexe": "^3.1.1" }, "bin": { "node-which": "bin/which.js" } }, "sha512-GlaYyEb07DPxYCKhKzplCWBJtvxZcZMrL+4UkrTSJHHPyZU4mYYTv3qaOe77H7EODLSSopAUFAc6W8U4yqvscg=="],
+
+    "node-llama-cpp/semver": ["semver@7.8.5", "https://registry.npmmirror.com/semver/-/semver-7.8.5.tgz", { "bin": { "semver": "bin/semver.js" } }, "sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA=="],
 
     "openai-agents-quickjs/@jitl/quickjs-wasmfile-release-sync": ["@jitl/quickjs-wasmfile-release-sync@0.31.0", "https://registry.npmmirror.com/@jitl/quickjs-wasmfile-release-sync/-/quickjs-wasmfile-release-sync-0.31.0.tgz", { "dependencies": { "@jitl/quickjs-ffi-types": "0.31.0" } }, "sha512-hYduecOByj9AsAfsJhZh5nA6exokmuFC8cls39+lYmTCGY51bgjJJJwReEu7Ff7vBWaQCL6TeDdVlnp2WYz0jw=="],
 
