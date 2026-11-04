@@ -1,5 +1,11 @@
 # @wasmagent/aep
 
+## 2.10.1
+
+### Patch Changes
+
+- 769d8fa: Migrate canonicalization to RFC 8785 JCS (UTF-16 code-unit key order)
+
 ## 2.10.0
 
 ### Minor Changes
