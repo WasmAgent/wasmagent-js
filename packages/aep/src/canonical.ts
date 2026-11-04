@@ -29,7 +29,7 @@ function compareUtf16(a: string, b: string): number {
 }
 
 function serializeValue(value: unknown): string {
-  if (value === null || typeof value !== "object" && typeof value !== "function") {
+  if (value === null || (typeof value !== "object" && typeof value !== "function")) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
@@ -41,8 +41,6 @@ function serializeValue(value: unknown): string {
   // insertion order or sort(). Manually building the JSON string avoids this.
   const obj = value as Record<string, unknown>;
   const keys = Object.keys(obj);
-  // defineProperty-based __proto__ key already lands in Object.keys() when set
-  // via defineProperty (not assignment), so we get it here naturally.
   keys.sort(compareUtf16);
   const pairs = keys.map((k) => JSON.stringify(k) + ":" + serializeValue(obj[k]));
   return "{" + pairs.join(",") + "}";
