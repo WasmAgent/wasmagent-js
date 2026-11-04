@@ -1,5 +1,12 @@
 # @agentkit-js/kernel-wasmtime
 
+## 1.20.4
+
+### Patch Changes
+
+- 769d8fa: Fix property test failures in bun 1.3.14: preload performance polyfill for fast-check 4.10.x
+- @wasmagent/core@3.10.0
+
 ## 1.20.3
 
 ### Patch Changes
