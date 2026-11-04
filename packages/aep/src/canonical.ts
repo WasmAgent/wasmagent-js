@@ -28,12 +28,13 @@ function compareUtf16(a: string, b: string): number {
   return a.length - b.length;
 }
 
-function serializeValue(value: unknown): string {
+function serializeValue(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
   if (value === null || (typeof value !== "object" && typeof value !== "function")) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
-    return "[" + (value as unknown[]).map(serializeValue).join(",") + "]";
+    return "[" + (value as unknown[]).map((v) => serializeValue(v) ?? "null").join(",") + "]";
   }
   // Plain object: sort keys by UTF-16 code unit order.
   // We must NOT rely on JSON.stringify's object key ordering because V8 always
@@ -42,7 +43,11 @@ function serializeValue(value: unknown): string {
   const obj = value as Record<string, unknown>;
   const keys = Object.keys(obj);
   keys.sort(compareUtf16);
-  const pairs = keys.map((k) => JSON.stringify(k) + ":" + serializeValue(obj[k]));
+  const pairs: string[] = [];
+  for (const k of keys) {
+    const v = serializeValue(obj[k]);
+    if (v !== undefined) pairs.push(JSON.stringify(k) + ":" + v);
+  }
   return "{" + pairs.join(",") + "}";
 }
 
@@ -54,6 +59,6 @@ function serializeValue(value: unknown): string {
  * numerically (required by RFC 8785).
  */
 export function canonicalBytes(obj: unknown): Uint8Array {
-  const json = serializeValue(obj);
+  const json = serializeValue(obj) ?? "null";
   return new TextEncoder().encode(json);
 }
